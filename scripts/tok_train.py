@@ -3,12 +3,14 @@ Train a tokenizer using our own BPE Tokenizer library.
 In the style of GPT-4 tokenizer.
 """
 import os
+import json
 import time
 import argparse
 import torch
 from nanochat.tokenizer import RustBPETokenizer
 from nanochat.common import get_base_dir
 from nanochat.dataset import parquets_iter_batched
+from nanochat.tokenizer import get_tokenizer_dir, get_tokenizer_name
 
 # -----------------------------------------------------------------------------
 # Parse command line arguments
@@ -17,10 +19,16 @@ parser = argparse.ArgumentParser(description='Train a BPE tokenizer')
 parser.add_argument('--max-chars', type=int, default=2_000_000_000, help='Maximum characters to train on (default: 2B)')
 parser.add_argument('--doc-cap', type=int, default=10_000, help='Maximum characters per document (default: 10,000)')
 parser.add_argument('--vocab-size', type=int, default=32768, help='Vocabulary size (default: 32768 = 2^15)')
+parser.add_argument('--tokenizer-name', type=str, default=None, help='Optional tokenizer experiment name. Writes to $NANOCHAT_BASE_DIR/tokenizers/<name>.')
+parser.add_argument('--implementation', type=str, default='bpe', choices=['bpe'], help='Tokenizer implementation. Future: morphbpe, sentencepiece.')
 args = parser.parse_args()
+if args.tokenizer_name:
+    os.environ["NANOCHAT_TOKENIZER_NAME"] = args.tokenizer_name
 print(f"max_chars: {args.max_chars:,}")
 print(f"doc_cap: {args.doc_cap:,}")
 print(f"vocab_size: {args.vocab_size:,}")
+print(f"tokenizer_name: {get_tokenizer_name()}")
+print(f"implementation: {args.implementation}")
 
 # -----------------------------------------------------------------------------
 # Text iterator
@@ -54,8 +62,18 @@ print(f"Training time: {train_time:.2f}s")
 # -----------------------------------------------------------------------------
 # Save the tokenizer to disk
 base_dir = get_base_dir()
-tokenizer_dir = os.path.join(base_dir, "tokenizer")
+tokenizer_dir = get_tokenizer_dir()
 tokenizer.save(tokenizer_dir)
+tokenizer_config_path = os.path.join(tokenizer_dir, "tokenizer_config.json")
+with open(tokenizer_config_path, "w", encoding="utf-8") as f:
+    json.dump({
+        "name": get_tokenizer_name(),
+        "implementation": args.implementation,
+        "vocab_size": args.vocab_size,
+        "max_chars": args.max_chars,
+        "doc_cap": args.doc_cap,
+    }, f, indent=2)
+print(f"Saved tokenizer config to {tokenizer_config_path}")
 
 # -----------------------------------------------------------------------------
 # Quick inline sanity check
@@ -64,6 +82,7 @@ Numbers: 123, 4567, 89
 Contractions: I'm, you're, it's
 Special chars: @#$%^&*()
 Unicode: 你好世界 🌍"""
+test_text += "\nTürkçe: İstanbul'da çalışıyorum; ğ, ü, ş, ı, ö, ç karakterleri doğru çözülmeli."
 encoded = tokenizer.encode(test_text)
 decoded = tokenizer.decode(encoded)
 assert decoded == test_text

@@ -143,6 +143,10 @@ science_text = r"""
 Photosynthesis is a photochemical energy transduction process in which light-harvesting pigment–protein complexes within the thylakoid membranes of oxygenic phototrophs absorb photons and initiate charge separation at the reaction center, driving the linear electron transport chain from water to NADP⁺ via photosystem II, the cytochrome b₆f complex, and photosystem I, concomitantly generating a trans-thylakoid proton motive force utilized by chloroplastic ATP synthase. The light-dependent reactions produce ATP and NADPH, which fuel the Calvin–Benson–Bassham cycle in the stroma, wherein ribulose-1,5-bisphosphate is carboxylated by ribulose-1,5-bisphosphate carboxylase/oxygenase (RuBisCO) to form 3-phosphoglycerate, subsequently reduced and regenerated through a series of enzymatic steps, enabling net assimilation of CO₂ into triose phosphates and ultimately carbohydrates. This process is tightly regulated by photoprotective mechanisms, redox feedback, and metabolite flux, representing a central biochemical pathway coupling solar energy capture to the biosphere’s primary productivity.
 """.strip()
 
+turkish_text = r"""
+Türkiye'de doğal dil işleme çalışmaları, eklemeli dil yapısı nedeniyle sözcük kökleri, çekim ekleri ve üretken türetme süreçleriyle yakından ilgilenir. Örneğin "evlerimizden" sözcüğü ev, çoğul, iyelik ve ayrılma durumu bilgilerini tek bir yüzey biçiminde taşır. Bu yüzden bir Türkçe dil modelinin hem ham metindeki yaygın kalıpları hem de az görülen biçimbirim birleşimlerini verimli biçimde temsil etmesi gerekir.
+""".strip()
+
 # The tokenizer was trained on data from earlier shards, so it has seen this data
 train_docs = next(parquets_iter_batched(split="train"))
 train_text = "\n".join(train_docs)
@@ -155,6 +159,7 @@ all_text = [
     ("code", code_text),
     ("math", math_text),
     ("science", science_text),
+    ("turkish", turkish_text),
     ("fwe-train", train_text),
 ]
 if val_text:

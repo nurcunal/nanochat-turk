@@ -55,7 +55,8 @@ parser.add_argument("--window-pattern", type=str, default="SSSL", help="sliding 
 # Training horizon (only one used, in order of precedence)
 parser.add_argument("--num-iterations", type=int, default=-1, help="explicit number of optimization steps (-1 = disable)")
 parser.add_argument("--target-flops", type=float, default=-1.0, help="calculate num_iterations to reach target_flops (-1 = disable)")
-parser.add_argument("--target-param-data-ratio", type=float, default=12, help="calculate num_iterations to maintain data:param ratio (Chinchilla=20, -1 = disable)")
+parser.add_argument("--target-param-data-ratio", type=float, default=20, help="calculate num_iterations to maintain data:param ratio (Chinchilla=20, -1 = disable)")
+parser.add_argument("--target-param-count", type=str, default="total", choices=["total", "scaling"], help="parameter count convention for --target-param-data-ratio")
 # Optimization
 parser.add_argument("--device-batch-size", type=int, default=32, help="per-device batch size. good number to reduce to 16,8,4,... if you OOM on VRAM.")
 parser.add_argument("--total-batch-size", type=int, default=-1, help="total batch size in tokens. decent numbers are e.g. 524288. (-1 = auto-compute optimal)")
@@ -78,7 +79,6 @@ parser.add_argument("--save-every", type=int, default=-1, help="save checkpoints
 # Output
 parser.add_argument("--model-tag", type=str, default=None, help="override model tag for checkpoint directory name")
 args = parser.parse_args()
-user_config = vars(args).copy()  # for logging
 # -----------------------------------------------------------------------------
 # Compute init and wandb logging
 
@@ -95,7 +95,16 @@ else:
     gpu_peak_flops = float('inf')  # MFU not meaningful for CPU/MPS
 print0(f"COMPUTE_DTYPE: {COMPUTE_DTYPE} ({COMPUTE_DTYPE_REASON})")
 
+if args.fp8:
+    if device_type != "cuda":
+        print0("Warning: FP8 training requires CUDA, ignoring --fp8 flag")
+        args.fp8 = False
+    elif torch.cuda.get_device_capability()[0] < 9:
+        print0("Warning: FP8 training requires Hopper+ GPUs (SM90+), ignoring --fp8 flag")
+        args.fp8 = False
+
 # wandb logging init
+user_config = vars(args).copy()  # for logging
 use_dummy_wandb = args.run == "dummy" or not master_process
 wandb_run = DummyWandb() if use_dummy_wandb else wandb.init(project="nanochat", name=args.run, config=user_config)
 
@@ -166,30 +175,27 @@ if resuming:
 
 # Convert Linear layers to Float8Linear if --fp8 is set
 if args.fp8:
-    if device_type != "cuda":
-        print0("Warning: FP8 training requires CUDA, ignoring --fp8 flag")
-    else:
-        # our custom fp8 is simpler than torchao, written for exact API compatibility
-        from nanochat.fp8 import Float8LinearConfig, convert_to_float8_training
-        # from torchao.float8 import Float8LinearConfig, convert_to_float8_training
-        import torch.nn as nn
+    # our custom fp8 is simpler than torchao, written for exact API compatibility
+    from nanochat.fp8 import Float8LinearConfig, convert_to_float8_training
+    # from torchao.float8 import Float8LinearConfig, convert_to_float8_training
+    import torch.nn as nn
 
-        # Filter: dims must be divisible by 16 (FP8 hardware requirement) large enough
-        def fp8_module_filter(mod: nn.Module, fqn: str) -> bool:
-            if not isinstance(mod, nn.Linear):
-                return False
-            if mod.in_features % 16 != 0 or mod.out_features % 16 != 0:
-                return False
-            if min(mod.in_features, mod.out_features) < 128:
-                return False
-            return True
+    # Filter: dims must be divisible by 16 (FP8 hardware requirement) large enough
+    def fp8_module_filter(mod: nn.Module, fqn: str) -> bool:
+        if not isinstance(mod, nn.Linear):
+            return False
+        if mod.in_features % 16 != 0 or mod.out_features % 16 != 0:
+            return False
+        if min(mod.in_features, mod.out_features) < 128:
+            return False
+        return True
 
-        fp8_config = Float8LinearConfig.from_recipe_name(args.fp8_recipe)
-        num_linear = sum(1 for m in model.modules() if isinstance(m, nn.Linear))
-        convert_to_float8_training(model, config=fp8_config, module_filter_fn=fp8_module_filter)
-        num_fp8 = sum(1 for m in model.modules() if 'Float8' in type(m).__name__)
-        num_skipped = num_linear - num_fp8
-        print0(f"✓ FP8 training enabled ({args.fp8_recipe} scaling) - converted {num_fp8}/{num_linear} linear layers, skipped {num_skipped} (too small)")
+    fp8_config = Float8LinearConfig.from_recipe_name(args.fp8_recipe)
+    num_linear = sum(1 for m in model.modules() if isinstance(m, nn.Linear))
+    convert_to_float8_training(model, config=fp8_config, module_filter_fn=fp8_module_filter)
+    num_fp8 = sum(1 for m in model.modules() if 'Float8' in type(m).__name__)
+    num_skipped = num_linear - num_fp8
+    print0(f"✓ FP8 training enabled ({args.fp8_recipe} scaling) - converted {num_fp8}/{num_linear} linear layers, skipped {num_skipped} (too small)")
 
 # Context manager to temporarily disable FP8 so that model evaluation remains in BF16
 @contextmanager
@@ -257,20 +263,32 @@ num_params = param_counts['total']
 num_flops_per_token = model.estimate_flops()
 print0(f"Estimated FLOPs per token: {num_flops_per_token:e}")
 
-# 1) Use scaling laws to determine the optimal training horizon in tokens
-# The compute-optimal models satisfy the Tokens:Params ratio of --target-param-data-ratio (derived experimentally via scaling laws analysis).
-# We've already initialized the model so we have Params. Optimal Tokens is now simply target-param-data-ratio * Params
+# 1) Use scaling laws to determine the optimal training horizon in tokens.
+# Upstream nanochat historically used transformer_matrices + lm_head as the
+# parameter count for scaling laws. The Turkish foundation runs default to the
+# Chinchilla-style total-parameter convention, but both ratios are reported.
 def get_scaling_params(m):
     # As for which params to use exactly, transformer matrices + lm_head gives cleanest scaling laws (see dev/LOG.md Jan 27, 2026)
     params_counts = m.num_scaling_params()
     scaling_params = params_counts['transformer_matrices'] + params_counts['lm_head']
     return scaling_params
+def get_target_params(m):
+    params_counts = m.num_scaling_params()
+    if args.target_param_count == "total":
+        return params_counts["total"]
+    elif args.target_param_count == "scaling":
+        return params_counts["transformer_matrices"] + params_counts["lm_head"]
+    else:
+        raise ValueError(f"Unknown target-param-count: {args.target_param_count}")
 num_scaling_params = get_scaling_params(model)
-target_tokens = int(args.target_param_data_ratio * num_scaling_params) # optimal tokens for the model we are about to train
+num_target_params = get_target_params(model)
+target_tokens = int(args.target_param_data_ratio * num_target_params) if args.target_param_data_ratio > 0 else None
+print0(f"Target parameter count convention: {args.target_param_count} ({num_target_params:,} params)")
 
 # Our reference model is d12, this is where a lot of hyperparameters are tuned and then transfered to higher depths (muP style)
 d12_ref = build_model_meta(12) # creates the model on meta device
-D_REF = args.target_param_data_ratio * get_scaling_params(d12_ref) # compute-optimal d12 training horizon in tokens (measured empirically)
+reference_ratio = args.target_param_data_ratio if args.target_param_data_ratio > 0 else 20
+D_REF = reference_ratio * get_target_params(d12_ref) # compute-optimal d12 training horizon in tokens (measured empirically)
 B_REF = 2**19 # optimal batch size at d12 ~= 524,288 tokens (measured empirically)
 
 # 2) Now that we have the token horizon, we can calculate the optimal batch size
@@ -278,7 +296,8 @@ B_REF = 2**19 # optimal batch size at d12 ~= 524,288 tokens (measured empiricall
 # The optimal batch size grows as approximately D^0.383, so e.g. if D doubles from d12 to d24, B should grow by 2^0.383 ≈ 1.3x.
 total_batch_size = args.total_batch_size # user-provided override is possible
 if total_batch_size == -1:
-    batch_size_ratio = target_tokens / D_REF
+    batch_horizon_tokens = target_tokens if target_tokens is not None else reference_ratio * num_target_params
+    batch_size_ratio = batch_horizon_tokens / D_REF
     predicted_batch_size = B_REF * batch_size_ratio ** 0.383
     total_batch_size = 2 ** round(math.log2(predicted_batch_size)) # clamp to nearest power of 2 for efficiency
     print0(f"Auto-computed optimal batch size: {total_batch_size:,} tokens")
@@ -299,7 +318,8 @@ if batch_ratio != 1.0:
 # Above, we used learning rate scaling η ∝ √(B/B_ref). So it's a matter of ~10 lines of math to derive that to keep T_epoch constant, we need:
 # λ = λ_ref · √(B/B_ref) · (D_ref/D)
 # Note that these papers study AdamW, *not* Muon. We are blindly following AdamW theory for scaling hoping it ~works for Muon too.
-weight_decay_scaled = args.weight_decay * math.sqrt(total_batch_size / B_REF) * (D_REF / target_tokens)
+decay_horizon_tokens = target_tokens if target_tokens is not None else reference_ratio * num_target_params
+weight_decay_scaled = args.weight_decay * math.sqrt(total_batch_size / B_REF) * (D_REF / decay_horizon_tokens)
 if weight_decay_scaled != args.weight_decay:
     print0(f"Scaling weight decay from {args.weight_decay:.6f} to {weight_decay_scaled:.6f} for depth {args.depth}")
 
@@ -353,7 +373,12 @@ else:
     raise ValueError("No training horizon specified")
 total_tokens = total_batch_size * num_iterations # the actual number of tokens we will train for
 print0(f"Total number of training tokens: {total_tokens:,}")
-print0(f"Tokens : Scaling params ratio: {total_batch_size * num_iterations / num_scaling_params:.2f}") # e.g. Chinchilla was ~20
+tokens_per_total_param = total_tokens / num_params
+tokens_per_scaling_param = total_tokens / num_scaling_params
+tokens_per_target_param = total_tokens / num_target_params
+print0(f"Tokens : Total params ratio: {tokens_per_total_param:.2f}")
+print0(f"Tokens : Scaling params ratio: {tokens_per_scaling_param:.2f}")
+print0(f"Tokens : Target params ratio: {tokens_per_target_param:.2f} ({args.target_param_count})")
 print0(f"Total training FLOPs estimate: {num_flops_per_token * total_tokens:e}")
 
 # Learning rate schedule (linear warmup, constant, linear warmdown)
@@ -457,13 +482,13 @@ while True:
     if args.sample_every > 0 and master_process and (last_step or (step > 0 and step % args.sample_every == 0)):
         model.eval()
         prompts = [
-            "The capital of France is",
-            "The chemical symbol of gold is",
-            "If yesterday was Friday, then tomorrow will be",
-            "The opposite of hot is",
-            "The planets of the solar system are:",
-            "My favorite color is",
-            "If 5*x + 3 = 13, then x is",
+            "Turkiye'nin baskenti",
+            "Istanbul bogazinin iki yakasi",
+            "Dun cuma ise yarin",
+            "Sicagin zitti",
+            "Gunes sistemindeki gezegenler:",
+            "En sevdigim renk",
+            "5*x + 3 = 13 ise x",
         ]
         engine = Engine(orig_model, tokenizer) # use orig_model to avoid recompilation
         for prompt in prompts:
@@ -605,10 +630,14 @@ get_report().log(section="Base model training", data=[
     user_config, # CLI args
     { # stats about the training setup
         "Number of parameters": num_params,
+        "Number of target parameters": num_target_params,
+        "Target parameter count convention": args.target_param_count,
         "Number of FLOPs per token": f"{num_flops_per_token:e}",
         "Calculated number of iterations": num_iterations,
         "Number of training tokens": total_tokens,
-        "Tokens : Scaling params ratio": total_batch_size * num_iterations / num_scaling_params,
+        "Tokens : Total params ratio": tokens_per_total_param,
+        "Tokens : Scaling params ratio": tokens_per_scaling_param,
+        "Tokens : Target params ratio": tokens_per_target_param,
         "DDP world size": ddp_world_size,
         "warmup_steps": args.warmup_steps,
         "warmdown_ratio": args.warmdown_ratio,

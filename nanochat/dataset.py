@@ -9,60 +9,121 @@ For details of how the dataset was prepared, see `repackage_data_reference.py`.
 
 import os
 import argparse
+import json
 import time
 import requests
 import pyarrow.parquet as pq
 from multiprocessing import Pool
+from urllib.parse import quote
 
 from nanochat.common import get_base_dir
 
 # -----------------------------------------------------------------------------
 # The specifics of the current pretraining dataset
 
-# The URL on the internet where the data is hosted and downloaded from on demand
-BASE_URL = "https://huggingface.co/datasets/karpathy/climbmix-400b-shuffle/resolve/main"
-MAX_SHARD = 6542 # the last datashard is shard_06542.parquet
-index_to_filename = lambda index: f"shard_{index:05d}.parquet" # format of the filenames
+# The Turkish fork trains on FineWeb-2 Turkish, preserving the parquet order from
+# the Hugging Face tree for reproducibility.
+DATASET_REPO = os.environ.get("NANOCHAT_DATASET_REPO", "HuggingFaceFW/fineweb-2")
+DATASET_REVISION = os.environ.get("NANOCHAT_DATASET_REVISION", "main")
+DATASET_CONFIG = os.environ.get("NANOCHAT_FINEWEB2_CONFIG", "tur_Latn")
+DATASET_PATH = os.environ.get("NANOCHAT_DATASET_PATH", f"data/{DATASET_CONFIG}/train")
+TEXT_COLUMN = os.environ.get("NANOCHAT_TEXT_COLUMN", "text")
 base_dir = get_base_dir()
-DATA_DIR = os.path.join(base_dir, "base_data_climbmix")
+DATA_DIR = os.environ.get("NANOCHAT_DATA_DIR", os.path.join(base_dir, "base_data_fineweb2_tur_latn"))
+MANIFEST_FILE = "fineweb2_manifest.json"
 
 # -----------------------------------------------------------------------------
 # These functions are useful utilities to other modules, can/should be imported
 
+def _manifest_path(data_dir):
+    return os.path.join(data_dir, MANIFEST_FILE)
+
+def _load_manifest(data_dir):
+    path = _manifest_path(data_dir)
+    if not os.path.exists(path):
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def _write_manifest(data_dir, filenames, revision=DATASET_REVISION):
+    os.makedirs(data_dir, exist_ok=True)
+    manifest = {
+        "repo": DATASET_REPO,
+        "revision": revision,
+        "path": DATASET_PATH,
+        "text_column": TEXT_COLUMN,
+        "filenames": filenames,
+    }
+    with open(_manifest_path(data_dir), "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2)
+
+def _headers():
+    token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_TOKEN")
+    return {"Authorization": f"Bearer {token}"} if token else {}
+
+def _fetch_remote_filenames(revision=DATASET_REVISION):
+    """Return FineWeb-2 parquet filenames in stable tree order."""
+    api_url = f"https://huggingface.co/api/datasets/{DATASET_REPO}/tree/{revision}/{DATASET_PATH}"
+    filenames = []
+    next_url = api_url
+    params = {"recursive": "false", "expand": "false"}
+    while next_url:
+        response = requests.get(next_url, params=params, headers=_headers(), timeout=60)
+        response.raise_for_status()
+        entries = response.json()
+        for entry in entries:
+            path = entry.get("path", "")
+            if path.endswith(".parquet"):
+                filenames.append(os.path.basename(path))
+        next_url = response.links.get("next", {}).get("url")
+        params = None
+    ordered_filenames = []
+    seen = set()
+    for filename in filenames:
+        if filename not in seen:
+            ordered_filenames.append(filename)
+            seen.add(filename)
+    if not ordered_filenames:
+        raise RuntimeError(f"No parquet files found in hf://datasets/{DATASET_REPO}/{DATASET_PATH}@{revision}")
+    return ordered_filenames
+
+def _list_parquet_files_in_dir(data_dir):
+    manifest = _load_manifest(data_dir)
+    if manifest is not None:
+        return [
+            os.path.join(data_dir, name)
+            for name in manifest.get("filenames", [])
+            if os.path.exists(os.path.join(data_dir, name))
+        ]
+
+    parquet_files = sorted([
+        f for f in os.listdir(data_dir)
+        if f.endswith(".parquet") and not f.endswith(".tmp")
+    ])
+    return [os.path.join(data_dir, f) for f in parquet_files]
+
 def list_parquet_files(data_dir=None, warn_on_legacy=False):
     """ Looks into a data dir and returns full paths to all parquet files. """
     data_dir = DATA_DIR if data_dir is None else data_dir
-
-    # Legacy-supporting code due to the upgrade from FinewebEdu-100B to ClimbMix-400B
-    # This code will eventually be deleted.
     if not os.path.exists(data_dir):
         if warn_on_legacy:
             print()
             print("=" * 80)
-            print("  WARNING: DATASET UPGRADE REQUIRED")
+            print("  TURKISH DATASET NOT FOUND")
             print("=" * 80)
             print()
             print(f"  Could not find: {data_dir}")
             print()
-            print("  nanochat recently switched from FinewebEdu-100B to ClimbMix-400B.")
-            print("  Everyone who does `git pull` as of March 4, 2026 is expected to see this message.")
-            print("  To upgrade to the new ClimbMix-400B dataset, run these two commands:")
+            print("  This branch expects FineWeb-2 Turkish parquet files.")
+            print("  Download a reproducible prefix plus a held-out final shard with:")
             print()
-            print("    python -m nanochat.dataset -n 170     # download ~170 shards, enough for GPT-2, adjust as desired")
-            print("    python -m scripts.tok_train           # re-train tokenizer on new ClimbMix data")
+            print("    python -m nanochat.dataset -n 8       # tokenizer/debug prefix")
+            print("    python -m nanochat.dataset -n -1      # all Turkish shards")
             print()
-            print("  For now, falling back to your old FinewebEdu-100B dataset...")
             print("=" * 80)
             print()
-        # attempt a fallback to the legacy data directory
-        data_dir = os.path.join(base_dir, "base_data")
-
-    parquet_files = sorted([
-        f for f in os.listdir(data_dir)
-        if f.endswith('.parquet') and not f.endswith('.tmp')
-    ])
-    parquet_paths = [os.path.join(data_dir, f) for f in parquet_files]
-    return parquet_paths
+        return []
+    return _list_parquet_files_in_dir(data_dir)
 
 def parquets_iter_batched(split, start=0, step=1):
     """
@@ -72,34 +133,44 @@ def parquets_iter_batched(split, start=0, step=1):
     """
     assert split in ["train", "val"], "split must be 'train' or 'val'"
     parquet_paths = list_parquet_files()
+    assert len(parquet_paths) != 0, "No dataset parquet files found, did you run `python -m nanochat.dataset -n 8`?"
     parquet_paths = parquet_paths[:-1] if split == "train" else parquet_paths[-1:]
     for filepath in parquet_paths:
         pf = pq.ParquetFile(filepath)
         for rg_idx in range(start, pf.num_row_groups, step):
             rg = pf.read_row_group(rg_idx)
-            texts = rg.column('text').to_pylist()
+            if TEXT_COLUMN not in rg.schema.names:
+                raise KeyError(f"Column {TEXT_COLUMN!r} not found in {filepath}; columns: {rg.schema.names}")
+            texts = rg.column(TEXT_COLUMN).to_pylist()
             yield texts
 
 # -----------------------------------------------------------------------------
-def download_single_file(index):
-    """ Downloads a single file index, with some backoff """
+def _resolve_url(filename, revision=DATASET_REVISION):
+    path = quote(f"{DATASET_PATH}/{filename}", safe="/")
+    return f"https://huggingface.co/datasets/{DATASET_REPO}/resolve/{revision}/{path}"
+
+def download_single_file(item):
+    """ Downloads a single parquet file, with some backoff. """
+    if isinstance(item, tuple):
+        filename, revision = item
+    else:
+        filename, revision = item, DATASET_REVISION
 
     # Construct the local filepath for this file and skip if it already exists
-    filename = index_to_filename(index)
     filepath = os.path.join(DATA_DIR, filename)
     if os.path.exists(filepath):
         print(f"Skipping {filepath} (already exists)")
         return True
 
     # Construct the remote URL for this file
-    url = f"{BASE_URL}/{filename}"
+    url = _resolve_url(filename, revision=revision)
     print(f"Downloading {filename}...")
 
     # Download with retries
     max_attempts = 5
     for attempt in range(1, max_attempts + 1):
         try:
-            response = requests.get(url, stream=True, timeout=30)
+            response = requests.get(url, stream=True, timeout=60, headers=_headers())
             response.raise_for_status()
             # Write to temporary file first
             temp_path = filepath + f".tmp"
@@ -134,27 +205,49 @@ def download_single_file(index):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Download pretraining dataset shards")
-    parser.add_argument("-n", "--num-files", type=int, default=-1, help="Number of train shards to download (default: -1), -1 = disable")
+    parser = argparse.ArgumentParser(description="Download FineWeb-2 Turkish pretraining shards")
+    parser.add_argument("-n", "--num-files", type=int, default=-1, help="Number of train shards to download. -1 = all shards.")
     parser.add_argument("-w", "--num-workers", type=int, default=4, help="Number of parallel download workers (default: 4)")
+    parser.add_argument("--revision", type=str, default=DATASET_REVISION, help="Hugging Face revision/commit (default: main)")
+    parser.add_argument("--list-local", action="store_true", help="List local parquet files and exit")
+    parser.add_argument("--list-remote", action="store_true", help="List remote parquet files and exit")
     args = parser.parse_args()
 
-    # Prepare the output directory
+    if args.list_local:
+        for path in list_parquet_files():
+            print(path)
+        raise SystemExit(0)
+
+    remote_filenames = _fetch_remote_filenames(revision=args.revision)
+    if args.list_remote:
+        for name in remote_filenames:
+            print(name)
+        raise SystemExit(0)
+
+    # Prepare the output directory only when we are going to download/write.
     os.makedirs(DATA_DIR, exist_ok=True)
 
-    # The way this works is that the user specifies the number of train shards to download via the -n flag.
-    # In addition to that, the validation shard is *always* downloaded and is pinned to be the last shard.
-    num_train_shards = MAX_SHARD if args.num_files == -1 else min(args.num_files, MAX_SHARD)
-    ids_to_download = list(range(num_train_shards))
-    ids_to_download.append(MAX_SHARD) # always download the validation shard
+    # The user specifies the number of train shards to download via -n.
+    # In addition, the final shard in the remote order is always downloaded and
+    # used as validation, matching nanochat's "last shard is val" convention.
+    train_pool = remote_filenames[:-1]
+    val_file = remote_filenames[-1]
+    if args.num_files == -1:
+        train_filenames = train_pool
+    else:
+        train_filenames = train_pool[:min(args.num_files, len(train_pool))]
+    filenames_to_download = train_filenames + [val_file]
+    _write_manifest(DATA_DIR, filenames_to_download, revision=args.revision)
 
     # Download the shards
-    print(f"Downloading {len(ids_to_download)} shards using {args.num_workers} workers...")
+    print(f"Dataset: hf://datasets/{DATASET_REPO}/{DATASET_PATH}@{args.revision}")
+    print(f"Downloading {len(filenames_to_download)} shards using {args.num_workers} workers...")
     print(f"Target directory: {DATA_DIR}")
     print()
     with Pool(processes=args.num_workers) as pool:
-        results = pool.map(download_single_file, ids_to_download)
+        download_items = [(name, args.revision) for name in filenames_to_download]
+        results = pool.map(download_single_file, download_items)
 
     # Report results
     successful = sum(1 for success in results if success)
-    print(f"Done! Downloaded: {successful}/{len(ids_to_download)} shards to {DATA_DIR}")
+    print(f"Done! Downloaded: {successful}/{len(filenames_to_download)} shards to {DATA_DIR}")
