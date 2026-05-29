@@ -68,15 +68,15 @@ Approximate Chinchilla-20 horizons for the default 32k raw BPE tokenizer:
 These are planning horizons. Smoke runs intentionally override
 `--num-iterations` and train on far fewer tokens.
 
-Initial 1B-class standard-tokenizer runs:
+Initial standard-tokenizer production runs:
 
 | Vocab | Depth | Total params | Target tokens | Auto batch | Iterations |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 32k | 21 | 1.099B | 21.99B | 1,048,576 | 20,968 |
-| 64k | 17 | 1.101B | 22.02B | 524,288 | 42,007 |
+| 32k | 20 | 896.5M | 17.93B | 1,048,576 | 17,100 |
+| 64k | 16 | 872.4M | 17.45B | 524,288 | 33,280 |
 
-If you want to stay below 1B instead of nearest-to-1B, use d20 for 32k
-(`896.5M @ 17.93B`) and d16 for 64k (`872.4M @ 17.45B`).
+Nearest-over-1B alternatives are d21 for 32k (`1.099B @ 21.99B`) and d17 for
+64k (`1.101B @ 22.02B`).
 
 ## Hardware
 
@@ -177,30 +177,43 @@ sbatch runs/uhem_a100.sbatch
 ```
 
 Adjust the `#SBATCH` partition/account directives, module stack, and
-`NANOCHAT_BASE_DIR` before submitting a production job.
+`NANOCHAT_BASE_DIR` before submitting a production job. The default production
+template targets one 4xA100 node; multi-node can be added later when allocation
+pressure makes it worthwhile.
 
 Recommended UHeM submissions:
 
 ```bash
-# 6.3M params @ 0.13B tokens, standard 32k BPE path
+# 13.0M params @ 0.26B tokens, standard 32k BPE path
 sbatch runs/uhem_smoke_a100.sbatch
 
-# 1.099B params @ 21.99B tokens
-sbatch --export=ALL,VOCAB_SIZE=32768,NANOCHAT_TOKENIZER_NAME=bpe_32768,DEPTH=21,MODEL_TAG=tr_d21_bpe_32768_chinchilla20 runs/uhem_a100.sbatch
+# 896.5M params @ 17.93B tokens
+sbatch --export=ALL,VOCAB_SIZE=32768,NANOCHAT_TOKENIZER_NAME=bpe_32768,DEPTH=20,MODEL_TAG=tr_d20_bpe_32768_chinchilla20 runs/uhem_a100.sbatch
 
-# 1.101B params @ 22.02B tokens
-sbatch --export=ALL,VOCAB_SIZE=65536,NANOCHAT_TOKENIZER_NAME=bpe_65536,DEPTH=17,MODEL_TAG=tr_d17_bpe_65536_chinchilla20 runs/uhem_a100.sbatch
+# 872.4M params @ 17.45B tokens
+sbatch --export=ALL,VOCAB_SIZE=65536,NANOCHAT_TOKENIZER_NAME=bpe_65536,DEPTH=16,MODEL_TAG=tr_d16_bpe_65536_chinchilla20 runs/uhem_a100.sbatch
 ```
 
-Cluster-specific details to fill in before the final runs:
+Cluster-specific details to fill in before the final runs can usually be
+retrieved on the login node with:
+
+```bash
+sinfo -o "%P %a %l %D %c %m %G"
+scontrol show partition
+sacctmgr show assoc user=$USER format=Cluster,Account,User,Partition,QOS,MaxJobs,MaxSubmit,MaxWall,GrpTRES
+module avail
+module spider cuda
+echo "$SCRATCH"
+df -h "${SCRATCH:-$HOME}"
+quota -s
+```
+
+The values we need to settle in the Slurm templates are:
 
 - Slurm partition, account, and QoS names.
 - GPU request syntax, for example `--gres=gpu:4` versus
   `--gres=gpu:a100:4` or `--gpus-per-node=4`.
 - CUDA/Python module stack, or whether UHeM expects containerized jobs.
-- Internet access from compute nodes; if disabled, datasets and dependencies
-  should be staged from a login node.
 - Scratch filesystem path, quota, and purge policy for parquet shards,
   tokenizer files, checkpoints, and reports.
 - Maximum walltime and maximum A100 count per job.
-- Whether multi-node jobs are allowed for later runs beyond 4xA100.

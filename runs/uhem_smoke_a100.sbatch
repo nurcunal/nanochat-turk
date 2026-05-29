@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Tiny Chinchilla-ratio A100 Slurm smoke test for UHeM-style clusters. This
-# keeps the standard 32k BPE path but shrinks the model to about 6.3M params.
+# keeps the standard 32k BPE path but shrinks the model to about 13.0M params.
 #
 # Submit with:
 #   sbatch runs/uhem_smoke_a100.sbatch
@@ -30,7 +30,7 @@ export VOCAB_SIZE="${VOCAB_SIZE:-32768}"
 export NANOCHAT_TOKENIZER_NAME="${NANOCHAT_TOKENIZER_NAME:-bpe_${VOCAB_SIZE}_uhem_smoke}"
 export TOKENIZER_CHARS="${TOKENIZER_CHARS:-50000000}"
 export TOKENIZER_METRIC_DOCS="${TOKENIZER_METRIC_DOCS:-1000}"
-export DEPTH="${DEPTH:-1}"
+export DEPTH="${DEPTH:-2}"
 export HEAD_DIM="${HEAD_DIM:-64}"
 export MAX_SEQ_LEN="${MAX_SEQ_LEN:-256}"
 export DEVICE_BATCH_SIZE="${DEVICE_BATCH_SIZE:-64}"
