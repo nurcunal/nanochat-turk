@@ -11,6 +11,10 @@ VOCAB_SIZE="${VOCAB_SIZE:-32768}"
 export NANOCHAT_TOKENIZER_NAME="${NANOCHAT_TOKENIZER_NAME:-bpe_${VOCAB_SIZE}}"
 mkdir -p "$NANOCHAT_BASE_DIR"
 export PATH="$HOME/.local/bin:$PATH"
+NNODES="${NNODES:-${SLURM_JOB_NUM_NODES:-${SLURM_NNODES:-1}}}"
+NODE_RANK="${NODE_RANK:-${SLURM_NODEID:-0}}"
+RDZV_ID="${RDZV_ID:-${SLURM_JOB_ID:-nanochat}}"
+MASTER_PORT="${MASTER_PORT:-29500}"
 
 if [ -z "${SKIP_SETUP:-}" ]; then
     command -v uv &> /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -25,6 +29,10 @@ fi
 
 if [ -z "${NPROC_PER_NODE:-}" ]; then
     NPROC_PER_NODE="$(python -c 'import torch; print(torch.cuda.device_count() if torch.cuda.is_available() else 1)')"
+fi
+if [ "$NNODES" -gt 1 ] && { [ -z "${SKIP_DATASET:-}" ] || [ -z "${SKIP_TOKENIZER:-}" ]; }; then
+    echo "Multi-node runs require prepared data/tokenizer. Set SKIP_DATASET=1 and SKIP_TOKENIZER=1." >&2
+    exit 2
 fi
 HARDWARE_PROFILE="${HARDWARE_PROFILE:-a100}" # a100|h100|generic
 DEPTH="${DEPTH:-24}"
@@ -49,21 +57,25 @@ case "$HARDWARE_PROFILE" in
         ;;
 esac
 
-python -m nanochat.report reset
-if [ -z "${SKIP_DATASET:-}" ]; then
-    python -m nanochat.dataset -n "$TRAIN_SHARDS" -w "${DATASET_WORKERS:-8}"
+if [ "$NODE_RANK" = "0" ]; then
+    python -m nanochat.report reset
+    if [ -z "${SKIP_DATASET:-}" ]; then
+        python -m nanochat.dataset -n "$TRAIN_SHARDS" -w "${DATASET_WORKERS:-8}"
+    else
+        echo "Skipping dataset download because SKIP_DATASET is set"
+    fi
+    if [ -z "${SKIP_TOKENIZER:-}" ]; then
+        python -m scripts.tok_train \
+            --vocab-size="$VOCAB_SIZE" \
+            --max-chars="${TOKENIZER_CHARS:-2000000000}" \
+            --tokenizer-name="$NANOCHAT_TOKENIZER_NAME"
+        python -m scripts.tok_eval
+        python -m scripts.tokenizer_metrics --max-docs="${TOKENIZER_METRIC_DOCS:-10000}"
+    else
+        echo "Skipping tokenizer train/eval because SKIP_TOKENIZER is set"
+    fi
 else
-    echo "Skipping dataset download because SKIP_DATASET is set"
-fi
-if [ -z "${SKIP_TOKENIZER:-}" ]; then
-    python -m scripts.tok_train \
-        --vocab-size="$VOCAB_SIZE" \
-        --max-chars="${TOKENIZER_CHARS:-2000000000}" \
-        --tokenizer-name="$NANOCHAT_TOKENIZER_NAME"
-    python -m scripts.tok_eval
-    python -m scripts.tokenizer_metrics --max-docs="${TOKENIZER_METRIC_DOCS:-10000}"
-else
-    echo "Skipping tokenizer train/eval because SKIP_TOKENIZER is set"
+    echo "Node rank $NODE_RANK skipping report/data/tokenizer prologue"
 fi
 
 FP8_ARGS=()
@@ -91,7 +103,25 @@ TRAIN_ARGS=(
 [ -z "${SAMPLE_EVERY:-}" ] || TRAIN_ARGS+=(--sample-every="$SAMPLE_EVERY")
 [ -z "${SAVE_EVERY:-}" ] || TRAIN_ARGS+=(--save-every="$SAVE_EVERY")
 
-torchrun --standalone --nproc_per_node="$NPROC_PER_NODE" -m scripts.base_train -- \
+TORCHRUN_ARGS=(--nproc_per_node="$NPROC_PER_NODE")
+if [ "$NNODES" -gt 1 ]; then
+    if [ -z "${MASTER_ADDR:-}" ]; then
+        echo "MASTER_ADDR must be set for multi-node torchrun." >&2
+        exit 2
+    fi
+    TORCHRUN_ARGS+=(
+        --nnodes="$NNODES"
+        --node_rank="$NODE_RANK"
+        --rdzv_id="$RDZV_ID"
+        --rdzv_backend=c10d
+        --rdzv_endpoint="$MASTER_ADDR:$MASTER_PORT"
+    )
+else
+    TORCHRUN_ARGS=(--standalone "${TORCHRUN_ARGS[@]}")
+fi
+
+echo "torchrun args: ${TORCHRUN_ARGS[*]}"
+torchrun "${TORCHRUN_ARGS[@]}" -m scripts.base_train -- \
     "${TRAIN_ARGS[@]}" \
     "${FP8_ARGS[@]}"
 
@@ -103,11 +133,13 @@ EVAL_ARGS=(
 [ -z "${BASE_EVALS:-}" ] || EVAL_ARGS[0]="--eval=$BASE_EVALS"
 [ -z "${SPLIT_TOKENS:-}" ] || EVAL_ARGS+=(--split-tokens="$SPLIT_TOKENS")
 
-torchrun --standalone --nproc_per_node="$NPROC_PER_NODE" -m scripts.base_eval -- \
+torchrun "${TORCHRUN_ARGS[@]}" -m scripts.base_eval -- \
     "${EVAL_ARGS[@]}"
 
-if [ "${RUN_CETVEL:-0}" = "1" ]; then
+if [ "$NODE_RANK" = "0" ] && [ "${RUN_CETVEL:-0}" = "1" ]; then
     python -m scripts.cetvel_eval --suite="${CETVEL_SUITE:-core}" --model-tag="$MODEL_TAG" --batch-size="${CETVEL_BATCH_SIZE:-1}"
 fi
 
-python -m nanochat.report generate
+if [ "$NODE_RANK" = "0" ]; then
+    python -m nanochat.report generate
+fi
