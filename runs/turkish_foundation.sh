@@ -50,13 +50,21 @@ case "$HARDWARE_PROFILE" in
 esac
 
 python -m nanochat.report reset
-python -m nanochat.dataset -n "$TRAIN_SHARDS" -w "${DATASET_WORKERS:-8}"
-python -m scripts.tok_train \
-    --vocab-size="$VOCAB_SIZE" \
-    --max-chars="${TOKENIZER_CHARS:-2000000000}" \
-    --tokenizer-name="$NANOCHAT_TOKENIZER_NAME"
-python -m scripts.tok_eval
-python -m scripts.tokenizer_metrics --max-docs="${TOKENIZER_METRIC_DOCS:-10000}"
+if [ -z "${SKIP_DATASET:-}" ]; then
+    python -m nanochat.dataset -n "$TRAIN_SHARDS" -w "${DATASET_WORKERS:-8}"
+else
+    echo "Skipping dataset download because SKIP_DATASET is set"
+fi
+if [ -z "${SKIP_TOKENIZER:-}" ]; then
+    python -m scripts.tok_train \
+        --vocab-size="$VOCAB_SIZE" \
+        --max-chars="${TOKENIZER_CHARS:-2000000000}" \
+        --tokenizer-name="$NANOCHAT_TOKENIZER_NAME"
+    python -m scripts.tok_eval
+    python -m scripts.tokenizer_metrics --max-docs="${TOKENIZER_METRIC_DOCS:-10000}"
+else
+    echo "Skipping tokenizer train/eval because SKIP_TOKENIZER is set"
+fi
 
 FP8_ARGS=()
 if [ "${USE_FP8:-1}" = "1" ]; then
@@ -76,6 +84,7 @@ TRAIN_ARGS=(
 [ -z "${MAX_SEQ_LEN:-}" ] || TRAIN_ARGS+=(--max-seq-len="$MAX_SEQ_LEN")
 [ -z "${TOTAL_BATCH_SIZE:-}" ] || TRAIN_ARGS+=(--total-batch-size="$TOTAL_BATCH_SIZE")
 [ -z "${NUM_ITERATIONS:-}" ] || TRAIN_ARGS+=(--num-iterations="$NUM_ITERATIONS")
+[ -z "${RESUME_FROM_STEP:-}" ] || TRAIN_ARGS+=(--resume-from-step="$RESUME_FROM_STEP")
 [ -z "${EVAL_EVERY:-}" ] || TRAIN_ARGS+=(--eval-every="$EVAL_EVERY")
 [ -z "${EVAL_TOKENS:-}" ] || TRAIN_ARGS+=(--eval-tokens="$EVAL_TOKENS")
 [ -z "${CORE_METRIC_EVERY:-}" ] || TRAIN_ARGS+=(--core-metric-every="$CORE_METRIC_EVERY")
