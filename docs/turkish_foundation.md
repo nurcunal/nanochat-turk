@@ -124,6 +124,9 @@ python -m scripts.tokenizer_metrics --max-docs=10000
 
 This records bytes/token, chars/token, tokens/word fertility, and encode speed.
 
+The morphology-aware tokenizer study plan lives in
+`docs/tokenizer_ablation_plan.md`.
+
 ## CETVEL Suites
 
 `scripts.cetvel_eval` defines three suites:
