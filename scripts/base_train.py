@@ -106,7 +106,20 @@ if args.fp8:
 # wandb logging init
 user_config = vars(args).copy()  # for logging
 use_dummy_wandb = args.run == "dummy" or not master_process
-wandb_run = DummyWandb() if use_dummy_wandb else wandb.init(project="nanochat", name=args.run, config=user_config)
+if use_dummy_wandb:
+    wandb_run = DummyWandb()
+else:
+    wandb_kwargs = {
+        "project": os.environ.get("WANDB_PROJECT", "nanochat"),
+        "name": args.run,
+        "config": user_config,
+    }
+    if os.environ.get("WANDB_ENTITY"):
+        wandb_kwargs["entity"] = os.environ["WANDB_ENTITY"]
+    if os.environ.get("WANDB_RUN_ID"):
+        wandb_kwargs["id"] = os.environ["WANDB_RUN_ID"]
+        wandb_kwargs["resume"] = os.environ.get("WANDB_RESUME", "allow")
+    wandb_run = wandb.init(**wandb_kwargs)
 
 # Flash Attention status
 from nanochat.flash_attention import USE_FA3

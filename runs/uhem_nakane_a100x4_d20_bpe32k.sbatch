@@ -72,9 +72,12 @@ export BASE_EVALS="${BASE_EVALS:-bpb,sample}"
 # validate CETVEL/lm-eval setup, and we should not let it jeopardize training.
 export RUN_CETVEL="${RUN_CETVEL:-0}"
 export WANDB_RUN="${WANDB_RUN:-dummy}"
+export WANDB_PROJECT="${WANDB_PROJECT:-nanochat-turk}"
+export WANDB_DIR="${WANDB_DIR:-$NANOCHAT_BASE_DIR/wandb}"
 export SKIP_SETUP="${SKIP_SETUP:-1}"
 export SKIP_DATASET="${SKIP_DATASET:-1}"
 export SKIP_TOKENIZER="${SKIP_TOKENIZER:-1}"
+mkdir -p "$WANDB_DIR"
 
 DATA_DIR="$NANOCHAT_BASE_DIR/base_data_fineweb2_tur_latn"
 TOKENIZER_DIR="$NANOCHAT_BASE_DIR/tokenizers/$NANOCHAT_TOKENIZER_NAME"
