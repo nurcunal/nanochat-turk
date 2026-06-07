@@ -1,0 +1,59 @@
+{
+  "step": 1980,
+  "val_bpb": 1.239556895549715,
+  "model_config": {
+    "sequence_len": 256,
+    "vocab_size": 32768,
+    "n_layer": 2,
+    "n_head": 2,
+    "n_kv_head": 2,
+    "n_embd": 128,
+    "window_pattern": "L"
+  },
+  "user_config": {
+    "run": "dummy",
+    "device_type": "",
+    "fp8": false,
+    "fp8_recipe": "tensorwise",
+    "depth": 2,
+    "aspect_ratio": 64,
+    "head_dim": 64,
+    "max_seq_len": 256,
+    "window_pattern": "L",
+    "num_iterations": -1,
+    "target_flops": -1.0,
+    "target_param_data_ratio": 20.0,
+    "target_param_count": "total",
+    "device_batch_size": 64,
+    "total_batch_size": 131072,
+    "embedding_lr": 0.3,
+    "unembedding_lr": 0.008,
+    "weight_decay": 0.28,
+    "matrix_lr": 0.02,
+    "scalar_lr": 0.5,
+    "warmup_steps": 40,
+    "warmdown_ratio": 0.65,
+    "final_lr_frac": 0.05,
+    "resume_from_step": -1,
+    "eval_every": 100,
+    "eval_tokens": 65536,
+    "core_metric_every": -1,
+    "core_metric_max_per_task": 500,
+    "sample_every": 250,
+    "save_every": -1,
+    "model_tag": "tr_d2_bpe_32768_uhem_smoke_chinchilla20"
+  },
+  "device_batch_size": 64,
+  "max_seq_len": 256,
+  "total_batch_size": 131072,
+  "dataloader_state_dict": {
+    "pq_idx": 0,
+    "rg_idx": 1235,
+    "epoch": 1
+  },
+  "loop_state": {
+    "min_val_bpb": 1.239556895549715,
+    "smooth_train_loss": 4.579739095565488,
+    "total_training_time": 695.7154915332794
+  }
+}

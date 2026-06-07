@@ -10,10 +10,11 @@ export NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-$HOME/.cache/nanochat-turk}"
 VOCAB_SIZE="${VOCAB_SIZE:-32768}"
 export NANOCHAT_TOKENIZER_NAME="${NANOCHAT_TOKENIZER_NAME:-bpe_${VOCAB_SIZE}}"
 mkdir -p "$NANOCHAT_BASE_DIR"
+export PATH="$HOME/.local/bin:$PATH"
 
 if [ -z "${SKIP_SETUP:-}" ]; then
     command -v uv &> /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
-    [ -d ".venv" ] || uv venv
+    [ -d ".venv" ] || uv venv ${UV_PYTHON:+--python "$UV_PYTHON"}
     uv sync --extra gpu
 fi
 source .venv/bin/activate

@@ -1,0 +1,74 @@
+{
+  "job": {
+    "cluster": "altay",
+    "account": "nakane",
+    "partition": "gpu2dq",
+    "job_id": 492393,
+    "node": "a119",
+    "state": "COMPLETED",
+    "exit_code": "0:0",
+    "wall_clock": "00:17:38",
+    "requested_nodes": 1,
+    "requested_cpu_cores": 64,
+    "requested_gpus": "1x NVIDIA A100 80GB PCIe",
+    "requested_memory": "64G",
+    "memory_utilized_gb": 19.79
+  },
+  "environment": {
+    "python": "3.12.4",
+    "pytorch": "2.9.1+cu128",
+    "cuda": "12.8",
+    "hardware": "NVIDIA A100 80GB PCIe"
+  },
+  "data": {
+    "dataset_repo": "HuggingFaceFW/fineweb-2",
+    "dataset_config": "tur_Latn",
+    "train_shards": 2,
+    "validation_shards": 1
+  },
+  "tokenizer": {
+    "name": "bpe_32768_uhem_smoke",
+    "vocab_size": 32768,
+    "max_chars": 50000000,
+    "train_time_seconds": 6.3158
+  },
+  "model": {
+    "tag": "tr_d2_bpe_32768_uhem_smoke_chinchilla20",
+    "checkpoint_step": 1980,
+    "depth": 2,
+    "sequence_len": 256,
+    "n_embd": 128,
+    "n_head": 2,
+    "n_kv_head": 2,
+    "window_pattern": "L",
+    "total_parameters": 12976182,
+    "target_parameters": 12976182,
+    "target_param_count_convention": "total"
+  },
+  "training": {
+    "device_batch_size": 64,
+    "total_batch_size": 131072,
+    "training_tokens": 259522560,
+    "tokens_total_params_ratio": 19.9999,
+    "tokens_scaling_params_ratio": 56.5711,
+    "ddp_world_size": 1,
+    "total_training_time_minutes": 11.60,
+    "peak_memory_mib": 1420.94,
+    "total_training_flops": 7.347524e15,
+    "mfu_percent": 2.51
+  },
+  "metrics": {
+    "minimum_validation_bpb": 1.239557,
+    "final_validation_bpb": 1.239557,
+    "base_eval_train_bpb": 1.295173,
+    "base_eval_val_bpb": 1.239951
+  },
+  "artifacts": {
+    "report": "report.md",
+    "stdout": "nanochat-tr-smoke-a100-492393.out",
+    "stderr": "nanochat-tr-smoke-a100-492393.err",
+    "model_checkpoint": "checkpoint/model_001980.pt",
+    "checkpoint_metadata": "checkpoint/meta_001980.json",
+    "optimizer_checkpoint": "checkpoint/optim_001980_rank0.pt"
+  }
+}
