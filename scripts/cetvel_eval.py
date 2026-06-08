@@ -23,7 +23,7 @@ CETVEL_SUITES = {
     # Cheap, representative iteration suite. Use --limit during debugging.
     "fast": [
         "belebele_tr",
-        "xnli_tr",
+        "cetvel_xnli_tr",
         "news_cat",
         "xquad_tr",
         "turkish_plu_next_event_prediction",
@@ -35,8 +35,8 @@ CETVEL_SUITES = {
         "exams_tr",
         "belebele_tr",
         "turkish_plu",
-        "xcopa_tr",
-        "xnli_tr",
+        "cetvel_xcopa_tr",
+        "cetvel_xnli_tr",
         "mnli_tr",
         "snli_tr",
         "news_cat",
@@ -69,7 +69,7 @@ CETVEL_SUITES = {
         "mlsum_tr",
         "xlsum_tr",
         "wiki_lingua_tr",
-        "gecturk_gen",
+        "gecturk_generation",
     ],
 }
 
@@ -80,12 +80,23 @@ HF_DATASET_ALIASES = {
     # legacy aliases, so rewrite them to their canonical Hub repos locally.
     "exams": "mhardalov/exams",
     "xcopa": "cambridgeltl/xcopa",
+    "xnli": "facebook/xnli",
     "xquad": "google/xquad",
     "xfact": "utahnlp/x-fact",
     "mlsum": "reciTAL/mlsum",
     "xlsum": "csebuetnlp/xlsum",
     "wiki_lingua": "GEM/wiki_lingua",
     "wmt16": "wmt/wmt16",
+}
+
+
+CETVEL_TASK_RENAMES = {
+    # Avoid name collisions where lm-eval's built-in registry wins over
+    # include_path tasks with the same name.
+    "xcopa": "cetvel_xcopa",
+    "xcopa_et": "cetvel_xcopa_et",
+    "xcopa_tr": "cetvel_xcopa_tr",
+    "xnli_tr": "cetvel_xnli_tr",
 }
 
 
@@ -166,6 +177,14 @@ def _patch_cetvel_task_configs(cetvel_dir: str) -> None:
                 ]
                 for pattern in replacements:
                     new_text = pattern.sub(lambda match, value=canonical: replace_alias(match, value), new_text)
+            for old_task, new_task in CETVEL_TASK_RENAMES.items():
+                escaped = re.escape(old_task)
+                task_patterns = [
+                    re.compile(rf"(?m)^(\s*(?:task|group)\s*:\s*)(['\"]?){escaped}\2(\s*(?:#.*)?)$"),
+                    re.compile(rf"(\b(?:task|group)\s*:\s*)(['\"]?){escaped}\2(?=\s|$)"),
+                ]
+                for pattern in task_patterns:
+                    new_text = pattern.sub(lambda match, value=new_task: replace_alias(match, value), new_text)
             if new_text != text:
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(new_text)
