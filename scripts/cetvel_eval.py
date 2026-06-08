@@ -74,6 +74,21 @@ CETVEL_SUITES = {
 }
 
 
+HF_DATASET_ALIASES = {
+    # CETVEL is pinned to older lm-eval task configs. Current
+    # huggingface_hub rejects one-part dataset IDs in hf:// URIs for several
+    # legacy aliases, so rewrite them to their canonical Hub repos locally.
+    "exams": "mhardalov/exams",
+    "xcopa": "cambridgeltl/xcopa",
+    "xquad": "google/xquad",
+    "xfact": "utahnlp/x-fact",
+    "mlsum": "reciTAL/mlsum",
+    "xlsum": "csebuetnlp/xlsum",
+    "wiki_lingua": "GEM/wiki_lingua",
+    "wmt16": "wmt/wmt16",
+}
+
+
 def _maybe_setup_cetvel(cetvel_dir: str) -> None:
     if not os.path.isdir(cetvel_dir):
         print0(f"Cloning CETVEL into {cetvel_dir} ...")
@@ -128,16 +143,9 @@ def _patch_cetvel_task_configs(cetvel_dir: str) -> None:
     if not os.path.isdir(tasks_dir):
         return
 
-    replacements = [
-        re.compile(r"(?m)^(\s*dataset_path\s*:\s*)(['\"]?)exams\2(\s*(?:#.*)?)$"),
-        re.compile(r"(?m)^(\s*path\s*:\s*)(['\"]?)exams\2(\s*(?:#.*)?)$"),
-        re.compile(r"(\bdataset_path\s*:\s*)(['\"]?)exams\2(?=\s|$)"),
-        re.compile(r"(\bpath\s*:\s*)(['\"]?)exams\2(?=\s|$)"),
-    ]
-
-    def replace_exams_alias(match: re.Match[str]) -> str:
+    def replace_alias(match: re.Match[str], canonical: str) -> str:
         suffix = match.group(3) if match.lastindex and match.lastindex >= 3 else ""
-        return f"{match.group(1)}mhardalov/exams{suffix}"
+        return f"{match.group(1)}{canonical}{suffix}"
 
     patched: list[str] = []
     for root, _dirs, files in os.walk(tasks_dir):
@@ -148,8 +156,16 @@ def _patch_cetvel_task_configs(cetvel_dir: str) -> None:
             with open(path, "r", encoding="utf-8") as f:
                 text = f.read()
             new_text = text
-            for pattern in replacements:
-                new_text = pattern.sub(replace_exams_alias, new_text)
+            for alias, canonical in HF_DATASET_ALIASES.items():
+                escaped = re.escape(alias)
+                replacements = [
+                    re.compile(
+                        rf"(?m)^(\s*(?:dataset_path|path)\s*:\s*)(['\"]?){escaped}\2(\s*(?:#.*)?)$"
+                    ),
+                    re.compile(rf"(\b(?:dataset_path|path)\s*:\s*)(['\"]?){escaped}\2(?=\s|$)"),
+                ]
+                for pattern in replacements:
+                    new_text = pattern.sub(lambda match, value=canonical: replace_alias(match, value), new_text)
             if new_text != text:
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(new_text)
