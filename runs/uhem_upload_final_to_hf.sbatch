@@ -25,6 +25,9 @@
 
 set -euo pipefail
 
+REPO_DIR="${SLURM_SUBMIT_DIR:-$PWD}"
+cd "$REPO_DIR"
+
 if [ -z "${HF_REPO_ID:-}" ]; then
     echo "HF_REPO_ID is required, e.g. HF_REPO_ID=nurcunal/nanochat-turk-d20-bpe32k" >&2
     exit 2
@@ -45,6 +48,7 @@ export PATH="$HOME/.local/bin:$PATH"
 export NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-$HOME/nanochat-turk-d20-bpe32k}"
 export MODEL_TAG="${MODEL_TAG:-tr_d20_bpe_32768_chinchilla20}"
 export NANOCHAT_TOKENIZER_NAME="${NANOCHAT_TOKENIZER_NAME:-bpe_32768}"
+export PYTHONPATH="$REPO_DIR:${PYTHONPATH:-}"
 export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
 export HF_XET_CACHE="${HF_XET_CACHE:-$NANOCHAT_BASE_DIR/hf-xet-cache}"
 mkdir -p "$HF_XET_CACHE"
@@ -66,7 +70,7 @@ if [ "${HF_INCLUDE_OPTIMIZER:-1}" != "1" ]; then
     OPTIMIZER_ARGS=(--no-optimizer)
 fi
 
-python -m scripts.upload_base_checkpoint_to_hf \
+python scripts/upload_base_checkpoint_to_hf.py \
     --repo-id="$HF_REPO_ID" \
     --base-dir="$NANOCHAT_BASE_DIR" \
     --model-tag="$MODEL_TAG" \

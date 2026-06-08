@@ -20,6 +20,9 @@
 
 set -euo pipefail
 
+REPO_DIR="${SLURM_SUBMIT_DIR:-$PWD}"
+cd "$REPO_DIR"
+
 module purge
 module load cuda/cuda-12.5-a100q
 module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
@@ -39,7 +42,7 @@ export NANOCHAT_TOKENIZER_NAME="${NANOCHAT_TOKENIZER_NAME:-bpe_32768}"
 export HF_HOME="${HF_HOME:-$NANOCHAT_BASE_DIR/huggingface}"
 export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-$NANOCHAT_BASE_DIR/cetvel_hf_datasets_cache}"
 export CETVEL_DIR="${CETVEL_DIR:-$NANOCHAT_BASE_DIR/cetvel}"
-export PYTHONPATH="$CETVEL_DIR/lm-evaluation-harness:${PYTHONPATH:-}"
+export PYTHONPATH="$REPO_DIR:$CETVEL_DIR/lm-evaluation-harness:${PYTHONPATH:-}"
 export WANDB_PROJECT="${WANDB_PROJECT:-nanochat-turk}"
 export WANDB_RUN="${WANDB_RUN:-cetvel-full-${MODEL_TAG}}"
 export WANDB_DIR="${WANDB_DIR:-$NANOCHAT_BASE_DIR/wandb}"
@@ -87,5 +90,5 @@ if [ -n "${CETVEL_TASKS:-}" ]; then
 fi
 
 echo "CETVEL args: ${CETVEL_ARGS[*]}"
-python -m scripts.cetvel_eval "${CETVEL_ARGS[@]}"
+python scripts/cetvel_eval.py "${CETVEL_ARGS[@]}"
 python -m nanochat.report generate
