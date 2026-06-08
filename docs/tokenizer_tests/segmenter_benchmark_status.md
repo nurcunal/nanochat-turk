@@ -7,6 +7,9 @@ MorphBPE tokenizer study. Large data and JSON outputs live under
 Small original-vs-segmented examples are committed in
 `docs/tokenizer_tests/segmenter_examples.md`.
 
+The blind LLM/human judge workflow is documented in
+`docs/tokenizer_tests/llm_judge_pipeline.md`.
+
 ## Corpus Cache
 
 Permanent local cache:
