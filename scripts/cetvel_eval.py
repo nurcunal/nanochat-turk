@@ -131,6 +131,8 @@ def _patch_cetvel_task_configs(cetvel_dir: str) -> None:
     replacements = [
         re.compile(r"(?m)^(\s*dataset_path\s*:\s*)(['\"]?)exams\2(\s*(?:#.*)?)$"),
         re.compile(r"(?m)^(\s*path\s*:\s*)(['\"]?)exams\2(\s*(?:#.*)?)$"),
+        re.compile(r"(\bdataset_path\s*:\s*)(['\"]?)exams\2(?=\s|$)"),
+        re.compile(r"(\bpath\s*:\s*)(['\"]?)exams\2(?=\s|$)"),
     ]
     patched: list[str] = []
     for root, _dirs, files in os.walk(tasks_dir):
