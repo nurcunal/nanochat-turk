@@ -177,7 +177,7 @@ def _patch_cetvel_task_configs(cetvel_dir: str) -> None:
     patched: list[str] = []
     for root, _dirs, files in os.walk(tasks_dir):
         for name in files:
-            if not name.endswith((".yaml", ".yml", "_yaml")):
+            if not name.endswith((".yaml", ".yml", "_yaml", ".py")):
                 continue
             path = os.path.join(root, name)
             with open(path, "r", encoding="utf-8") as f:
@@ -193,6 +193,16 @@ def _patch_cetvel_task_configs(cetvel_dir: str) -> None:
                 ]
                 for pattern in replacements:
                     new_text = pattern.sub(lambda match, value=canonical: replace_alias(match, value), new_text)
+                py_replacements = [
+                    re.compile(rf"(?m)^(\s*DATASET_PATH\s*=\s*)(['\"]){escaped}\2(\s*(?:#.*)?)$"),
+                    re.compile(rf"(datasets\.load_dataset\(\s*)(['\"]){escaped}\2"),
+                ]
+                for pattern in py_replacements:
+                    new_text = pattern.sub(
+                        lambda match, value=canonical: f"{match.group(1)}{match.group(2)}{value}{match.group(2)}"
+                        + (match.group(3) if match.lastindex and match.lastindex >= 3 else ""),
+                        new_text,
+                    )
             for old_task, new_task in CETVEL_TASK_RENAMES.items():
                 escaped = re.escape(old_task)
                 task_patterns = [
