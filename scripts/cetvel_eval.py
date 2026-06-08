@@ -89,6 +89,7 @@ def _maybe_setup_cetvel(cetvel_dir: str) -> None:
     _pip_install(["-e", harness_dir])
     if os.path.isfile(req_path):
         _pip_install(["-r", req_path])
+    _prepend_pythonpath(harness_dir)
 
 
 def _pip_install(args: list[str]) -> None:
@@ -109,6 +110,16 @@ def _pip_install(args: list[str]) -> None:
         return
 
     subprocess.check_call([py, "-m", "pip", "install", "-q", *args])
+
+
+def _prepend_pythonpath(path: str) -> None:
+    if not os.path.isdir(path):
+        return
+    if path not in sys.path:
+        sys.path.insert(0, path)
+    paths = [p for p in os.environ.get("PYTHONPATH", "").split(os.pathsep) if p]
+    if path not in paths:
+        os.environ["PYTHONPATH"] = os.pathsep.join([path, *paths])
 
 
 def _flatten(prefix: str, value: Any, out: Dict[str, Any]) -> None:
@@ -150,9 +161,12 @@ def main() -> None:
     base_dir = get_base_dir()
     cetvel_dir = os.path.abspath(args.cetvel_dir or os.path.join(base_dir, "cetvel"))
     include_path = os.path.join(cetvel_dir, "tasks")
+    harness_dir = os.path.join(cetvel_dir, "lm-evaluation-harness")
 
     if args.auto_setup:
         _maybe_setup_cetvel(cetvel_dir)
+    else:
+        _prepend_pythonpath(harness_dir)
 
     if not os.path.isdir(include_path):
         print0(
