@@ -161,7 +161,7 @@ def _assert_datasets_supports_legacy_scripts() -> None:
     if major >= 4:
         raise RuntimeError(
             "CETVEL's Turkish NLI tasks still depend on a Hugging Face dataset script. "
-            "Install datasets<4 for CETVEL, for example: python -m pip install 'datasets==3.6.0'."
+            "Install datasets<4 for CETVEL, for example: python -m pip install 'datasets==2.19.2'."
         )
 
 
@@ -279,7 +279,7 @@ def main() -> None:
         return
 
     os.environ.setdefault("HF_DATASETS_TRUST_REMOTE_CODE", "true")
-    os.environ.setdefault("HF_DATASETS_CACHE", os.path.join(base_dir, "cetvel_hf_datasets_cache_datasets36"))
+    os.environ.setdefault("HF_DATASETS_CACHE", os.path.join(base_dir, "cetvel_hf_datasets_cache_datasets219"))
     _assert_datasets_supports_legacy_scripts()
 
     try:

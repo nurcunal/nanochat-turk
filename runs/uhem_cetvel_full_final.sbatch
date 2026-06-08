@@ -40,7 +40,7 @@ export NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-$HOME/nanochat-turk-d20-bpe32k}"
 export MODEL_TAG="${MODEL_TAG:-tr_d20_bpe_32768_chinchilla20}"
 export NANOCHAT_TOKENIZER_NAME="${NANOCHAT_TOKENIZER_NAME:-bpe_32768}"
 export HF_HOME="${HF_HOME:-$NANOCHAT_BASE_DIR/huggingface}"
-export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-$NANOCHAT_BASE_DIR/cetvel_hf_datasets_cache_datasets36}"
+export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-$NANOCHAT_BASE_DIR/cetvel_hf_datasets_cache_datasets219}"
 export CETVEL_DIR="${CETVEL_DIR:-$NANOCHAT_BASE_DIR/cetvel}"
 export PYTHONPATH="$REPO_DIR:$CETVEL_DIR/lm-evaluation-harness:${PYTHONPATH:-}"
 export WANDB_PROJECT="${WANDB_PROJECT:-nanochat-turk}"
@@ -49,7 +49,7 @@ export WANDB_DIR="${WANDB_DIR:-$NANOCHAT_BASE_DIR/wandb}"
 mkdir -p "$WANDB_DIR" "$HF_DATASETS_CACHE"
 
 source .venv/bin/activate
-python -m pip install -q "datasets==3.6.0"
+python -m pip install -q "datasets==2.19.2"
 
 CHECKPOINT_DIR="$NANOCHAT_BASE_DIR/base_checkpoints/$MODEL_TAG"
 CETVEL_MODEL_STEP="${CETVEL_MODEL_STEP:-17100}"
