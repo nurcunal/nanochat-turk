@@ -13,6 +13,9 @@ The blind LLM/human judge workflow is documented in
 TurkishDelightNLP runtime setup notes are documented in
 `docs/tokenizer_tests/turkishdelight_setup.md`.
 
+MorphBPE boundary-marker and tokenizer-training framework notes are documented
+in `docs/tokenizer_tests/morphbpe_framework.md`.
+
 ## Corpus Cache
 
 Permanent local cache:

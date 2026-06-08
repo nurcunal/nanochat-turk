@@ -20,7 +20,7 @@ import torch
 import pyarrow.parquet as pq
 
 from nanochat.common import get_dist_info
-from nanochat.dataset import list_parquet_files
+from nanochat.dataset import TEXT_COLUMN, list_parquet_files
 
 def _document_batches(split, resume_state_dict, tokenizer_batch_size):
     """
@@ -49,6 +49,8 @@ def _document_batches(split, resume_state_dict, tokenizer_batch_size):
         while pq_idx < len(parquet_paths):
             filepath = parquet_paths[pq_idx]
             pf = pq.ParquetFile(filepath)
+            if TEXT_COLUMN not in pf.schema_arrow.names:
+                raise KeyError(f"Column {TEXT_COLUMN!r} not found in {filepath}; columns: {pf.schema_arrow.names}")
             # Start from resume point if resuming on same file, otherwise from DDP rank
             if first_pass and (resume_rg_idx is not None) and (pq_idx == resume_pq_idx):
                 base_idx = resume_rg_idx // ddp_world_size
@@ -61,8 +63,8 @@ def _document_batches(split, resume_state_dict, tokenizer_batch_size):
             else:
                 rg_idx = ddp_rank
             while rg_idx < pf.num_row_groups:
-                rg = pf.read_row_group(rg_idx)
-                batch = rg.column('text').to_pylist()
+                rg = pf.read_row_group(rg_idx, columns=[TEXT_COLUMN])
+                batch = rg.column(TEXT_COLUMN).to_pylist()
                 for i in range(0, len(batch), tokenizer_batch_size):
                     yield batch[i:i+tokenizer_batch_size], (pq_idx, rg_idx, epoch)
                 rg_idx += ddp_world_size

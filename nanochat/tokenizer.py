@@ -8,6 +8,7 @@ Two implementations are available:
 
 import os
 import copy
+import json
 from functools import lru_cache
 
 SPECIAL_TOKENS = [
@@ -163,12 +164,13 @@ import tiktoken
 class RustBPETokenizer:
     """Light wrapper around tiktoken (for efficient inference) but train with rustbpe"""
 
-    def __init__(self, enc, bos_token):
+    def __init__(self, enc, bos_token, decode_strip=""):
         self.enc = enc
         self.bos_token_id = self.encode_special(bos_token)
+        self.decode_strip = decode_strip
 
     @classmethod
-    def train_from_iterator(cls, text_iterator, vocab_size):
+    def train_from_iterator(cls, text_iterator, vocab_size, decode_strip=""):
         # 1) train using rustbpe
         tokenizer = rustbpe.Tokenizer()
         # the special tokens are inserted later in __init__, we don't train them here
@@ -187,14 +189,20 @@ class RustBPETokenizer:
             mergeable_ranks=mergeable_ranks, # dict[bytes, int] (token bytes -> merge priority rank)
             special_tokens=special_tokens, # dict[str, int] (special token name -> token id)
         )
-        return cls(enc, "<|bos|>")
+        return cls(enc, "<|bos|>", decode_strip=decode_strip)
 
     @classmethod
     def from_directory(cls, tokenizer_dir):
         pickle_path = os.path.join(tokenizer_dir, "tokenizer.pkl")
         with open(pickle_path, "rb") as f:
             enc = pickle.load(f)
-        return cls(enc, "<|bos|>")
+        decode_strip = ""
+        config_path = os.path.join(tokenizer_dir, "tokenizer_config.json")
+        if os.path.exists(config_path):
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+            decode_strip = config.get("decode_strip", "")
+        return cls(enc, "<|bos|>", decode_strip=decode_strip)
 
     @classmethod
     def from_pretrained(cls, tiktoken_name):
@@ -213,7 +221,7 @@ class RustBPETokenizer:
         return self.enc.special_tokens_set
 
     def id_to_token(self, id):
-        return self.enc.decode([id])
+        return self.decode([id])
 
     @lru_cache(maxsize=32)
     def encode_special(self, text):
@@ -253,7 +261,10 @@ class RustBPETokenizer:
         return self.encode(*args, **kwargs)
 
     def decode(self, ids):
-        return self.enc.decode(ids)
+        text = self.enc.decode(ids)
+        if self.decode_strip:
+            text = text.replace(self.decode_strip, "")
+        return text
 
     def save(self, tokenizer_dir):
         # save the encoding object to disk

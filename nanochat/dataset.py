@@ -125,23 +125,26 @@ def list_parquet_files(data_dir=None, warn_on_legacy=False):
         return []
     return _list_parquet_files_in_dir(data_dir)
 
-def parquets_iter_batched(split, start=0, step=1):
+def parquets_iter_batched(split, start=0, step=1, data_dir=None, text_column=None):
     """
     Iterate through the dataset, in batches of underlying row_groups for efficiency.
     - split can be "train" or "val". the last parquet file will be val.
     - start/step are useful for skipping rows in DDP. e.g. start=rank, step=world_size
+    - data_dir/text_column can override the default dataset for tokenizer
+      experiments, e.g. MorphBPE segmented shards with a segmented_text column.
     """
     assert split in ["train", "val"], "split must be 'train' or 'val'"
-    parquet_paths = list_parquet_files()
+    text_column = TEXT_COLUMN if text_column is None else text_column
+    parquet_paths = list_parquet_files(data_dir)
     assert len(parquet_paths) != 0, "No dataset parquet files found, did you run `python -m nanochat.dataset -n 8`?"
     parquet_paths = parquet_paths[:-1] if split == "train" else parquet_paths[-1:]
     for filepath in parquet_paths:
         pf = pq.ParquetFile(filepath)
+        if text_column not in pf.schema_arrow.names:
+            raise KeyError(f"Column {text_column!r} not found in {filepath}; columns: {pf.schema_arrow.names}")
         for rg_idx in range(start, pf.num_row_groups, step):
-            rg = pf.read_row_group(rg_idx)
-            if TEXT_COLUMN not in rg.schema.names:
-                raise KeyError(f"Column {TEXT_COLUMN!r} not found in {filepath}; columns: {rg.schema.names}")
-            texts = rg.column(TEXT_COLUMN).to_pylist()
+            rg = pf.read_row_group(rg_idx, columns=[text_column])
+            texts = rg.column(text_column).to_pylist()
             yield texts
 
 # -----------------------------------------------------------------------------

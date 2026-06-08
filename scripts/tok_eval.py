@@ -2,6 +2,7 @@
 Evaluate compression ratio of the tokenizer.
 """
 
+from nanochat.morphology import strip_morpheme_boundaries
 from nanochat.tokenizer import get_tokenizer, RustBPETokenizer
 from nanochat.dataset import parquets_iter_batched
 
@@ -179,14 +180,16 @@ for tokenizer_name in ["gpt2", "gpt4", "ours"]:
         tokenizer = get_tokenizer()
 
     vocab_sizes[tokenizer_name] = tokenizer.get_vocab_size()
+    decode_strip = getattr(tokenizer, "decode_strip", "")
     tokenizer_results[tokenizer_name] = {}
 
     for name, text in all_text:
         encoded = tokenizer.encode(text)
         decoded = tokenizer.decode(encoded)
-        assert decoded == text
+        visible_text = strip_morpheme_boundaries(text, decode_strip)
+        assert decoded == visible_text
 
-        encoded_bytes = text.encode('utf-8')
+        encoded_bytes = visible_text.encode('utf-8')
         ratio = len(encoded_bytes) / len(encoded)
         tokenizer_results[tokenizer_name][name] = {
             'bytes': len(encoded_bytes),

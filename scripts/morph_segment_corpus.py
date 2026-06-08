@@ -26,12 +26,14 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from nanochat.dataset import list_parquet_files
+from nanochat.dataset import MANIFEST_FILE, list_parquet_files
 from nanochat.morphology import (
+    MORPHEME_BOUNDARY,
     SegmenterUnavailable,
     SegmentationError,
     WordSegmentation,
     create_segmenter,
+    display_boundary,
     iter_word_spans,
 )
 
@@ -300,7 +302,15 @@ def main() -> None:
     parser.add_argument("--row-group-batch-size", type=int, default=256)
     parser.add_argument("--segment-batch-size", type=int, default=2048)
     parser.add_argument("--word-cache-size", type=int, default=200000)
-    parser.add_argument("--delimiter", type=str, default=" ")
+    parser.add_argument(
+        "--delimiter",
+        type=str,
+        default=MORPHEME_BOUNDARY,
+        help=(
+            "Delimiter inserted between surface morphemes. Default is the "
+            f"internal MorphBPE marker {display_boundary(MORPHEME_BOUNDARY)}."
+        ),
+    )
     parser.add_argument("--timeout", type=float, default=120.0)
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--compact", action="store_true", help="Omit original text column from output.")
@@ -360,6 +370,12 @@ def main() -> None:
         "id_column": args.id_column,
         "include_original": not args.compact,
         "delimiter": args.delimiter,
+        "delimiter_codepoints": display_boundary(args.delimiter),
+        "delimiter_semantics": (
+            "internal_morpheme_boundary"
+            if args.delimiter == MORPHEME_BOUNDARY
+            else "custom"
+        ),
         "row_group_batch_size": args.row_group_batch_size,
         "segment_batch_size": args.segment_batch_size,
         "word_cache_size": args.word_cache_size,
@@ -378,6 +394,18 @@ def main() -> None:
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
     print(f"Wrote manifest to {manifest_path}")
+
+    dataset_manifest_path = Path(args.output_dir) / MANIFEST_FILE
+    dataset_manifest = {
+        "source": "morph_segment_corpus",
+        "segmentation_manifest": str(manifest_path),
+        "backend": args.backend,
+        "text_column": "segmented_text",
+        "filenames": [Path(output["output_path"]).name for output in outputs],
+    }
+    with open(dataset_manifest_path, "w", encoding="utf-8") as f:
+        json.dump(dataset_manifest, f, ensure_ascii=False, indent=2)
+    print(f"Wrote dataset manifest to {dataset_manifest_path}")
 
 
 if __name__ == "__main__":
