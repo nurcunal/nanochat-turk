@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -127,10 +128,10 @@ def _patch_cetvel_task_configs(cetvel_dir: str) -> None:
     if not os.path.isdir(tasks_dir):
         return
 
-    replacements = {
-        "dataset_path: exams\n": "dataset_path: mhardalov/exams\n",
-        "path: exams\n": "path: mhardalov/exams\n",
-    }
+    replacements = [
+        re.compile(r"(?m)^(\s*dataset_path\s*:\s*)(['\"]?)exams\2(\s*(?:#.*)?)$"),
+        re.compile(r"(?m)^(\s*path\s*:\s*)(['\"]?)exams\2(\s*(?:#.*)?)$"),
+    ]
     patched: list[str] = []
     for root, _dirs, files in os.walk(tasks_dir):
         for name in files:
@@ -140,8 +141,8 @@ def _patch_cetvel_task_configs(cetvel_dir: str) -> None:
             with open(path, "r", encoding="utf-8") as f:
                 text = f.read()
             new_text = text
-            for old, new in replacements.items():
-                new_text = new_text.replace(old, new)
+            for pattern in replacements:
+                new_text = pattern.sub(r"\1mhardalov/exams\3", new_text)
             if new_text != text:
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(new_text)
