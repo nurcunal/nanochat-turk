@@ -25,6 +25,7 @@ def parse_args():
     parser.add_argument("--tokenizer-name", default=os.environ.get("NANOCHAT_TOKENIZER_NAME", "bpe_32768"))
     parser.add_argument("--step", default="latest", help="checkpoint step integer or 'latest'")
     parser.add_argument("--job-id", default=os.environ.get("TRAIN_JOBID", os.environ.get("SLURM_JOB_ID", "")))
+    parser.add_argument("--cetvel-job-id", default=os.environ.get("CETVEL_JOBID", ""))
     parser.add_argument("--repo-prefix", default="", help="optional subdirectory in the HF repo")
     parser.add_argument("--private", action="store_true", help="create repo as private if it does not exist")
     parser.add_argument("--no-optimizer", action="store_true", help="do not upload optimizer shards")
@@ -86,6 +87,76 @@ def file_entry(path, path_in_repo):
     }
 
 
+def _metric_sort_key(item):
+    key, _ = item
+    preferred = [
+        "acc",
+        "acc_norm",
+        "exact_match",
+        "f1",
+        "bleu",
+        "chrf",
+        "rougeL",
+        "rouge1",
+        "ter",
+        "perplexity",
+        "bpb",
+    ]
+    base = str(key).split(",")[0]
+    try:
+        return preferred.index(base)
+    except ValueError:
+        return len(preferred)
+
+
+def summarize_cetvel(base_dir):
+    cetvel_root = base_dir / "cetvel_out"
+    if not cetvel_root.is_dir():
+        return "No CETVEL output directory was found at upload time.\n"
+
+    result_files = sorted(cetvel_root.glob("*/cetvel_*_results.json"))
+    if not result_files:
+        return f"CETVEL output directory exists, but no `cetvel_*_results.json` files were found under `{cetvel_root}`.\n"
+
+    sections = []
+    for result_file in result_files:
+        try:
+            with result_file.open("r", encoding="utf-8") as f:
+                payload = json.load(f)
+        except Exception as exc:
+            sections.append(f"- Could not parse `{result_file.relative_to(cetvel_root)}`: {exc}")
+            continue
+
+        suite = result_file.parent.name
+        rows = []
+        for task_name, task_metrics in sorted(payload.get("results", {}).items()):
+            if not isinstance(task_metrics, dict):
+                continue
+            numeric = [(k, v) for k, v in task_metrics.items() if isinstance(v, (int, float))]
+            if not numeric:
+                continue
+            metric_name, metric_value = sorted(numeric, key=_metric_sort_key)[0]
+            rows.append((task_name, metric_name, metric_value))
+
+        if not rows:
+            sections.append(f"### CETVEL `{suite}`\n\nResults file: `{result_file.relative_to(base_dir)}`\n\nNo numeric task metrics were parsed.\n")
+            continue
+
+        lines = [
+            f"### CETVEL `{suite}`",
+            "",
+            f"Results file: `{result_file.relative_to(base_dir)}`",
+            "",
+            "| Task | Metric | Value |",
+            "|---|---:|---:|",
+        ]
+        for task_name, metric_name, metric_value in rows:
+            lines.append(f"| `{task_name}` | `{metric_name}` | {metric_value:.6g} |")
+        sections.append("\n".join(lines))
+
+    return "\n\n".join(sections) + "\n"
+
+
 def build_model_card(args, base_dir, checkpoint_dir, tokenizer_dir, step, files):
     git_commit = run_command(["git", "rev-parse", "HEAD"])
     git_branch = run_command(["git", "rev-parse", "--abbrev-ref", "HEAD"])
@@ -128,6 +199,7 @@ yet converted to the Hugging Face Transformers `from_pretrained` format.
 - Checkpoint dir on UHeM: `{checkpoint_dir}`
 - Tokenizer dir on UHeM: `{tokenizer_dir}`
 - Training job id: `{args.job_id or "unknown"}`
+- CETVEL job id: `{args.cetvel_job_id or "unknown"}`
 
 ## Model Config
 
@@ -155,7 +227,12 @@ The important files are:
 - `tokenizer/tokenizer_config.json`
 - `tokenizer/token_bytes.pt`
 - `report/` and `logs/` when available
+- `cetvel_out/` when CETVEL has completed
 - `provenance/upload_manifest.json`
+
+## CETVEL
+
+{summarize_cetvel(base_dir)}
 
 ## Provenance
 
@@ -206,12 +283,16 @@ def main():
 
     add_tree(files, base_dir / "report", repo_path(prefix, "report"))
     add_tree(files, base_dir / "base_eval", repo_path(prefix, "base_eval"))
+    add_tree(files, base_dir / "cetvel_out", repo_path(prefix, "cetvel_out"))
 
     add_existing(files, repo_root / "report.md", repo_path(prefix, "report.md"))
     if args.job_id:
         add_existing(files, repo_root / f"nanochat-tr-d20-bpe32k-{args.job_id}.out", repo_path(prefix, "logs", f"nanochat-tr-d20-bpe32k-{args.job_id}.out"))
         add_existing(files, repo_root / f"nanochat-tr-d20-bpe32k-{args.job_id}.err", repo_path(prefix, "logs", f"nanochat-tr-d20-bpe32k-{args.job_id}.err"))
         add_tree(files, repo_root / "logs" / f"job{args.job_id}", repo_path(prefix, "logs", f"job{args.job_id}"))
+    if args.cetvel_job_id:
+        add_existing(files, repo_root / f"nanochat-cetvel-full-{args.cetvel_job_id}.out", repo_path(prefix, "logs", f"nanochat-cetvel-full-{args.cetvel_job_id}.out"))
+        add_existing(files, repo_root / f"nanochat-cetvel-full-{args.cetvel_job_id}.err", repo_path(prefix, "logs", f"nanochat-cetvel-full-{args.cetvel_job_id}.err"))
     add_existing(files, repo_root / "train-wandb-run-id.txt", repo_path(prefix, "provenance", "train-wandb-run-id.txt"))
 
     for name in (
@@ -238,6 +319,7 @@ def main():
         "checkpoint_dir": str(checkpoint_dir),
         "tokenizer_dir": str(tokenizer_dir),
         "job_id": args.job_id,
+        "cetvel_job_id": args.cetvel_job_id,
         "uploaded_at_utc": datetime.now(timezone.utc).isoformat(),
         "git_commit": run_command(["git", "rev-parse", "HEAD"]),
         "git_branch": run_command(["git", "rev-parse", "--abbrev-ref", "HEAD"]),

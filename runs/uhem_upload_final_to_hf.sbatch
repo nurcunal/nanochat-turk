@@ -37,6 +37,7 @@ echo "HOSTNAME=$(hostname)"
 echo "SLURM_JOB_ID=${SLURM_JOB_ID:-}"
 echo "HF_REPO_ID=$HF_REPO_ID"
 echo "TRAIN_JOBID=${TRAIN_JOBID:-}"
+echo "CETVEL_JOBID=${CETVEL_JOBID:-}"
 echo "PYTHON=$(command -v python3)"
 python3 --version
 
@@ -72,5 +73,6 @@ python -m scripts.upload_base_checkpoint_to_hf \
     --tokenizer-name="$NANOCHAT_TOKENIZER_NAME" \
     --step="${HF_STEP:-latest}" \
     --job-id="${TRAIN_JOBID:-}" \
+    --cetvel-job-id="${CETVEL_JOBID:-}" \
     "${PRIVATE_ARGS[@]}" \
     "${OPTIMIZER_ARGS[@]}"
