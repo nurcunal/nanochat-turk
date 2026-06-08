@@ -112,7 +112,8 @@ python -m scripts.tok_train --vocab-size=32768 --tokenizer-name=$NANOCHAT_TOKENI
 Future tokenizer implementations should plug into the same naming convention:
 
 - `bpe_32768`, `bpe_65536`, `bpe_131072`
-- `morphbpe_*`
+- `morphbpe_*` for boundary-constrained merge training with raw-text inference
+- `preseg_bpe_*` for the visible boundary-marker control
 - `sentencepiece_*`
 - morphology-aware segmentation variants
 

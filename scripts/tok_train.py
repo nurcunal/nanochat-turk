@@ -13,7 +13,9 @@ from nanochat.common import get_base_dir
 from nanochat.dataset import DATA_DIR, list_parquet_files
 from nanochat.morphology import (
     MORPHEME_BOUNDARY,
+    MorphBPEIteratorStats,
     display_boundary,
+    iter_morphbpe_training_stream,
     strip_morpheme_boundaries,
 )
 from nanochat.tokenizer import get_tokenizer_dir, get_tokenizer_name
@@ -26,11 +28,11 @@ parser.add_argument('--max-chars', type=int, default=2_000_000_000, help='Maximu
 parser.add_argument('--doc-cap', type=int, default=10_000, help='Maximum characters per document (default: 10,000)')
 parser.add_argument('--vocab-size', type=int, default=32768, help='Vocabulary size (default: 32768 = 2^15)')
 parser.add_argument('--tokenizer-name', type=str, default=None, help='Optional tokenizer experiment name. Writes to $NANOCHAT_BASE_DIR/tokenizers/<name>.')
-parser.add_argument('--implementation', type=str, default='bpe', choices=['bpe', 'morphbpe'], help='Tokenizer implementation.')
+parser.add_argument('--implementation', type=str, default='bpe', choices=['bpe', 'morphbpe', 'preseg_bpe'], help='Tokenizer implementation.')
 parser.add_argument('--data-dir', type=str, default='', help='Optional parquet directory. Default = nanochat dataset dir.')
 parser.add_argument('--text-column', type=str, default=os.environ.get("NANOCHAT_TEXT_COLUMN", "text"), help='Parquet text column to train on.')
-parser.add_argument('--morph-boundary', type=str, default=MORPHEME_BOUNDARY, help='Internal morpheme boundary marker for --implementation morphbpe.')
-parser.add_argument('--allow-missing-boundary', action='store_true', help='Allow morphbpe training docs without the boundary marker.')
+parser.add_argument('--morph-boundary', type=str, default=MORPHEME_BOUNDARY, help='Internal morpheme boundary marker for --implementation morphbpe/preseg_bpe.')
+parser.add_argument('--allow-missing-boundary', action='store_true', help='Allow morphology-aware training docs without the boundary marker.')
 args = parser.parse_args()
 if args.tokenizer_name:
     os.environ["NANOCHAT_TOKENIZER_NAME"] = args.tokenizer_name
@@ -42,7 +44,7 @@ print(f"implementation: {args.implementation}")
 resolved_data_dir = args.data_dir or DATA_DIR
 print(f"data_dir: {resolved_data_dir}")
 print(f"text_column: {args.text_column}")
-if args.implementation == "morphbpe":
+if args.implementation in ("morphbpe", "preseg_bpe"):
     print(f"morph_boundary: {display_boundary(args.morph_boundary)}")
 
 # -----------------------------------------------------------------------------
@@ -66,6 +68,7 @@ iterator_stats = {
     "chars": 0,
     "docs_with_boundary": 0,
 }
+morphbpe_stats = MorphBPEIteratorStats()
 
 
 def text_iterator():
@@ -82,7 +85,7 @@ def text_iterator():
                 doc_text = doc_text[:args.doc_cap]
             iterator_stats["docs"] += 1
             iterator_stats["chars"] += len(doc_text)
-            if args.implementation == "morphbpe" and args.morph_boundary in doc_text:
+            if args.implementation in ("morphbpe", "preseg_bpe") and args.morph_boundary in doc_text:
                 iterator_stats["docs_with_boundary"] += 1
             nchars += len(doc_text)
             yield doc_text
@@ -93,9 +96,16 @@ text_iter = text_iterator()
 # -----------------------------------------------------------------------------
 # Train the tokenizer
 t0 = time.time()
-decode_strip = args.morph_boundary if args.implementation == "morphbpe" else ""
+decode_strip = args.morph_boundary if args.implementation == "preseg_bpe" else ""
+tokenizer_training_iter = text_iter
+if args.implementation == "morphbpe":
+    tokenizer_training_iter = iter_morphbpe_training_stream(
+        text_iter,
+        boundary=args.morph_boundary,
+        stats=morphbpe_stats,
+    )
 tokenizer = RustBPETokenizer.train_from_iterator(
-    text_iter,
+    tokenizer_training_iter,
     args.vocab_size,
     decode_strip=decode_strip,
 )
@@ -103,12 +113,14 @@ t1 = time.time()
 train_time = t1 - t0
 print(f"Training time: {train_time:.2f}s")
 
-if args.implementation == "morphbpe" and not args.allow_missing_boundary:
+if args.implementation in ("morphbpe", "preseg_bpe") and not args.allow_missing_boundary:
     assert iterator_stats["docs_with_boundary"] > 0, (
-        "MorphBPE training did not see any morpheme boundary markers. "
+        f"{args.implementation} training did not see any morpheme boundary markers. "
         "Check --data-dir, --text-column, and --morph-boundary, or pass "
         "--allow-missing-boundary for a deliberate control run."
     )
+if args.implementation == "morphbpe":
+    assert morphbpe_stats.training_chunks > 0, "MorphBPE did not produce any training chunks."
 
 # -----------------------------------------------------------------------------
 # Save the tokenizer to disk
@@ -125,10 +137,20 @@ with open(tokenizer_config_path, "w", encoding="utf-8") as f:
         "doc_cap": args.doc_cap,
         "data_dir": resolved_data_dir,
         "text_column": args.text_column,
-        "morph_boundary": args.morph_boundary if args.implementation == "morphbpe" else "",
-        "morph_boundary_codepoints": display_boundary(args.morph_boundary) if args.implementation == "morphbpe" else "",
+        "morph_boundary": args.morph_boundary if args.implementation in ("morphbpe", "preseg_bpe") else "",
+        "morph_boundary_codepoints": display_boundary(args.morph_boundary) if args.implementation in ("morphbpe", "preseg_bpe") else "",
+        "requires_runtime_segmentation": args.implementation == "preseg_bpe",
+        "training_uses_morph_boundaries": args.implementation in ("morphbpe", "preseg_bpe"),
+        "training_boundary_semantics": (
+            "merge_constraint_only"
+            if args.implementation == "morphbpe"
+            else "visible_presegmented_control"
+            if args.implementation == "preseg_bpe"
+            else ""
+        ),
         "decode_strip": decode_strip,
         "iterator_stats": iterator_stats,
+        "morphbpe_iterator_stats": vars(morphbpe_stats) if args.implementation == "morphbpe" else {},
     }, f, indent=2)
 print(f"Saved tokenizer config to {tokenizer_config_path}")
 
@@ -140,11 +162,15 @@ Contractions: I'm, you're, it's
 Special chars: @#$%^&*()
 Unicode: 你好世界 🌍"""
 test_text += "\nTürkçe: İstanbul'da çalışıyorum; ğ, ü, ş, ı, ö, ç karakterleri doğru çözülmeli."
-if args.implementation == "morphbpe":
+if args.implementation == "preseg_bpe":
     test_text += f"\nMorphBPE: ev{args.morph_boundary}ler{args.morph_boundary}den çalış{args.morph_boundary}ıyor{args.morph_boundary}um."
 encoded = tokenizer.encode(test_text)
 decoded = tokenizer.decode(encoded)
-expected_decoded = strip_morpheme_boundaries(test_text, args.morph_boundary)
+expected_decoded = (
+    strip_morpheme_boundaries(test_text, args.morph_boundary)
+    if args.implementation == "preseg_bpe"
+    else test_text
+)
 assert decoded == expected_decoded
 
 # -----------------------------------------------------------------------------

@@ -5,6 +5,12 @@ from nanochat.morphology.boundary import (
     display_boundary,
     strip_morpheme_boundaries,
 )
+from nanochat.morphology.morphbpe import (
+    MorphBPEIteratorStats,
+    iter_morphbpe_training_chunks,
+    iter_morphbpe_training_stream,
+    strip_boundaries_with_offsets,
+)
 from nanochat.morphology.segmenters import (
     BatchCommandSegmenter,
     IdentitySegmenter,
@@ -27,6 +33,7 @@ __all__ = [
     "BatchCommandSegmenter",
     "IdentitySegmenter",
     "MORPHEME_BOUNDARY",
+    "MorphBPEIteratorStats",
     "MorphemeSpan",
     "Segmenter",
     "SegmenterUnavailable",
@@ -37,9 +44,12 @@ __all__ = [
     "ZemberekSegmenter",
     "create_segmenter",
     "display_boundary",
+    "iter_morphbpe_training_chunks",
+    "iter_morphbpe_training_stream",
     "iter_word_spans",
     "parse_surface_pieces",
     "segment_text",
     "segment_text_spans",
+    "strip_boundaries_with_offsets",
     "strip_morpheme_boundaries",
 ]

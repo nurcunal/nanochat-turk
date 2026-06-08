@@ -1,12 +1,48 @@
-# MorphBPE Boundary Framework
+# MorphBPE Framework
 
-MorphBPE tokenizer variants must preserve the original Turkish surface text
-while preventing BPE training from treating morpheme boundaries as normal
-mergeable text.
+This repository supports two different morphology-aware tokenizer experiments:
+
+```text
+morphbpe    = main method; boundary-constrained BPE training, raw-text inference
+preseg_bpe  = control; BPE trained and modeled on boundary-marked text
+```
+
+The main paper method should be `morphbpe`.
+
+## Main Method
+
+Paper-faithful MorphBPE uses a morphological segmenter only while learning BPE
+merges. The segmenter marks surface morpheme boundaries:
+
+```text
+ev<U+E000>ler<U+E000>den
+```
+
+During tokenizer training, this becomes independent BPE training chunks:
+
+```text
+ev
+ler
+den
+```
+
+Pairs inside a morpheme can be merged. Pairs crossing morpheme boundaries are
+never counted by the BPE trainer, so merges such as `ev + ler -> evler` are not
+learned from that segmented occurrence.
+
+The saved tokenizer is still a normal raw-text BPE tokenizer:
+
+```text
+input:  evlerden geldik
+decode: evlerden geldik
+```
+
+No runtime segmenter is required for normal user prompts, CETVEL prompts, or
+chat usage.
 
 ## Boundary Marker
 
-The internal morpheme boundary marker is:
+The internal boundary marker is:
 
 ```text
 U+E000
@@ -18,28 +54,16 @@ It is defined in:
 nanochat/morphology/boundary.py
 ```
 
-Segmented corpus text should look like this internally:
-
-```text
-evlerden çalışıyorum
-```
-
-Tokenizer decoding strips the marker, so the visible decoded text is:
-
-```text
-evlerden çalışıyorum
-```
-
-This gives the tokenizer an internal morpheme-boundary signal without training
-the model to emit whitespace-separated Turkish morphemes.
+For `morphbpe`, this marker is a tokenizer-training annotation only and is not
+saved as a decode-strip rule. For `preseg_bpe`, the marker is part of the
+internal model text stream and is stripped on decode.
 
 ## Corpus Segmentation
 
-`scripts/morph_segment_corpus.py` now uses the internal boundary marker as its
-default delimiter. It writes `segmented_text` plus per-row segmentation stats and
-a manifest recording the delimiter codepoint. It also writes a
-`fineweb2_manifest.json` compatibility manifest so `nanochat.dataset` preserves
-the segmented shard order and still uses the final shard as validation.
+`scripts/morph_segment_corpus.py` uses `U+E000` as its default delimiter. It
+writes `segmented_text` plus per-row segmentation stats and a full segmentation
+manifest. It also writes `fineweb2_manifest.json` so `nanochat.dataset` can
+preserve shard order and the final-shard validation convention.
 
 Example:
 
@@ -56,7 +80,7 @@ python3 -m scripts.morph_segment_corpus \
   --segment-batch-size 2048
 ```
 
-Repeat the same corpus materialization for:
+Repeat corpus materialization for:
 
 ```text
 trmorph
@@ -64,17 +88,9 @@ tdelight
 zemberek
 ```
 
-## Tokenizer Training
+## MorphBPE Tokenizer Training
 
-`scripts/tok_train.py` supports:
-
-```text
---implementation morphbpe
---data-dir /path/to/segmented/<backend>
---text-column segmented_text
-```
-
-Example:
+Train the main MorphBPE tokenizer from the segmented annotation column:
 
 ```bash
 NANOCHAT_TOKENIZER_NAME=morphbpe_trmorph_32768 \
@@ -85,75 +101,89 @@ python3 scripts/tok_train.py \
   --vocab-size 32768
 ```
 
-The saved tokenizer config includes:
+The saved config records:
 
 ```text
 implementation: morphbpe
-morph_boundary: U+E000 marker
-decode_strip: U+E000 marker
-text_column: segmented_text
+training_boundary_semantics: merge_constraint_only
+requires_runtime_segmentation: false
+decode_strip: ""
 ```
 
-`RustBPETokenizer.from_directory()` reads `tokenizer_config.json` and strips the
-boundary marker on decode.
-
-Tokenizer metrics can be run on the same internal segmented text while reporting
-visible bytes/words after boundary stripping:
+Then evaluate tokenizer metrics on raw Turkish text, not on `segmented_text`:
 
 ```bash
 python3 -m scripts.tokenizer_metrics \
   --tokenizer-dir /path/to/tokenizers/morphbpe_trmorph_32768 \
-  --data-dir /path/to/segmented/trmorph \
-  --text-column segmented_text \
+  --data-dir /path/to/base_data_fineweb2_tur_latn \
+  --text-column text \
   --max-docs 10000
 ```
 
 ## Pretraining Use
 
-For full model training with a MorphBPE tokenizer, point the normal nanochat
-dataloader at the segmented shard directory before launching `base_train`:
+For full model training with the main MorphBPE tokenizer, keep the normal raw
+FineWeb-2 Turkish data stream:
 
 ```bash
 export NANOCHAT_TOKENIZER_NAME=morphbpe_trmorph_32768
-export NANOCHAT_DATA_DIR=/path/to/segmented/trmorph
-export NANOCHAT_TEXT_COLUMN=segmented_text
+export NANOCHAT_DATA_DIR=/path/to/base_data_fineweb2_tur_latn
+export NANOCHAT_TEXT_COLUMN=text
 
 torchrun --standalone --nproc_per_node=4 -m scripts.base_train -- \
   --depth=20 \
   --model-tag=tr_morphbpe_trmorph_32768_d20
 ```
 
-The dataloader reads `NANOCHAT_TEXT_COLUMN`, so the model is trained on the
-internal segmented stream. Validation BPB uses the tokenizer's `token_bytes.pt`,
-which was generated with boundary stripping, so bytes are counted over the
-visible Turkish surface text.
+The morphological segmenter is not used during LLM pretraining or inference.
+Its only role is to constrain tokenizer merge learning.
 
-## Reversibility Contract
+## Pre-Segmented BPE Control
 
-For a segmented document:
+`preseg_bpe` is a useful ablation, but it is not the main MorphBPE method.
+Here, the model trains on boundary-marked text:
+
+```bash
+NANOCHAT_TOKENIZER_NAME=preseg_bpe_trmorph_32768 \
+python3 scripts/tok_train.py \
+  --implementation preseg_bpe \
+  --data-dir /path/to/segmented/trmorph \
+  --text-column segmented_text \
+  --vocab-size 32768
+```
+
+For this control, the saved config records:
+
+```text
+implementation: preseg_bpe
+training_boundary_semantics: visible_presegmented_control
+requires_runtime_segmentation: true
+decode_strip: U+E000 marker
+```
+
+Use this control to test whether gains come from the merge table itself or from
+explicitly showing morpheme boundaries to the model.
+
+## Reversibility Contracts
+
+Main MorphBPE:
+
+```python
+decoded = tokenizer.decode(tokenizer.encode("evlerden geldik"))
+assert decoded == "evlerden geldik"
+```
+
+Pre-segmented BPE control:
 
 ```python
 decoded = tokenizer.decode(tokenizer.encode(segmented_text))
 assert decoded == segmented_text.replace(MORPHEME_BOUNDARY, "")
 ```
 
-For tokenizer evaluation and BPB, `token_bytes.pt` is computed after decode-time
-boundary stripping. Boundary-only tokens therefore count as zero bytes, and
-tokens containing a boundary plus surface text count only the surface bytes.
-
-## Current Scope
-
-This framework prepares MorphBPE training and pretraining from pre-segmented
-corpora. It does not yet make inference-time raw prompts morphology-aware unless
-they are pre-segmented before encoding. For controlled pretraining ablations,
-use segmented train and validation corpora with `NANOCHAT_DATA_DIR` and
-`NANOCHAT_TEXT_COLUMN=segmented_text`.
-
-Before running full UHeM training, run tokenizer-only checks for each tokenizer:
+Before full UHeM training, run tokenizer-only checks:
 
 - encode/decode reversibility;
-- BPB/compression;
+- BPB/compression on raw validation text;
 - tokens per byte/word;
-- boundary-marker token frequency;
-- vocab entries containing `U+E000`;
+- percentage of candidate merge tokens that would cross known boundaries;
 - throughput.

@@ -1,8 +1,8 @@
 """Internal morpheme-boundary marker utilities.
 
-MorphBPE tokenizers train on text with an internal boundary marker inserted
-between surface morphemes. The marker is not part of user-visible text: tokenizer
-decoding strips it so segmented text round-trips back to the original document.
+The marker annotates precomputed surface-morpheme boundaries. Paper-faithful
+MorphBPE uses it only while training merge constraints; the pre-segmented BPE
+control uses it as an internal text marker that is stripped on decode.
 """
 
 MORPHEME_BOUNDARY = "\ue000"

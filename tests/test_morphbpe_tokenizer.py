@@ -1,6 +1,12 @@
 import json
 
-from nanochat.morphology import MORPHEME_BOUNDARY, strip_morpheme_boundaries
+from nanochat.morphology import (
+    MORPHEME_BOUNDARY,
+    MorphBPEIteratorStats,
+    iter_morphbpe_training_chunks,
+    iter_morphbpe_training_stream,
+    strip_morpheme_boundaries,
+)
 from nanochat.tokenizer import RustBPETokenizer
 
 
@@ -26,7 +32,7 @@ def test_rustbpe_decode_strips_morph_boundaries_after_reload(tmp_path):
     tokenizer.save(str(tmp_path))
     (tmp_path / "tokenizer_config.json").write_text(
         json.dumps({
-            "implementation": "morphbpe",
+            "implementation": "preseg_bpe",
             "decode_strip": MORPHEME_BOUNDARY,
         }),
         encoding="utf-8",
@@ -48,3 +54,37 @@ def test_morph_boundary_tokens_do_not_absorb_left_context():
         piece = tokenizer.enc.decode_single_token_bytes(token_id)
         marker_at = piece.find(marker_bytes)
         assert marker_at in (-1, 0)
+
+
+def test_morphbpe_training_chunks_split_on_boundaries():
+    marked = f" ev{MORPHEME_BOUNDARY}ler{MORPHEME_BOUNDARY}den!"
+    stats = MorphBPEIteratorStats()
+
+    assert list(iter_morphbpe_training_chunks(marked, stats=stats)) == [
+        " ev",
+        "ler",
+        "den",
+        "!",
+    ]
+    assert stats.docs == 1
+    assert stats.docs_with_boundary == 1
+    assert stats.boundary_splits == 2
+    assert stats.training_chunks == 4
+
+
+def test_paper_morphbpe_trains_raw_text_tokenizer_without_cross_boundary_merge():
+    marked_docs = [
+        " ".join([f"ev{MORPHEME_BOUNDARY}ler{MORPHEME_BOUNDARY}den"] * 200)
+    ]
+    stats = MorphBPEIteratorStats()
+    tokenizer = RustBPETokenizer.train_from_iterator(
+        iter_morphbpe_training_stream(iter(marked_docs), stats=stats),
+        vocab_size=512,
+    )
+
+    assert tokenizer.decode_strip == ""
+    assert tokenizer.decode(tokenizer.encode("evlerden geldik")) == "evlerden geldik"
+    assert stats.docs == 1
+    assert stats.boundary_splits == 400
+    assert b"evlerden" not in tokenizer.enc._mergeable_ranks
+    assert b"lerden" not in tokenizer.enc._mergeable_ranks

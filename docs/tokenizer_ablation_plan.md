@@ -70,6 +70,8 @@ Optional later controls:
 
 - `morphbpe_hybrid`: rule-based segmentation when confident, neural fallback
   otherwise.
+- `preseg_bpe_*`: BPE trained on boundary-marked text as a control that tests
+  explicit morpheme markers in the model stream.
 - SentencePiece BPE controls.
 - SentencePiece unigram controls.
 - A smaller matched-raw-byte robustness run for the best tokenizer candidates.
@@ -78,13 +80,16 @@ Optional later controls:
 
 The publishable implementation should be a true boundary-aware tokenizer, not a
 model trained on visibly morpheme-spaced Turkish. The tokenizer may use
-segmentation during training and encode-time pretokenization, but decode should
-return normal Turkish text.
+segmentation during tokenizer training, but the final tokenizer should encode
+raw Turkish text without a runtime segmenter and decode back to normal Turkish.
 
 Implementation principles:
 
 - Segment words into morpheme spans before tokenizer training.
 - Prevent BPE merges from crossing morpheme boundaries.
+- Save a normal raw-text tokenizer for `morphbpe_*`; do not require users or
+  CETVEL prompts to be segmented at inference.
+- Keep `preseg_bpe_*` as a control ablation, not the main method.
 - Keep tokenizer artifacts compatible with the existing `nanochat.tokenizer`
   interface.
 - Cache segmentation and tokenizer outputs outside the GPU training hot path.
