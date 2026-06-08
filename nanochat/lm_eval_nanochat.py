@@ -8,6 +8,7 @@ lm-eval task interface.
 from __future__ import annotations
 
 import os
+import time
 from typing import List, Tuple
 
 import torch
@@ -16,7 +17,7 @@ from lm_eval.api.model import LM
 from lm_eval.api.registry import register_model
 
 from nanochat.checkpoint_manager import load_model
-from nanochat.common import get_base_dir
+from nanochat.common import get_base_dir, print0
 
 
 @register_model("nanochat")
@@ -139,15 +140,46 @@ class NanochatLM(LM):
     @torch.inference_mode()
     def generate_until(self, requests) -> List[str]:
         outs: List[str] = []
-        for req in requests:
+        progress_enabled = os.environ.get("CETVEL_GENERATION_PROGRESS", "0") == "1"
+        progress_every = max(1, int(os.environ.get("CETVEL_GENERATION_PROGRESS_EVERY", "1")))
+        total = len(requests)
+        started = time.monotonic()
+        if progress_enabled:
+            task_name = self._request_task_name(requests[0]) if total else "unknown"
+            print0(f"[CETVEL generation] START task={task_name} total={total}", flush=True)
+
+        for index, req in enumerate(requests, start=1):
             context, until = req.args
             until = until or []
             ids = self._encode(context)
             generated: List[int] = []
+            stopped = False
             for tok in self.model.generate(ids, max_tokens=self.max_gen_tokens, temperature=0.0):
                 generated.append(int(tok))
                 text = self.tokenizer.decode(generated)
                 if any(stop in text for stop in until):
+                    stopped = True
                     break
             outs.append(self.tokenizer.decode(generated))
+            if progress_enabled and (index % progress_every == 0 or index == total):
+                elapsed = max(1e-9, time.monotonic() - started)
+                rate = index / elapsed
+                task_name = self._request_task_name(req)
+                print0(
+                    "[CETVEL generation] "
+                    f"task={task_name} done={index}/{total} "
+                    f"generated_tokens={len(generated)} stopped={int(stopped)} "
+                    f"elapsed={elapsed:.1f}s rate={rate:.2f}/s",
+                    flush=True,
+                )
         return outs
+
+    @staticmethod
+    def _request_task_name(req) -> str:
+        task_name = getattr(req, "task_name", None)
+        if task_name:
+            return str(task_name)
+        metadata = getattr(req, "metadata", None)
+        if isinstance(metadata, (tuple, list)) and metadata:
+            return str(metadata[0])
+        return "unknown"
