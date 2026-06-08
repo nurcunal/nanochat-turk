@@ -79,6 +79,7 @@ HF_DATASET_ALIASES = {
     # huggingface_hub rejects one-part dataset IDs in hf:// URIs for several
     # legacy aliases, so rewrite them to their canonical Hub repos locally.
     "exams": "mhardalov/exams",
+    "nli_tr": "boun-tabi/nli_tr",
     "xcopa": "cambridgeltl/xcopa",
     "xnli": "facebook/xnli",
     "xquad": "google/xquad",
@@ -267,7 +268,7 @@ def main() -> None:
         return
 
     os.environ.setdefault("HF_DATASETS_TRUST_REMOTE_CODE", "true")
-    os.environ.setdefault("HF_DATASETS_CACHE", os.path.join(base_dir, "cetvel_hf_datasets_cache"))
+    os.environ.setdefault("HF_DATASETS_CACHE", os.path.join(base_dir, "cetvel_hf_datasets_cache_datasets36"))
     _assert_datasets_supports_legacy_scripts()
 
     try:
