@@ -5,6 +5,9 @@ small blind judge pack, and scores the LLM/human judgments afterward.
 
 Large generated packs live locally under `dev-ignore/` and are not committed.
 
+The first no-API Codex-local judge pass is summarized in
+`docs/tokenizer_tests/codex_local_judge_results.md`.
+
 ## Equal Standard
 
 Default screening standard:

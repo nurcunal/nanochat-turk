@@ -1,0 +1,28 @@
+{
+  "judgments": "docs/tokenizer_tests/judge_results/codex_local_hash_100k_judge_500.judgments.jsonl",
+  "answer_key": "dev-ignore/morph-smoke/judge_packs/hash_100k_judge_500/hash_100k_judge_500.answer_key.json",
+  "total_rows": 500,
+  "best_counts": {
+    "trmorph": 241,
+    "tdelight": 173,
+    "zemberek": 86
+  },
+  "best_rates": {
+    "tdelight": 0.346,
+    "trmorph": 0.482,
+    "zemberek": 0.172
+  },
+  "acceptable_counts": {
+    "trmorph": 255,
+    "tdelight": 219,
+    "zemberek": 200,
+    "identity": 4
+  },
+  "confidence_counts": {
+    "medium": 287,
+    "high": 148,
+    "low": 65
+  },
+  "invalid_count": 0,
+  "invalid_examples": []
+}

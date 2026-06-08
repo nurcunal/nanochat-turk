@@ -1,0 +1,500 @@
+{"id": "morphjudge_000001", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000002", "best_label": "C", "acceptable_labels": ["C", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000003", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000004", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000005", "best_label": "B", "acceptable_labels": ["A", "B"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000006", "best_label": "B", "acceptable_labels": ["B", "C"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000007", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000008", "best_label": "D", "acceptable_labels": ["B", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000009", "best_label": "B", "acceptable_labels": ["B", "C"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000010", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000011", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000012", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000013", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000014", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000015", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000016", "best_label": "A", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000017", "best_label": "A", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000018", "best_label": "D", "acceptable_labels": ["C", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000019", "best_label": "C", "acceptable_labels": ["B", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000020", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000021", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000022", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000023", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000024", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000025", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000026", "best_label": "C", "acceptable_labels": ["C", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000027", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000028", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000029", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000030", "best_label": "A", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000031", "best_label": "B", "acceptable_labels": ["B", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000032", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000033", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000034", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000035", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000036", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000037", "best_label": "A", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000038", "best_label": "A", "acceptable_labels": ["A", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000039", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000040", "best_label": "B", "acceptable_labels": ["B", "D"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000041", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000042", "best_label": "B", "acceptable_labels": ["A", "B"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000043", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000044", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000045", "best_label": "A", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000046", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000047", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000048", "best_label": "D", "acceptable_labels": ["B", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000049", "best_label": "A", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000050", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000051", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000052", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000053", "best_label": "A", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000054", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000055", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000056", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000057", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000058", "best_label": "B", "acceptable_labels": ["B", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000059", "best_label": "A", "acceptable_labels": ["A", "B", "D"], "confidence": "low", "notes": "identity/misses_likely_suffix"}
+{"id": "morphjudge_000060", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000061", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000062", "best_label": "D", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000063", "best_label": "B", "acceptable_labels": ["B", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000064", "best_label": "C", "acceptable_labels": ["C", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000065", "best_label": "B", "acceptable_labels": ["B", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000066", "best_label": "B", "acceptable_labels": ["B", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000067", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000068", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000069", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000070", "best_label": "D", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000071", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000072", "best_label": "C", "acceptable_labels": ["B", "C"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000073", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000074", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000075", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000076", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000077", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000078", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000079", "best_label": "A", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000080", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000081", "best_label": "B", "acceptable_labels": ["B", "C"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000082", "best_label": "B", "acceptable_labels": ["B", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000083", "best_label": "A", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000084", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000085", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000086", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000087", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000088", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000089", "best_label": "D", "acceptable_labels": ["C", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000090", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000091", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000092", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000093", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000094", "best_label": "B", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000095", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000096", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000097", "best_label": "C", "acceptable_labels": ["B", "C"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000098", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000099", "best_label": "A", "acceptable_labels": ["A", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000100", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000101", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000102", "best_label": "D", "acceptable_labels": ["C", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000103", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000104", "best_label": "B", "acceptable_labels": ["B", "C"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000105", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000106", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000107", "best_label": "B", "acceptable_labels": ["B", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000108", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000109", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000110", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000111", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000112", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000113", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000114", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000115", "best_label": "C", "acceptable_labels": ["C", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000116", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000117", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000118", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000119", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000120", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000121", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000122", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000123", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000124", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000125", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000126", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000127", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000128", "best_label": "A", "acceptable_labels": ["A", "B"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000129", "best_label": "D", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000130", "best_label": "A", "acceptable_labels": ["A", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000131", "best_label": "C", "acceptable_labels": ["B", "C"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000132", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000133", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000134", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000135", "best_label": "D", "acceptable_labels": ["C", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000136", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000137", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000138", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000139", "best_label": "B", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000140", "best_label": "C", "acceptable_labels": ["B", "C"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000141", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000142", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000143", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000144", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000145", "best_label": "B", "acceptable_labels": ["B", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000146", "best_label": "B", "acceptable_labels": ["B", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000147", "best_label": "B", "acceptable_labels": ["A", "B"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000148", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000149", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000150", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000151", "best_label": "B", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000152", "best_label": "A", "acceptable_labels": ["A", "C"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000153", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000154", "best_label": "C", "acceptable_labels": ["B", "C"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000155", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000156", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000157", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000158", "best_label": "A", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000159", "best_label": "A", "acceptable_labels": ["A", "C"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000160", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000161", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000162", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000163", "best_label": "A", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000164", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000165", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000166", "best_label": "B", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000167", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000168", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000169", "best_label": "C", "acceptable_labels": ["C", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000170", "best_label": "D", "acceptable_labels": ["B", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000171", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000172", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000173", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000174", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000175", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000176", "best_label": "B", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000177", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000178", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000179", "best_label": "B", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000180", "best_label": "A", "acceptable_labels": ["A", "C"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000181", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000182", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000183", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000184", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000185", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000186", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000187", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000188", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000189", "best_label": "A", "acceptable_labels": ["A", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000190", "best_label": "C", "acceptable_labels": ["C", "D"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000191", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000192", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000193", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000194", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000195", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000196", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000197", "best_label": "A", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000198", "best_label": "D", "acceptable_labels": ["B", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000199", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000200", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000201", "best_label": "D", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000202", "best_label": "B", "acceptable_labels": ["B", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000203", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000204", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000205", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000206", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000207", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000208", "best_label": "B", "acceptable_labels": ["B", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000209", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000210", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000211", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000212", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000213", "best_label": "C", "acceptable_labels": ["B", "C"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000214", "best_label": "C", "acceptable_labels": ["B", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000215", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000216", "best_label": "B", "acceptable_labels": ["B", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000217", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000218", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000219", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000220", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000221", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000222", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000223", "best_label": "D", "acceptable_labels": ["C", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000224", "best_label": "A", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000225", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000226", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000227", "best_label": "D", "acceptable_labels": ["A", "C", "D"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000228", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000229", "best_label": "A", "acceptable_labels": ["A", "C"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000230", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000231", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000232", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000233", "best_label": "D", "acceptable_labels": ["A", "D"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000234", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000235", "best_label": "A", "acceptable_labels": ["A", "D"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000236", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000237", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000238", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000239", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000240", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000241", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000242", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000243", "best_label": "B", "acceptable_labels": ["B", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000244", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000245", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000246", "best_label": "C", "acceptable_labels": ["C", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000247", "best_label": "A", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000248", "best_label": "C", "acceptable_labels": ["C", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000249", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000250", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000251", "best_label": "D", "acceptable_labels": ["B", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000252", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000253", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000254", "best_label": "D", "acceptable_labels": ["C", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000255", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000256", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000257", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000258", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000259", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000260", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000261", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000262", "best_label": "D", "acceptable_labels": ["C", "D"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000263", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000264", "best_label": "B", "acceptable_labels": ["B", "C"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000265", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000266", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000267", "best_label": "B", "acceptable_labels": ["B", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000268", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000269", "best_label": "A", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000270", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000271", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000272", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000273", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000274", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000275", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000276", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000277", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000278", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000279", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000280", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000281", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000282", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000283", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000284", "best_label": "D", "acceptable_labels": ["C", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000285", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000286", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000287", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000288", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000289", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000290", "best_label": "D", "acceptable_labels": ["B", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000291", "best_label": "B", "acceptable_labels": ["B", "D"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000292", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000293", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000294", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000295", "best_label": "B", "acceptable_labels": ["B", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000296", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000297", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000298", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000299", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000300", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000301", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000302", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000303", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000304", "best_label": "B", "acceptable_labels": ["B", "C"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000305", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000306", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000307", "best_label": "D", "acceptable_labels": ["B", "D"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000308", "best_label": "A", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000309", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000310", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000311", "best_label": "A", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000312", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000313", "best_label": "A", "acceptable_labels": ["A", "B"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000314", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000315", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000316", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000317", "best_label": "B", "acceptable_labels": ["B", "C"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000318", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000319", "best_label": "B", "acceptable_labels": ["B", "C"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000320", "best_label": "D", "acceptable_labels": ["C", "D"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000321", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000322", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000323", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000324", "best_label": "D", "acceptable_labels": ["A", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000325", "best_label": "D", "acceptable_labels": ["B", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000326", "best_label": "A", "acceptable_labels": ["A", "C"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000327", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000328", "best_label": "A", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000329", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000330", "best_label": "D", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000331", "best_label": "B", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000332", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000333", "best_label": "C", "acceptable_labels": ["C", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000334", "best_label": "B", "acceptable_labels": ["B", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000335", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000336", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000337", "best_label": "C", "acceptable_labels": ["B", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000338", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000339", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000340", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000341", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000342", "best_label": "B", "acceptable_labels": ["A", "B"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000343", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000344", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000345", "best_label": "B", "acceptable_labels": ["B", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000346", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000347", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000348", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000349", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000350", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000351", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000352", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000353", "best_label": "C", "acceptable_labels": ["B", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000354", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000355", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000356", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000357", "best_label": "A", "acceptable_labels": ["A", "B"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000358", "best_label": "A", "acceptable_labels": ["A", "B", "C"], "confidence": "low", "notes": "identity/misses_likely_suffix"}
+{"id": "morphjudge_000359", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000360", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000361", "best_label": "D", "acceptable_labels": ["A", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000362", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000363", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000364", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000365", "best_label": "B", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000366", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000367", "best_label": "D", "acceptable_labels": ["C", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000368", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000369", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000370", "best_label": "B", "acceptable_labels": ["B", "D"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000371", "best_label": "B", "acceptable_labels": ["B", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000372", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000373", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000374", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000375", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000376", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000377", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000378", "best_label": "B", "acceptable_labels": ["B", "C"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000379", "best_label": "A", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000380", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000381", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000382", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000383", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000384", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000385", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000386", "best_label": "C", "acceptable_labels": ["B", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000387", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000388", "best_label": "D", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000389", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000390", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000391", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000392", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000393", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000394", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000395", "best_label": "A", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000396", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000397", "best_label": "A", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000398", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000399", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000400", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000401", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000402", "best_label": "A", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000403", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000404", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000405", "best_label": "B", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000406", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000407", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000408", "best_label": "B", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000409", "best_label": "C", "acceptable_labels": ["B", "C"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000410", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000411", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000412", "best_label": "D", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000413", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000414", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000415", "best_label": "C", "acceptable_labels": ["B", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000416", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000417", "best_label": "D", "acceptable_labels": ["A", "D"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000418", "best_label": "A", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000419", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000420", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000421", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000422", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000423", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000424", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000425", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000426", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000427", "best_label": "D", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000428", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000429", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000430", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000431", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000432", "best_label": "A", "acceptable_labels": ["A", "C"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000433", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000434", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000435", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000436", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000437", "best_label": "D", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000438", "best_label": "B", "acceptable_labels": ["B", "D"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000439", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000440", "best_label": "D", "acceptable_labels": ["C", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000441", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000442", "best_label": "D", "acceptable_labels": ["C", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000443", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000444", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000445", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000446", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000447", "best_label": "C", "acceptable_labels": ["A", "C", "D"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000448", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000449", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000450", "best_label": "A", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000451", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000452", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000453", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000454", "best_label": "D", "acceptable_labels": ["C", "D"], "confidence": "low", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000455", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000456", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000457", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000458", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000459", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000460", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000461", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000462", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000463", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000464", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000465", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000466", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000467", "best_label": "C", "acceptable_labels": ["B", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000468", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000469", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000470", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000471", "best_label": "D", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000472", "best_label": "B", "acceptable_labels": ["B"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000473", "best_label": "B", "acceptable_labels": ["A", "B"], "confidence": "low", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000474", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000475", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000476", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000477", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000478", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000479", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000480", "best_label": "C", "acceptable_labels": ["C"], "confidence": "high", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000481", "best_label": "D", "acceptable_labels": ["C", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000482", "best_label": "A", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000483", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000484", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000485", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000486", "best_label": "D", "acceptable_labels": ["B", "D"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
+{"id": "morphjudge_000487", "best_label": "C", "acceptable_labels": ["A", "C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000488", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000489", "best_label": "D", "acceptable_labels": ["D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000490", "best_label": "D", "acceptable_labels": ["D"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000491", "best_label": "A", "acceptable_labels": ["A", "D"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000492", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000493", "best_label": "A", "acceptable_labels": ["A"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000494", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000495", "best_label": "C", "acceptable_labels": ["C"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000496", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000497", "best_label": "B", "acceptable_labels": ["A", "B"], "confidence": "medium", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000498", "best_label": "A", "acceptable_labels": ["A"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000499", "best_label": "B", "acceptable_labels": ["B"], "confidence": "high", "notes": "split/plausible_suffix_boundaries"}
+{"id": "morphjudge_000500", "best_label": "D", "acceptable_labels": ["B", "D"], "confidence": "medium", "notes": "split/has_unknown_suffix_piece"}
