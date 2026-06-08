@@ -15,6 +15,7 @@
 #   CETVEL_BATCH_SIZE=1
 #   CETVEL_MAX_GEN_TOKENS=128
 #   CETVEL_WANDB=1
+#   CETVEL_TASK_PROGRESS=1
 
 set -euo pipefail
 
@@ -81,6 +82,7 @@ cetvel_submit=$(
     CETVEL_BATCH_SIZE="${CETVEL_BATCH_SIZE:-1}" \
     CETVEL_MAX_GEN_TOKENS="${CETVEL_MAX_GEN_TOKENS:-128}" \
     CETVEL_WANDB="${CETVEL_WANDB:-1}" \
+    CETVEL_TASK_PROGRESS="${CETVEL_TASK_PROGRESS:-1}" \
     CETVEL_AUTO_SETUP="${CETVEL_AUTO_SETUP:-0}" \
     HF_HOME="$HF_HOME" \
     sbatch --parsable runs/uhem_cetvel_full_final.sbatch \

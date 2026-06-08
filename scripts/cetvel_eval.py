@@ -14,6 +14,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from typing import Any, Dict
 
 from nanochat.common import get_base_dir, print0
@@ -228,10 +229,119 @@ def _flatten(prefix: str, value: Any, out: Dict[str, Any]) -> None:
         out[prefix] = value
 
 
+def _deep_merge(dst: Dict[str, Any], src: Dict[str, Any]) -> Dict[str, Any]:
+    for key, value in src.items():
+        if isinstance(value, dict) and isinstance(dst.get(key), dict):
+            _deep_merge(dst[key], value)
+        elif isinstance(value, list) and isinstance(dst.get(key), list):
+            dst[key].extend(value)
+        else:
+            dst[key] = value
+    return dst
+
+
+def _format_duration(seconds: float) -> str:
+    seconds = max(0, int(seconds))
+    hours, rem = divmod(seconds, 3600)
+    minutes, secs = divmod(rem, 60)
+    if hours:
+        return f"{hours}h{minutes:02d}m{secs:02d}s"
+    if minutes:
+        return f"{minutes}m{secs:02d}s"
+    return f"{secs}s"
+
+
+def _safe_filename(value: str) -> str:
+    name = re.sub(r"[^A-Za-z0-9_.-]+", "_", value).strip("._")
+    return name or "task"
+
+
+def _write_json(path: str, value: Any) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(value, f, ensure_ascii=False, indent=2)
+
+
 def _resolve_tasks(args) -> list[str]:
     if args.tasks:
         return [task.strip() for task in args.tasks.split(",") if task.strip()]
     return CETVEL_SUITES[args.suite]
+
+
+def _run_lm_eval(
+    evaluator,
+    model_args_str: str,
+    tasks: list[str],
+    args,
+    tracker,
+    task_manager,
+):
+    return evaluator.simple_evaluate(
+        model="nanochat",
+        model_args=model_args_str,
+        tasks=tasks,
+        batch_size=args.batch_size,
+        device=args.device,
+        limit=args.limit,
+        write_out=True,
+        log_samples=True,
+        evaluation_tracker=tracker,
+        task_manager=task_manager,
+    )
+
+
+def _evaluate_with_task_progress(
+    evaluator,
+    evaluation_tracker_cls,
+    model_args_str: str,
+    tasks: list[str],
+    args,
+    out_dir: str,
+    task_manager,
+) -> Dict[str, Any]:
+    aggregate: Dict[str, Any] = {}
+    task_results_dir = os.path.join(out_dir, "task_results")
+    os.makedirs(task_results_dir, exist_ok=True)
+    suite_started = time.monotonic()
+
+    print0(
+        f"[CETVEL progress] running {len(tasks)} task/group evaluations one at a time",
+        flush=True,
+    )
+    for index, task in enumerate(tasks, start=1):
+        task_started = time.monotonic()
+        task_slug = _safe_filename(task)
+        task_out_dir = os.path.join(task_results_dir, f"{index:02d}_{task_slug}")
+        os.makedirs(task_out_dir, exist_ok=True)
+
+        print0(
+            f"[CETVEL progress] {index}/{len(tasks)} START {task}",
+            flush=True,
+        )
+        task_results = _run_lm_eval(
+            evaluator=evaluator,
+            model_args_str=model_args_str,
+            tasks=[task],
+            args=args,
+            tracker=evaluation_tracker_cls(output_path=task_out_dir),
+            task_manager=task_manager,
+        )
+        _deep_merge(aggregate, task_results)
+
+        task_results_path = os.path.join(task_out_dir, f"cetvel_{args.suite}_{task_slug}_results.json")
+        partial_results_path = os.path.join(out_dir, f"cetvel_{args.suite}_partial_results.json")
+        _write_json(task_results_path, task_results)
+        _write_json(partial_results_path, aggregate)
+
+        task_elapsed = _format_duration(time.monotonic() - task_started)
+        suite_elapsed = _format_duration(time.monotonic() - suite_started)
+        print0(
+            f"[CETVEL progress] {index}/{len(tasks)} DONE {task} "
+            f"task_elapsed={task_elapsed} total_elapsed={suite_elapsed} "
+            f"partial={partial_results_path}",
+            flush=True,
+        )
+
+    return aggregate
 
 
 def main() -> None:
@@ -249,6 +359,11 @@ def main() -> None:
     parser.add_argument("--output-path", type=str, default="")
     parser.add_argument("--auto-setup", action="store_true", help="Clone CETVEL and install lm-eval harness if needed.")
     parser.add_argument("--wandb", action="store_true", help="Log flattened numeric metrics to wandb.")
+    parser.add_argument(
+        "--task-progress",
+        action="store_true",
+        help="Evaluate tasks/groups one at a time and print progress with partial result files.",
+    )
     parser.add_argument("--patch-configs-only", action="store_true", help="Patch local CETVEL task configs and exit.")
     args = parser.parse_args()
 
@@ -315,21 +430,27 @@ def main() -> None:
     print0(f"- model_args: {model_args_str}")
 
     task_manager = TaskManager("INFO", include_path=include_path)
-    tracker = EvaluationTracker(output_path=out_dir)
 
     try:
-        results = evaluator.simple_evaluate(
-            model="nanochat",
-            model_args=model_args_str,
-            tasks=tasks,
-            batch_size=args.batch_size,
-            device=args.device,
-            limit=args.limit,
-            write_out=True,
-            log_samples=True,
-            evaluation_tracker=tracker,
-            task_manager=task_manager,
-        )
+        if args.task_progress and len(tasks) > 1:
+            results = _evaluate_with_task_progress(
+                evaluator=evaluator,
+                evaluation_tracker_cls=EvaluationTracker,
+                model_args_str=model_args_str,
+                tasks=tasks,
+                args=args,
+                out_dir=out_dir,
+                task_manager=task_manager,
+            )
+        else:
+            results = _run_lm_eval(
+                evaluator=evaluator,
+                model_args_str=model_args_str,
+                tasks=tasks,
+                args=args,
+                tracker=EvaluationTracker(output_path=out_dir),
+                task_manager=task_manager,
+            )
     except KeyError as exc:
         available = sorted(task_manager.all_tasks)
         print0(f"Task not found: {exc}")
@@ -338,8 +459,7 @@ def main() -> None:
         raise
 
     results_path = os.path.join(out_dir, f"cetvel_{args.suite}_results.json")
-    with open(results_path, "w", encoding="utf-8") as f:
-        json.dump(results, f, ensure_ascii=False, indent=2)
+    _write_json(results_path, results)
     print0(f"Wrote CETVEL results to {results_path}")
 
     metrics: Dict[str, Any] = {}

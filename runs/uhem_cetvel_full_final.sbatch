@@ -89,6 +89,9 @@ fi
 if [ -n "${CETVEL_TASKS:-}" ]; then
     CETVEL_ARGS+=(--tasks="$CETVEL_TASKS")
 fi
+if [ "${CETVEL_TASK_PROGRESS:-1}" = "1" ]; then
+    CETVEL_ARGS+=(--task-progress)
+fi
 
 echo "CETVEL args: ${CETVEL_ARGS[*]}"
 python scripts/cetvel_eval.py "${CETVEL_ARGS[@]}"
