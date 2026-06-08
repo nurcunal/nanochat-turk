@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 from typing import Any, Dict
@@ -84,11 +85,30 @@ def _maybe_setup_cetvel(cetvel_dir: str) -> None:
 
     harness_dir = os.path.join(cetvel_dir, "lm-evaluation-harness")
     req_path = os.path.join(cetvel_dir, "requirements.txt")
-    py = sys.executable
-    subprocess.check_call([py, "-m", "pip", "install", "-q", "toml"])
-    subprocess.check_call([py, "-m", "pip", "install", "-q", "-e", harness_dir])
+    _pip_install(["toml"])
+    _pip_install(["-e", harness_dir])
     if os.path.isfile(req_path):
-        subprocess.check_call([py, "-m", "pip", "install", "-q", "-r", req_path])
+        _pip_install(["-r", req_path])
+
+
+def _pip_install(args: list[str]) -> None:
+    py = sys.executable
+    try:
+        subprocess.check_call(
+            [py, "-m", "pip", "--version"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except subprocess.CalledProcessError:
+        uv = shutil.which("uv")
+        if uv is None:
+            raise RuntimeError(
+                f"{py} has no pip module and uv is not available; cannot install CETVEL dependencies."
+            )
+        subprocess.check_call([uv, "pip", "install", "-q", *args])
+        return
+
+    subprocess.check_call([py, "-m", "pip", "install", "-q", *args])
 
 
 def _flatten(prefix: str, value: Any, out: Dict[str, Any]) -> None:

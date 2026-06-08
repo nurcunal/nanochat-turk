@@ -45,7 +45,7 @@ export PATH="$HOME/.local/bin:$PATH"
 export NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-$HOME/nanochat-turk-d20-bpe32k}"
 export MODEL_TAG="${MODEL_TAG:-tr_d20_bpe_32768_chinchilla20}"
 export NANOCHAT_TOKENIZER_NAME="${NANOCHAT_TOKENIZER_NAME:-bpe_32768}"
-export HF_HOME="${HF_HOME:-$NANOCHAT_BASE_DIR/huggingface}"
+export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
 export HF_XET_CACHE="${HF_XET_CACHE:-$NANOCHAT_BASE_DIR/hf-xet-cache}"
 mkdir -p "$HF_XET_CACHE"
 
