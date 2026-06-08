@@ -101,6 +101,10 @@ Run tokenizer-only evaluation before committing UHeM GPU time:
 - Coverage: behavior on noisy web text, OOV words, punctuation, numbers, URLs,
   code-like text, and named entities.
 
+The current segmenter smoke tests, full-shard inventory, benchmark metrics, and
+local JSON output paths are tracked in
+`docs/tokenizer_tests/segmenter_benchmark_status.md`.
+
 Promote only the strongest tokenizer variants to full model training if the
 tokenizer-only metrics rule out weak candidates.
 
