@@ -134,17 +134,22 @@ def _patch_cetvel_task_configs(cetvel_dir: str) -> None:
         re.compile(r"(\bdataset_path\s*:\s*)(['\"]?)exams\2(?=\s|$)"),
         re.compile(r"(\bpath\s*:\s*)(['\"]?)exams\2(?=\s|$)"),
     ]
+
+    def replace_exams_alias(match: re.Match[str]) -> str:
+        suffix = match.group(3) if match.lastindex and match.lastindex >= 3 else ""
+        return f"{match.group(1)}mhardalov/exams{suffix}"
+
     patched: list[str] = []
     for root, _dirs, files in os.walk(tasks_dir):
         for name in files:
-            if not name.endswith((".yaml", ".yml")):
+            if not name.endswith((".yaml", ".yml", "_yaml")):
                 continue
             path = os.path.join(root, name)
             with open(path, "r", encoding="utf-8") as f:
                 text = f.read()
             new_text = text
             for pattern in replacements:
-                new_text = pattern.sub(r"\1mhardalov/exams\3", new_text)
+                new_text = pattern.sub(replace_exams_alias, new_text)
             if new_text != text:
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(new_text)
@@ -183,6 +188,7 @@ def main() -> None:
     parser.add_argument("--output-path", type=str, default="")
     parser.add_argument("--auto-setup", action="store_true", help="Clone CETVEL and install lm-eval harness if needed.")
     parser.add_argument("--wandb", action="store_true", help="Log flattened numeric metrics to wandb.")
+    parser.add_argument("--patch-configs-only", action="store_true", help="Patch local CETVEL task configs and exit.")
     args = parser.parse_args()
 
     if args.list_suites:
@@ -199,6 +205,9 @@ def main() -> None:
     else:
         _prepend_pythonpath(harness_dir)
     _patch_cetvel_task_configs(cetvel_dir)
+
+    if args.patch_configs_only:
+        return
 
     if not os.path.isdir(include_path):
         print0(
