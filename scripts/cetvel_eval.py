@@ -53,8 +53,8 @@ CETVEL_SUITES = {
         "exams_tr",
         "belebele_tr",
         "turkish_plu",
-        "xcopa_tr",
-        "xnli_tr",
+        "cetvel_xcopa_tr",
+        "cetvel_xnli_tr",
         "mnli_tr",
         "snli_tr",
         "news_cat",
@@ -147,6 +147,20 @@ def _prepend_pythonpath(path: str) -> None:
     paths = [p for p in os.environ.get("PYTHONPATH", "").split(os.pathsep) if p]
     if path not in paths:
         os.environ["PYTHONPATH"] = os.pathsep.join([path, *paths])
+
+
+def _assert_datasets_supports_legacy_scripts() -> None:
+    try:
+        import datasets
+    except Exception:
+        return
+
+    major = int(datasets.__version__.split(".", 1)[0])
+    if major >= 4:
+        raise RuntimeError(
+            "CETVEL's Turkish NLI tasks still depend on a Hugging Face dataset script. "
+            "Install datasets<4 for CETVEL, for example: python -m pip install 'datasets==3.6.0'."
+        )
 
 
 def _patch_cetvel_task_configs(cetvel_dir: str) -> None:
@@ -254,6 +268,7 @@ def main() -> None:
 
     os.environ.setdefault("HF_DATASETS_TRUST_REMOTE_CODE", "true")
     os.environ.setdefault("HF_DATASETS_CACHE", os.path.join(base_dir, "cetvel_hf_datasets_cache"))
+    _assert_datasets_supports_legacy_scripts()
 
     try:
         from lm_eval import evaluator

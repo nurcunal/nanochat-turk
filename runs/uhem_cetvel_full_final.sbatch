@@ -49,6 +49,7 @@ export WANDB_DIR="${WANDB_DIR:-$NANOCHAT_BASE_DIR/wandb}"
 mkdir -p "$WANDB_DIR" "$HF_DATASETS_CACHE"
 
 source .venv/bin/activate
+python -m pip install -q "datasets==3.6.0"
 
 CHECKPOINT_DIR="$NANOCHAT_BASE_DIR/base_checkpoints/$MODEL_TAG"
 CETVEL_MODEL_STEP="${CETVEL_MODEL_STEP:-17100}"
