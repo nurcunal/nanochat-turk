@@ -80,6 +80,7 @@ HF_DATASET_ALIASES = {
     # legacy aliases, so rewrite them to their canonical Hub repos locally.
     "exams": "mhardalov/exams",
     "nli_tr": "boun-tabi/nli_tr",
+    "offenseval2020_tr": "coltekin/offenseval2020_tr",
     "xcopa": "cambridgeltl/xcopa",
     "xnli": "facebook/xnli",
     "xquad": "google/xquad",
