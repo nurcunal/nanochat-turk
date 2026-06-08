@@ -122,6 +122,34 @@ def _prepend_pythonpath(path: str) -> None:
         os.environ["PYTHONPATH"] = os.pathsep.join([path, *paths])
 
 
+def _patch_cetvel_task_configs(cetvel_dir: str) -> None:
+    tasks_dir = os.path.join(cetvel_dir, "tasks")
+    if not os.path.isdir(tasks_dir):
+        return
+
+    replacements = {
+        "dataset_path: exams\n": "dataset_path: mhardalov/exams\n",
+        "path: exams\n": "path: mhardalov/exams\n",
+    }
+    patched: list[str] = []
+    for root, _dirs, files in os.walk(tasks_dir):
+        for name in files:
+            if not name.endswith((".yaml", ".yml")):
+                continue
+            path = os.path.join(root, name)
+            with open(path, "r", encoding="utf-8") as f:
+                text = f.read()
+            new_text = text
+            for old, new in replacements.items():
+                new_text = new_text.replace(old, new)
+            if new_text != text:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(new_text)
+                patched.append(path)
+    for path in patched:
+        print0(f"Patched CETVEL task config for current HF dataset aliases: {path}")
+
+
 def _flatten(prefix: str, value: Any, out: Dict[str, Any]) -> None:
     if isinstance(value, dict):
         for k, v in value.items():
@@ -167,6 +195,7 @@ def main() -> None:
         _maybe_setup_cetvel(cetvel_dir)
     else:
         _prepend_pythonpath(harness_dir)
+    _patch_cetvel_task_configs(cetvel_dir)
 
     if not os.path.isdir(include_path):
         print0(
