@@ -20,6 +20,10 @@ from nanochat.morphology import (
     segment_text,
     segment_text_spans,
 )
+from scripts.tdelight_segment_cmd import (
+    _attach_leading_combining_marks,
+    _repair_surface_pieces,
+)
 
 
 def test_word_segmentation_requires_surface_reconstruction():
@@ -45,6 +49,20 @@ def test_parse_surface_pieces_accepts_common_formats():
 
     with pytest.raises(SegmentationError):
         parse_surface_pieces("ev<N><A3sg>", "evlerden")
+
+
+def test_tdelight_surface_repair_preserves_original_slices():
+    pieces = _attach_leading_combining_marks(["ferrari", "\u0307yle"])
+    assert pieces == ["ferrari\u0307", "yle"]
+    assert _repair_surface_pieces("FERRARİYLE", pieces) == ["FERRARİ", "YLE"]
+
+    pieces = _attach_leading_combining_marks(["gençleşti", "\u0307"])
+    assert _repair_surface_pieces("GENÇLEŞTİ", pieces) == ["GENÇLEŞTİ"]
+
+    assert _repair_surface_pieces("Comrie'nin", ["comrie", "'nin"]) == [
+        "Comrie",
+        "'nin",
+    ]
 
 
 def test_identity_segmenter_preserves_text_and_spans():

@@ -31,6 +31,7 @@ TRMORPH_FLOOKUP_FLAGS=-x \
 TRMORPH_MAX_OUTPUT_LINES_PER_WORD=512 \
 TRMORPH_MAX_ANALYSES_PER_WORD=64 \
 ZEMBEREK_SEGMENT_CMD="/private/tmp/zemberek-smoke-py312/bin/python scripts/zemberek_segment_cmd.py" \
+TDELIGHT_SEGMENT_CMD="dev-ignore/venvs/tdelight-py312/bin/python scripts/tdelight_segment_cmd.py" \
 NANOCHAT_BASE_DIR=/Users/nurcunal/Documents/nanochat-turk/dev-ignore/morph-smoke \
 python3 -m scripts.morph_judge_pack \
   --backend trmorph \
@@ -45,13 +46,17 @@ python3 -m scripts.morph_judge_pack \
   --judge-size 500 \
   --judge-strategy disagreement \
   --batch-size 2048 \
+  --backend-batch-size trmorph=2048 \
   --backend-batch-size zemberek=100000 \
+  --backend-batch-size tdelight=4096 \
   --timeout 900 \
-  --include-context \
-  --context-max-docs 250000 \
   --output-dir dev-ignore/morph-smoke/judge_packs/hash_100k_judge_500 \
   --prefix hash_100k_judge_500
 ```
+
+Add `--include-context --context-max-docs 250000` when the judge pack should
+include corpus snippets. The current lightweight pack omits context so it can
+be uploaded easily.
 
 Generated local files:
 
@@ -78,31 +83,32 @@ key maps labels back to segmenters after judging.
 
 ## Current Equal-100k Results
 
-The current run used identity, TRmorph, Zemberek, and an unavailable
-TurkishDelight slot.
+The current run used identity, TRmorph, Zemberek, and TurkishDelightNLP.
 
 | Backend | Status | Unique/s | Weighted split rate | Weighted fallback | Type fallback |
 | --- | --- | ---: | ---: | ---: | ---: |
-| identity | ok | 548,315 | 0.000 | 0.000 | 0.000 |
-| TRmorph | ok | 9,450 | 0.338 | 0.145 | 0.817 |
-| Zemberek | ok | 3,368 | 0.316 | 0.425 | 0.233 |
-| TurkishDelightNLP | unavailable | n/a | n/a | n/a | n/a |
+| identity | ok | 510,725 | 0.000 | 0.000 | 0.000 |
+| TRmorph | ok | 9,351 | 0.338 | 0.145 | 0.817 |
+| Zemberek | ok | 3,296 | 0.316 | 0.425 | 0.233 |
+| TurkishDelightNLP | ok | 1,509 | 0.362 | 0.000 | 0.000 |
 
 Judge-pack details:
 
 - Judge rows: `500`
-- Rows with context found: `495`
-- Local judge JSONL size: about `370 KiB`
+- Rows with context found: `0` in the current lightweight pack.
+- Local judge JSONL size: about `260 KiB`
 
 Interpretation before LLM judging:
 
 - TRmorph is faster and has much lower frequency-weighted fallback.
 - Zemberek has much lower type fallback but higher frequency-weighted fallback
   in this parser/wrapper setup.
+- TurkishDelightNLP has zero fallback after surface-realignment repair, but is
+  slower and tends to split more unique types than TRmorph or Zemberek.
 - The high TRmorph type fallback is mostly rare noisy web types; the lower
   weighted fallback suggests it covers frequent Turkish forms better.
-- LLM/human judging should decide whether TRmorph's more aggressive splits are
-  linguistically better than Zemberek's often more conservative outputs.
+- LLM/human judging should decide whether TRmorph's, Zemberek's, or
+  TurkishDelightNLP's splits are linguistically best on real Turkish forms.
 
 ## Score Judgments
 
@@ -120,17 +126,14 @@ confidence counts, and invalid rows.
 
 ## TurkishDelightNLP
 
-The adapter is present, but the backend is not configured locally yet. To include
-it in the equal-standard run, configure one of:
+The command wrapper is:
 
 ```bash
-export TDELIGHT_SEGMENT_CMD="..."
+export TDELIGHT_SEGMENT_CMD="dev-ignore/venvs/tdelight-py312/bin/python scripts/tdelight_segment_cmd.py"
 ```
 
-or:
+The repo adapter can also use a REST service endpoint:
 
 ```bash
 export TDELIGHT_URL="http://localhost:PORT"
 ```
-
-Then rerun `scripts.morph_judge_pack` with the same sample settings.

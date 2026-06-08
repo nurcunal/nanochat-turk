@@ -10,6 +10,9 @@ Small original-vs-segmented examples are committed in
 The blind LLM/human judge workflow is documented in
 `docs/tokenizer_tests/llm_judge_pipeline.md`.
 
+TurkishDelightNLP runtime setup notes are documented in
+`docs/tokenizer_tests/turkishdelight_setup.md`.
+
 ## Corpus Cache
 
 Permanent local cache:
@@ -290,10 +293,77 @@ Zemberek corpus materialization, prefer running `scripts.morph_segment_corpus`
 inside a Python 3.12 environment that has both `zemberek-python` and `pyarrow`,
 so the Zemberek model can be loaded once.
 
+Corrected hash-100k screening result:
+
+```text
+dev-ignore/morph-smoke/benchmarks/zemberek_hash_100k.json
+```
+
+| Metric | Value |
+| --- | ---: |
+| Processed unique word forms | 100,000 |
+| Processed weighted words | 12,095,210 |
+| Runtime | 29.99 s |
+| Unique forms / second | 3,335 |
+| Pieces / word, weighted | 1.447 |
+| Split rate, weighted | 0.316 |
+| Fallback rate, weighted | 0.425 |
+| Fallback rate, types | 0.233 |
+| Fallback reasons, types | `parse_failed`: 23,344 |
+
 ### TurkishDelightNLP
 
-No local service or command backend is currently configured. The repo adapter can
-use either:
+Repo wrapper:
+
+```text
+scripts/tdelight_segment_cmd.py
+```
+
+Local smoke environment:
+
+```text
+dev-ignore/venvs/tdelight-py312
+dev-ignore/vendor/turkish-delight-nlp-api
+```
+
+Reason: TurkishDelightNLP is a Python-3.7-era DyNet project. The local runtime
+uses a Python 3.12 virtualenv with a patched local DyNet 2.1.2 build, the
+DyNet-pinned Eigen archive, and a small Gensim-4 import compatibility shim in
+the ignored vendor checkout.
+
+Smoke examples:
+
+| Word | Pieces |
+| --- | --- |
+| `evlerden` | `ev + ler + den` |
+| `geldik` | `gel + di + k` |
+| `kitaplarım` | `kitap + lar + ım` |
+| `çalışıyorum` | `çalış + ıyor + um` |
+| `evlerimizden` | `ev + ler + im + iz + den` |
+
+Corrected hash-100k screening result:
+
+```text
+dev-ignore/morph-smoke/benchmarks/tdelight_hash_100k.json
+```
+
+| Metric | Value |
+| --- | ---: |
+| Processed unique word forms | 100,000 |
+| Processed weighted words | 12,095,210 |
+| Runtime | 65.29 s |
+| Unique forms / second | 1,532 |
+| Pieces / word, weighted | 1.503 |
+| Split rate, weighted | 0.362 |
+| Fallback rate, weighted | 0.000 |
+| Fallback rate, types | 0.000 |
+
+The wrapper maps TurkishDelight's lowercased/Unicode-normalized outputs back to
+exact original surface slices before the benchmark parser validates them. This
+keeps the no-cross-boundary invariant while avoiding false fallbacks from
+uppercase `İ` and curly apostrophe normalization.
+
+The repo adapter can use either:
 
 - `TDELIGHT_SEGMENT_CMD`, a stdin/stdout command with one word per line, or
 - `TDELIGHT_URL`, a REST service endpoint.
@@ -364,4 +434,21 @@ python3 -m scripts.morph_benchmark \
   --batch-size 100000 \
   --timeout 900 \
   --output dev-ignore/morph-smoke/benchmarks/zemberek_hash_100k.json
+```
+
+TurkishDelightNLP bounded command:
+
+```bash
+TDELIGHT_SEGMENT_CMD="dev-ignore/venvs/tdelight-py312/bin/python scripts/tdelight_segment_cmd.py" \
+NANOCHAT_BASE_DIR=/Users/nurcunal/Documents/nanochat-turk/dev-ignore/morph-smoke \
+python3 -m scripts.morph_benchmark \
+  --backend tdelight \
+  --max-files 1 \
+  --max-words 0 \
+  --word-counts-cache dev-ignore/morph-smoke/benchmarks/word_counts_000_00000.pkl \
+  --max-unique-words 100000 \
+  --word-selection hash \
+  --batch-size 4096 \
+  --timeout 300 \
+  --output dev-ignore/morph-smoke/benchmarks/tdelight_hash_100k.json
 ```

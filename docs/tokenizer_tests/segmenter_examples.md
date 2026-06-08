@@ -45,18 +45,21 @@ Kitap lar ım ı masa nın üst ün den al dı m.
 TurkishDelightNLP:
 
 ```text
-Unavailable in the current local environment. The adapter is implemented, but a
-TDELIGHT_SEGMENT_CMD or TDELIGHT_URL backend has not been configured yet.
+Türkiye'de ev ler den gel dik.
+Kitap lar ım ı masa nın üst ü nden al dı m.
+Çalış ıyor um ama anlaşa ma dı k.
+Öğrenci ler imizden bazı lar ı İstanbul'dan Ankara'ya git ti.
 ```
 
 ## Word Examples
 
-| Word | TRmorph pieces | Zemberek pieces |
-| --- | --- | --- |
-| `evlerden` | `ev + ler + den` | `ev + ler + den` |
-| `geldik` | `gel + dik` | `gel + di + k` |
-| `kitaplarım` | `kitap + lar + ım` | `kitap + lar + ım` |
-| `çalışıyorum` | `çalış + ıyor + um` | `çalış + ıyor + um` |
+| Word | TRmorph pieces | Zemberek pieces | TurkishDelightNLP pieces |
+| --- | --- | --- | --- |
+| `evlerden` | `ev + ler + den` | `ev + ler + den` | `ev + ler + den` |
+| `geldik` | `gel + dik` | `gel + di + k` | `gel + di + k` |
+| `kitaplarım` | `kitap + lar + ım` | `kitap + lar + ım` | `kitap + lar + ım` |
+| `çalışıyorum` | `çalış + ıyor + um` | `çalış + ıyor + um` | `çalış + ıyor + um` |
+| `evlerimizden` | `ev + ler + imiz + den` | `ev + ler + imiz + den` | `ev + ler + im + iz + den` |
 
 ## Commands
 
@@ -77,6 +80,16 @@ Zemberek example command:
 ZEMBEREK_SEGMENT_CMD="/private/tmp/zemberek-smoke-py312/bin/python scripts/zemberek_segment_cmd.py" \
 python3 -m scripts.morph_segment \
   --backend zemberek \
+  --format text \
+  --text "Türkiye'de evlerden geldik."
+```
+
+TurkishDelightNLP example command:
+
+```bash
+TDELIGHT_SEGMENT_CMD="dev-ignore/venvs/tdelight-py312/bin/python scripts/tdelight_segment_cmd.py" \
+python3 -m scripts.morph_segment \
+  --backend tdelight \
   --format text \
   --text "Türkiye'de evlerden geldik."
 ```
