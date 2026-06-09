@@ -18,6 +18,8 @@
 #   CETVEL_TASK_PROGRESS=1
 #   CETVEL_GENERATION_PROGRESS=1
 #   CETVEL_GENERATION_PROGRESS_EVERY=1
+#   CETVEL_OUTPUT_PATH=$HOME/nanochat-turk-d20-bpe32k/cetvel_out/full_kvcache
+#   WANDB_RUN=cetvel-full-kvcache
 
 set -euo pipefail
 
@@ -83,11 +85,13 @@ cetvel_submit=$(
     CETVEL_SUITE="${CETVEL_SUITE:-full}" \
     CETVEL_BATCH_SIZE="${CETVEL_BATCH_SIZE:-1}" \
     CETVEL_MAX_GEN_TOKENS="${CETVEL_MAX_GEN_TOKENS:-128}" \
+    CETVEL_OUTPUT_PATH="${CETVEL_OUTPUT_PATH:-}" \
     CETVEL_WANDB="${CETVEL_WANDB:-1}" \
     CETVEL_TASK_PROGRESS="${CETVEL_TASK_PROGRESS:-1}" \
     CETVEL_GENERATION_PROGRESS="${CETVEL_GENERATION_PROGRESS:-1}" \
     CETVEL_GENERATION_PROGRESS_EVERY="${CETVEL_GENERATION_PROGRESS_EVERY:-1}" \
     CETVEL_AUTO_SETUP="${CETVEL_AUTO_SETUP:-0}" \
+    WANDB_RUN="${WANDB_RUN:-cetvel-full-${MODEL_TAG}}" \
     HF_HOME="$HF_HOME" \
     sbatch --parsable runs/uhem_cetvel_full_final.sbatch \
     2>"cetvel-submit-${stamp}.err"

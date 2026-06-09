@@ -297,6 +297,7 @@ def _evaluate_with_task_progress(
     args,
     out_dir: str,
     task_manager,
+    wandb_run=None,
 ) -> Dict[str, Any]:
     aggregate: Dict[str, Any] = {}
     task_results_dir = os.path.join(out_dir, "task_results")
@@ -332,14 +333,27 @@ def _evaluate_with_task_progress(
         _write_json(task_results_path, task_results)
         _write_json(partial_results_path, aggregate)
 
-        task_elapsed = _format_duration(time.monotonic() - task_started)
-        suite_elapsed = _format_duration(time.monotonic() - suite_started)
+        task_elapsed_sec = time.monotonic() - task_started
+        suite_elapsed_sec = time.monotonic() - suite_started
+        task_elapsed = _format_duration(task_elapsed_sec)
+        suite_elapsed = _format_duration(suite_elapsed_sec)
         print0(
             f"[CETVEL progress] {index}/{len(tasks)} DONE {task} "
             f"task_elapsed={task_elapsed} total_elapsed={suite_elapsed} "
             f"partial={partial_results_path}",
             flush=True,
         )
+        if wandb_run is not None:
+            task_metrics: Dict[str, Any] = {
+                "cetvel_progress/tasks_done": index,
+                "cetvel_progress/tasks_total": len(tasks),
+                "cetvel_progress/task_elapsed_sec": task_elapsed_sec,
+                "cetvel_progress/total_elapsed_sec": suite_elapsed_sec,
+            }
+            if isinstance(task_results, dict):
+                _flatten(f"cetvel_task/{task}", task_results.get("results", {}), task_metrics)
+                _flatten(f"cetvel_task_groups/{task}", task_results.get("groups", {}), task_metrics)
+            wandb_run.log(task_metrics)
 
     return aggregate
 
@@ -430,6 +444,29 @@ def main() -> None:
     print0(f"- model_args: {model_args_str}")
 
     task_manager = TaskManager("INFO", include_path=include_path)
+    wandb_run = None
+    if args.wandb:
+        import wandb
+        wandb_run = wandb.init(
+            project=os.environ.get("WANDB_PROJECT", "nanochat-turk"),
+            name=os.environ.get("WANDB_RUN", f"cetvel-{args.suite}"),
+            job_type="cetvel",
+            reinit=True,
+            config={
+                "suite": args.suite,
+                "tasks": tasks,
+                "model_tag": args.model_tag,
+                "model_step": args.model_step,
+                "batch_size": args.batch_size,
+                "device": args.device,
+                "max_gen_tokens": args.max_gen_tokens,
+                "task_progress": args.task_progress,
+            },
+        )
+        wandb_run.log({
+            "cetvel_progress/tasks_done": 0,
+            "cetvel_progress/tasks_total": len(tasks),
+        })
 
     try:
         if args.task_progress and len(tasks) > 1:
@@ -441,6 +478,7 @@ def main() -> None:
                 args=args,
                 out_dir=out_dir,
                 task_manager=task_manager,
+                wandb_run=wandb_run,
             )
         else:
             results = _run_lm_eval(
@@ -467,17 +505,12 @@ def main() -> None:
         _flatten("cetvel", results.get("results", {}), metrics)
         _flatten("cetvel_groups", results.get("groups", {}), metrics)
 
-    if args.wandb and metrics:
+    if wandb_run is not None:
+        if metrics:
+            wandb_run.log(metrics)
         import wandb
-        run = wandb.init(
-            project=os.environ.get("WANDB_PROJECT", "nanochat-turk"),
-            name=os.environ.get("WANDB_RUN", f"cetvel-{args.suite}"),
-            job_type="cetvel",
-            reinit=True,
-        )
-        wandb.log(metrics)
         wandb.save(results_path)
-        run.finish()
+        wandb_run.finish()
 
     from nanochat.report import get_report
     get_report().log(section=f"CETVEL {args.suite}", data=[
