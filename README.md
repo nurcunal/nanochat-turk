@@ -10,7 +10,10 @@ training. The base pipeline uses FineWeb-2 Turkish (`tur_Latn`) parquet files,
 raw Rust BPE by default, Chinchilla-style `20` tokens per total parameter in the
 Turkish presets, and CETVEL for Turkish evaluation. See
 [docs/turkish_foundation.md](docs/turkish_foundation.md) for the active Turkish
-workflow, A100/Slurm launch notes, and ablation plan.
+workflow, A100/Slurm launch notes, and ablation plan. The running project/report
+memory is in [docs/project_report_readme.md](docs/project_report_readme.md),
+which summarizes what we have done, how the tokenizer study is being
+implemented, and which claims are ready for the final report.
 
 nanochat is the simplest experimental harness for training LLMs. It is designed to run on a single GPU node, the code is minimal/hackable, and it covers all major LLM stages including tokenization, pretraining, finetuning, evaluation, inference, and a chat UI. For example, you can train your own GPT-2 capability LLM (which cost ~$43,000 to train in 2019) for only $48 (~2 hours of 8XH100 GPU node) and then talk to it in a familiar ChatGPT-like web UI. On a spot instance, the total cost can be closer to ~$15. More generally, nanochat is configured out of the box to train an entire miniseries of compute-optimal models by setting one single complexity dial: `--depth`, the number of layers in the GPT transformer model (GPT-2 capability happens to be approximately depth 26). All other hyperparameters (the width of the transformer, number of heads, learning rate adjustments, training horizons, weight decays, ...) are calculated automatically in an optimal way.
 
