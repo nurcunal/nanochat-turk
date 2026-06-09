@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import numbers
 import os
 import re
 import shutil
@@ -256,9 +257,19 @@ def _safe_filename(value: str) -> str:
     return name or "task"
 
 
+def _json_default(value: Any) -> Any:
+    if isinstance(value, numbers.Number):
+        return value.item() if hasattr(value, "item") else value
+    if hasattr(value, "tolist"):
+        return value.tolist()
+    if hasattr(value, "item"):
+        return value.item()
+    return str(value)
+
+
 def _write_json(path: str, value: Any) -> None:
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(value, f, ensure_ascii=False, indent=2)
+        json.dump(value, f, ensure_ascii=False, indent=2, default=_json_default)
 
 
 def _resolve_tasks(args) -> list[str]:
