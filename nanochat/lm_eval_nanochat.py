@@ -18,6 +18,7 @@ from lm_eval.api.registry import register_model
 
 from nanochat.checkpoint_manager import load_model
 from nanochat.common import get_base_dir, print0
+from nanochat.engine import Engine
 
 
 @register_model("nanochat")
@@ -61,6 +62,7 @@ class NanochatLM(LM):
         if self.device.type == "cuda":
             self.model = self.model.to(dtype=torch.bfloat16)
         self.tokenizer = tokenizer
+        self.engine = Engine(self.model, self.tokenizer)
         self.model_max_len = int(meta["model_config"]["sequence_len"])
         self.bos_id = int(tokenizer.get_bos_token_id())
 
@@ -154,8 +156,17 @@ class NanochatLM(LM):
             ids = self._encode(context)
             generated: List[int] = []
             stopped = False
-            for tok in self.model.generate(ids, max_tokens=self.max_gen_tokens, temperature=0.0):
-                generated.append(int(tok))
+            for token_column, _token_masks in self.engine.generate(
+                ids,
+                num_samples=1,
+                max_tokens=self.max_gen_tokens,
+                temperature=0.0,
+            ):
+                tok = int(token_column[0])
+                if tok == self.bos_id:
+                    stopped = True
+                    break
+                generated.append(tok)
                 text = self.tokenizer.decode(generated)
                 if any(stop in text for stop in until):
                     stopped = True
