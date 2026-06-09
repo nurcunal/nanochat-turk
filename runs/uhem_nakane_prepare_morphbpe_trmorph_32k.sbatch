@@ -17,7 +17,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
 #SBATCH --time=2-00:00:00
-#SBATCH --mem=256G
+#SBATCH --mem=240G
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
 
