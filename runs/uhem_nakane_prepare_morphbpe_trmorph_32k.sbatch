@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 
 # CPU-side preparation for the TRmorph MorphBPE 32k tokenizer run.
 #
@@ -22,6 +22,13 @@
 #SBATCH --error=%x-%j.err
 
 set -euo pipefail
+
+if [ -f /etc/profile.d/modules.sh ]; then
+    # Batch shells on Altay do not always initialize Environment Modules.
+    source /etc/profile.d/modules.sh
+elif [ -f /usr/share/lmod/lmod/init/bash ]; then
+    source /usr/share/lmod/lmod/init/bash
+fi
 
 module purge
 module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
