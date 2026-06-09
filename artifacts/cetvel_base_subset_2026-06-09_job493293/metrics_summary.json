@@ -1,0 +1,210 @@
+[
+  {
+    "task": "belebele_tr",
+    "metrics": {
+      "acc,none": 0.25222222222222224,
+      "acc_norm,none": 0.25222222222222224
+    },
+    "n_samples": {
+      "original": 900,
+      "effective": 900
+    }
+  },
+  {
+    "task": "cetvel_xcopa_tr",
+    "metrics": {
+      "acc,none": 0.618
+    },
+    "n_samples": {
+      "original": 500,
+      "effective": 500
+    }
+  },
+  {
+    "task": "cetvel_xnli_tr",
+    "metrics": {
+      "acc,none": 0.3327345309381238,
+      "acc_norm,none": 0.3335329341317365
+    },
+    "n_samples": {
+      "original": 5010,
+      "effective": 5010
+    }
+  },
+  {
+    "task": "check_worthiness",
+    "metrics": {
+      "acc,none": 0.37614259597806216,
+      "acc_norm,none": 0.4287020109689214
+    },
+    "n_samples": {
+      "original": 2188,
+      "effective": 2188
+    }
+  },
+  {
+    "task": "exams_tr",
+    "metrics": {
+      "acc,none": 0.27989821882951654,
+      "acc_norm,none": 0.3104325699745547
+    },
+    "n_samples": {
+      "original": 393,
+      "effective": 393
+    }
+  },
+  {
+    "task": "mnli_tr",
+    "metrics": {
+      "acc,none": 0.3216,
+      "acc_norm,none": 0.321
+    },
+    "n_samples": {
+      "original": 10000,
+      "effective": 10000
+    }
+  },
+  {
+    "task": "news_cat",
+    "metrics": {
+      "acc,none": 0.816,
+      "acc_norm,none": 0.676,
+      "f1,none": 0.8131421521642601
+    },
+    "n_samples": {
+      "original": 250,
+      "effective": 250
+    }
+  },
+  {
+    "task": "offenseval_tr",
+    "metrics": {
+      "acc,none": 0.4631519274376417,
+      "acc_norm,none": 0.7970521541950113,
+      "f1,none": 0.28850488354620585
+    },
+    "n_samples": {
+      "original": 3528,
+      "effective": 3528
+    }
+  },
+  {
+    "task": "relevance_judgment",
+    "metrics": {
+      "acc,none": 0.42138939670932357,
+      "acc_norm,none": 0.5589579524680073
+    },
+    "n_samples": {
+      "original": 2188,
+      "effective": 2188
+    }
+  },
+  {
+    "task": "snli_tr",
+    "metrics": {
+      "acc,none": 0.3235,
+      "acc_norm,none": 0.3234
+    },
+    "n_samples": {
+      "original": 10000,
+      "effective": 10000
+    }
+  },
+  {
+    "task": "tquad",
+    "metrics": {
+      "exact,none": 0.0,
+      "f1,none": 5.260303248073273,
+      "HasAns_exact,none": 0.0,
+      "HasAns_f1,none": 5.260303248073273
+    },
+    "n_samples": {
+      "original": 892,
+      "effective": 892
+    }
+  },
+  {
+    "task": "trclaim19",
+    "metrics": {
+      "acc,none": 0.39876599634369286,
+      "acc_norm,none": 0.4938299817184644
+    },
+    "n_samples": null
+  },
+  {
+    "task": "turkish_plu",
+    "metrics": {
+      "acc,none": 0.46048,
+      "acc_norm,none": 0.50272
+    },
+    "n_samples": null
+  },
+  {
+    "task": "turkish_plu_goal_inference",
+    "metrics": {
+      "acc,none": 0.4253285543608124,
+      "acc_norm,none": 0.4241338112305854
+    },
+    "n_samples": {
+      "original": 837,
+      "effective": 837
+    }
+  },
+  {
+    "task": "turkish_plu_next_event_prediction",
+    "metrics": {
+      "acc,none": 0.44580152671755724,
+      "acc_norm,none": 0.5343511450381679
+    },
+    "n_samples": {
+      "original": 655,
+      "effective": 655
+    }
+  },
+  {
+    "task": "turkish_plu_step_inference",
+    "metrics": {
+      "acc,none": 0.3545751633986928,
+      "acc_norm,none": 0.477124183006536
+    },
+    "n_samples": {
+      "original": 612,
+      "effective": 612
+    }
+  },
+  {
+    "task": "turkish_plu_step_ordering",
+    "metrics": {
+      "acc,none": 0.5621939275220372,
+      "acc_norm,none": 0.5621939275220372
+    },
+    "n_samples": {
+      "original": 1021,
+      "effective": 1021
+    }
+  },
+  {
+    "task": "xfact_tr",
+    "metrics": {
+      "acc,none": 0.33727810650887574,
+      "acc_norm,none": 0.33727810650887574
+    },
+    "n_samples": {
+      "original": 169,
+      "effective": 169
+    }
+  },
+  {
+    "task": "xquad_tr",
+    "metrics": {
+      "exact,none": 0.0,
+      "f1,none": 3.098479567420523,
+      "HasAns_exact,none": 0.0,
+      "HasAns_f1,none": 3.098479567420523
+    },
+    "n_samples": {
+      "original": 1190,
+      "effective": 1190
+    }
+  }
+]

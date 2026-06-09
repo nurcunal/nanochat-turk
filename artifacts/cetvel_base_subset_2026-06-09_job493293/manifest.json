@@ -1,0 +1,16 @@
+{
+  "kind": "cetvel_base_model_subset",
+  "repo_id": "nurcunal/nanochat-turk-d20-bpe32k",
+  "path_in_repo": "evaluation/cetvel_base_subset_tasks_01_13_job493293",
+  "model_tag": "tr_d20_bpe_32768_chinchilla20",
+  "model_step": 17100,
+  "checkpoint_format": "raw nanochat checkpoint, BPE tokenizer",
+  "train_job_id": "492421",
+  "cetvel_job_id": "493293",
+  "wandb_url": "https://wandb.ai/nurcunal-bogaziciuniversitesi/nanochat-turk/runs/mygiras0",
+  "source_output_dir": "/ari/users/nunal/nanochat-turk-d20-bpe32k/cetvel_out/full_kvcache_20260609_185114",
+  "included_suite_entries": ["exams_tr", "belebele_tr", "turkish_plu", "cetvel_xcopa_tr", "cetvel_xnli_tr", "mnli_tr", "snli_tr", "news_cat", "offenseval_tr", "trclaim19", "xfact_tr", "xquad_tr", "tquad"],
+  "stopped_before": ["mkqa_tr", "wmt-tr-en-prompt", "wmt-en-tr-prompt", "mlsum_tr", "xlsum_tr", "wiki_lingua_tr", "gecturk_generation"],
+  "reason_for_stopping": "Tasks 1-13 cover the base-model selection and extractive QA slice. Remaining tasks are mostly open-ended generation or instruction-style evaluations better suited for a future SFT model.",
+  "uploaded_at_utc": "2026-06-09T17:14:10Z"
+}
