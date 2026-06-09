@@ -93,6 +93,7 @@ if [ ! -f "$SEGMENTED_DATA_DIR/fineweb2_manifest.json" ]; then
         --data-dir "$RAW_DATA_DIR" \
         --output-dir "$SEGMENTED_DATA_DIR" \
         --compact \
+        --resume \
         --segment-batch-size "$SEGMENT_BATCH_SIZE" \
         --word-cache-size "$WORD_CACHE_SIZE"
 else

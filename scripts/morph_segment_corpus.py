@@ -153,6 +153,127 @@ def output_path_for(input_path: str, output_dir: str) -> str:
     return str(Path(output_dir) / f"{stem}.segmented.parquet")
 
 
+def shard_done_path(output_path: str) -> str:
+    return f"{output_path}.done.json"
+
+
+def shard_tmp_path(output_path: str) -> str:
+    return f"{output_path}.tmp.{os.getpid()}"
+
+
+def write_json_atomic(path: str | Path, payload: dict[str, Any]) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(f"{path.name}.tmp.{os.getpid()}")
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+    os.replace(tmp_path, path)
+
+
+def parquet_is_readable(path: str) -> bool:
+    try:
+        pq.ParquetFile(path)
+    except Exception:
+        return False
+    return True
+
+
+def load_completed_shard(output_path: str) -> dict[str, Any] | None:
+    done_path = shard_done_path(output_path)
+    if not os.path.isfile(output_path) or not os.path.isfile(done_path):
+        return None
+    try:
+        with open(done_path, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+    except Exception:
+        return None
+    if payload.get("output_path") != output_path:
+        return None
+    if payload.get("sha256") != file_sha256(output_path):
+        return None
+    if not parquet_is_readable(output_path):
+        return None
+    return payload
+
+
+def remove_incomplete_shard(output_path: str) -> None:
+    for path in Path(output_path).parent.glob(f"{Path(output_path).name}.tmp.*"):
+        if path.is_file():
+            path.unlink()
+    for path in (output_path, shard_done_path(output_path)):
+        if os.path.exists(path):
+            os.remove(path)
+
+
+def write_progress_manifests(
+    output_dir: str,
+    *,
+    backend: str,
+    command: str,
+    parquet_paths: list[str],
+    outputs: list[dict[str, Any]],
+    text_column: str,
+    id_column: str,
+    include_original: bool,
+    delimiter: str,
+    row_group_batch_size: int,
+    segment_batch_size: int,
+    word_cache_size: int,
+    max_docs: int,
+    started: float,
+    cache_entries: int,
+    complete: bool,
+) -> dict[str, Any]:
+    manifest = {
+        "backend": backend,
+        "command": command,
+        "output_dir": output_dir,
+        "input_files": parquet_paths,
+        "outputs": outputs,
+        "completed_files": [Path(output["output_path"]).name for output in outputs],
+        "expected_files": [Path(path).name for path in parquet_paths],
+        "complete": complete,
+        "text_column": text_column,
+        "id_column": id_column,
+        "include_original": include_original,
+        "delimiter": delimiter,
+        "delimiter_codepoints": display_boundary(delimiter),
+        "delimiter_semantics": (
+            "internal_morpheme_boundary"
+            if delimiter == MORPHEME_BOUNDARY
+            else "custom"
+        ),
+        "row_group_batch_size": row_group_batch_size,
+        "segment_batch_size": segment_batch_size,
+        "word_cache_size": word_cache_size,
+        "max_docs": max_docs,
+        "git_commit": git_commit(),
+        "elapsed_seconds": time.time() - started,
+        "cache_entries_at_end": cache_entries,
+        "environment": {
+            key: os.environ[key]
+            for key in sorted(os.environ)
+            if key.startswith(("TRMORPH_", "ZEMBEREK_", "TDELIGHT_"))
+        },
+    }
+
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    manifest_name = "manifest.json" if complete else "manifest.partial.json"
+    write_json_atomic(Path(output_dir) / manifest_name, manifest)
+
+    dataset_manifest = {
+        "source": "morph_segment_corpus",
+        "segmentation_manifest": str(Path(output_dir) / manifest_name),
+        "backend": backend,
+        "text_column": "segmented_text",
+        "filenames": [Path(output["output_path"]).name for output in outputs],
+        "complete": complete,
+    }
+    dataset_manifest_name = MANIFEST_FILE if complete else f"{MANIFEST_FILE}.partial"
+    write_json_atomic(Path(output_dir) / dataset_manifest_name, dataset_manifest)
+    return manifest
+
+
 def write_segmented_shard(
     input_path: str,
     output_path: str,
@@ -299,6 +420,13 @@ def main() -> None:
     parser.add_argument("--id-column", type=str, default="id")
     parser.add_argument("--max-files", type=int, default=0)
     parser.add_argument("--max-docs", type=int, default=0)
+    parser.add_argument("--shard-index", type=int, default=-1, help="Process one 0-based parquet shard index.")
+    parser.add_argument("--shard-name", type=str, default="", help="Process one parquet shard by filename.")
+    parser.add_argument(
+        "--finalize-only",
+        action="store_true",
+        help="Write final manifests from completed shard sidecars without segmenting.",
+    )
     parser.add_argument("--row-group-batch-size", type=int, default=256)
     parser.add_argument("--segment-batch-size", type=int, default=2048)
     parser.add_argument("--word-cache-size", type=int, default=200000)
@@ -314,14 +442,78 @@ def main() -> None:
     parser.add_argument("--timeout", type=float, default=120.0)
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--compact", action="store_true", help="Omit original text column from output.")
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help=(
+            "Skip shards with a valid .done.json sidecar and rewrite "
+            "incomplete/corrupt shard outputs."
+        ),
+    )
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
 
-    parquet_paths = list_parquet_files(args.data_dir or None)
+    all_parquet_paths = list_parquet_files(args.data_dir or None)
     if args.max_files > 0:
-        parquet_paths = parquet_paths[:args.max_files]
-    if not parquet_paths:
+        all_parquet_paths = all_parquet_paths[:args.max_files]
+    if not all_parquet_paths:
         raise RuntimeError("No parquet shards found")
+
+    if args.shard_index >= 0 and args.shard_name:
+        raise ValueError("Use --shard-index or --shard-name, not both")
+    if args.shard_index >= 0:
+        if args.shard_index >= len(all_parquet_paths):
+            raise IndexError(
+                f"--shard-index {args.shard_index} out of range for "
+                f"{len(all_parquet_paths)} parquet shards"
+            )
+        parquet_paths = [all_parquet_paths[args.shard_index]]
+    elif args.shard_name:
+        matches = [path for path in all_parquet_paths if Path(path).name == args.shard_name]
+        if not matches:
+            raise FileNotFoundError(f"No parquet shard named {args.shard_name!r}")
+        parquet_paths = matches
+    else:
+        parquet_paths = all_parquet_paths
+    selected_all_shards = len(parquet_paths) == len(all_parquet_paths)
+
+    started = time.time()
+    if args.finalize_only:
+        outputs = []
+        missing = []
+        for input_path in all_parquet_paths:
+            output_path = output_path_for(input_path, args.output_dir)
+            completed = load_completed_shard(output_path)
+            if completed is None:
+                missing.append(output_path)
+            else:
+                outputs.append(completed)
+        if missing:
+            raise RuntimeError(
+                "Cannot finalize segmented corpus; missing or invalid completed "
+                f"shards: {missing[:10]}{' ...' if len(missing) > 10 else ''}"
+            )
+        write_progress_manifests(
+            args.output_dir,
+            backend=args.backend,
+            command=args.command,
+            parquet_paths=all_parquet_paths,
+            outputs=outputs,
+            text_column=args.text_column,
+            id_column=args.id_column,
+            include_original=not args.compact,
+            delimiter=args.delimiter,
+            row_group_batch_size=args.row_group_batch_size,
+            segment_batch_size=args.segment_batch_size,
+            word_cache_size=args.word_cache_size,
+            max_docs=args.max_docs,
+            started=started,
+            cache_entries=0,
+            complete=True,
+        )
+        print(f"Wrote manifest to {Path(args.output_dir) / 'manifest.json'}")
+        print(f"Wrote dataset manifest to {Path(args.output_dir) / MANIFEST_FILE}")
+        return
 
     segmenter = create_segmenter(
         args.backend,
@@ -330,81 +522,119 @@ def main() -> None:
         timeout=args.timeout,
     )
     cache = LRUWordCache(args.word_cache_size)
-    started = time.time()
     outputs = []
 
     try:
         for input_path in parquet_paths:
             output_path = output_path_for(input_path, args.output_dir)
+            completed = load_completed_shard(output_path)
+            if completed is not None and args.resume and not args.overwrite:
+                print(f"Skipping completed shard {output_path}", flush=True)
+                outputs.append(completed)
+                if selected_all_shards:
+                    write_progress_manifests(
+                        args.output_dir,
+                        backend=args.backend,
+                        command=args.command,
+                        parquet_paths=all_parquet_paths,
+                        outputs=outputs,
+                        text_column=args.text_column,
+                        id_column=args.id_column,
+                        include_original=not args.compact,
+                        delimiter=args.delimiter,
+                        row_group_batch_size=args.row_group_batch_size,
+                        segment_batch_size=args.segment_batch_size,
+                        word_cache_size=args.word_cache_size,
+                        max_docs=args.max_docs,
+                        started=started,
+                        cache_entries=len(cache),
+                        complete=False,
+                    )
+                continue
+            if args.resume and completed is None and os.path.exists(output_path):
+                print(f"Removing incomplete shard before resume: {output_path}", flush=True)
+                remove_incomplete_shard(output_path)
             if os.path.exists(output_path) and not args.overwrite:
                 raise FileExistsError(
-                    f"{output_path} already exists. Use --overwrite to replace it."
+                    f"{output_path} already exists. Use --overwrite to replace it "
+                    "or --resume to skip/rewrite shard outputs safely."
                 )
+            tmp_output_path = shard_tmp_path(output_path)
+            if os.path.exists(tmp_output_path):
+                os.remove(tmp_output_path)
             print(f"Segmenting {input_path} -> {output_path}", flush=True)
-            outputs.append(
-                write_segmented_shard(
-                    input_path,
-                    output_path,
+            shard_stats = write_segmented_shard(
+                input_path,
+                tmp_output_path,
+                text_column=args.text_column,
+                id_column=args.id_column,
+                include_original=not args.compact,
+                backend=args.backend,
+                segmenter=segmenter,
+                cache=cache,
+                row_group_batch_size=args.row_group_batch_size,
+                segment_batch_size=args.segment_batch_size,
+                delimiter=args.delimiter,
+                max_docs=args.max_docs,
+            )
+            os.replace(tmp_output_path, output_path)
+            shard_stats["output_path"] = output_path
+            shard_stats["sha256"] = file_sha256(output_path)
+            shard_stats["completed_at_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            write_json_atomic(shard_done_path(output_path), shard_stats)
+            outputs.append(shard_stats)
+            if selected_all_shards:
+                write_progress_manifests(
+                    args.output_dir,
+                    backend=args.backend,
+                    command=args.command,
+                    parquet_paths=all_parquet_paths,
+                    outputs=outputs,
                     text_column=args.text_column,
                     id_column=args.id_column,
                     include_original=not args.compact,
-                    backend=args.backend,
-                    segmenter=segmenter,
-                    cache=cache,
+                    delimiter=args.delimiter,
                     row_group_batch_size=args.row_group_batch_size,
                     segment_batch_size=args.segment_batch_size,
-                    delimiter=args.delimiter,
+                    word_cache_size=args.word_cache_size,
                     max_docs=args.max_docs,
+                    started=started,
+                    cache_entries=len(cache),
+                    complete=False,
                 )
-            )
     except (SegmenterUnavailable, SegmentationError):
         raise
 
-    manifest = {
-        "backend": args.backend,
-        "command": args.command,
-        "output_dir": args.output_dir,
-        "input_files": parquet_paths,
-        "outputs": outputs,
-        "text_column": args.text_column,
-        "id_column": args.id_column,
-        "include_original": not args.compact,
-        "delimiter": args.delimiter,
-        "delimiter_codepoints": display_boundary(args.delimiter),
-        "delimiter_semantics": (
-            "internal_morpheme_boundary"
-            if args.delimiter == MORPHEME_BOUNDARY
-            else "custom"
-        ),
-        "row_group_batch_size": args.row_group_batch_size,
-        "segment_batch_size": args.segment_batch_size,
-        "word_cache_size": args.word_cache_size,
-        "max_docs": args.max_docs,
-        "git_commit": git_commit(),
-        "elapsed_seconds": time.time() - started,
-        "cache_entries_at_end": len(cache),
-        "environment": {
-            key: os.environ[key]
-            for key in sorted(os.environ)
-            if key.startswith(("TRMORPH_", "ZEMBEREK_", "TDELIGHT_"))
-        },
-    }
-    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+    if not selected_all_shards:
+        print(
+            "Shard selection complete. Run with --finalize-only after all "
+            "expected shards have .done.json sidecars.",
+            flush=True,
+        )
+        return
+
+    write_progress_manifests(
+        args.output_dir,
+        backend=args.backend,
+        command=args.command,
+        parquet_paths=all_parquet_paths,
+        outputs=outputs,
+        text_column=args.text_column,
+        id_column=args.id_column,
+        include_original=not args.compact,
+        delimiter=args.delimiter,
+        row_group_batch_size=args.row_group_batch_size,
+        segment_batch_size=args.segment_batch_size,
+        word_cache_size=args.word_cache_size,
+        max_docs=args.max_docs,
+        started=started,
+        cache_entries=len(cache),
+        complete=True,
+    )
     manifest_path = Path(args.output_dir) / "manifest.json"
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        json.dump(manifest, f, ensure_ascii=False, indent=2)
     print(f"Wrote manifest to {manifest_path}")
 
     dataset_manifest_path = Path(args.output_dir) / MANIFEST_FILE
-    dataset_manifest = {
-        "source": "morph_segment_corpus",
-        "segmentation_manifest": str(manifest_path),
-        "backend": args.backend,
-        "text_column": "segmented_text",
-        "filenames": [Path(output["output_path"]).name for output in outputs],
-    }
-    with open(dataset_manifest_path, "w", encoding="utf-8") as f:
-        json.dump(dataset_manifest, f, ensure_ascii=False, indent=2)
     print(f"Wrote dataset manifest to {dataset_manifest_path}")
 
 
