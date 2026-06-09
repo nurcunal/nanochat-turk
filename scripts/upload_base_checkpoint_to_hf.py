@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument("--repo-id", required=True, help="Hugging Face model repo id, e.g. user/model-name")
     parser.add_argument("--base-dir", default=os.environ.get("NANOCHAT_BASE_DIR", ""), help="nanochat base dir")
     parser.add_argument("--model-tag", default=os.environ.get("MODEL_TAG", ""), help="checkpoint model tag")
-    parser.add_argument("--tokenizer-name", default=os.environ.get("NANOCHAT_TOKENIZER_NAME", "bpe_32768"))
+    parser.add_argument("--tokenizer-name", default=os.environ.get("NANOCHAT_TOKENIZER_NAME", ""))
     parser.add_argument("--step", default="latest", help="checkpoint step integer or 'latest'")
     parser.add_argument("--job-id", default=os.environ.get("TRAIN_JOBID", os.environ.get("SLURM_JOB_ID", "")))
     parser.add_argument("--cetvel-job-id", default=os.environ.get("CETVEL_JOBID", ""))
@@ -184,7 +184,7 @@ pipeline_tag: text-generation
 library_name: pytorch
 ---
 
-# nanochat Turkish d20 / 32k Raw Checkpoint
+# nanochat Turkish `{args.model_tag}` Raw Checkpoint
 
 This repository stores a raw nanochat checkpoint bundle. It is intended for
 restoring or evaluating this repository's `nanochat` implementation. It is not
@@ -257,13 +257,31 @@ def main():
     args.model_tag = model_tag
 
     checkpoint_dir = base_dir / "base_checkpoints" / model_tag
-    tokenizer_dir = base_dir / "tokenizers" / args.tokenizer_name
     step = resolve_step(checkpoint_dir, args.step)
 
     step_tag = f"{step:06d}"
     require_file(checkpoint_dir / f"model_{step_tag}.pt", "model checkpoint")
-    require_file(checkpoint_dir / f"meta_{step_tag}.json", "checkpoint metadata")
+    meta_path = require_file(checkpoint_dir / f"meta_{step_tag}.json", "checkpoint metadata")
+    with meta_path.open("r", encoding="utf-8") as f:
+        checkpoint_meta = json.load(f)
+
+    recorded_tokenizer_name = checkpoint_meta.get("tokenizer_name", "")
+    if recorded_tokenizer_name:
+        if args.tokenizer_name and args.tokenizer_name != recorded_tokenizer_name:
+            raise ValueError(
+                f"Checkpoint metadata says tokenizer_name={recorded_tokenizer_name!r}, "
+                f"but upload was requested with --tokenizer-name={args.tokenizer_name!r}."
+            )
+        args.tokenizer_name = recorded_tokenizer_name
+    elif not args.tokenizer_name:
+        raise ValueError(
+            "Checkpoint metadata does not record tokenizer_name. Pass --tokenizer-name "
+            "explicitly for this older checkpoint."
+        )
+
+    tokenizer_dir = base_dir / "tokenizers" / args.tokenizer_name
     require_file(tokenizer_dir / "tokenizer.pkl", "tokenizer.pkl")
+    require_file(tokenizer_dir / "tokenizer_config.json", "tokenizer_config.json")
     require_file(tokenizer_dir / "token_bytes.pt", "token_bytes.pt")
 
     prefix = args.repo_prefix

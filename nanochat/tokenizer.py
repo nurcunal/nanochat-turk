@@ -411,14 +411,22 @@ def get_tokenizer_dir(tokenizer_name=None):
         return os.path.join(base_dir, "tokenizer")
     return os.path.join(base_dir, "tokenizers", tokenizer_name)
 
-def get_tokenizer():
-    tokenizer_dir = get_tokenizer_dir()
+def get_tokenizer_config(tokenizer_name=None):
+    tokenizer_dir = get_tokenizer_dir(tokenizer_name)
+    config_path = os.path.join(tokenizer_dir, "tokenizer_config.json")
+    if not os.path.exists(config_path):
+        return {}
+    with open(config_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def get_tokenizer(tokenizer_name=None):
+    tokenizer_dir = get_tokenizer_dir(tokenizer_name)
     # return HuggingFaceTokenizer.from_directory(tokenizer_dir)
     return RustBPETokenizer.from_directory(tokenizer_dir)
 
-def get_token_bytes(device="cpu"):
+def get_token_bytes(device="cpu", tokenizer_name=None):
     import torch
-    tokenizer_dir = get_tokenizer_dir()
+    tokenizer_dir = get_tokenizer_dir(tokenizer_name)
     token_bytes_path = os.path.join(tokenizer_dir, "token_bytes.pt")
     assert os.path.exists(token_bytes_path), f"Token bytes not found at {token_bytes_path}? It gets written by tok_train.py"
     with open(token_bytes_path, "rb") as f:

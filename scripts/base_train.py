@@ -28,7 +28,7 @@ import torch.distributed as dist
 from nanochat.gpt import GPT, GPTConfig, Linear
 from nanochat.dataloader import tokenizing_distributed_data_loader_bos_bestfit, tokenizing_distributed_data_loader_with_state_bos_bestfit
 from nanochat.common import compute_init, compute_cleanup, print0, DummyWandb, print_banner, get_base_dir, autodetect_device_type, get_peak_flops, COMPUTE_DTYPE, COMPUTE_DTYPE_REASON, is_ddp_initialized
-from nanochat.tokenizer import get_tokenizer, get_token_bytes
+from nanochat.tokenizer import get_tokenizer, get_token_bytes, get_tokenizer_config, get_tokenizer_dir, get_tokenizer_name
 from nanochat.checkpoint_manager import save_checkpoint, load_checkpoint
 from nanochat.loss_eval import evaluate_bpb
 from nanochat.engine import Engine
@@ -141,9 +141,14 @@ else:
 
 # -----------------------------------------------------------------------------
 # Tokenizer will be useful for evaluation and also we need the vocab size to init the model
-tokenizer = get_tokenizer()
-token_bytes = get_token_bytes(device=device)
+tokenizer_name = get_tokenizer_name()
+tokenizer_dir = get_tokenizer_dir(tokenizer_name)
+tokenizer_config = get_tokenizer_config(tokenizer_name)
+tokenizer = get_tokenizer(tokenizer_name)
+token_bytes = get_token_bytes(device=device, tokenizer_name=tokenizer_name)
 vocab_size = tokenizer.get_vocab_size()
+print0(f"Tokenizer name: {tokenizer_name}")
+print0(f"Tokenizer dir: {tokenizer_dir}")
 print0(f"Vocab size: {vocab_size:,}")
 
 # -----------------------------------------------------------------------------
@@ -523,6 +528,9 @@ while True:
                 "step": step,
                 "val_bpb": val_bpb, # loss at last step
                 "model_config": model_config_kwargs,
+                "tokenizer_name": tokenizer_name,
+                "tokenizer_dir": tokenizer_dir,
+                "tokenizer_config": tokenizer_config,
                 "user_config": user_config, # inputs to the training script
                 "device_batch_size": args.device_batch_size,
                 "max_seq_len": args.max_seq_len,

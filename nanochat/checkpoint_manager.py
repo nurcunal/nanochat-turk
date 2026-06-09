@@ -10,7 +10,7 @@ import torch
 
 from nanochat.common import get_base_dir
 from nanochat.gpt import GPT, GPTConfig
-from nanochat.tokenizer import get_tokenizer
+from nanochat.tokenizer import get_tokenizer, get_tokenizer_name
 from nanochat.common import setup_default_logging
 
 # Set up logging
@@ -108,8 +108,24 @@ def build_model(checkpoint_dir, step, device, phase):
         model.eval()
     else:
         model.train()
-    # Load the Tokenizer
-    tokenizer = get_tokenizer()
+    # Load the tokenizer recorded at training time. This matters for tokenizer
+    # ablations where multiple same-size tokenizers are valid but not equivalent.
+    tokenizer_name = meta_data.get("tokenizer_name")
+    if tokenizer_name:
+        env_tokenizer_name = get_tokenizer_name()
+        if env_tokenizer_name != tokenizer_name:
+            log0(
+                "Checkpoint was trained with tokenizer "
+                f"{tokenizer_name!r}; current NANOCHAT_TOKENIZER_NAME resolves to "
+                f"{env_tokenizer_name!r}. Loading checkpoint tokenizer."
+            )
+        tokenizer = get_tokenizer(tokenizer_name)
+    else:
+        log0(
+            "Checkpoint metadata does not record tokenizer_name; falling back to "
+            "current NANOCHAT_TOKENIZER_NAME."
+        )
+        tokenizer = get_tokenizer()
     # Sanity check: compatibility between model and tokenizer
     assert tokenizer.get_vocab_size() == model_config_kwargs["vocab_size"], f"Tokenizer vocab size {tokenizer.get_vocab_size()} does not match model config vocab size {model_config_kwargs['vocab_size']}"
     return model, tokenizer, meta_data

@@ -95,6 +95,16 @@ Implementation principles:
 - Cache segmentation and tokenizer outputs outside the GPU training hot path.
 - Preserve raw document text for evaluation and generation.
 
+## Run Safety
+
+Each tokenizer artifact must use a unique `NANOCHAT_TOKENIZER_NAME`, and each
+model should use a model tag that repeats the tokenizer name. New base
+checkpoints record `tokenizer_name`, `tokenizer_dir`, and `tokenizer_config` in
+`meta_*.json`. Evaluation loaders prefer the checkpoint-recorded tokenizer over
+the current shell environment, so same-vocab ablations cannot silently evaluate
+with the wrong tokenizer. HF upload also checks the recorded tokenizer before
+publishing the checkpoint/tokenizer bundle.
+
 ## Evaluation Plan
 
 Run tokenizer-only evaluation before committing UHeM GPU time:
