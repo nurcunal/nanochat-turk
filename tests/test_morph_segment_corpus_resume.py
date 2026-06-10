@@ -5,6 +5,7 @@ import sys
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
 
 from nanochat.dataset import MANIFEST_FILE, list_parquet_files
 
@@ -105,3 +106,88 @@ def test_morph_segment_corpus_shard_index_and_finalize_only(tmp_path):
         "first.segmented.parquet",
         "second.segmented.parquet",
     ]
+
+
+def test_morph_segment_corpus_parallel_workers_preserve_order(tmp_path):
+    data_dir = tmp_path / "raw"
+    output_dir = tmp_path / "segmented"
+    data_dir.mkdir()
+
+    shard = data_dir / "ordered.parquet"
+    rows = [(str(i), f"belge {i} evlerden okula") for i in range(8)]
+    write_raw_shard(shard, rows)
+    (data_dir / MANIFEST_FILE).write_text(
+        json.dumps({"filenames": [shard.name], "text_column": "text"}),
+        encoding="utf-8",
+    )
+
+    run_segmenter(
+        data_dir,
+        output_dir,
+        "--resume",
+        "--num-workers",
+        "2",
+        "--worker-mode",
+        "thread",
+        "--max-in-flight",
+        "4",
+    )
+
+    out = pq.read_table(output_dir / "ordered.segmented.parquet")
+    assert out.column("source_row").to_pylist() == list(range(8))
+    assert out.column("id").to_pylist() == [str(i) for i in range(8)]
+    assert out.column("segmented_text").to_pylist() == [row[1] for row in rows]
+
+    sidecar = json.loads(
+        (output_dir / "ordered.segmented.parquet.done.json").read_text(encoding="utf-8")
+    )
+    assert sidecar["num_workers"] == 2
+    assert sidecar["worker_mode"] == "thread"
+    assert sidecar["max_in_flight"] == 4
+
+    manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["num_workers"] == 2
+    assert manifest["worker_mode"] == "thread"
+    assert manifest["completed_shard_num_workers"] == [2]
+
+
+def test_morph_segment_corpus_process_workers_when_available(tmp_path):
+    data_dir = tmp_path / "raw"
+    output_dir = tmp_path / "segmented"
+    data_dir.mkdir()
+
+    shard = data_dir / "process.parquet"
+    rows = [(str(i), f"belge {i} evlerden okula") for i in range(6)]
+    write_raw_shard(shard, rows)
+    (data_dir / MANIFEST_FILE).write_text(
+        json.dumps({"filenames": [shard.name], "text_column": "text"}),
+        encoding="utf-8",
+    )
+
+    try:
+        run_segmenter(
+            data_dir,
+            output_dir,
+            "--resume",
+            "--num-workers",
+            "2",
+            "--worker-mode",
+            "process",
+            "--max-in-flight",
+            "4",
+        )
+    except subprocess.CalledProcessError as exc:
+        if "PermissionError" in exc.stderr and "SC_SEM_NSEMS_MAX" in exc.stderr:
+            pytest.skip("Local sandbox blocks Python multiprocessing semaphores")
+        raise
+
+    out = pq.read_table(output_dir / "process.segmented.parquet")
+    assert out.column("source_row").to_pylist() == list(range(6))
+    assert out.column("id").to_pylist() == [str(i) for i in range(6)]
+    assert out.column("segmented_text").to_pylist() == [row[1] for row in rows]
+
+    sidecar = json.loads(
+        (output_dir / "process.segmented.parquet.done.json").read_text(encoding="utf-8")
+    )
+    assert sidecar["num_workers"] == 2
+    assert sidecar["worker_mode"] == "process"

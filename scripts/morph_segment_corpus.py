@@ -19,8 +19,11 @@ import json
 import os
 import subprocess
 import time
+from collections.abc import Iterator
 from collections import OrderedDict
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, ThreadPoolExecutor, wait
 from pathlib import Path
+import threading
 from typing import Any
 
 import pyarrow as pa
@@ -36,6 +39,11 @@ from nanochat.morphology import (
     display_boundary,
     iter_word_spans,
 )
+
+
+_WORKER_SEGMENTER: Any | None = None
+_WORKER_CACHE: LRUWordCache | None = None
+_WORKER_LOCAL = threading.local()
 
 
 class LRUWordCache:
@@ -148,6 +156,114 @@ def segment_text_from_lookup(
     }
 
 
+def build_segmented_rows(
+    *,
+    input_path: str,
+    source_row_start: int,
+    ids: list[str],
+    texts: list[str],
+    include_original: bool,
+    backend: str,
+    segmenter,
+    cache: LRUWordCache,
+    segment_batch_size: int,
+    delimiter: str,
+) -> dict[str, Any]:
+    lookup = ensure_segmentations(
+        texts,
+        segmenter=segmenter,
+        cache=cache,
+        segment_batch_size=segment_batch_size,
+    )
+
+    rows: dict[str, list[Any]] = {
+        "source_path": [],
+        "source_row": [],
+        "id": [],
+        "segmented_text": [],
+        "segmenter": [],
+        "word_count": [],
+        "split_words": [],
+        "fallback_words": [],
+    }
+    if include_original:
+        rows["text"] = []
+
+    total_words = 0
+    total_split_words = 0
+    total_fallback_words = 0
+
+    for local_idx, (doc_id, text) in enumerate(zip(ids, texts)):
+        segmented_text, stats = segment_text_from_lookup(
+            text,
+            lookup,
+            delimiter=delimiter,
+        )
+        rows["source_path"].append(input_path)
+        rows["source_row"].append(source_row_start + local_idx)
+        rows["id"].append(doc_id)
+        if include_original:
+            rows["text"].append(text)
+        rows["segmented_text"].append(segmented_text)
+        rows["segmenter"].append(backend)
+        rows["word_count"].append(stats["word_count"])
+        rows["split_words"].append(stats["split_words"])
+        rows["fallback_words"].append(stats["fallback_words"])
+
+        total_words += stats["word_count"]
+        total_split_words += stats["split_words"]
+        total_fallback_words += stats["fallback_words"]
+
+    return {
+        "rows": rows,
+        "docs": len(texts),
+        "word_count": total_words,
+        "split_words": total_split_words,
+        "fallback_words": total_fallback_words,
+        "cache_entries": len(cache),
+    }
+
+
+def init_segment_worker(
+    backend: str,
+    command: str,
+    strict: bool,
+    timeout: float,
+    worker_cache_size: int,
+) -> None:
+    global _WORKER_SEGMENTER, _WORKER_CACHE
+    _WORKER_SEGMENTER = create_segmenter(
+        backend,
+        command=command or None,
+        strict=strict,
+        timeout=timeout,
+    )
+    _WORKER_CACHE = LRUWordCache(worker_cache_size)
+    _WORKER_LOCAL.segmenter = _WORKER_SEGMENTER
+    _WORKER_LOCAL.cache = _WORKER_CACHE
+
+
+def segment_batch_worker(task: dict[str, Any]) -> dict[str, Any]:
+    segmenter = getattr(_WORKER_LOCAL, "segmenter", _WORKER_SEGMENTER)
+    cache = getattr(_WORKER_LOCAL, "cache", _WORKER_CACHE)
+    if segmenter is None or cache is None:
+        raise RuntimeError("Segmentation worker was not initialized")
+    result = build_segmented_rows(
+        input_path=task["input_path"],
+        source_row_start=task["source_row_start"],
+        ids=task["ids"],
+        texts=task["texts"],
+        include_original=task["include_original"],
+        backend=task["backend"],
+        segmenter=segmenter,
+        cache=cache,
+        segment_batch_size=task["segment_batch_size"],
+        delimiter=task["delimiter"],
+    )
+    result["batch_index"] = task["batch_index"]
+    return result
+
+
 def output_path_for(input_path: str, output_dir: str) -> str:
     stem = Path(input_path).stem
     return str(Path(output_dir) / f"{stem}.segmented.parquet")
@@ -219,6 +335,8 @@ def write_progress_manifests(
     row_group_batch_size: int,
     segment_batch_size: int,
     word_cache_size: int,
+    num_workers: int,
+    worker_mode: str,
     max_docs: int,
     started: float,
     cache_entries: int,
@@ -246,6 +364,15 @@ def write_progress_manifests(
         "row_group_batch_size": row_group_batch_size,
         "segment_batch_size": segment_batch_size,
         "word_cache_size": word_cache_size,
+        "num_workers": num_workers,
+        "worker_mode": worker_mode,
+        "completed_shard_num_workers": sorted(
+            {
+                int(output["num_workers"])
+                for output in outputs
+                if str(output.get("num_workers", "")).isdigit()
+            }
+        ),
         "max_docs": max_docs,
         "git_commit": git_commit(),
         "elapsed_seconds": time.time() - started,
@@ -274,6 +401,69 @@ def write_progress_manifests(
     return manifest
 
 
+def iter_segment_tasks(
+    input_path: str,
+    *,
+    text_column: str,
+    id_column: str,
+    include_original: bool,
+    backend: str,
+    row_group_batch_size: int,
+    segment_batch_size: int,
+    delimiter: str,
+    max_docs: int,
+) -> Iterator[dict[str, Any]]:
+    pf = pq.ParquetFile(input_path)
+    emitted_docs = 0
+    source_row_offset = 0
+    batch_index = 0
+
+    for rg_idx in range(pf.num_row_groups):
+        columns = [text_column]
+        if id_column and id_column in pf.schema_arrow.names:
+            columns.append(id_column)
+        table = pf.read_row_group(rg_idx, columns=columns)
+        texts = [
+            "" if value is None else str(value)
+            for value in table.column(text_column).to_pylist()
+        ]
+        ids = (
+            ["" if value is None else str(value) for value in table.column(id_column).to_pylist()]
+            if id_column and id_column in table.column_names
+            else [""] * len(texts)
+        )
+
+        for start in range(0, len(texts), row_group_batch_size):
+            if max_docs > 0 and emitted_docs >= max_docs:
+                break
+            batch_texts = texts[start:start + row_group_batch_size]
+            batch_ids = ids[start:start + row_group_batch_size]
+            if max_docs > 0:
+                remaining = max_docs - emitted_docs
+                batch_texts = batch_texts[:remaining]
+                batch_ids = batch_ids[:remaining]
+            if not batch_texts:
+                continue
+
+            yield {
+                "batch_index": batch_index,
+                "input_path": input_path,
+                "source_row_start": source_row_offset + start,
+                "ids": batch_ids,
+                "texts": batch_texts,
+                "include_original": include_original,
+                "backend": backend,
+                "segment_batch_size": segment_batch_size,
+                "delimiter": delimiter,
+            }
+            batch_index += 1
+            emitted_docs += len(batch_texts)
+
+        source_row_offset += table.num_rows
+        if max_docs > 0 and emitted_docs >= max_docs:
+            break
+
+
 def write_segmented_shard(
     input_path: str,
     output_path: str,
@@ -282,19 +472,26 @@ def write_segmented_shard(
     id_column: str,
     include_original: bool,
     backend: str,
+    command: str,
+    strict: bool,
+    timeout: float,
     segmenter,
     cache: LRUWordCache,
     row_group_batch_size: int,
     segment_batch_size: int,
     delimiter: str,
     max_docs: int,
+    num_workers: int,
+    worker_mode: str,
+    worker_cache_size: int,
+    max_in_flight: int,
 ) -> dict[str, Any]:
-    pf = pq.ParquetFile(input_path)
     writer: pq.ParquetWriter | None = None
     total_docs = 0
     total_words = 0
     total_split_words = 0
     total_fallback_words = 0
+    cache_entries = 0
     started = time.time()
 
     schema_fields = [
@@ -313,84 +510,101 @@ def write_segmented_shard(
     ])
     schema = pa.schema(schema_fields)
 
+    def write_result(result: dict[str, Any]) -> None:
+        nonlocal writer
+        out_table = pa.table(result["rows"], schema=schema)
+        if writer is None:
+            Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+            writer = pq.ParquetWriter(output_path, schema, compression="zstd")
+        writer.write_table(out_table)
+
+    tasks = iter_segment_tasks(
+        input_path,
+        text_column=text_column,
+        id_column=id_column,
+        include_original=include_original,
+        backend=backend,
+        row_group_batch_size=row_group_batch_size,
+        segment_batch_size=segment_batch_size,
+        delimiter=delimiter,
+        max_docs=max_docs,
+    )
+
     try:
-        source_row_offset = 0
-        for rg_idx in range(pf.num_row_groups):
-            columns = [text_column]
-            if id_column and id_column in pf.schema_arrow.names:
-                columns.append(id_column)
-            table = pf.read_row_group(rg_idx, columns=columns)
-            texts = [
-                "" if value is None else str(value)
-                for value in table.column(text_column).to_pylist()
-            ]
-            ids = (
-                ["" if value is None else str(value) for value in table.column(id_column).to_pylist()]
-                if id_column and id_column in table.column_names
-                else [""] * len(texts)
-            )
-
-            for start in range(0, len(texts), row_group_batch_size):
-                if max_docs > 0 and total_docs >= max_docs:
-                    break
-                batch_texts = texts[start:start + row_group_batch_size]
-                batch_ids = ids[start:start + row_group_batch_size]
-                if max_docs > 0:
-                    remaining = max_docs - total_docs
-                    batch_texts = batch_texts[:remaining]
-                    batch_ids = batch_ids[:remaining]
-
-                lookup = ensure_segmentations(
-                    batch_texts,
+        if num_workers <= 1:
+            for task in tasks:
+                result = build_segmented_rows(
+                    input_path=task["input_path"],
+                    source_row_start=task["source_row_start"],
+                    ids=task["ids"],
+                    texts=task["texts"],
+                    include_original=task["include_original"],
+                    backend=task["backend"],
                     segmenter=segmenter,
                     cache=cache,
                     segment_batch_size=segment_batch_size,
+                    delimiter=delimiter,
                 )
+                result["batch_index"] = task["batch_index"]
+                write_result(result)
+                total_docs += result["docs"]
+                total_words += result["word_count"]
+                total_split_words += result["split_words"]
+                total_fallback_words += result["fallback_words"]
+                cache_entries = result["cache_entries"]
+        else:
+            pending_results: dict[int, dict[str, Any]] = {}
+            next_to_write = 0
+            in_flight = {}
+            task_iter = iter(tasks)
+            task_exhausted = False
 
-                rows: dict[str, list[Any]] = {
-                    "source_path": [],
-                    "source_row": [],
-                    "id": [],
-                    "segmented_text": [],
-                    "segmenter": [],
-                    "word_count": [],
-                    "split_words": [],
-                    "fallback_words": [],
-                }
-                if include_original:
-                    rows["text"] = []
+            def submit_more(pool: ProcessPoolExecutor) -> None:
+                nonlocal task_exhausted
+                while not task_exhausted and len(in_flight) < max_in_flight:
+                    try:
+                        task = next(task_iter)
+                    except StopIteration:
+                        task_exhausted = True
+                        return
+                    future = pool.submit(segment_batch_worker, task)
+                    in_flight[future] = task["batch_index"]
 
-                for local_idx, (doc_id, text) in enumerate(zip(batch_ids, batch_texts)):
-                    segmented_text, stats = segment_text_from_lookup(
-                        text,
-                        lookup,
-                        delimiter=delimiter,
+            executor_cls = (
+                ProcessPoolExecutor
+                if worker_mode == "process"
+                else ThreadPoolExecutor
+            )
+            with executor_cls(
+                max_workers=num_workers,
+                initializer=init_segment_worker,
+                initargs=(backend, command, strict, timeout, worker_cache_size),
+            ) as pool:
+                submit_more(pool)
+                while in_flight:
+                    done, _not_done = wait(
+                        in_flight,
+                        return_when=FIRST_COMPLETED,
                     )
-                    rows["source_path"].append(input_path)
-                    rows["source_row"].append(source_row_offset + start + local_idx)
-                    rows["id"].append(doc_id)
-                    if include_original:
-                        rows["text"].append(text)
-                    rows["segmented_text"].append(segmented_text)
-                    rows["segmenter"].append(backend)
-                    rows["word_count"].append(stats["word_count"])
-                    rows["split_words"].append(stats["split_words"])
-                    rows["fallback_words"].append(stats["fallback_words"])
+                    for future in done:
+                        batch_index = in_flight.pop(future)
+                        result = future.result()
+                        pending_results[batch_index] = result
 
-                    total_docs += 1
-                    total_words += stats["word_count"]
-                    total_split_words += stats["split_words"]
-                    total_fallback_words += stats["fallback_words"]
+                    while next_to_write in pending_results:
+                        result = pending_results.pop(next_to_write)
+                        write_result(result)
+                        total_docs += result["docs"]
+                        total_words += result["word_count"]
+                        total_split_words += result["split_words"]
+                        total_fallback_words += result["fallback_words"]
+                        cache_entries = max(
+                            cache_entries,
+                            int(result.get("cache_entries", 0) or 0),
+                        )
+                        next_to_write += 1
 
-                out_table = pa.table(rows, schema=schema)
-                if writer is None:
-                    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-                    writer = pq.ParquetWriter(output_path, schema, compression="zstd")
-                writer.write_table(out_table)
-
-            source_row_offset += table.num_rows
-            if max_docs > 0 and total_docs >= max_docs:
-                break
+                    submit_more(pool)
     finally:
         if writer is not None:
             writer.close()
@@ -406,6 +620,11 @@ def write_segmented_shard(
         "elapsed_seconds": elapsed,
         "docs_per_sec": total_docs / elapsed if elapsed > 0 else 0.0,
         "words_per_sec": total_words / elapsed if elapsed > 0 else 0.0,
+        "num_workers": num_workers,
+        "worker_mode": worker_mode,
+        "worker_cache_size": worker_cache_size if num_workers > 1 else cache.max_size,
+        "max_in_flight": max_in_flight if num_workers > 1 else 1,
+        "cache_entries_at_end": cache_entries,
         "sha256": file_sha256(output_path) if os.path.exists(output_path) else "",
     }
 
@@ -431,6 +650,39 @@ def main() -> None:
     parser.add_argument("--segment-batch-size", type=int, default=2048)
     parser.add_argument("--word-cache-size", type=int, default=200000)
     parser.add_argument(
+        "--num-workers",
+        type=int,
+        default=int(os.environ.get("SEGMENT_WORKERS", "1")),
+        help=(
+            "Parallel worker processes per shard. Each worker creates its own "
+            "segmenter instance; the parent writes parquet rows in source order."
+        ),
+    )
+    parser.add_argument(
+        "--worker-mode",
+        choices=("process", "thread"),
+        default=os.environ.get("SEGMENT_WORKER_MODE", "process"),
+        help=(
+            "Parallel executor type. Use process workers for CPU-node runs; "
+            "thread workers are useful for local smoke tests or network segmenters."
+        ),
+    )
+    parser.add_argument(
+        "--worker-cache-size",
+        type=int,
+        default=int(os.environ.get("SEGMENT_WORKER_CACHE_SIZE", "0")),
+        help=(
+            "Per-worker word cache size. Default 0 splits --word-cache-size "
+            "across workers."
+        ),
+    )
+    parser.add_argument(
+        "--max-in-flight",
+        type=int,
+        default=int(os.environ.get("SEGMENT_MAX_IN_FLIGHT", "0")),
+        help="Maximum queued segmentation batches. Default is 2x --num-workers.",
+    )
+    parser.add_argument(
         "--delimiter",
         type=str,
         default=MORPHEME_BOUNDARY,
@@ -452,6 +704,19 @@ def main() -> None:
     )
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
+
+    num_workers = max(1, args.num_workers)
+    worker_mode = args.worker_mode
+    worker_cache_size = (
+        args.worker_cache_size
+        if args.worker_cache_size > 0
+        else max(1000, args.word_cache_size // num_workers)
+    )
+    max_in_flight = (
+        args.max_in_flight
+        if args.max_in_flight > 0
+        else max(1, num_workers * 2)
+    )
 
     all_parquet_paths = list_parquet_files(args.data_dir or None)
     if args.max_files > 0:
@@ -506,6 +771,8 @@ def main() -> None:
             row_group_batch_size=args.row_group_batch_size,
             segment_batch_size=args.segment_batch_size,
             word_cache_size=args.word_cache_size,
+            num_workers=num_workers,
+            worker_mode=worker_mode,
             max_docs=args.max_docs,
             started=started,
             cache_entries=0,
@@ -523,6 +790,14 @@ def main() -> None:
     )
     cache = LRUWordCache(args.word_cache_size)
     outputs = []
+    print(
+        "Segmentation worker config: "
+        f"num_workers={num_workers} "
+        f"worker_mode={worker_mode} "
+        f"worker_cache_size={worker_cache_size} "
+        f"max_in_flight={max_in_flight}",
+        flush=True,
+    )
 
     try:
         for input_path in parquet_paths:
@@ -545,6 +820,8 @@ def main() -> None:
                         row_group_batch_size=args.row_group_batch_size,
                         segment_batch_size=args.segment_batch_size,
                         word_cache_size=args.word_cache_size,
+                        num_workers=num_workers,
+                        worker_mode=worker_mode,
                         max_docs=args.max_docs,
                         started=started,
                         cache_entries=len(cache),
@@ -570,12 +847,19 @@ def main() -> None:
                 id_column=args.id_column,
                 include_original=not args.compact,
                 backend=args.backend,
+                command=args.command,
+                strict=args.strict,
+                timeout=args.timeout,
                 segmenter=segmenter,
                 cache=cache,
                 row_group_batch_size=args.row_group_batch_size,
                 segment_batch_size=args.segment_batch_size,
                 delimiter=args.delimiter,
                 max_docs=args.max_docs,
+                num_workers=num_workers,
+                worker_mode=worker_mode,
+                worker_cache_size=worker_cache_size,
+                max_in_flight=max_in_flight,
             )
             os.replace(tmp_output_path, output_path)
             shard_stats["output_path"] = output_path
@@ -597,6 +881,8 @@ def main() -> None:
                     row_group_batch_size=args.row_group_batch_size,
                     segment_batch_size=args.segment_batch_size,
                     word_cache_size=args.word_cache_size,
+                    num_workers=num_workers,
+                    worker_mode=worker_mode,
                     max_docs=args.max_docs,
                     started=started,
                     cache_entries=len(cache),
@@ -626,6 +912,8 @@ def main() -> None:
         row_group_batch_size=args.row_group_batch_size,
         segment_batch_size=args.segment_batch_size,
         word_cache_size=args.word_cache_size,
+        num_workers=num_workers,
+        worker_mode=worker_mode,
         max_docs=args.max_docs,
         started=started,
         cache_entries=len(cache),

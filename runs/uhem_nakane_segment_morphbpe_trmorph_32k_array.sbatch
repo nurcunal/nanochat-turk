@@ -19,9 +19,9 @@
 #SBATCH --array=0-29%6
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=128
 #SBATCH --time=2-00:00:00
-#SBATCH --mem=32G
+#SBATCH --mem=240G
 #SBATCH --output=%x-%A_%a.out
 #SBATCH --error=%x-%A_%a.err
 
@@ -59,6 +59,14 @@ export TRMORPH_MAX_OUTPUT_LINES_PER_WORD="${TRMORPH_MAX_OUTPUT_LINES_PER_WORD:-5
 export TRMORPH_MAX_ANALYSES_PER_WORD="${TRMORPH_MAX_ANALYSES_PER_WORD:-64}"
 export SEGMENT_BATCH_SIZE="${SEGMENT_BATCH_SIZE:-2048}"
 export WORD_CACHE_SIZE="${WORD_CACHE_SIZE:-500000}"
+export SEGMENT_WORKERS="${SEGMENT_WORKERS:-${SLURM_CPUS_PER_TASK:-128}}"
+export SEGMENT_WORKER_MODE="${SEGMENT_WORKER_MODE:-process}"
+export SEGMENT_MAX_IN_FLIGHT="${SEGMENT_MAX_IN_FLIGHT:-$((SEGMENT_WORKERS * 2))}"
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
+export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
+export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
+export PYARROW_NUM_THREADS="${PYARROW_NUM_THREADS:-1}"
 
 mkdir -p "$SEGMENTED_DATA_DIR"
 
@@ -88,6 +96,9 @@ python -m scripts.morph_segment_corpus \
     --resume \
     --shard-index "$SLURM_ARRAY_TASK_ID" \
     --segment-batch-size "$SEGMENT_BATCH_SIZE" \
-    --word-cache-size "$WORD_CACHE_SIZE"
+    --word-cache-size "$WORD_CACHE_SIZE" \
+    --num-workers "$SEGMENT_WORKERS" \
+    --worker-mode "$SEGMENT_WORKER_MODE" \
+    --max-in-flight "$SEGMENT_MAX_IN_FLIGHT"
 
 echo "Completed segmented shard index $SLURM_ARRAY_TASK_ID"
