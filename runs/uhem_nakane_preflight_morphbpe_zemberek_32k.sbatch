@@ -55,7 +55,8 @@ import importlib.util
 raise SystemExit(0 if importlib.util.find_spec("zemberek") else 1)
 PY
 then
-    python -m pip install "$ZEMBEREK_PIP_PACKAGE"
+    command -v uv >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh
+    uv pip install --python .venv/bin/python "$ZEMBEREK_PIP_PACKAGE"
 fi
 
 python - <<'PY'
