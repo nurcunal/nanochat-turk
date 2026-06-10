@@ -1,0 +1,42 @@
+{
+  "tokenizers": [
+    {
+      "tokenizer": "bpe_32768",
+      "implementation": "bpe",
+      "docs": 50000,
+      "bytes": 186328421,
+      "tokens": 37228014,
+      "bytes_per_token": 5.005059388878493,
+      "tokens_per_word": 1.6156567969203757,
+      "isolated_word_tokens_per_word": 2.0472,
+      "single_token_word_rate": 0.310544,
+      "long_word_tokens_per_word": 2.8417174025013536,
+      "boundary_crossed_rate": 0.839476437606808,
+      "crossing_tokens_per_1k_tokens": 210.3500605753506,
+      "roundtrip_failure_rate": 0.0,
+      "unique_token_rate": 0.997039794921875,
+      "vocab_utf8_decodable_rate": 0.9950547941023841,
+      "encode_tokens_per_sec": 12127686.110053983,
+      "metrics_path": "docs/tokenizer_tests/tokenizer_metrics/bpe_32768_metrics.json"
+    },
+    {
+      "tokenizer": "morphbpe_trmorph_32768",
+      "implementation": "morphbpe",
+      "docs": 50000,
+      "bytes": 186328421,
+      "tokens": 41858836,
+      "bytes_per_token": 4.451352182846174,
+      "tokens_per_word": 1.8166296191511937,
+      "isolated_word_tokens_per_word": 1.989042,
+      "single_token_word_rate": 0.340868,
+      "long_word_tokens_per_word": 2.804646125807261,
+      "boundary_crossed_rate": 0.4569405581816658,
+      "crossing_tokens_per_1k_tokens": 125.29555289115063,
+      "roundtrip_failure_rate": 0.0,
+      "unique_token_rate": 0.99615478515625,
+      "vocab_utf8_decodable_rate": 0.9947800604414054,
+      "encode_tokens_per_sec": 13419183.780844903,
+      "metrics_path": "docs/tokenizer_tests/tokenizer_metrics/morphbpe_trmorph_32768_metrics.json"
+    }
+  ]
+}

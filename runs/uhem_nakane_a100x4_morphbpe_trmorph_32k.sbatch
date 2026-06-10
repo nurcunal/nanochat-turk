@@ -2,9 +2,8 @@
 
 # Altay/UHeM TRmorph MorphBPE 32k base-model run.
 #
-# Default: 2 nodes x 4 A100 = 8 GPUs. If a100x4q is tight, submit with
-# --nodes=1 or export NNODES=1 and edit/override the SBATCH node count. Use 4
-# nodes only after the 2-node path has run cleanly.
+# Default: 1 node x 4 A100 = 4 GPUs for the first TRmorph MorphBPE run. Use
+# 2 or 4 nodes only after the single-node path has run cleanly.
 #
 # Submit from the repo root on Altay after CPU prep completes:
 #   sbatch runs/uhem_nakane_a100x4_morphbpe_trmorph_32k.sbatch
@@ -12,7 +11,7 @@
 #SBATCH --job-name=nanochat-tr-mbpe-trm32k
 #SBATCH --account=nakane
 #SBATCH --partition=a100x4q
-#SBATCH --nodes=2
+#SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=64
 #SBATCH --gres=gpu:a100:4
