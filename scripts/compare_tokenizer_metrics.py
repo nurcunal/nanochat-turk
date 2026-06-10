@@ -101,6 +101,7 @@ def render_markdown(rows: list[dict[str, Any]]) -> str:
         "- `Boundary crossed`: share of TRmorph morpheme boundaries crossed by at least one tokenizer token.",
         "- `Crossing tok/1k`: tokenizer tokens per 1,000 sample tokens that cross a TRmorph boundary.",
         "- `Roundtrip fail`: fraction of sampled documents where decode(encode(text)) differs from text.",
+        "- High `Roundtrip fail` is expected for some encoder/seq2seq tokenizers that normalize or do not preserve raw text exactly.",
         "",
         "## Source Files",
         "",

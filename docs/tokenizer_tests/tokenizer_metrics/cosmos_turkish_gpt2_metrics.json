@@ -1,0 +1,89 @@
+{
+  "tokenizer_name": "cosmos_turkish_gpt2",
+  "tokenizer_dir": "ytu-ce-cosmos/turkish-gpt2",
+  "tokenizer_config": {
+    "name": "cosmos_turkish_gpt2",
+    "implementation": "bpe",
+    "source": "huggingface",
+    "model_id": "ytu-ce-cosmos/turkish-gpt2",
+    "vocab_size": 50257
+  },
+  "split": "train",
+  "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph-segmented",
+  "text_column": "segmented_text",
+  "input_has_morph_boundaries": true,
+  "morph_boundary_codepoint": "U+E000",
+  "docs": 50000,
+  "bytes": 186328421,
+  "chars": 170359307,
+  "words": 23042031,
+  "tokens": 35875345,
+  "unique_tokens_in_sample": 49819,
+  "unique_token_rate_in_sample": 0.9912847961478003,
+  "decode_strip": "",
+  "docs_with_decode_strip": 0,
+  "bytes_per_token": 5.193773634790133,
+  "chars_per_token": 4.7486458179008455,
+  "tokens_per_byte": 0.19253823333800482,
+  "tokens_per_char": 0.21058635205648024,
+  "tokens_per_word": 1.5569523797620097,
+  "token_fertility": 1.5569523797620097,
+  "tokens_per_doc_distribution": {
+    "count": 50000,
+    "mean": 717.5069,
+    "p50": 312.0,
+    "p90": 1281.0,
+    "p95": 2108.0,
+    "p99": 6400.4100000000835,
+    "max": 168433
+  },
+  "word_fertility_isolated": {
+    "sample_words": 500000,
+    "unique_words": 102875,
+    "tokens": 941804,
+    "tokens_per_word": 1.883608,
+    "single_token_word_rate": 0.373974,
+    "multi_token_word_rate": 0.626026,
+    "token_count_distribution": {
+      "count": 500000,
+      "mean": 1.883608,
+      "p50": 2.0,
+      "p90": 3.0,
+      "p95": 3.0,
+      "p99": 4.0,
+      "max": 35
+    },
+    "long_word_tokens_per_word": 2.6115506015663175,
+    "long_word_count": 151438
+  },
+  "vocabulary": {
+    "vocab_size": 50257,
+    "special_tokens": 0,
+    "mergeable_tokens_seen": 50257,
+    "utf8_decodable_token_rate": 1.0,
+    "token_byte_length_distribution": {
+      "count": 50257,
+      "mean": 7.593389975525797,
+      "p50": 7.0,
+      "p90": 12.0,
+      "p95": 14.0,
+      "p99": 17.0,
+      "max": 97
+    }
+  },
+  "morph_boundary": {
+    "eligible_docs": 50000,
+    "boundary_count": 12706795,
+    "crossing_tokens": 7914957,
+    "crossed_boundaries": 11047158,
+    "docs_with_crossing": 50000,
+    "crossed_boundary_rate": 0.8693898028574475,
+    "docs_with_crossing_rate": 1.0,
+    "crossing_tokens_per_1k_tokens": 220.6238574151691
+  },
+  "roundtrip_failures": 0,
+  "roundtrip_failure_rate": 0.0,
+  "encode_seconds": 52.64356541633606,
+  "encode_docs_per_sec": 949.7836934974066,
+  "encode_tokens_per_sec": 681476.3535918744
+}

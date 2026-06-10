@@ -20,6 +20,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from huggingface_hub import hf_hub_download
 from nanochat.dataset import DATA_DIR, parquets_iter_batched
 from nanochat.morphology import MORPHEME_BOUNDARY, strip_morpheme_boundaries
 from nanochat.morphology.morphbpe import strip_boundaries_with_offsets
@@ -29,6 +30,8 @@ from nanochat.tokenizer import (
     get_tokenizer_dir,
     get_tokenizer_name,
 )
+from tokenizers import BertWordPieceTokenizer
+from tokenizers import Tokenizer as HFTokenizer
 
 
 WORD_RE = re.compile(r"\w+", flags=re.UNICODE)
@@ -88,6 +91,110 @@ def load_tokenizer(tokenizer_dir: str):
     return get_tokenizer()
 
 
+def hf_download_file(repo_id: str, filename: str) -> str:
+    try:
+        return hf_hub_download(
+            repo_id=repo_id,
+            filename=filename,
+            local_files_only=True,
+        )
+    except Exception:
+        return hf_hub_download(repo_id=repo_id, filename=filename)
+
+
+class HuggingFaceTokenizerAdapter:
+    """Small compatibility wrapper around Hugging Face `tokenizers` objects."""
+
+    def __init__(
+        self,
+        backend: HFTokenizer,
+        *,
+        name: str,
+        model_id: str,
+        implementation: str,
+        batch_size: int,
+    ) -> None:
+        self.backend = backend
+        self.decode_strip = ""
+        self.batch_size = batch_size
+        self.tokenizer_config = {
+            "name": name,
+            "implementation": implementation,
+            "source": "huggingface",
+            "model_id": model_id,
+            "vocab_size": backend.get_vocab_size(with_added_tokens=True),
+        }
+
+    @classmethod
+    def from_identifier(
+        cls,
+        identifier: str,
+        *,
+        name: str,
+        implementation: str,
+        batch_size: int,
+    ) -> "HuggingFaceTokenizerAdapter":
+        path = Path(identifier)
+        backend: HFTokenizer
+        wants_wordpiece = "wordpiece" in implementation.lower()
+        if path.is_file() and path.suffix == ".json":
+            backend = HFTokenizer.from_file(str(path))
+        elif path.is_dir() and (path / "tokenizer.json").is_file():
+            backend = HFTokenizer.from_file(str(path / "tokenizer.json"))
+        elif path.is_file() and path.name == "vocab.txt":
+            backend = BertWordPieceTokenizer(str(path), lowercase=False, strip_accents=False)
+        elif path.is_dir() and (path / "vocab.txt").is_file():
+            backend = BertWordPieceTokenizer(
+                str(path / "vocab.txt"),
+                lowercase=False,
+                strip_accents=False,
+            )
+        elif wants_wordpiece:
+            vocab_path = hf_download_file(identifier, "vocab.txt")
+            backend = BertWordPieceTokenizer(
+                vocab_path,
+                lowercase=False,
+                strip_accents=False,
+            )
+        else:
+            tokenizer_path = hf_download_file(identifier, "tokenizer.json")
+            backend = HFTokenizer.from_file(tokenizer_path)
+        resolved_name = name or identifier
+        resolved_impl = implementation or type(backend.model).__name__.lower()
+        return cls(
+            backend,
+            name=resolved_name,
+            model_id=identifier,
+            implementation=resolved_impl,
+            batch_size=batch_size,
+        )
+
+    def encode(self, text_or_texts: str | list[str], num_threads: int = 0):
+        del num_threads
+        if isinstance(text_or_texts, str):
+            return self.backend.encode(text_or_texts, add_special_tokens=False).ids
+        return self.encode_with_offsets(text_or_texts)[0]
+
+    def encode_with_offsets(
+        self,
+        texts: list[str],
+    ) -> tuple[list[list[int]], list[list[tuple[int, int]]]]:
+        all_ids: list[list[int]] = []
+        all_offsets: list[list[tuple[int, int]]] = []
+        for start in range(0, len(texts), self.batch_size):
+            chunk = texts[start:start + self.batch_size]
+            encodings = self.backend.encode_batch(chunk, add_special_tokens=False)
+            all_ids.extend(encoding.ids for encoding in encodings)
+            all_offsets.extend(encoding.offsets for encoding in encodings)
+        return all_ids, all_offsets
+
+    def decode(self, ids: list[int]) -> str:
+        return self.backend.decode(ids, skip_special_tokens=False)
+
+    def get_vocab_size(self) -> int:
+        return self.backend.get_vocab_size(with_added_tokens=True)
+
+
 def char_offsets_to_byte_offsets(text: str, char_offsets: tuple[int, ...]) -> set[int]:
     wanted = set(char_offsets)
     out: set[int] = set()
@@ -110,6 +217,7 @@ def boundary_violation_stats(
     encoded: list[list[int]],
     visible_docs: list[str],
     boundary_offsets_by_doc: list[tuple[int, ...]],
+    token_offsets_by_doc: list[list[tuple[int, int]]] | None = None,
 ) -> dict[str, float | int]:
     token_len_cache: dict[int, int] = {}
     boundary_count = 0
@@ -118,29 +226,41 @@ def boundary_violation_stats(
     docs_with_crossing = 0
     eligible_docs = 0
 
-    for ids, text, char_offsets in zip(encoded, visible_docs, boundary_offsets_by_doc):
+    for doc_idx, (ids, text, char_offsets) in enumerate(zip(encoded, visible_docs, boundary_offsets_by_doc)):
         if not char_offsets:
             continue
         eligible_docs += 1
-        byte_offsets = sorted(char_offsets_to_byte_offsets(text, char_offsets))
-        boundary_count += len(byte_offsets)
-        cursor = 0
+        boundary_count += len(char_offsets)
         doc_crossing = False
-        for token_id in ids:
-            token_len = token_len_cache.get(token_id)
-            if token_len is None:
-                token_len = len(tokenizer.enc.decode_single_token_bytes(token_id))
-                token_len_cache[token_id] = token_len
-            start = cursor
-            end = cursor + token_len
-            left = bisect.bisect_right(byte_offsets, start)
-            right = bisect.bisect_left(byte_offsets, end)
-            crossed_here = right - left
-            if crossed_here:
-                crossing_tokens += 1
-                crossed_boundaries += crossed_here
-                doc_crossing = True
-            cursor = end
+        if token_offsets_by_doc is not None:
+            sorted_offsets = sorted(char_offsets)
+            token_offsets = token_offsets_by_doc[doc_idx]
+            for start, end in token_offsets:
+                left = bisect.bisect_right(sorted_offsets, start)
+                right = bisect.bisect_left(sorted_offsets, end)
+                crossed_here = right - left
+                if crossed_here:
+                    crossing_tokens += 1
+                    crossed_boundaries += crossed_here
+                    doc_crossing = True
+        else:
+            byte_offsets = sorted(char_offsets_to_byte_offsets(text, char_offsets))
+            cursor = 0
+            for token_id in ids:
+                token_len = token_len_cache.get(token_id)
+                if token_len is None:
+                    token_len = len(tokenizer.enc.decode_single_token_bytes(token_id))
+                    token_len_cache[token_id] = token_len
+                start = cursor
+                end = cursor + token_len
+                left = bisect.bisect_right(byte_offsets, start)
+                right = bisect.bisect_left(byte_offsets, end)
+                crossed_here = right - left
+                if crossed_here:
+                    crossing_tokens += 1
+                    crossed_boundaries += crossed_here
+                    doc_crossing = True
+                cursor = end
         if doc_crossing:
             docs_with_crossing += 1
 
@@ -207,6 +327,24 @@ def word_fertility_stats(
 
 
 def vocabulary_stats(tokenizer) -> dict[str, Any]:
+    if isinstance(tokenizer, HuggingFaceTokenizerAdapter):
+        vocab = tokenizer.backend.get_vocab(with_added_tokens=True)
+        decoded_lengths: list[int] = []
+        utf8_decodable = 0
+        for token_id in sorted(vocab.values()):
+            decoded = tokenizer.decode([token_id])
+            if not decoded:
+                continue
+            decoded_lengths.append(len(decoded.encode("utf-8")))
+            utf8_decodable += 1
+        return {
+            "vocab_size": tokenizer.get_vocab_size(),
+            "special_tokens": tokenizer.get_vocab_size() - len(tokenizer.backend.get_vocab(with_added_tokens=False)),
+            "mergeable_tokens_seen": len(decoded_lengths),
+            "utf8_decodable_token_rate": safe_div(utf8_decodable, len(decoded_lengths)),
+            "token_byte_length_distribution": distribution_stats(decoded_lengths),
+        }
+
     special_ids = {
         tokenizer.encode_special(token)
         for token in tokenizer.get_special_tokens()
@@ -243,6 +381,27 @@ def main() -> None:
         default="",
         help="Tokenizer directory. Default = active nanochat tokenizer.",
     )
+    parser.add_argument(
+        "--hf-tokenizer",
+        type=str,
+        default="",
+        help=(
+            "Hugging Face tokenizer repo id or local tokenizer.json/vocab.txt path. "
+            "Uses tokenizer files only, never model weights."
+        ),
+    )
+    parser.add_argument(
+        "--tokenizer-name",
+        type=str,
+        default="",
+        help="Optional display name for --hf-tokenizer metrics.",
+    )
+    parser.add_argument(
+        "--tokenizer-implementation",
+        type=str,
+        default="",
+        help="Optional implementation label for --hf-tokenizer metrics.",
+    )
     parser.add_argument("--split", type=str, default="train", choices=["train", "val"])
     parser.add_argument(
         "--data-dir",
@@ -276,13 +435,27 @@ def main() -> None:
         ),
     )
     parser.add_argument("--num-threads", type=int, default=8)
+    parser.add_argument("--hf-batch-size", type=int, default=1000)
     parser.add_argument("--output", type=str, default="", help="Optional JSON output path")
     parser.add_argument("--no-report", action="store_true", help="Do not write into nanochat.report.")
     args = parser.parse_args()
 
-    tokenizer_dir = args.tokenizer_dir or get_tokenizer_dir()
-    tokenizer_config = load_tokenizer_config(tokenizer_dir)
-    tokenizer = load_tokenizer(args.tokenizer_dir)
+    if args.hf_tokenizer and args.tokenizer_dir:
+        raise ValueError("Use only one of --hf-tokenizer or --tokenizer-dir")
+
+    if args.hf_tokenizer:
+        tokenizer = HuggingFaceTokenizerAdapter.from_identifier(
+            args.hf_tokenizer,
+            name=args.tokenizer_name,
+            implementation=args.tokenizer_implementation,
+            batch_size=args.hf_batch_size,
+        )
+        tokenizer_dir = args.hf_tokenizer
+        tokenizer_config = tokenizer.tokenizer_config
+    else:
+        tokenizer_dir = args.tokenizer_dir or get_tokenizer_dir()
+        tokenizer_config = load_tokenizer_config(tokenizer_dir)
+        tokenizer = load_tokenizer(args.tokenizer_dir)
     decode_strip = getattr(tokenizer, "decode_strip", "")
     resolved_data_dir = args.data_dir or DATA_DIR
 
@@ -318,8 +491,12 @@ def main() -> None:
     if not docs:
         raise RuntimeError("No documents found for tokenizer metrics")
 
+    token_offsets_by_doc: list[list[tuple[int, int]]] | None = None
     t0 = time.time()
-    encoded = tokenizer.encode(visible_docs, num_threads=args.num_threads)
+    if isinstance(tokenizer, HuggingFaceTokenizerAdapter):
+        encoded, token_offsets_by_doc = tokenizer.encode_with_offsets(visible_docs)
+    else:
+        encoded = tokenizer.encode(visible_docs, num_threads=args.num_threads)
     elapsed = time.time() - t0
 
     token_lengths = [len(ids) for ids in encoded]
@@ -338,6 +515,7 @@ def main() -> None:
         encoded,
         visible_docs,
         boundary_offsets_by_doc,
+        token_offsets_by_doc,
     )
     boundary_stats["crossing_tokens_per_1k_tokens"] = (
         1000.0 * safe_div(boundary_stats["crossing_tokens"], total_tokens)

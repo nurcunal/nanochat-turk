@@ -1,0 +1,89 @@
+{
+  "tokenizer_name": "kumru_2b",
+  "tokenizer_dir": "vngrs-ai/Kumru-2B",
+  "tokenizer_config": {
+    "name": "kumru_2b",
+    "implementation": "bpe",
+    "source": "huggingface",
+    "model_id": "vngrs-ai/Kumru-2B",
+    "vocab_size": 50176
+  },
+  "split": "train",
+  "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph-segmented",
+  "text_column": "segmented_text",
+  "input_has_morph_boundaries": true,
+  "morph_boundary_codepoint": "U+E000",
+  "docs": 50000,
+  "bytes": 186328421,
+  "chars": 170359307,
+  "words": 23042031,
+  "tokens": 38427427,
+  "unique_tokens_in_sample": 49577,
+  "unique_token_rate_in_sample": 0.9880620216836735,
+  "decode_strip": "",
+  "docs_with_decode_strip": 0,
+  "bytes_per_token": 4.848839371941296,
+  "chars_per_token": 4.433273843705435,
+  "tokens_per_byte": 0.20623492000718452,
+  "tokens_per_char": 0.22556693659243401,
+  "tokens_per_word": 1.6677100642734142,
+  "token_fertility": 1.6677100642734142,
+  "tokens_per_doc_distribution": {
+    "count": 50000,
+    "mean": 768.54854,
+    "p50": 340.0,
+    "p90": 1370.0,
+    "p95": 2238.0499999999956,
+    "p99": 6844.010000000002,
+    "max": 200277
+  },
+  "word_fertility_isolated": {
+    "sample_words": 500000,
+    "unique_words": 102875,
+    "tokens": 840179,
+    "tokens_per_word": 1.680358,
+    "single_token_word_rate": 0.500314,
+    "multi_token_word_rate": 0.499686,
+    "token_count_distribution": {
+      "count": 500000,
+      "mean": 1.680358,
+      "p50": 1.0,
+      "p90": 3.0,
+      "p95": 3.0,
+      "p99": 4.0,
+      "max": 35
+    },
+    "long_word_tokens_per_word": 2.1696601909692417,
+    "long_word_count": 151438
+  },
+  "vocabulary": {
+    "vocab_size": 50176,
+    "special_tokens": 0,
+    "mergeable_tokens_seen": 50176,
+    "utf8_decodable_token_rate": 1.0,
+    "token_byte_length_distribution": {
+      "count": 50176,
+      "mean": 8.30793606505102,
+      "p50": 8.0,
+      "p90": 14.0,
+      "p95": 16.0,
+      "p99": 21.0,
+      "max": 31
+    }
+  },
+  "morph_boundary": {
+    "eligible_docs": 50000,
+    "boundary_count": 12706795,
+    "crossing_tokens": 7298743,
+    "crossed_boundaries": 9842042,
+    "docs_with_crossing": 49999,
+    "crossed_boundary_rate": 0.7745495225192506,
+    "docs_with_crossing_rate": 0.99998,
+    "crossing_tokens_per_1k_tokens": 189.93577165601016
+  },
+  "roundtrip_failures": 0,
+  "roundtrip_failure_rate": 0.0,
+  "encode_seconds": 46.96286058425903,
+  "encode_docs_per_sec": 1064.6710906864764,
+  "encode_tokens_per_sec": 818251.4123272991
+}
