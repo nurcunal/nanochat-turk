@@ -1,0 +1,11 @@
+{
+  "tokenizer_name": "morphbpe_trmorph_32768",
+  "tokenizer_kind": "morphbpe",
+  "segmenter": "trmorph",
+  "uhem_tokenizer_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/tokenizers/morphbpe_trmorph_32768",
+  "uhem_segmented_dataset_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph",
+  "uhem_segmented_dataset_alias": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/datasets/trmorph-segmented",
+  "uhem_raw_dataset_dir": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_data_fineweb2_tur_latn",
+  "uhem_raw_dataset_alias": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/datasets/raw-unsegmented-fineweb2-tur-latn",
+  "github_artifact_dir": "artifacts/tokenizers/morphbpe_trmorph_32768"
+}

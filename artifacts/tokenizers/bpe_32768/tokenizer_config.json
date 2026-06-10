@@ -1,0 +1,7 @@
+{
+  "name": "bpe_32768",
+  "implementation": "bpe",
+  "vocab_size": 32768,
+  "max_chars": 2000000000,
+  "doc_cap": 10000
+}

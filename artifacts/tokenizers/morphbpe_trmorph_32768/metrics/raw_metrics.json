@@ -1,0 +1,20 @@
+{
+  "tokenizer_name": "morphbpe_trmorph_32768",
+  "tokenizer_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/tokenizers/morphbpe_trmorph_32768",
+  "split": "train",
+  "data_dir": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_data_fineweb2_tur_latn",
+  "text_column": "text",
+  "docs": 10000,
+  "bytes": 48975401,
+  "chars": 44851222,
+  "words": 6077942,
+  "tokens": 11211416,
+  "decode_strip": "",
+  "docs_with_decode_strip": 0,
+  "bytes_per_token": 4.368351062880906,
+  "chars_per_token": 4.000495744694515,
+  "tokens_per_word": 1.8446072700265979,
+  "encode_seconds": 1.1403119564056396,
+  "encode_docs_per_sec": 8769.530077997999,
+  "encode_tokens_per_sec": 9831884.9828948
+}

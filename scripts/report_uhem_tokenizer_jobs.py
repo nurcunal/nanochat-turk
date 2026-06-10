@@ -312,15 +312,31 @@ def render_markdown(payload: dict[str, Any]) -> str:
             )
         )
 
-    lines.extend([
-        "",
-        "## Notes",
-        "",
-        "- Tokenizer training has not started until the finalizer job leaves `PENDING`.",
-        "- The model run and HF tokenizer upload are dependency-held until the finalizer succeeds.",
-        "- Refresh this report by rerunning `scripts/report_uhem_tokenizer_jobs.py` with the same job IDs.",
-        "",
-    ])
+    state_by_job = {row.get("JobID", ""): row.get("State", "") for row in rows}
+    notes = []
+    finalize_state = state_by_job.get(payload["jobs"]["finalize_job"], "")
+    gpu_state = state_by_job.get(payload["jobs"]["gpu_job"], "")
+    hf_state = state_by_job.get(payload["jobs"]["hf_job"], "")
+    if finalize_state == "COMPLETED":
+        notes.append("- Finalize/tokenizer prep completed successfully.")
+    elif finalize_state:
+        notes.append(f"- Finalize/tokenizer prep state: `{finalize_state}`.")
+    if gpu_state:
+        notes.append(f"- Model run state: `{gpu_state}`.")
+    if hf_state:
+        notes.append(f"- HF tokenizer upload state: `{hf_state}`.")
+    if gpu_state == "FAILED" or hf_state == "FAILED":
+        notes.append(
+            "- Failed downstream jobs should be diagnosed from their Slurm logs "
+            "and resubmitted after wrapper fixes; segmented shards and tokenizer "
+            "artifacts are preserved."
+        )
+    notes.append(
+        "- Refresh this report by rerunning `scripts/report_uhem_tokenizer_jobs.py` "
+        "with the same job IDs."
+    )
+
+    lines.extend(["", "## Notes", "", *notes, ""])
     return "\n".join(lines)
 
 

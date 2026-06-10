@@ -35,13 +35,17 @@ fi
 module purge
 module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
 
-REPO_DIR="${SLURM_SUBMIT_DIR:-$PWD}"
+DEFAULT_REPO_DIR="$HOME/nanochat-turk"
+REPO_DIR="${REPO_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
+if [ ! -d "$REPO_DIR/.venv" ] && [ -d "$DEFAULT_REPO_DIR/.venv" ]; then
+    REPO_DIR="$DEFAULT_REPO_DIR"
+fi
 cd "$REPO_DIR"
 
 export PATH="$HOME/.local/bin:$PATH"
 export NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-$HOME/nanochat-turk-morphbpe-trmorph-32768}"
 export NANOCHAT_TOKENIZER_NAME="${NANOCHAT_TOKENIZER_NAME:-morphbpe_trmorph_32768}"
-export SEGMENTED_DATA_DIR="${SEGMENTED_DATA_DIR:-$NANOCHAT_BASE_DIR/segmented/trmorph}"
+export SEGMENTED_DATA_DIR="${SEGMENTED_DATA_DIR:-$NANOCHAT_BASE_DIR/segmented/trmorph-segmented}"
 export TOKENIZER_METRICS_PATH="${TOKENIZER_METRICS_PATH:-$NANOCHAT_BASE_DIR/${NANOCHAT_TOKENIZER_NAME}_raw_metrics.json}"
 export TOKENIZER_PUBLISH_DIR="${TOKENIZER_PUBLISH_DIR:-$NANOCHAT_BASE_DIR/published_tokenizers/$NANOCHAT_TOKENIZER_NAME}"
 export HF_TOKENIZER_REPO_ID="${HF_TOKENIZER_REPO_ID:-nurcunal/nanochat-turk-tokenizers}"

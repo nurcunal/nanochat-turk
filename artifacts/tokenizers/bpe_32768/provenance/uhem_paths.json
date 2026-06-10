@@ -1,0 +1,9 @@
+{
+  "tokenizer_name": "bpe_32768",
+  "tokenizer_kind": "raw_bpe",
+  "segmenter": "none",
+  "uhem_tokenizer_dir": "/ari/users/nunal/nanochat-turk-d20-bpe32k/tokenizers/bpe_32768",
+  "uhem_raw_dataset_dir": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_data_fineweb2_tur_latn",
+  "uhem_raw_dataset_alias": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/datasets/raw-unsegmented-fineweb2-tur-latn",
+  "github_artifact_dir": "artifacts/tokenizers/bpe_32768"
+}

@@ -34,6 +34,13 @@ module purge
 module load cuda/cuda-12.5-a100q
 module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
 
+DEFAULT_REPO_DIR="$HOME/nanochat-turk"
+REPO_DIR="${REPO_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
+if [ ! -d "$REPO_DIR/.venv" ] && [ -d "$DEFAULT_REPO_DIR/.venv" ]; then
+    REPO_DIR="$DEFAULT_REPO_DIR"
+fi
+cd "$REPO_DIR"
+
 mapfile -t SLURM_HOSTS < <(scontrol show hostnames "$SLURM_JOB_NODELIST")
 export MASTER_ADDR="${MASTER_ADDR:-${SLURM_HOSTS[0]}}"
 export MASTER_PORT="${MASTER_PORT:-$((20000 + SLURM_JOB_ID % 40000))}"
@@ -113,6 +120,7 @@ if [ ! -d ".venv" ]; then
     echo "Missing .venv. Run the MorphBPE CPU prep job before this GPU job." >&2
     exit 2
 fi
+source .venv/bin/activate
 if [ ! -f "$NANOCHAT_DATA_DIR/fineweb2_manifest.json" ]; then
     echo "Missing raw dataset manifest at $NANOCHAT_DATA_DIR/fineweb2_manifest.json" >&2
     exit 2
