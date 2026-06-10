@@ -45,8 +45,10 @@ export TDELIGHT_REPO_DIR="${TDELIGHT_REPO_DIR:-$PWD/dev-ignore/vendor/turkish-de
 export TDELIGHT_VENV="${TDELIGHT_VENV:-$PWD/dev-ignore/venvs/tdelight-uhem-py312}"
 export TDELIGHT_DYNET_SRC="${TDELIGHT_DYNET_SRC:-$PWD/dev-ignore/vendor/dynet-sdist/dyNET-2.1.2}"
 export TDELIGHT_EIGEN_DIR="${TDELIGHT_EIGEN_DIR:-$PWD/dev-ignore/vendor/dynet-eigen/eigen-b2e267dc99d4}"
+export TDELIGHT_DYNET_LIB_DIR="${TDELIGHT_DYNET_LIB_DIR:-$TDELIGHT_DYNET_SRC/build/py3.12-64bit/dynet}"
 export TDELIGHT_MODEL_NAME="${TDELIGHT_MODEL_NAME:-Turkish-jointAll-MTAG_COMP=w_sum-MORPH_COMP=w_sum-POS_COMP=w_sum-COMP_ALPHA=0.1-trialmodel}"
 export TDELIGHT_SEGMENT_CMD="${TDELIGHT_SEGMENT_CMD:-$TDELIGHT_VENV/bin/python scripts/tdelight_segment_cmd.py --repo-dir $TDELIGHT_REPO_DIR --model-name $TDELIGHT_MODEL_NAME}"
+export LD_LIBRARY_PATH="$TDELIGHT_DYNET_LIB_DIR:${LD_LIBRARY_PATH:-}"
 
 mkdir -p "$NANOCHAT_BASE_DIR" "$SEGMENTED_DATA_DIR" "$NANOCHAT_BASE_DIR/datasets"
 
@@ -69,9 +71,11 @@ if [ ! -d "$TDELIGHT_DYNET_SRC" ] || [ ! -d "$TDELIGHT_EIGEN_DIR" ]; then
     exit 2
 fi
 
-# The copied local DyNet tree may contain a macOS build cache. Always force a
-# clean Linux build on UHeM.
-rm -rf "$TDELIGHT_DYNET_SRC/build"
+# The copied local DyNet tree may contain a macOS build cache. If no Linux
+# shared library exists yet, force a clean Linux build on UHeM.
+if [ ! -f "$TDELIGHT_DYNET_LIB_DIR/libdynet.so" ]; then
+    rm -rf "$TDELIGHT_DYNET_SRC/build"
+fi
 
 if ! command -v uv >/dev/null 2>&1; then
     curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -93,6 +97,7 @@ then
     export EIGEN3_INCLUDE_DIR="$TDELIGHT_EIGEN_DIR"
     export MAKE_FLAGS="-j ${SLURM_CPUS_PER_TASK:-16}"
     uv pip install --python "$TDELIGHT_VENV/bin/python" "$TDELIGHT_DYNET_SRC"
+    export LD_LIBRARY_PATH="$TDELIGHT_DYNET_LIB_DIR:${LD_LIBRARY_PATH:-}"
 fi
 
 "$TDELIGHT_VENV/bin/python" - <<'PY'

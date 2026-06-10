@@ -46,8 +46,11 @@ export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-$NANOCHAT_BASE_DIR/hf-datasets-ca
 
 export TDELIGHT_REPO_DIR="${TDELIGHT_REPO_DIR:-$PWD/dev-ignore/vendor/turkish-delight-nlp-api}"
 export TDELIGHT_VENV="${TDELIGHT_VENV:-$PWD/dev-ignore/venvs/tdelight-uhem-py312}"
+export TDELIGHT_DYNET_SRC="${TDELIGHT_DYNET_SRC:-$PWD/dev-ignore/vendor/dynet-sdist/dyNET-2.1.2}"
+export TDELIGHT_DYNET_LIB_DIR="${TDELIGHT_DYNET_LIB_DIR:-$TDELIGHT_DYNET_SRC/build/py3.12-64bit/dynet}"
 export TDELIGHT_MODEL_NAME="${TDELIGHT_MODEL_NAME:-Turkish-jointAll-MTAG_COMP=w_sum-MORPH_COMP=w_sum-POS_COMP=w_sum-COMP_ALPHA=0.1-trialmodel}"
 export TDELIGHT_SEGMENT_CMD="${TDELIGHT_SEGMENT_CMD:-$TDELIGHT_VENV/bin/python scripts/tdelight_segment_cmd.py --repo-dir $TDELIGHT_REPO_DIR --model-name $TDELIGHT_MODEL_NAME}"
+export LD_LIBRARY_PATH="$TDELIGHT_DYNET_LIB_DIR:${LD_LIBRARY_PATH:-}"
 
 export SEGMENT_BATCH_SIZE="${SEGMENT_BATCH_SIZE:-4096}"
 export WORD_CACHE_SIZE="${WORD_CACHE_SIZE:-500000}"
