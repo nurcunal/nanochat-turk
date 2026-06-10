@@ -158,10 +158,14 @@ if [ -n "${RESUME_FROM_STEP:-}" ]; then
     done
 fi
 
-srun \
-    --kill-on-bad-exit=1 \
-    --nodes="$NNODES" \
-    --ntasks="$NNODES" \
-    --ntasks-per-node=1 \
-    --cpus-per-task="$SLURM_CPUS_PER_TASK" \
+if [ "$NNODES" -gt 1 ]; then
+    srun \
+        --kill-on-bad-exit=1 \
+        --nodes="$NNODES" \
+        --ntasks="$NNODES" \
+        --ntasks-per-node=1 \
+        --cpus-per-task="$SLURM_CPUS_PER_TASK" \
+        bash runs/turkish_foundation.sh
+else
     bash runs/turkish_foundation.sh
+fi
