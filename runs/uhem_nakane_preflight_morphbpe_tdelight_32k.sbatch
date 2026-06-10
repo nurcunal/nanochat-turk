@@ -106,7 +106,12 @@ import gensim  # noqa: F401
 print("TurkishDelight runtime imports OK")
 PY
 
-python3 - <<'PY'
+if [ ! -d ".venv" ]; then
+    echo "Missing repo .venv in $PWD. Run the main setup/prep job first." >&2
+    exit 2
+fi
+
+.venv/bin/python - <<'PY'
 from nanochat.morphology import create_segmenter
 
 segmenter = create_segmenter("tdelight", strict=False, timeout=300)
