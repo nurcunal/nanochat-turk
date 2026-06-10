@@ -69,6 +69,10 @@ if [ ! -d "$TDELIGHT_DYNET_SRC" ] || [ ! -d "$TDELIGHT_EIGEN_DIR" ]; then
     exit 2
 fi
 
+# The copied local DyNet tree may contain a macOS build cache. Always force a
+# clean Linux build on UHeM.
+rm -rf "$TDELIGHT_DYNET_SRC/build"
+
 if ! command -v uv >/dev/null 2>&1; then
     curl -LsSf https://astral.sh/uv/install.sh | sh
     export PATH="$HOME/.local/bin:$PATH"
