@@ -326,6 +326,50 @@ def word_fertility_stats(
     }
 
 
+def word_fertility_stats_from_words(
+    tokenizer,
+    words: list[str],
+    *,
+    num_threads: int,
+) -> dict[str, Any]:
+    if not words:
+        return {
+            "sample_words": 0,
+            "unique_words": 0,
+            "tokens": 0,
+            "tokens_per_word": 0.0,
+            "single_token_word_rate": 0.0,
+            "multi_token_word_rate": 0.0,
+            "token_count_distribution": distribution_stats([]),
+            "long_word_tokens_per_word": 0.0,
+            "long_word_count": 0,
+        }
+
+    unique_words = list(dict.fromkeys(words))
+    encoded_unique = tokenizer.encode(unique_words, num_threads=num_threads)
+    lengths_by_word = {
+        word: len(ids)
+        for word, ids in zip(unique_words, encoded_unique)
+    }
+    lengths = [lengths_by_word[word] for word in words]
+    long_lengths = [
+        length for word, length in zip(words, lengths)
+        if len(word) >= 8
+    ]
+    single = sum(1 for length in lengths if length == 1)
+    return {
+        "sample_words": len(words),
+        "unique_words": len(unique_words),
+        "tokens": sum(lengths),
+        "tokens_per_word": safe_div(sum(lengths), len(words)),
+        "single_token_word_rate": safe_div(single, len(words)),
+        "multi_token_word_rate": safe_div(len(words) - single, len(words)),
+        "token_count_distribution": distribution_stats(lengths),
+        "long_word_tokens_per_word": safe_div(sum(long_lengths), len(long_lengths)),
+        "long_word_count": len(long_lengths),
+    }
+
+
 def vocabulary_stats(tokenizer) -> dict[str, Any]:
     if isinstance(tokenizer, HuggingFaceTokenizerAdapter):
         vocab = tokenizer.backend.get_vocab(with_added_tokens=True)
@@ -424,7 +468,12 @@ def main() -> None:
         ),
     )
     parser.add_argument("--morph-boundary", type=str, default=MORPHEME_BOUNDARY)
-    parser.add_argument("--max-docs", type=int, default=10000)
+    parser.add_argument(
+        "--max-docs",
+        type=int,
+        default=10000,
+        help="Maximum documents to evaluate. Use 0 for the full dataset.",
+    )
     parser.add_argument(
         "--max-word-metrics",
         type=int,
@@ -459,16 +508,43 @@ def main() -> None:
     decode_strip = getattr(tokenizer, "decode_strip", "")
     resolved_data_dir = args.data_dir or DATA_DIR
 
-    docs: list[str] = []
-    visible_docs: list[str] = []
-    boundary_offsets_by_doc: list[tuple[int, ...]] = []
+    docs_count = 0
+    total_tokens = 0
+    total_bytes = 0
+    total_chars = 0
+    total_words = 0
+    unique_tokens: set[int] = set()
+    roundtrip_failures = 0
+    docs_with_decode_strip = 0
+    encode_seconds = 0.0
+    token_lengths: list[int] = []
+    word_metric_words: list[str] = []
+    boundary_totals = {
+        "eligible_docs": 0,
+        "boundary_count": 0,
+        "crossing_tokens": 0,
+        "crossed_boundaries": 0,
+        "docs_with_crossing": 0,
+    }
+
     for batch in parquets_iter_batched(
         split=args.split,
         data_dir=resolved_data_dir,
         text_column=args.text_column,
     ):
+        if args.max_docs > 0:
+            remaining_docs = args.max_docs - docs_count
+            if remaining_docs <= 0:
+                break
+            batch = batch[:remaining_docs]
+        if not batch:
+            continue
+
+        visible_docs: list[str] = []
+        boundary_offsets_by_doc: list[tuple[int, ...]] = []
         for doc in batch:
-            docs.append(doc)
+            if decode_strip and decode_strip in doc:
+                docs_with_decode_strip += 1
             if args.input_has_morph_boundaries:
                 visible, offsets = strip_boundaries_with_offsets(
                     doc,
@@ -483,39 +559,64 @@ def main() -> None:
                     else doc
                 )
                 boundary_offsets_by_doc.append(())
-            if len(docs) >= args.max_docs:
-                break
-        if len(docs) >= args.max_docs:
+
+        t0 = time.time()
+        if isinstance(tokenizer, HuggingFaceTokenizerAdapter):
+            encoded, token_offsets_by_doc = tokenizer.encode_with_offsets(visible_docs)
+        else:
+            encoded = tokenizer.encode(visible_docs, num_threads=args.num_threads)
+            token_offsets_by_doc = None
+        encode_seconds += time.time() - t0
+
+        batch_token_lengths = [len(ids) for ids in encoded]
+        token_lengths.extend(batch_token_lengths)
+        total_tokens += sum(batch_token_lengths)
+        total_bytes += sum(len(doc.encode("utf-8")) for doc in visible_docs)
+        total_chars += sum(len(doc) for doc in visible_docs)
+        batch_words = [WORD_RE.findall(doc) for doc in visible_docs]
+        total_words += sum(len(words) for words in batch_words)
+        for ids in encoded:
+            unique_tokens.update(ids)
+        roundtrip_failures += sum(
+            1 for doc, ids in zip(visible_docs, encoded)
+            if tokenizer.decode(ids) != doc
+        )
+
+        if args.max_word_metrics == 0 or len(word_metric_words) < args.max_word_metrics:
+            for words in batch_words:
+                if args.max_word_metrics > 0:
+                    remaining_words = args.max_word_metrics - len(word_metric_words)
+                    if remaining_words <= 0:
+                        break
+                    word_metric_words.extend(words[:remaining_words])
+                else:
+                    word_metric_words.extend(words)
+
+        batch_boundary_stats = boundary_violation_stats(
+            tokenizer,
+            encoded,
+            visible_docs,
+            boundary_offsets_by_doc,
+            token_offsets_by_doc,
+        )
+        for key in boundary_totals:
+            boundary_totals[key] += int(batch_boundary_stats.get(key, 0) or 0)
+
+        docs_count += len(visible_docs)
+        if args.max_docs > 0 and docs_count >= args.max_docs:
             break
 
-    if not docs:
+    if docs_count == 0:
         raise RuntimeError("No documents found for tokenizer metrics")
 
-    token_offsets_by_doc: list[list[tuple[int, int]]] | None = None
-    t0 = time.time()
-    if isinstance(tokenizer, HuggingFaceTokenizerAdapter):
-        encoded, token_offsets_by_doc = tokenizer.encode_with_offsets(visible_docs)
-    else:
-        encoded = tokenizer.encode(visible_docs, num_threads=args.num_threads)
-    elapsed = time.time() - t0
-
-    token_lengths = [len(ids) for ids in encoded]
-    total_tokens = sum(token_lengths)
-    total_bytes = sum(len(doc.encode("utf-8")) for doc in visible_docs)
-    total_chars = sum(len(doc) for doc in visible_docs)
-    total_words = sum(len(WORD_RE.findall(doc)) for doc in visible_docs)
-    unique_tokens = len({token_id for ids in encoded for token_id in ids})
-    roundtrip_failures = sum(
-        1 for doc, ids in zip(visible_docs, encoded)
-        if tokenizer.decode(ids) != doc
+    boundary_stats = dict(boundary_totals)
+    boundary_stats["crossed_boundary_rate"] = safe_div(
+        boundary_stats["crossed_boundaries"],
+        boundary_stats["boundary_count"],
     )
-
-    boundary_stats = boundary_violation_stats(
-        tokenizer,
-        encoded,
-        visible_docs,
-        boundary_offsets_by_doc,
-        token_offsets_by_doc,
+    boundary_stats["docs_with_crossing_rate"] = safe_div(
+        boundary_stats["docs_with_crossing"],
+        boundary_stats["eligible_docs"],
     )
     boundary_stats["crossing_tokens_per_1k_tokens"] = (
         1000.0 * safe_div(boundary_stats["crossing_tokens"], total_tokens)
@@ -534,17 +635,15 @@ def main() -> None:
             if len(args.morph_boundary) == 1
             else ""
         ),
-        "docs": len(docs),
+        "docs": docs_count,
         "bytes": total_bytes,
         "chars": total_chars,
         "words": total_words,
         "tokens": total_tokens,
-        "unique_tokens_in_sample": unique_tokens,
-        "unique_token_rate_in_sample": safe_div(unique_tokens, tokenizer.get_vocab_size()),
+        "unique_tokens_in_sample": len(unique_tokens),
+        "unique_token_rate_in_sample": safe_div(len(unique_tokens), tokenizer.get_vocab_size()),
         "decode_strip": decode_strip,
-        "docs_with_decode_strip": sum(
-            1 for doc in docs if decode_strip and decode_strip in doc
-        ),
+        "docs_with_decode_strip": docs_with_decode_strip,
         "bytes_per_token": safe_div(total_bytes, total_tokens),
         "chars_per_token": safe_div(total_chars, total_tokens),
         "tokens_per_byte": safe_div(total_tokens, total_bytes),
@@ -552,19 +651,18 @@ def main() -> None:
         "tokens_per_word": safe_div(total_tokens, total_words),
         "token_fertility": safe_div(total_tokens, total_words),
         "tokens_per_doc_distribution": distribution_stats(token_lengths),
-        "word_fertility_isolated": word_fertility_stats(
+        "word_fertility_isolated": word_fertility_stats_from_words(
             tokenizer,
-            visible_docs,
-            max_words=args.max_word_metrics,
+            word_metric_words,
             num_threads=args.num_threads,
         ),
         "vocabulary": vocabulary_stats(tokenizer),
         "morph_boundary": boundary_stats,
         "roundtrip_failures": roundtrip_failures,
-        "roundtrip_failure_rate": safe_div(roundtrip_failures, len(docs)),
-        "encode_seconds": elapsed,
-        "encode_docs_per_sec": safe_div(len(docs), elapsed),
-        "encode_tokens_per_sec": safe_div(total_tokens, elapsed),
+        "roundtrip_failure_rate": safe_div(roundtrip_failures, docs_count),
+        "encode_seconds": encode_seconds,
+        "encode_docs_per_sec": safe_div(docs_count, encode_seconds),
+        "encode_tokens_per_sec": safe_div(total_tokens, encode_seconds),
     }
 
     print(json.dumps(metrics, ensure_ascii=False, indent=2))

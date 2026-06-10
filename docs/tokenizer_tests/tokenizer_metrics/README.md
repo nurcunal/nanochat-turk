@@ -12,11 +12,15 @@ Current comparison:
 - `turna`: `boun-tabi-LMG/TURNA` tokenizer.
 - `vbart_large_base`: `vngrs-ai/VBART-Large-Base` tokenizer.
 
-Metrics are computed on the same first `50,000` train documents from the
-TRmorph-segmented FineWeb-2 Turkish corpus. The boundary marker is stripped
-before encoding, so both tokenizers receive identical raw Turkish text. The
-segmented form is used only as a reference for measuring whether tokenizer
-tokens cross TRmorph morpheme boundaries.
+The checked-in comparison table is a preliminary `50,000`-document sample from
+the TRmorph-segmented FineWeb-2 Turkish corpus. Paper-facing tokenizer metrics
+should use the full-corpus UHeM run in
+`runs/uhem_tokenizer_metrics_compare_32k.sbatch`, which defaults to
+`MAX_DOCS=0` and writes to `tokenizer_metrics_32k_full`.
+
+The boundary marker is stripped before encoding, so all tokenizers receive
+identical raw Turkish text. The segmented form is used only as a reference for
+measuring whether tokenizer tokens cross TRmorph morpheme boundaries.
 
 Public Hugging Face tokenizers are loaded from tokenizer files only; no model
 weights are downloaded for these metrics.

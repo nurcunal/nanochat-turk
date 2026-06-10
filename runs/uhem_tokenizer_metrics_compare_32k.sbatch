@@ -7,14 +7,14 @@
 # boundary marker before tokenizer encoding, and reports both standard tokenizer
 # compression/fertility metrics and token-crosses-morpheme-boundary metrics.
 
-#SBATCH --job-name=nanochat-tokenizer-metrics32k
+#SBATCH --job-name=nanochat-tokenizer-metrics32k-full
 #SBATCH --account=nakane
 #SBATCH --partition=cpu2dq
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
-#SBATCH --time=04:00:00
-#SBATCH --mem=64G
+#SBATCH --time=2-00:00:00
+#SBATCH --mem=128G
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
 
@@ -40,11 +40,13 @@ export PATH="$HOME/.local/bin:$PATH"
 export RAW_BASE_DIR="${RAW_BASE_DIR:-$HOME/nanochat-turk-d20-bpe32k}"
 export MORPH_BASE_DIR="${MORPH_BASE_DIR:-$HOME/nanochat-turk-morphbpe-trmorph-32768}"
 export SEGMENTED_DATA_DIR="${SEGMENTED_DATA_DIR:-$MORPH_BASE_DIR/datasets/trmorph-segmented}"
-export METRICS_DIR="${METRICS_DIR:-$MORPH_BASE_DIR/report/tokenizer_metrics_32k}"
+export METRICS_DIR="${METRICS_DIR:-$MORPH_BASE_DIR/report/tokenizer_metrics_32k_full}"
 export HF_HOME="${HF_HOME:-$MORPH_BASE_DIR/huggingface}"
-export MAX_DOCS="${MAX_DOCS:-50000}"
+# 0 means full corpus. The old 50k-doc run was only a preliminary sample.
+export MAX_DOCS="${MAX_DOCS:-0}"
 export MAX_WORD_METRICS="${MAX_WORD_METRICS:-500000}"
 export NUM_THREADS="${NUM_THREADS:-${SLURM_CPUS_PER_TASK:-32}}"
+export INCLUDE_HF="${INCLUDE_HF:-0}"
 
 mkdir -p "$METRICS_DIR"
 
@@ -100,20 +102,28 @@ run_hf_tokenizer_metrics() {
 run_local_tokenizer_metrics "$RAW_BASE_DIR/tokenizers/bpe_32768" bpe_32768
 run_local_tokenizer_metrics "$MORPH_BASE_DIR/tokenizers/morphbpe_trmorph_32768" morphbpe_trmorph_32768
 
-run_hf_tokenizer_metrics vngrs-ai/Kumru-2B kumru_2b
-run_hf_tokenizer_metrics dbmdz/bert-base-turkish-cased berturk_cased wordpiece
-run_hf_tokenizer_metrics ytu-ce-cosmos/turkish-gpt2 cosmos_turkish_gpt2
-run_hf_tokenizer_metrics boun-tabi-LMG/TURNA turna
-run_hf_tokenizer_metrics vngrs-ai/VBART-Large-Base vbart_large_base
+METRIC_ARGS=(
+    --metric "$METRICS_DIR/bpe_32768_metrics.json"
+    --metric "$METRICS_DIR/morphbpe_trmorph_32768_metrics.json"
+)
+
+if [ "$INCLUDE_HF" = "1" ]; then
+    run_hf_tokenizer_metrics vngrs-ai/Kumru-2B kumru_2b
+    run_hf_tokenizer_metrics dbmdz/bert-base-turkish-cased berturk_cased wordpiece
+    run_hf_tokenizer_metrics ytu-ce-cosmos/turkish-gpt2 cosmos_turkish_gpt2
+    run_hf_tokenizer_metrics boun-tabi-LMG/TURNA turna
+    run_hf_tokenizer_metrics vngrs-ai/VBART-Large-Base vbart_large_base
+    METRIC_ARGS+=(
+        --metric "$METRICS_DIR/kumru_2b_metrics.json"
+        --metric "$METRICS_DIR/berturk_cased_metrics.json"
+        --metric "$METRICS_DIR/cosmos_turkish_gpt2_metrics.json"
+        --metric "$METRICS_DIR/turna_metrics.json"
+        --metric "$METRICS_DIR/vbart_large_base_metrics.json"
+    )
+fi
 
 python -m scripts.compare_tokenizer_metrics \
-    --metric "$METRICS_DIR/bpe_32768_metrics.json" \
-    --metric "$METRICS_DIR/morphbpe_trmorph_32768_metrics.json" \
-    --metric "$METRICS_DIR/kumru_2b_metrics.json" \
-    --metric "$METRICS_DIR/berturk_cased_metrics.json" \
-    --metric "$METRICS_DIR/cosmos_turkish_gpt2_metrics.json" \
-    --metric "$METRICS_DIR/turna_metrics.json" \
-    --metric "$METRICS_DIR/vbart_large_base_metrics.json" \
+    "${METRIC_ARGS[@]}" \
     --output-md "$METRICS_DIR/tokenizer_metrics_comparison.md" \
     --output-json "$METRICS_DIR/tokenizer_metrics_comparison.json"
 
