@@ -18,6 +18,14 @@ should use the full-corpus UHeM run in
 `runs/uhem_tokenizer_metrics_compare_32k.sbatch`, which defaults to
 `MAX_DOCS=0` and writes to `tokenizer_metrics_32k_full`.
 
+Operational note: the original full run is intentionally conservative and
+single-process. The optimized companion
+`runs/uhem_tokenizer_metrics_compare_32k_parallel.sbatch` keeps the same metric
+definitions but runs `scripts.tokenizer_metrics --workers N` over parquet row
+groups and writes to `tokenizer_metrics_32k_full_parallel`. Use that path when a
+full-corpus run is already in flight and we want a faster side-by-side result
+without overwriting the baseline job's JSON files.
+
 The boundary marker is stripped before encoding, so all tokenizers receive
 identical raw Turkish text. The segmented form is used only as a reference for
 measuring whether tokenizer tokens cross TRmorph morpheme boundaries.

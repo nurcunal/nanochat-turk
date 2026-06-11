@@ -606,6 +606,15 @@ Short-term tokenizer study:
 5. Decide whether all three should go to full d20 training or whether one is
    ruled out by tokenizer-only evidence.
 
+Operational note for the full tokenizer metrics: the first full-corpus UHeM run
+used `runs/uhem_tokenizer_metrics_compare_32k.sbatch`, which is conservative
+and single-process. We added
+`runs/uhem_tokenizer_metrics_compare_32k_parallel.sbatch` plus
+`scripts.tokenizer_metrics --workers` to preserve the same metric definitions
+while distributing parquet row groups across CPU workers. The optimized job
+writes to `tokenizer_metrics_32k_full_parallel`, so it can run beside the
+baseline `tokenizer_metrics_32k_full` job without overwriting evidence.
+
 Medium-term:
 
 1. Train matched 64k and 128k tiers if compute allows.
