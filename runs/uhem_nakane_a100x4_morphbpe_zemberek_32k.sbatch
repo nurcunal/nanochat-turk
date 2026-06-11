@@ -2,14 +2,15 @@
 
 # Altay/UHeM Zemberek MorphBPE 32k base-model run.
 #
-# Default: 2 nodes x 4 A100 = 8 GPUs, matching the requested dual-a100x4 run.
+# Default: 1 node x 4 A100 = 4 GPUs. Use --nodes=2 only after confirming the
+# site-specific multi-node Slurm/GRES path is healthy.
 # Submit from the repo root on Altay after Zemberek finalization completes:
 #   sbatch runs/uhem_nakane_a100x4_morphbpe_zemberek_32k.sbatch
 
 #SBATCH --job-name=nanochat-tr-mbpe-zemb32k
 #SBATCH --account=nakane
 #SBATCH --partition=a100x4q
-#SBATCH --nodes=2
+#SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=64
 #SBATCH --gres=gpu:a100:4
@@ -60,9 +61,10 @@ export UV_PYTHON="${UV_PYTHON:-$(command -v python3)}"
 export UV_LINK_MODE="${UV_LINK_MODE:-copy}"
 
 export HARDWARE_PROFILE="${HARDWARE_PROFILE:-a100}"
-export NNODES="${NNODES:-${SLURM_JOB_NUM_NODES:-2}}"
+export NNODES="${NNODES:-${SLURM_JOB_NUM_NODES:-1}}"
 export NPROC_PER_NODE="${NPROC_PER_NODE:-4}"
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
+echo "NNODES=$NNODES"
 
 export NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-$HOME/nanochat-turk-morphbpe-zemberek-32768}"
 export NANOCHAT_DATA_DIR="${NANOCHAT_DATA_DIR:-$HOME/nanochat-turk-d20-bpe32k/base_data_fineweb2_tur_latn}"
@@ -156,10 +158,14 @@ if [ -n "${RESUME_FROM_STEP:-}" ]; then
     done
 fi
 
-srun \
-    --kill-on-bad-exit=1 \
-    --nodes="$NNODES" \
-    --ntasks="$NNODES" \
-    --ntasks-per-node=1 \
-    --cpus-per-task="$SLURM_CPUS_PER_TASK" \
+if [ "$NNODES" -gt 1 ]; then
+    srun \
+        --kill-on-bad-exit=1 \
+        --nodes="$NNODES" \
+        --ntasks="$NNODES" \
+        --ntasks-per-node=1 \
+        --cpus-per-task="$SLURM_CPUS_PER_TASK" \
+        bash runs/turkish_foundation.sh
+else
     bash runs/turkish_foundation.sh
+fi
