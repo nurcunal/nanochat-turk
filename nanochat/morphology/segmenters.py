@@ -247,6 +247,156 @@ class BatchCommandSegmenter(Segmenter):
         return segmentations
 
 
+class PersistentBatchCommandSegmenter(BatchCommandSegmenter):
+    """External command segmenter that keeps one command process alive.
+
+    This is useful for wrappers that load a large model and then consume one
+    word per stdin line. It is opt-in because some generic batch commands only
+    emit output after stdin closes, which is incompatible with persistence.
+    """
+
+    def __init__(
+        self,
+        command: Sequence[str] | str | None,
+        name: str = "command",
+        timeout: float = 60.0,
+        strict: bool = False,
+    ):
+        super().__init__(command, name=name, timeout=timeout, strict=strict)
+        self._proc: subprocess.Popen[bytes] | None = None
+        self._stdout_buffer = b""
+
+    def close(self) -> None:
+        proc = self._proc
+        self._proc = None
+        self._stdout_buffer = b""
+        if proc is None:
+            return
+        if proc.poll() is not None:
+            return
+        try:
+            if proc.stdin is not None:
+                proc.stdin.close()
+        except OSError:
+            pass
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            proc.terminate()
+            try:
+                proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
+
+    def _start_proc(self) -> subprocess.Popen[bytes]:
+        if not self.command:
+            raise self._unavailable()
+        proc = self._proc
+        if proc is not None and proc.poll() is None:
+            return proc
+        try:
+            proc = subprocess.Popen(
+                self.command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+            )
+        except FileNotFoundError as exc:
+            raise SegmenterUnavailable(
+                f"{self.name} command not found: {self.command[0]!r}"
+            ) from exc
+        self._proc = proc
+        self._stdout_buffer = b""
+        return proc
+
+    def _read_lines(self, proc: subprocess.Popen[bytes], count: int) -> list[str]:
+        assert proc.stdout is not None
+        lines: list[str] = []
+        deadline = time.monotonic() + self.timeout
+        selector = selectors.DefaultSelector()
+        selector.register(proc.stdout, selectors.EVENT_READ)
+        try:
+            while len(lines) < count:
+                if proc.poll() is not None:
+                    raise SegmentationError(
+                        f"{self.name} command exited early with code "
+                        f"{proc.returncode}"
+                    )
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    self.close()
+                    raise SegmentationError(
+                        f"{self.name} persistent command timed out after "
+                        f"{self.timeout}s"
+                    )
+                events = selector.select(timeout=remaining)
+                if not events:
+                    self.close()
+                    raise SegmentationError(
+                        f"{self.name} persistent command timed out after "
+                        f"{self.timeout}s"
+                    )
+                for key, _mask in events:
+                    chunk = os.read(key.fd, 65536)
+                    if not chunk:
+                        self.close()
+                        raise SegmentationError(
+                            f"{self.name} command closed stdout early"
+                        )
+                    self._stdout_buffer += chunk
+                    parts = self._stdout_buffer.split(b"\n")
+                    self._stdout_buffer = parts.pop()
+                    for raw_line in parts:
+                        lines.append(raw_line.decode("utf-8", errors="replace"))
+                        if len(lines) == count:
+                            break
+        finally:
+            selector.close()
+        return lines
+
+    def segment_words(self, words: Sequence[str]) -> list[WordSegmentation]:
+        if not words:
+            return []
+
+        proc = self._start_proc()
+        assert proc.stdin is not None
+        input_bytes = ("\n".join(words) + "\n").encode("utf-8")
+        try:
+            proc.stdin.write(input_bytes)
+            proc.stdin.flush()
+        except BrokenPipeError as exc:
+            self.close()
+            raise SegmentationError(f"{self.name} command pipe broke") from exc
+
+        output_lines = self._read_lines(proc, len(words))
+        segmentations: list[WordSegmentation] = []
+        for word, line in zip(words, output_lines):
+            try:
+                pieces = parse_surface_pieces(line, word)
+                segmentations.append(
+                    WordSegmentation.from_pieces(word, pieces, source=self.name)
+                )
+            except SegmentationError as exc:
+                if self.strict:
+                    raise
+                segmentations.append(
+                    WordSegmentation.identity(
+                        word,
+                        source=self.name,
+                        fallback=True,
+                        metadata={"fallback_reason": str(exc), "raw_output": line},
+                    )
+                )
+        return segmentations
+
+
 class TRMorphFlookupSegmenter(Segmenter):
     """TRmorph segmenter backed by a compiled ``segment.fst`` and ``flookup``."""
 
@@ -582,6 +732,25 @@ def create_segmenter(
 
     backend_command = command or os.environ.get(env_by_name[normalized], "")
     if backend_command:
+        persistent_env_by_name = {
+            "trmorph": "TRMORPH_PERSISTENT_COMMAND",
+            "zemberek": "ZEMBEREK_PERSISTENT_COMMAND",
+            "tdelight": "TDELIGHT_PERSISTENT_COMMAND",
+            "turkishdelight": "TDELIGHT_PERSISTENT_COMMAND",
+            "turkish_delight": "TDELIGHT_PERSISTENT_COMMAND",
+            "command": "MORPH_PERSISTENT_COMMAND",
+        }
+        persistent_value = os.environ.get(
+            persistent_env_by_name[normalized],
+            os.environ.get("MORPH_PERSISTENT_COMMAND", ""),
+        )
+        if persistent_value.strip().lower() in {"1", "true", "yes", "on"}:
+            return PersistentBatchCommandSegmenter(
+                backend_command,
+                name=normalized,
+                timeout=timeout,
+                strict=strict,
+            )
         return BatchCommandSegmenter(
             backend_command,
             name=normalized,
