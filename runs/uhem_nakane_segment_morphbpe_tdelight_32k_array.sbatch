@@ -53,11 +53,12 @@ export TDELIGHT_SEGMENT_CMD="${TDELIGHT_SEGMENT_CMD:-$TDELIGHT_VENV/bin/python s
 export TDELIGHT_PERSISTENT_COMMAND="${TDELIGHT_PERSISTENT_COMMAND:-1}"
 export LD_LIBRARY_PATH="$TDELIGHT_DYNET_LIB_DIR:${LD_LIBRARY_PATH:-}"
 
-export SEGMENT_BATCH_SIZE="${SEGMENT_BATCH_SIZE:-4096}"
+export ROW_GROUP_BATCH_SIZE="${ROW_GROUP_BATCH_SIZE:-32}"
+export SEGMENT_BATCH_SIZE="${SEGMENT_BATCH_SIZE:-256}"
 export WORD_CACHE_SIZE="${WORD_CACHE_SIZE:-500000}"
 # TurkishDelight loads a large DyNet model per command worker. Fewer persistent
 # workers avoid filesystem/model-load contention while still using the node well.
-export SEGMENT_WORKERS="${SEGMENT_WORKERS:-64}"
+export SEGMENT_WORKERS="${SEGMENT_WORKERS:-16}"
 export SEGMENT_WORKER_MODE="${SEGMENT_WORKER_MODE:-process}"
 export SEGMENT_MAX_IN_FLIGHT="${SEGMENT_MAX_IN_FLIGHT:-$SEGMENT_WORKERS}"
 export SEGMENT_TIMEOUT="${SEGMENT_TIMEOUT:-900}"
@@ -101,6 +102,7 @@ python3 -m scripts.morph_segment_corpus \
     --compact \
     --resume \
     --shard-index "$SLURM_ARRAY_TASK_ID" \
+    --row-group-batch-size "$ROW_GROUP_BATCH_SIZE" \
     --segment-batch-size "$SEGMENT_BATCH_SIZE" \
     --word-cache-size "$WORD_CACHE_SIZE" \
     --num-workers "$SEGMENT_WORKERS" \
