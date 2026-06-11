@@ -10,12 +10,12 @@
 #SBATCH --job-name=nanochat-seg-tdlt32k
 #SBATCH --account=nakane
 #SBATCH --partition=cpu2dq
-#SBATCH --array=0-29%4
+#SBATCH --array=0-29%16
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=128
+#SBATCH --cpus-per-task=16
 #SBATCH --time=2-00:00:00
-#SBATCH --mem=240G
+#SBATCH --mem=32G
 #SBATCH --output=%x-%A_%a.out
 #SBATCH --error=%x-%A_%a.err
 
@@ -56,9 +56,10 @@ export LD_LIBRARY_PATH="$TDELIGHT_DYNET_LIB_DIR:${LD_LIBRARY_PATH:-}"
 export ROW_GROUP_BATCH_SIZE="${ROW_GROUP_BATCH_SIZE:-32}"
 export SEGMENT_BATCH_SIZE="${SEGMENT_BATCH_SIZE:-256}"
 export WORD_CACHE_SIZE="${WORD_CACHE_SIZE:-500000}"
-# TurkishDelight loads a large DyNet model per command worker. Fewer persistent
-# workers avoid filesystem/model-load contention while still using the node well.
-export SEGMENT_WORKERS="${SEGMENT_WORKERS:-16}"
+# TurkishDelight loads a large DyNet model per command worker. The persistent
+# command path is fastest at moderate worker counts; keep workers aligned with
+# the Slurm CPU request so array concurrency, not idle cores, provides scale.
+export SEGMENT_WORKERS="${SEGMENT_WORKERS:-${SLURM_CPUS_PER_TASK:-16}}"
 export SEGMENT_WORKER_MODE="${SEGMENT_WORKER_MODE:-process}"
 export SEGMENT_MAX_IN_FLIGHT="${SEGMENT_MAX_IN_FLIGHT:-$SEGMENT_WORKERS}"
 export SEGMENT_TIMEOUT="${SEGMENT_TIMEOUT:-900}"

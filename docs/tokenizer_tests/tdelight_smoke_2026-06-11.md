@@ -80,3 +80,25 @@ SEGMENT_TIMEOUT=900
 Early process sampling showed about `35` TurkishDelight processes per node,
 compared with about `258` per node in the original full-shard runs. Early
 parquet growth was about `21-28 MB/min` per shard.
+
+## Resource Note
+
+The first five completed full shards used `128` Slurm CPUs and `128` process
+workers per shard. Shards `000_00001` and `000_00002` finished in
+`44,894.21` seconds and `44,865.41` seconds respectively, about `12.47` hours
+per shard and about `28.55k` words/s.
+
+The persistent TurkishDelight path was selected because smoke tests showed it
+avoids repeated DyNet model loads. Its best smoke setting used `16` workers at
+`26.77k` words/s on a 1024-document sample. Extrapolated to a full
+approximately `1.28B`-word shard, that is roughly `13.3` hours per shard. This
+is not a clear wall-clock speedup over the earlier `128`-worker full shards;
+it is primarily a resource-efficiency improvement when the Slurm CPU request
+is also reduced.
+
+The submitted remaining-shard job `493850` still requested `128` CPUs per
+array task while using `16` workers, so it is healthy but not cost-optimal.
+Future submissions should keep `SEGMENT_WORKERS` aligned with
+`SLURM_CPUS_PER_TASK` and scale through array concurrency. The UHeM array
+script now defaults to `16` CPUs, `16` workers, and higher array concurrency
+for that reason.
