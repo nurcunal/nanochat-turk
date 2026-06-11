@@ -18,6 +18,8 @@ supports the Turkish morphology-aware tokenizer ablation.
   judge methodology and aggregate scores.
 - [TurkishDelightNLP setup](turkishdelight_setup.md): runtime setup notes for
   the TurkishDelight wrapper.
+- [UHeM restart notes](uhem_restart_notes.md): intentional pauses/cancellations
+  and exact restart commands for cluster jobs.
 
 ## Small Result Files
 
