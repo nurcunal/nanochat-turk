@@ -633,15 +633,25 @@ Use in report:
 The first model-facing tokenizer comparison is now checked into the repo. It
 compares d20 base models at step `17100` on CETVEL core tasks 01-12:
 
-| Run | Tokenizer | CETVEL job | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Raw BPE d20 | `bpe_32768` | `493293` | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
-| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | `494056` | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
-| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | `494057` | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
+| Run | Tokenizer | CETVEL job | Final train loss | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Raw BPE d20 | `bpe_32768` | `493293` | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
+| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | `494056` | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
+| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | `494057` | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
+
+Training-loss context:
+
+| Run | Final validation BPB | Final train loss |
+| --- | ---: | ---: |
+| Raw BPE d20 | 0.6232 | 2.4899 |
+| MorphBPE + TRmorph d20 | 0.6266 | 2.0106 |
+| MorphBPE + Zemberek d20 | 0.6250 | 2.3227 |
 
 Core-11 macro averages the classification/loglikelihood tasks and excludes
-`xquad_tr`, which is reported as F1 on a different scale. The detailed table and
-source paths are in `docs/cetvel_model_comparison.md` and
+`xquad_tr`, which is reported as F1 on a different scale. Final validation BPB
+comes from `meta_017100.json`; final train loss comes from the final printed
+training step. The detailed table and source paths are in
+`docs/cetvel_model_comparison.md` and
 `artifacts/cetvel_core12_model_comparison_2026-06-12/`.
 
 Interpretation:
@@ -652,6 +662,11 @@ Interpretation:
   `trclaim19`, with Zemberek much stronger there.
 - Raw BPE remains better on tasks such as `exams_tr`, `belebele_tr`, and
   `offenseval_tr`.
+- Raw BPE has the best final validation BPB in this slice, so tokenizer-only
+  morphology gains have not translated into a lower byte-normalized validation
+  loss yet.
+- Final train loss is useful run telemetry, but validation BPB is the comparable
+  cross-tokenizer loss metric because token units differ.
 - The evidence is mixed, task-specific, and pre-SFT. It supports carrying the
   MorphBPE variants forward, but not a blanket claim that MorphBPE uniformly
   improves Turkish model performance.
@@ -856,6 +871,8 @@ Safe current claims:
   matched `50,000`-document TRmorph-reference tokenizer metrics.
 - Raw BPE, TRmorph MorphBPE, and Zemberek MorphBPE d20 base models have a
   checked-in common CETVEL core-12 comparison at step `17100`.
+- In that first completed d20/32k slice, raw BPE has the best final validation
+  BPB, while MorphBPE variants have stronger common-slice CETVEL aggregates.
 
 Claims to avoid until more evidence exists:
 

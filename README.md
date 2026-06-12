@@ -115,8 +115,10 @@ to constrain the merge table.
 The checked-in tokenizer comparison uses the same first `50,000` documents from
 the TRmorph-segmented FineWeb-2 Turkish corpus. The boundary marker is stripped
 before encoding, so all tokenizers receive identical raw Turkish text. True BPB
-is model-dependent, so this table reports tokenizer-only diagnostics and should
-be read as a pretraining-independent ranking, not the final model ranking.
+is model-dependent, so the diagnostic score below remains tokenizer-only. For
+tokenizers that have completed matched d20 model runs, the table also reports
+final validation BPB from `meta_017100.json`; public/tokenizer-only baselines
+are marked `-`.
 
 Ranking is calculated from the checked-in comparable metrics only. Zemberek is
 now ranked because it has the same `50,000`-document TRmorph-reference metric as
@@ -163,16 +165,16 @@ morphology-heavy weights favor the MorphBPE candidates. Therefore this table is
 a screening view for tokenizer candidates; validation BPB and CETVEL decide the
 final model-facing claim.
 
-| Rank | Tokenizer | Impl. | Primary score | Diagnostic score | Roundtrip fail | Bytes/token up | Tokens/word down | Boundary crossed down | Crossing tok/1k down | Encode tok/s up | Result |
-| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| 1 | `morphbpe_trmorph_32768` | morphbpe | 60.7 | 60.7 | 0.0000 | 4.4514 | 1.8166 | 0.4569 | 125.3 | 13,419,184 | candidate |
-| 2 | `morphbpe_zemberek_32768` | morphbpe | 55.3 | 55.3 | 0.0000 | 4.4959 | 1.7986 | 0.5906 | 138.4 | 1,472,567 | candidate |
-| 2 | `kumru_2b` | bpe | 55.3 | 55.3 | 0.0000 | 4.8488 | 1.6677 | 0.7745 | 189.9 | 818,251 | candidate |
-| 4 | `cosmos_turkish_gpt2` | bpe | 35.0 | 35.0 | 0.0000 | 5.1938 | 1.5570 | 0.8694 | 220.6 | 681,476 | candidate |
-| 5 | `bpe_32768` | bpe | 26.6 | 26.6 | 0.0000 | 5.0051 | 1.6157 | 0.8395 | 210.4 | 12,127,686 | candidate |
-| 6 | `vbart_large_base` | unigram | 2.9 | 60.4 | 0.9521 | 5.1827 | 1.5603 | 0.8015 | 203.4 | 579,818 | lossy baseline |
-| 7 | `turna` | unigram | 2.9 | 59.6 | 0.9521 | 5.1827 | 1.5603 | 0.8015 | 203.4 | 540,988 | lossy baseline |
-| 8 | `berturk_cased` | wordpiece | 0.3 | 47.1 | 0.9929 | 5.0897 | 1.5888 | 0.8045 | 205.0 | 863,345 | lossy baseline |
+| Rank | Tokenizer | Impl. | Primary score | Diagnostic score | Val BPB d20 down | Roundtrip fail | Bytes/token up | Tokens/word down | Boundary crossed down | Crossing tok/1k down | Encode tok/s up | Result |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | `morphbpe_trmorph_32768` | morphbpe | 60.7 | 60.7 | 0.6266 | 0.0000 | 4.4514 | 1.8166 | 0.4569 | 125.3 | 13,419,184 | trained d20 |
+| 2 | `morphbpe_zemberek_32768` | morphbpe | 55.3 | 55.3 | 0.6250 | 0.0000 | 4.4959 | 1.7986 | 0.5906 | 138.4 | 1,472,567 | trained d20 |
+| 2 | `kumru_2b` | bpe | 55.3 | 55.3 | - | 0.0000 | 4.8488 | 1.6677 | 0.7745 | 189.9 | 818,251 | tokenizer baseline |
+| 4 | `cosmos_turkish_gpt2` | bpe | 35.0 | 35.0 | - | 0.0000 | 5.1938 | 1.5570 | 0.8694 | 220.6 | 681,476 | tokenizer baseline |
+| 5 | `bpe_32768` | bpe | 26.6 | 26.6 | 0.6232 | 0.0000 | 5.0051 | 1.6157 | 0.8395 | 210.4 | 12,127,686 | trained d20 |
+| 6 | `vbart_large_base` | unigram | 2.9 | 60.4 | - | 0.9521 | 5.1827 | 1.5603 | 0.8015 | 203.4 | 579,818 | lossy baseline |
+| 7 | `turna` | unigram | 2.9 | 59.6 | - | 0.9521 | 5.1827 | 1.5603 | 0.8015 | 203.4 | 540,988 | lossy baseline |
+| 8 | `berturk_cased` | wordpiece | 0.3 | 47.1 | - | 0.9929 | 5.0897 | 1.5888 | 0.8045 | 205.0 | 863,345 | lossy baseline |
 
 Full source metrics live in
 [docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md](docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md).
@@ -195,8 +197,9 @@ paths for each row.
   metrics, but their high round-trip failure rates make them lossy baselines
   rather than drop-in raw-text nanochat tokenizers.
 - The trade-off is still real: TRmorph MorphBPE spends more tokens on the same
-  raw text, so the final project claim must use model validation BPB and CETVEL,
-  not only tokenizer-only optimization.
+  raw text, and the first d20 validation BPB values still slightly favor raw
+  BPE. The final project claim must use validation BPB and CETVEL, not only
+  tokenizer-only optimization.
 
 ## Matched LLM Training Plan
 
@@ -225,11 +228,11 @@ tasks 01-12 slice so the raw baseline and MorphBPE variants are comparable.
 Core-11 macro is the mean over the classification/loglikelihood tasks; `xquad_tr`
 F1 is reported separately because it is on a different scale.
 
-| Run | Tokenizer | Segmenter | CETVEL job | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
-| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Raw BPE d20 | `bpe_32768` | none | `493293` | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
-| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | TRmorph | `494056` | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
-| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | Zemberek | `494057` | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
+| Run | Tokenizer | Segmenter | CETVEL job | Final train loss | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Raw BPE d20 | `bpe_32768` | none | `493293` | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
+| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | TRmorph | `494056` | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
+| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | Zemberek | `494057` | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
 
 Detailed task metrics and source result paths live in
 [docs/cetvel_model_comparison.md](docs/cetvel_model_comparison.md) and the
@@ -242,7 +245,9 @@ Early model-facing evidence is mixed rather than uniformly pro-MorphBPE:
 TRmorph MorphBPE has the best XQuAD F1, Zemberek MorphBPE has the strongest
 core-11 macro, and raw BPE still wins several individual tasks. These results
 should be reported as base-model evidence before SFT, not as a final
-instruction-following or generation-quality claim.
+instruction-following or generation-quality claim. Final train loss is included
+as run telemetry from the last printed training step; because token units differ
+across tokenizers, validation BPB is the comparable loss metric.
 
 ## Reproduction Pointers
 

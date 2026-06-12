@@ -25,6 +25,10 @@ TRmorph-reference sample. The boundary marker is stripped before encoding, so
 every tokenizer receives identical raw Turkish text. TRmorph boundaries are used
 only as a diagnostic reference for boundary-crossing metrics.
 
+The main README may display d20 validation BPB beside tokenizer rows when a
+matched model run exists. That BPB is model-facing evidence and is not included
+in the tokenizer-only diagnostic score below.
+
 ## Formula
 
 1. For each metric, tokenizers are ranked best-to-worst.
