@@ -12,6 +12,13 @@ Current comparison:
 - `turna`: `boun-tabi-LMG/TURNA` tokenizer.
 - `vbart_large_base`: `vngrs-ai/VBART-Large-Base` tokenizer.
 
+Additional checked-in single-tokenizer metrics:
+
+- `morphbpe_zemberek_32768_raw_metrics.json`: raw-text `10,000`-document metric
+  for the Zemberek MorphBPE tokenizer. This file is useful for artifact
+  inspection, but it is not part of the ranked comparison because it does not use
+  the same `50,000`-document TRmorph-reference boundary setup.
+
 The checked-in comparison table is a preliminary `50,000`-document sample from
 the TRmorph-segmented FineWeb-2 Turkish corpus. Paper-facing tokenizer metrics
 should use the full-corpus UHeM run in

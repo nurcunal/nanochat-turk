@@ -23,3 +23,11 @@ README.md
 Large segmented corpora and model checkpoints are not stored in GitHub. They
 remain on UHeM/Hugging Face; this directory is for the compact tokenizer outputs
 needed to reproduce tokenizer loading and evaluation.
+
+## Current Bundles
+
+| Tokenizer | Segmenter | Status |
+| --- | --- | --- |
+| [`bpe_32768`](bpe_32768/) | none | Raw unsegmented BPE baseline. |
+| [`morphbpe_trmorph_32768`](morphbpe_trmorph_32768/) | TRmorph | Archived with raw and TRmorph-reference metrics. |
+| [`morphbpe_zemberek_32768`](morphbpe_zemberek_32768/) | Zemberek | Archived with raw 10k tokenizer metric; matched boundary-reference metric pending. |

@@ -1,0 +1,11 @@
+{
+  "tokenizer_name": "morphbpe_zemberek_32768",
+  "tokenizer_kind": "morphbpe",
+  "segmenter": "zemberek",
+  "uhem_tokenizer_dir": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/tokenizers/morphbpe_zemberek_32768",
+  "uhem_segmented_dataset_dir": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/segmented/zemberek-segmented",
+  "uhem_raw_dataset_dir": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_data_fineweb2_tur_latn",
+  "uhem_raw_metric": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/morphbpe_zemberek_32768_raw_metrics.json",
+  "github_artifact_dir": "artifacts/tokenizers/morphbpe_zemberek_32768",
+  "github_docs_metric": "docs/tokenizer_tests/tokenizer_metrics/morphbpe_zemberek_32768_raw_metrics.json"
+}

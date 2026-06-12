@@ -32,7 +32,7 @@ decodes raw Turkish text without requiring a runtime segmenter.
 | Turkish data pipeline | FineWeb-2 Turkish download, parquet reading, UHeM runs, checkpointing, and artifact capture work end to end. | [docs/turkish_foundation.md](docs/turkish_foundation.md), [artifacts/uhem_smoke_2026-06-07_job492393](artifacts/uhem_smoke_2026-06-07_job492393) |
 | Segmenter screening | TRmorph, Zemberek, TurkishDelightNLP, and identity control benchmarked on deterministic FineWeb-2 Turkish samples. | [docs/tokenizer_tests/segmenter_benchmark_status.md](docs/tokenizer_tests/segmenter_benchmark_status.md), [docs/tokenizer_tests/codex_local_judge_results.md](docs/tokenizer_tests/codex_local_judge_results.md) |
 | MorphBPE implementation | Raw-text MorphBPE tokenizer training implemented and tested. Segmentation constrains merge learning only. | [docs/tokenizer_tests/morphbpe_framework.md](docs/tokenizer_tests/morphbpe_framework.md), [tests/test_morphbpe_tokenizer.py](tests/test_morphbpe_tokenizer.py) |
-| Tokenizer artifacts | Raw BPE and TRmorph MorphBPE 32k tokenizers archived; public Turkish tokenizer baselines measured. | [artifacts/tokenizers](artifacts/tokenizers), [docs/tokenizer_tests/tokenizer_metrics](docs/tokenizer_tests/tokenizer_metrics) |
+| Tokenizer artifacts | Raw BPE, TRmorph MorphBPE, and Zemberek MorphBPE 32k tokenizers archived; public Turkish tokenizer baselines measured. | [artifacts/tokenizers](artifacts/tokenizers), [docs/tokenizer_tests/tokenizer_metrics](docs/tokenizer_tests/tokenizer_metrics) |
 | Base LLM benchmark | Raw-BPE d20 base model trained and evaluated on CETVEL tasks 01-13 before SFT. | [artifacts/cetvel_base_subset_2026-06-09_job493293](artifacts/cetvel_base_subset_2026-06-09_job493293) |
 
 ## Data Ground
@@ -118,8 +118,10 @@ before encoding, so all tokenizers receive identical raw Turkish text. True BPB
 is model-dependent, so this table reports tokenizer-only diagnostics and should
 be read as a pretraining-independent ranking, not the final model ranking.
 
-Ranking is calculated from the checked-in metrics only. Zemberek and
-TurkishDelightNLP tokenizers are not ranked here until they have matching
+Ranking is calculated from the checked-in comparable metrics only. Zemberek now
+has a raw `10,000`-document metric archived in
+[docs/tokenizer_tests/tokenizer_metrics/morphbpe_zemberek_32768_raw_metrics.json](docs/tokenizer_tests/tokenizer_metrics/morphbpe_zemberek_32768_raw_metrics.json),
+but Zemberek and TurkishDelightNLP are not ranked here until they have matching
 TRmorph-reference metrics checked into the repo. The score is intentionally
 transparent:
 
@@ -186,7 +188,7 @@ and evaluation fixed. At the 32k vocabulary tier, the primary model cells are:
 | ---: | ---: | --- | --- | --- |
 | 32,768 | d20 | raw BPE | `tr_d20_bpe_32768_chinchilla20` | Trained; CETVEL tasks 01-13 archived. |
 | 32,768 | d20 | MorphBPE + TRmorph | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | Tokenizer trained and archived; model run script ready. |
-| 32,768 | d20 | MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | Pipeline scripts/preflight in progress. |
+| 32,768 | d20 | MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | Tokenizer archived with raw metric; d20/CETVEL work active. |
 | 32,768 | d20 | MorphBPE + TurkishDelightNLP | `tr_d20_morphbpe_tdelight_32768_chinchilla20` | Pipeline scripts/preflight in progress. |
 
 The larger-vocabulary plan is documented in

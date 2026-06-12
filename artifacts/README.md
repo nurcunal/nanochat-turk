@@ -13,8 +13,8 @@ audit from GitHub. It is not intended to mirror every generated file from UHeM.
   completed UHeM A100 smoke test proving the Turkish data, tokenizer,
   pretraining, checkpoint, and BPB-eval path works end to end.
 - [tokenizers](tokenizers/):
-  landing folder for future compact tokenizer bundles and tokenizer-prep
-  manifests.
+  compact tokenizer bundles, tokenizer metrics, and tokenizer-prep provenance
+  for raw BPE and MorphBPE variants.
 
 ## What Belongs Here
 
