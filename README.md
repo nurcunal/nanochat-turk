@@ -227,13 +227,30 @@ the logged core-12 wall-clock time divided by `39,441` expanded effective
 examples, so it is an end-to-end benchmark throughput proxy rather than a pure
 GPU-kernel measurement.
 
-| Run | Tokenizer | Segmenter | CETVEL job | Core-12 elapsed | CETVEL ex/s up | Final val BPB | Lowest val BPB | Final train loss | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
-| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Raw BPE d20 | `bpe_32768` | none | `493293` | 50m20s | 13.06 | 0.6232 | 0.6232 | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
-| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | TRmorph | `494056` | 52m38s | 12.49 | 0.6266 | 0.6266 | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
-| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | Zemberek | `494057` | 50m30s | 13.02 | 0.6250 | 0.6250 | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
+| Run | Model tag | Tokenizer | Segmenter | Step | CETVEL job | Compared slice | Core-12 elapsed | CETVEL ex/s up | Speed vs raw | Final val BPB | Lowest val BPB | Final train loss | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
+| --- | --- | --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Raw BPE d20 | `tr_d20_bpe_32768_chinchilla20` | `bpe_32768` | none | 17100 | `493293` | common tasks 01-12; tasks 01-13 archived | 50m20s | 13.06 | 1.000x | 0.6232 | 0.6232 | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
+| MorphBPE + TRmorph d20 | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | `morphbpe_trmorph_32768` | TRmorph | 17100 | `494056` | core tasks 01-12 | 52m38s | 12.49 | 0.956x | 0.6266 | 0.6266 | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
+| MorphBPE + Zemberek d20 | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | `morphbpe_zemberek_32768` | Zemberek | 17100 | `494057` | core tasks 01-12 | 50m30s | 13.02 | 0.997x | 0.6250 | 0.6250 | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
 
-Detailed task metrics and source result paths live in
+Task-level CETVEL core-slice metrics:
+
+| Task | Metric | Raw BPE | TRmorph MorphBPE | Delta | Zemberek MorphBPE | Delta |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| `exams_tr` | `acc_norm` | 0.3104 | 0.2875 | -0.0229 | 0.2952 | -0.0153 |
+| `belebele_tr` | `acc_norm` | 0.2522 | 0.2356 | -0.0167 | 0.2433 | -0.0089 |
+| `turkish_plu` | `acc_norm` | 0.5027 | 0.5146 | +0.0118 | 0.5011 | -0.0016 |
+| `cetvel_xcopa_tr` | `acc` | 0.6180 | 0.6080 | -0.0100 | 0.6220 | +0.0040 |
+| `cetvel_xnli_tr` | `acc_norm` | 0.3335 | 0.3301 | -0.0034 | 0.3325 | -0.0010 |
+| `mnli_tr` | `acc_norm` | 0.3210 | 0.3215 | +0.0005 | 0.3216 | +0.0006 |
+| `snli_tr` | `acc_norm` | 0.3234 | 0.3235 | +0.0001 | 0.3195 | -0.0039 |
+| `news_cat` | `acc_norm` | 0.6760 | 0.7320 | +0.0560 | 0.7240 | +0.0480 |
+| `offenseval_tr` | `acc_norm` | 0.7971 | 0.7764 | -0.0207 | 0.7937 | -0.0034 |
+| `trclaim19` | `acc_norm` | 0.4938 | 0.5283 | +0.0345 | 0.6010 | +0.1072 |
+| `xfact_tr` | `acc_norm` | 0.3373 | 0.3373 | +0.0000 | 0.3254 | -0.0118 |
+| `xquad_tr` | `f1` | 3.0985 | 3.4786 | +0.3801 | 3.2633 | +0.1648 |
+
+Source result paths, artifact manifests, and the same table in report form live in
 [docs/cetvel_model_comparison.md](docs/cetvel_model_comparison.md) and the
 compact artifact summary
 [artifacts/cetvel_core12_model_comparison_2026-06-12](artifacts/cetvel_core12_model_comparison_2026-06-12).
