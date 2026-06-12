@@ -21,11 +21,16 @@ slice for the MorphBPE runs.
 The macro score averages the 11 classification/loglikelihood tasks. `xquad_tr`
 is reported separately because it is F1 rather than accuracy.
 
-| Run | Tokenizer | Segmenter | CETVEL job | Val BPB | Final train loss | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE | Source |
-| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| Raw BPE d20 | `bpe_32768` | none | `493293` | 0.6232 | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 | [raw artifact](../artifacts/cetvel_base_subset_2026-06-09_job493293/) |
-| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | TRmorph | `494056` | 0.6266 | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 | [comparison artifact](../artifacts/cetvel_core12_model_comparison_2026-06-12/) |
-| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | Zemberek | `494057` | 0.6250 | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 | [comparison artifact](../artifacts/cetvel_core12_model_comparison_2026-06-12/) |
+CETVEL speed uses the progress-log `total_elapsed` at the end of the common
+core-12 slice divided by `39,441` expanded effective examples. It is a practical
+end-to-end benchmark throughput indicator for the tokenizer-trained model, not
+an isolated GPU kernel or tokens/sec measurement.
+
+| Run | Tokenizer | Segmenter | CETVEL job | Core-12 elapsed | CETVEL ex/s up | Speed vs raw | Val BPB | Final train loss | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE | Source |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| Raw BPE d20 | `bpe_32768` | none | `493293` | 50m20s | 13.06 | 1.000x | 0.6232 | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 | [raw artifact](../artifacts/cetvel_base_subset_2026-06-09_job493293/) |
+| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | TRmorph | `494056` | 52m38s | 12.49 | 0.956x | 0.6266 | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 | [comparison artifact](../artifacts/cetvel_core12_model_comparison_2026-06-12/) |
+| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | Zemberek | `494057` | 50m30s | 13.02 | 0.997x | 0.6250 | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 | [comparison artifact](../artifacts/cetvel_core12_model_comparison_2026-06-12/) |
 
 ## Per-Task Core Comparison
 
@@ -60,6 +65,10 @@ and MorphBPE variants. It does not fully settle the tokenizer question.
 - Raw BPE has the best final validation BPB in this first d20 slice. Final train
   loss is useful telemetry but should not be used as the cross-tokenizer loss
   metric because tokenization changes the prediction units.
+- End-to-end CETVEL benchmark throughput is effectively tied for raw BPE and
+  Zemberek MorphBPE in this slice, while TRmorph MorphBPE is about 4% slower.
+  Treat this as an inference-speed proxy for the matched harness, not as a
+  standalone hardware benchmark.
 
 The next report-critical step is to keep the model comparison table synchronized
 as TurkishDelightNLP and any full-CETVEL or post-SFT runs finish.

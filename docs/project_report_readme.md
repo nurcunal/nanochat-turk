@@ -631,13 +631,16 @@ Use in report:
 ### CETVEL Model Comparison Result
 
 The first model-facing tokenizer comparison is now checked into the repo. It
-compares d20 base models at step `17100` on CETVEL core tasks 01-12:
+compares d20 base models at step `17100` on CETVEL core tasks 01-12. Benchmark
+speed divides the logged core-12 elapsed time by `39,441` expanded effective
+examples; use it as an end-to-end inference-throughput proxy, not as a pure
+hardware benchmark:
 
-| Run | Tokenizer | CETVEL job | Final train loss | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Raw BPE d20 | `bpe_32768` | `493293` | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
-| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | `494056` | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
-| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | `494057` | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
+| Run | Tokenizer | CETVEL job | Core-12 elapsed | CETVEL ex/s up | Final train loss | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Raw BPE d20 | `bpe_32768` | `493293` | 50m20s | 13.06 | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
+| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | `494056` | 52m38s | 12.49 | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
+| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | `494057` | 50m30s | 13.02 | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
 
 Training-loss context:
 
@@ -667,6 +670,11 @@ Interpretation:
   loss yet.
 - Final train loss is useful run telemetry, but validation BPB is the comparable
   cross-tokenizer loss metric because token units differ.
+- Benchmark throughput is nearly tied for raw BPE and Zemberek MorphBPE in the
+  matched core-12 harness, while TRmorph MorphBPE is about 4% slower
+  end-to-end. This may reflect tokenizer fertility, prompt lengths, generation
+  behavior, and harness overhead, so frame it as operational inference speed
+  evidence rather than a hardware-only result.
 - The evidence is mixed, task-specific, and pre-SFT. It supports carrying the
   MorphBPE variants forward, but not a blanket claim that MorphBPE uniformly
   improves Turkish model performance.
@@ -676,7 +684,9 @@ Use in report:
 > On the common CETVEL core slice, MorphBPE variants produce modest model-facing
 > gains over raw BPE on aggregate, but the gains are task-specific. We therefore
 > treat CETVEL core as early evidence for tokenizer selection rather than a
-> final claim about post-SFT assistant quality.
+> final claim about post-SFT assistant quality. End-to-end benchmark speed is
+> similar for raw BPE and Zemberek MorphBPE and slightly slower for TRmorph
+> MorphBPE in the matched core-12 harness.
 
 ## Next Steps
 

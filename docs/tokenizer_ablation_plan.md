@@ -73,18 +73,20 @@ The first completed d20/32k model-facing comparison is documented in
 under
 [`artifacts/cetvel_core12_model_comparison_2026-06-12`](../artifacts/cetvel_core12_model_comparison_2026-06-12/).
 
-| Tokenizer | Model tag | CETVEL core status | Val BPB | Final train loss | Core-11 macro | XQuAD F1 |
-| --- | --- | --- | ---: | ---: | ---: | ---: |
-| raw BPE | `tr_d20_bpe_32768_chinchilla20` | tasks 01-13 archived; common tasks 01-12 used for comparison | 0.6232 | 2.4899 | 0.4514 | 3.0985 |
-| MorphBPE + TRmorph | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | core tasks 01-12 complete | 0.6266 | 2.0106 | 0.4541 | 3.4786 |
-| MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | core tasks 01-12 complete | 0.6250 | 2.3227 | 0.4618 | 3.2633 |
-| MorphBPE + TurkishDelightNLP | `tr_d20_morphbpe_tdelight_32768_chinchilla20` | pending | - | - | - | - |
+| Tokenizer | Model tag | CETVEL core status | Val BPB | Final train loss | CETVEL ex/s up | Core-11 macro | XQuAD F1 |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
+| raw BPE | `tr_d20_bpe_32768_chinchilla20` | tasks 01-13 archived; common tasks 01-12 used for comparison | 0.6232 | 2.4899 | 13.06 | 0.4514 | 3.0985 |
+| MorphBPE + TRmorph | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | core tasks 01-12 complete | 0.6266 | 2.0106 | 12.49 | 0.4541 | 3.4786 |
+| MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | core tasks 01-12 complete | 0.6250 | 2.3227 | 13.02 | 0.4618 | 3.2633 |
+| MorphBPE + TurkishDelightNLP | `tr_d20_morphbpe_tdelight_32768_chinchilla20` | pending | - | - | - | - | - |
 
 This early evidence is mixed: the MorphBPE variants improve the common
 core-task macro, but raw BPE currently has the best validation BPB. Treat it as
 base-model evidence for candidate selection, not as a final post-SFT quality
 claim. Final train loss is logged for operational completeness but is not the
-main cross-tokenizer loss metric.
+main cross-tokenizer loss metric. CETVEL examples/sec is logged as an
+end-to-end inference-throughput proxy for the matched core-12 benchmark slice,
+not as an isolated hardware benchmark.
 
 Optional later controls:
 

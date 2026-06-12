@@ -226,13 +226,16 @@ BPE run has a larger tasks 01-13 archive, but the table below uses the common
 tasks 01-12 slice so the raw baseline and MorphBPE variants are comparable.
 
 Core-11 macro is the mean over the classification/loglikelihood tasks; `xquad_tr`
-F1 is reported separately because it is on a different scale.
+F1 is reported separately because it is on a different scale. CETVEL speed is
+the logged core-12 wall-clock time divided by `39,441` expanded effective
+examples, so it is an end-to-end benchmark throughput proxy rather than a pure
+GPU-kernel measurement.
 
-| Run | Tokenizer | Segmenter | CETVEL job | Final train loss | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
-| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Raw BPE d20 | `bpe_32768` | none | `493293` | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
-| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | TRmorph | `494056` | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
-| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | Zemberek | `494057` | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
+| Run | Tokenizer | Segmenter | CETVEL job | Core-12 elapsed | CETVEL ex/s up | Final train loss | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Raw BPE d20 | `bpe_32768` | none | `493293` | 50m20s | 13.06 | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
+| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | TRmorph | `494056` | 52m38s | 12.49 | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
+| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | Zemberek | `494057` | 50m30s | 13.02 | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
 
 Detailed task metrics and source result paths live in
 [docs/cetvel_model_comparison.md](docs/cetvel_model_comparison.md) and the
@@ -247,7 +250,9 @@ core-11 macro, and raw BPE still wins several individual tasks. These results
 should be reported as base-model evidence before SFT, not as a final
 instruction-following or generation-quality claim. Final train loss is included
 as run telemetry from the last printed training step; because token units differ
-across tokenizers, validation BPB is the comparable loss metric.
+across tokenizers, validation BPB is the comparable loss metric. Benchmark
+throughput is nearly tied for raw BPE and Zemberek MorphBPE in this core-12
+harness, while TRmorph MorphBPE is about 4% slower end-to-end.
 
 ## Reproduction Pointers
 

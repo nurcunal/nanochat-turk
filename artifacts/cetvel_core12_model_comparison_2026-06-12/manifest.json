@@ -10,6 +10,7 @@
       "model_step": 17100,
       "cetvel_job_id": "493293",
       "source_results_path": "/ari/users/nunal/nanochat-turk-d20-bpe32k/cetvel_out/full_kvcache_20260609_185114/cetvel_full_partial_results.json",
+      "source_cetvel_log": "/ari/users/nunal/nanochat-turk/nanochat-cetvel-full-493293.out",
       "source_meta_path": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_checkpoints/tr_d20_bpe_32768_chinchilla20/meta_017100.json",
       "source_training_log": "/ari/users/nunal/nanochat-turk/nanochat-tr-d20-bpe32k-492421.out"
     },
@@ -20,6 +21,7 @@
       "model_step": 17100,
       "cetvel_job_id": "494056",
       "source_results_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "source_cetvel_log": "/ari/users/nunal/nanochat-turk/cetvel-core12-trmorph-d20-494056.out",
       "source_meta_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/base_checkpoints/tr_d20_morphbpe_trmorph_32768_chinchilla20/meta_017100.json",
       "source_training_log": "/ari/users/nunal/nanochat-turk/nanochat-tr-mbpe-trm32k-493660.out"
     },
@@ -30,6 +32,7 @@
       "model_step": 17100,
       "cetvel_job_id": "494057",
       "source_results_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "source_cetvel_log": "/ari/users/nunal/nanochat-turk/cetvel-core12-zemberek-d20-494057.out",
       "source_meta_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/base_checkpoints/tr_d20_morphbpe_zemberek_32768_chinchilla20/meta_017100.json",
       "source_training_log": "/ari/users/nunal/nanochat-turk/nanochat-tr-mbpe-zemb32k-493760.out"
     }
@@ -38,6 +41,8 @@
     "The raw BPE run contains a larger tasks 01-13 archive; only tasks 01-12 are used for this common-slice comparison.",
     "Core-11 macro excludes xquad_tr because that task reports F1 on a different scale.",
     "Validation BPB is taken from meta_017100.json; final train loss is taken from the last printed training step.",
+    "Benchmark speed is CETVEL progress-log core-12 total_elapsed divided by 39,441 expanded effective examples.",
+    "Benchmark speed is an end-to-end inference-throughput proxy for the matched harness, not an isolated hardware benchmark.",
     "Full expanded CETVEL outputs remain on UHeM; this artifact stores compact summary metrics for GitHub review."
   ]
 }
