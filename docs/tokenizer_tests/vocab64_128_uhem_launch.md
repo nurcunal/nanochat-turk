@@ -45,16 +45,11 @@ copied back and committed after the corresponding tokenizer jobs complete.
 
 ## Submitted Jobs
 
-Submission was prepared locally and pushed to GitHub in commit `e947763`, but
-the live UHeM submission could not be completed from the local Codex session
-because SSH hostname resolution for `altay.uhem.itu.edu.tr` failed repeatedly:
+Submission was prepared locally and pushed to GitHub in commit `e947763`.
+Intermittent SSH hostname resolution failures delayed the live submission, so
+the launchers were fetched on UHeM from GitHub raw URLs once SSH recovered.
 
-```text
-ssh: Could not resolve hostname altay.uhem.itu.edu.tr: -65563
-```
-
-Once SSH resolution is healthy again, sync or pull the committed launchers on
-UHeM and submit the grid with:
+The intended one-shot command is:
 
 ```bash
 cd /ari/users/nunal/nanochat-turk
@@ -67,3 +62,19 @@ Use `TDELIGHT_READY_DEPENDENCY=494159` because job `494159`
 queued behind the last TurkishDelight segmentation shard. The 64k/128k
 TurkishDelight tokenizer jobs should wait for it so they train on the complete
 segmented corpus.
+
+The first submitter version did create tokenizer jobs, but UHeM prints a billing
+notice before the numeric `sbatch --parsable` job id. That polluted the captured
+dependency string, so the dependent GPU jobs were submitted manually after
+patching the submitter to parse the last numeric job id from `sbatch` output.
+
+| Vocab | Tokenizer family | Segmenter | Tokenizer job | Train job | State at submission |
+| ---: | --- | --- | ---: | ---: | --- |
+| 65,536 | raw BPE | none | `494181` | `494189` | tokenizer running; train waits on tokenizer |
+| 65,536 | MorphBPE | TRmorph | `494182` | `494190` | tokenizer running; train waits on tokenizer |
+| 65,536 | MorphBPE | Zemberek | `494183` | `494191` | tokenizer running; train waits on tokenizer |
+| 65,536 | MorphBPE | TurkishDelightNLP | `494184` | `494192` | tokenizer waits on `494159`; train waits on tokenizer |
+| 131,072 | raw BPE | none | `494185` | `494193` | tokenizer running; train waits on tokenizer |
+| 131,072 | MorphBPE | TRmorph | `494186` | `494194` | tokenizer running; train waits on tokenizer |
+| 131,072 | MorphBPE | Zemberek | `494187` | `494195` | tokenizer running; train waits on tokenizer |
+| 131,072 | MorphBPE | TurkishDelightNLP | `494188` | `494196` | tokenizer waits on `494159`; train waits on tokenizer |

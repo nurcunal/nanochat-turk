@@ -52,6 +52,19 @@ label_for_vocab() {
     esac
 }
 
+submit_sbatch() {
+    local output job_id
+    output="$(sbatch --parsable "$@" 2>&1)"
+    printf "%s\n" "$output" >&2
+    job_id="$(printf "%s\n" "$output" | awk '/^[0-9]+/ {print $1}' | tail -n 1)"
+    if [ -z "$job_id" ]; then
+        echo "Could not parse Slurm job id from sbatch output:" >&2
+        printf "%s\n" "$output" >&2
+        return 1
+    fi
+    printf "%s\n" "$job_id"
+}
+
 submit_tokenizer() {
     local vocab="$1"
     local family="$2"
@@ -70,7 +83,7 @@ submit_tokenizer() {
         fi
     fi
 
-    sbatch --parsable \
+    submit_sbatch \
         --job-name="$job_name" \
         "${dep_args[@]}" \
         --export=ALL,VOCAB_SIZE="$vocab",TOKENIZER_FAMILY="$family",SEGMENTER="$segmenter" \
@@ -94,7 +107,7 @@ submit_train() {
         wandb_run="tr-d${depth}-morphbpe-${segmenter}-${label}"
     fi
 
-    sbatch --parsable \
+    submit_sbatch \
         --job-name="$job_name" \
         --dependency="afterok:$tokenizer_job" \
         --export=ALL,VOCAB_SIZE="$vocab",TOKENIZER_FAMILY="$family",SEGMENTER="$segmenter",DEPTH="$depth",WANDB_RUN="$wandb_run" \
