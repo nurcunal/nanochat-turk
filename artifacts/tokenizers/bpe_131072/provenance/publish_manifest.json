@@ -1,0 +1,74 @@
+{
+  "base_dir": "/ari/users/nunal/nanochat-turk-bpe-131072",
+  "files": [
+    {
+      "bundle_path": "tokenizer.pkl",
+      "sha256": "2b0d19810bc77085150e19f6656ba44aa18e24e96b8f14a4c5f23941ee68cd36",
+      "size_bytes": 2055068,
+      "source_path": "/ari/users/nunal/nanochat-turk-bpe-131072/tokenizers/bpe_131072/tokenizer.pkl"
+    },
+    {
+      "bundle_path": "tokenizer_config.json",
+      "sha256": "ef9f70db3083edb19eec346775319a865004278282b46fa908af5fd343124bc0",
+      "size_bytes": 572,
+      "source_path": "/ari/users/nunal/nanochat-turk-bpe-131072/tokenizers/bpe_131072/tokenizer_config.json"
+    },
+    {
+      "bundle_path": "token_bytes.pt",
+      "sha256": "967f286f68eb1e9602f4f0eb99da9b624582ccbe69053f76722af52622424002",
+      "size_bytes": 525865,
+      "source_path": "/ari/users/nunal/nanochat-turk-bpe-131072/tokenizers/bpe_131072/token_bytes.pt"
+    },
+    {
+      "bundle_path": "metrics/raw_metrics.json",
+      "sha256": "c1de6fd871d47fe6c6e78c83ecb6154f664623d43a895939db06850ea79e16d1",
+      "size_bytes": 3276,
+      "source_path": "/ari/users/nunal/nanochat-turk-bpe-131072/bpe_131072_raw_metrics.json"
+    },
+    {
+      "bundle_path": "provenance/segmented_dataset_manifest.json",
+      "sha256": "c57a6c3ed035e3d9701a969480d39ed2c606876f7b63a9399bad006136970a2d",
+      "size_bytes": 890,
+      "source_path": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_data_fineweb2_tur_latn/fineweb2_manifest.json"
+    },
+    {
+      "bundle_path": "README.md",
+      "sha256": "91ff5a2f591cf811a794447bff023bb8f1c2ec6afc9c294cacb50c21791347e5",
+      "size_bytes": 1852,
+      "source_path": "/tmp/tmpv1yfqu65/README.md"
+    }
+  ],
+  "generated_at_utc": "2026-06-12T13:57:30.202380+00:00",
+  "git_branch": "",
+  "git_commit": "",
+  "git_dirty": false,
+  "metrics_path": "/ari/users/nunal/nanochat-turk-bpe-131072/bpe_131072_raw_metrics.json",
+  "repo_id": "",
+  "repo_prefix": "bpe_131072",
+  "repo_type": "model",
+  "segmentation_manifest": "",
+  "segmented_dataset_manifest": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_data_fineweb2_tur_latn/fineweb2_manifest.json",
+  "tokenizer_config": {
+    "data_dir": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_data_fineweb2_tur_latn",
+    "decode_strip": "",
+    "doc_cap": 10000,
+    "implementation": "bpe",
+    "iterator_stats": {
+      "chars": 2000001023,
+      "docs": 777394,
+      "docs_with_boundary": 0
+    },
+    "max_chars": 2000000000,
+    "morph_boundary": "",
+    "morph_boundary_codepoints": "",
+    "morphbpe_iterator_stats": {},
+    "name": "bpe_131072",
+    "requires_runtime_segmentation": false,
+    "text_column": "text",
+    "training_boundary_semantics": "",
+    "training_uses_morph_boundaries": false,
+    "vocab_size": 131072
+  },
+  "tokenizer_dir": "/ari/users/nunal/nanochat-turk-bpe-131072/tokenizers/bpe_131072",
+  "tokenizer_name": "bpe_131072"
+}

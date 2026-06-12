@@ -151,6 +151,11 @@ The complete metric files also include token counts, normalized edit distance,
 Morph-Consistency precision/recall/std, vocabulary diagnostics, and source paths
 for each row.
 
+The linked comparison also now includes the completed `bpe_65536` and
+`bpe_131072` tokenizer-only rows. Treat those larger-vocab rows as descriptive
+cross-vocabulary diagnostics until their matched d16/d12 model runs finish and
+produce validation BPB plus CETVEL results.
+
 ### Public Tokenizer References
 
 `kumru_2b` and `cosmos_turkish_gpt2` were recomputed with the same

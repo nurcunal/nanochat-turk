@@ -1,0 +1,21 @@
+{
+  "name": "bpe_65536",
+  "implementation": "bpe",
+  "vocab_size": 65536,
+  "max_chars": 2000000000,
+  "doc_cap": 10000,
+  "data_dir": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_data_fineweb2_tur_latn",
+  "text_column": "text",
+  "morph_boundary": "",
+  "morph_boundary_codepoints": "",
+  "requires_runtime_segmentation": false,
+  "training_uses_morph_boundaries": false,
+  "training_boundary_semantics": "",
+  "decode_strip": "",
+  "iterator_stats": {
+    "docs": 777394,
+    "chars": 2000001023,
+    "docs_with_boundary": 0
+  },
+  "morphbpe_iterator_stats": {}
+}

@@ -3,13 +3,14 @@
 Tokenizer-only metrics are measured before model training. True BPB is model-dependent and should be reported from validation loss after each pretraining run; this table reports tokenizer compression, fertility, MorphBPE paper morphology metrics, boundary behavior, reversibility, and throughput.
 
 Rows are sorted by MorphBPE-paper-style intrinsic quality: lower `mu_e`, then higher `mu_c` F1, then lower fertility `phi` as an efficiency tie-breaker. This ordering is not a custom weighted score.
-When rows have different vocabulary sizes or sources, the rank is a descriptive tokenizer-metric sort, not a controlled ablation result.
 
 | Rank | Tokenizer | Source | Impl. | Vocab | Docs | Bytes/token ↑ | Tokens/word phi ↓ | Isolated fertility ↓ | Morph edit mu_e ↓ | Morph edit norm ↓ | Morph exact ↑ | Morph consistency P ↑ | Morph consistency R ↑ | Morph consistency F1 mu_c ↑ | Boundary crossed ↓ | Roundtrip fail ↓ | Encode tok/s ↑ |
 |---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 1 | morphbpe_trmorph_32768 | local | morphbpe | 32,768 | 50,000 | 4.4514 | 1.8166 | 1.9821 | 1.4126 | 1.0166 | 0.4258 | 0.9865 | 0.3466 | 0.5129 | 0.4569 | 0.0000 | 5111947 |
-| 2 | morphbpe_zemberek_32768 | local | morphbpe | 32,768 | 50,000 | 4.4959 | 1.7986 | 1.9748 | 1.4817 | 1.0605 | 0.4040 | 0.9831 | 0.2799 | 0.4357 | 0.5906 | 0.0000 | 5075946 |
-| 3 | bpe_32768 | local | bpe | 32,768 | 50,000 | 5.0051 | 1.6157 | 2.0312 | 1.6836 | 1.2083 | 0.3342 | 0.9630 | 0.1949 | 0.3241 | 0.8395 | 0.0000 | 4922601 |
+| 1 | bpe_131072 | local | bpe | 131,072 | 50,000 | 5.8114 | 1.3915 | 1.6372 | 1.2623 | 0.8188 | 0.4701 | 0.9913 | 0.1373 | 0.2412 | 0.9346 | 0.0000 | 3133245 |
+| 2 | morphbpe_trmorph_32768 | local | morphbpe | 32,768 | 50,000 | 4.4514 | 1.8166 | 1.9821 | 1.4126 | 1.0166 | 0.4258 | 0.9865 | 0.3466 | 0.5129 | 0.4569 | 0.0000 | 5111947 |
+| 3 | bpe_65536 | local | bpe | 65,536 | 50,000 | 5.4434 | 1.4856 | 1.8322 | 1.4627 | 1.0124 | 0.4004 | 0.9804 | 0.1677 | 0.2863 | 0.8939 | 0.0000 | 3238593 |
+| 4 | morphbpe_zemberek_32768 | local | morphbpe | 32,768 | 50,000 | 4.4959 | 1.7986 | 1.9748 | 1.4817 | 1.0605 | 0.4040 | 0.9831 | 0.2799 | 0.4357 | 0.5906 | 0.0000 | 5075946 |
+| 5 | bpe_32768 | local | bpe | 32,768 | 50,000 | 5.0051 | 1.6157 | 2.0312 | 1.6836 | 1.2083 | 0.3342 | 0.9630 | 0.1949 | 0.3241 | 0.8395 | 0.0000 | 4922601 |
 
 ## Metric Notes
 
@@ -28,12 +29,16 @@ When rows have different vocabulary sizes or sources, the rank is a descriptive 
 
 | Tokenizer | Morph word occurrences | Consistency unique words | Consistency clustering |
 |---|---:|---:|---|
+| bpe_131072 | 500,000 | 50,000 | sklearn_minibatch_kmeans |
 | morphbpe_trmorph_32768 | 200,000 | 50,000 | sklearn_minibatch_kmeans |
+| bpe_65536 | 500,000 | 50,000 | sklearn_minibatch_kmeans |
 | morphbpe_zemberek_32768 | 200,000 | 50,000 | sklearn_minibatch_kmeans |
 | bpe_32768 | 200,000 | 50,000 | sklearn_minibatch_kmeans |
 
 ## Source Files
 
+- `bpe_131072`: `docs/tokenizer_tests/tokenizer_metrics/bpe_131072_metrics.json`
 - `morphbpe_trmorph_32768`: `docs/tokenizer_tests/tokenizer_metrics/morphbpe_trmorph_32768_metrics.json`
+- `bpe_65536`: `docs/tokenizer_tests/tokenizer_metrics/bpe_65536_metrics.json`
 - `morphbpe_zemberek_32768`: `docs/tokenizer_tests/tokenizer_metrics/morphbpe_zemberek_32768_metrics.json`
 - `bpe_32768`: `docs/tokenizer_tests/tokenizer_metrics/bpe_32768_metrics.json`

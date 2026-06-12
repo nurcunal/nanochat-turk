@@ -88,11 +88,12 @@ Raw BPE tokenizer jobs completed:
 | `bpe_65536` | `494181` | `COMPLETED`, exit `0:0` | `/ari/users/nunal/nanochat-turk/artifacts/tokenizers/bpe_65536/metrics/raw_metrics.json` |
 | `bpe_131072` | `494185` | `COMPLETED`, exit `0:0` | `/ari/users/nunal/nanochat-turk/artifacts/tokenizers/bpe_131072/metrics/raw_metrics.json` |
 
-The full TRmorph-reference metric pass for these completed tokenizers was
-submitted as job `494204` (`tok-metrics-bpe-large`). It will compute
+The full TRmorph-reference metric pass for these completed tokenizers completed
+as job `494204` (`tok-metrics-bpe-large`), exit `0:0`, elapsed `00:04:34`,
+Slurm `CPUTimeRAW=35072`. It computed
 `raw_vs_trmorph_reference_metrics.json` for both completed raw BPE tokenizers
-and refresh `docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.*`
-with the 64k/128k rows. At submission time it was pending on CPU resources.
+and refreshed `docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.*`
+with the 64k/128k rows.
 
 A compact tarball containing the completed raw BPE tokenizer bundles was
 prepared on UHeM:
@@ -101,7 +102,8 @@ prepared on UHeM:
 /ari/users/nunal/bpe_large_tokenizer_artifacts.tgz
 ```
 
-Local transfer of that tarball repeatedly failed because local DNS resolution
-for `altay.uhem.itu.edu.tr` intermittently failed during SSH data-transfer
-commands. Therefore the tokenizer bundles are complete on UHeM but were not yet
-mirrored into the local GitHub checkout in this check.
+Local transfer initially failed because local DNS resolution for
+`altay.uhem.itu.edu.tr` intermittently failed during SSH data-transfer commands.
+The final transfer used an escalated SSH call to the configured hostname and
+mirrored the completed bundles plus full metric files into the local GitHub
+checkout.
