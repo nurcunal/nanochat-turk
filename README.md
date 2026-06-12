@@ -115,34 +115,67 @@ to constrain the merge table.
 The checked-in tokenizer comparison uses the same first `50,000` documents from
 the TRmorph-segmented FineWeb-2 Turkish corpus. The boundary marker is stripped
 before encoding, so all tokenizers receive identical raw Turkish text. True BPB
-is model-dependent, so this table reports tokenizer-only diagnostics.
+is model-dependent, so this table reports tokenizer-only diagnostics and should
+be read as a pretraining-independent ranking, not the final model ranking.
 
-| Tokenizer | Impl. | Docs | Bytes | Tokens | Bytes/token up | Tokens/word down | Isolated word fertility down | Single-token words up | Long-word fertility down | Boundary crossed down | Crossing tok/1k down | Roundtrip fail down | Encode tok/s up |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `bpe_32768` | bpe | 50,000 | 186,328,421 | 37,228,014 | 5.0051 | 1.6157 | 2.0472 | 0.3105 | 2.8417 | 0.8395 | 210.3501 | 0.0000 | 12,127,686 |
-| `morphbpe_trmorph_32768` | morphbpe | 50,000 | 186,328,421 | 41,858,836 | 4.4514 | 1.8166 | 1.9890 | 0.3409 | 2.8046 | 0.4569 | 125.2956 | 0.0000 | 13,419,184 |
-| `kumru_2b` | bpe | 50,000 | 186,328,421 | 38,427,427 | 4.8488 | 1.6677 | 1.6804 | 0.5003 | 2.1697 | 0.7745 | 189.9358 | 0.0000 | 818,251 |
-| `berturk_cased` | wordpiece | 50,000 | 186,328,421 | 36,609,010 | 5.0897 | 1.5888 | 1.4201 | 0.7003 | 1.8625 | 0.8045 | 205.0115 | 0.9929 | 863,345 |
-| `cosmos_turkish_gpt2` | bpe | 50,000 | 186,328,421 | 35,875,345 | 5.1938 | 1.5570 | 1.8836 | 0.3740 | 2.6116 | 0.8694 | 220.6239 | 0.0000 | 681,476 |
-| `turna` | unigram | 50,000 | 186,328,421 | 35,952,018 | 5.1827 | 1.5603 | 1.3966 | 0.7181 | 1.7958 | 0.8015 | 203.4204 | 0.9521 | 540,988 |
-| `vbart_large_base` | unigram | 50,000 | 186,328,421 | 35,952,025 | 5.1827 | 1.5603 | 1.3966 | 0.7181 | 1.7958 | 0.8015 | 203.4204 | 0.9521 | 579,818 |
+Ranking is calculated from the checked-in metrics only. Zemberek and
+TurkishDelightNLP tokenizers are not ranked here until they have matching
+TRmorph-reference metrics checked into the repo. The score is intentionally
+transparent:
+
+1. For each metric, tokenizers are ranked best-to-worst; ties receive the average
+   rank.
+2. The diagnostic score uses a weighted average rank over morphology
+   preservation, compression, word fertility, and throughput:
+
+   | Group | Metric | Weight |
+   | --- | --- | ---: |
+   | Morphology | Boundary crossed down | 28% |
+   | Morphology | Crossing tokens per 1k down | 17% |
+   | Compression | Bytes/token up | 15% |
+   | Word fertility | Corpus tokens/word down | 8% |
+   | Word fertility | Isolated word fertility down | 8% |
+   | Word fertility | Single-token words up | 6% |
+   | Word fertility | Long-word fertility down | 6% |
+   | Throughput | Encode tokens/sec up | 12% |
+
+3. `Diagnostic score = 100 * (1 - (weighted average rank - 1) / (N - 1))`.
+4. `Primary score = diagnostic score * (1 - roundtrip failure rate)`.
+
+The round-trip factor is a raw-text safety gate: a tokenizer that normalizes or
+cannot decode back to the original document may remain a useful public baseline,
+but it should not outrank lossless candidates for nanochat pretraining.
+
+| Rank | Tokenizer | Impl. | Primary score | Diagnostic score | Roundtrip fail | Bytes/token up | Tokens/word down | Boundary crossed down | Crossing tok/1k down | Encode tok/s up | Result |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | `morphbpe_trmorph_32768` | morphbpe | 60.3 | 60.3 | 0.0000 | 4.4514 | 1.8166 | 0.4569 | 125.3 | 13,419,184 | candidate |
+| 2 | `kumru_2b` | bpe | 57.3 | 57.3 | 0.0000 | 4.8488 | 1.6677 | 0.7745 | 189.9 | 818,251 | candidate |
+| 3 | `cosmos_turkish_gpt2` | bpe | 33.7 | 33.7 | 0.0000 | 5.1938 | 1.5570 | 0.8694 | 220.6 | 681,476 | candidate |
+| 4 | `bpe_32768` | bpe | 25.2 | 25.2 | 0.0000 | 5.0051 | 1.6157 | 0.8395 | 210.4 | 12,127,686 | candidate |
+| 5 | `vbart_large_base` | unigram | 3.0 | 63.3 | 0.9521 | 5.1827 | 1.5603 | 0.8015 | 203.4 | 579,818 | lossy baseline |
+| 6 | `turna` | unigram | 3.0 | 62.3 | 0.9521 | 5.1827 | 1.5603 | 0.8015 | 203.4 | 540,988 | lossy baseline |
+| 7 | `berturk_cased` | wordpiece | 0.3 | 47.8 | 0.9929 | 5.0897 | 1.5888 | 0.8045 | 205.0 | 863,345 | lossy baseline |
 
 Full source metrics live in
 [docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md](docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md).
-High `Roundtrip fail` is expected for some encoder/seq2seq tokenizers that
-normalize text or do not preserve raw text exactly.
+The complete metric files include token counts, isolated-word fertility,
+single-token word rate, long-word fertility, vocabulary diagnostics, and source
+paths for each row.
 
 ### Tokenizer Takeaways
 
-- `morphbpe_trmorph_32768` is the clear boundary-behavior winner in the current
-  tokenizer-only table: boundary-crossed rate drops from `0.8395` for raw BPE to
-  `0.4569`.
-- Public Turkish tokenizers such as cosmosGPT/TURNA/VBART are strong on
-  corpus-level compression, but they cross the TRmorph reference boundaries more
-  often in this measurement.
-- The trade-off is real: TRmorph MorphBPE spends more tokens on the same raw
-  text, so the final decision must use model validation BPB and CETVEL, not only
-  tokenizer compression.
+- `morphbpe_trmorph_32768` is ranked first because it is lossless, fastest in
+  this harness, and sharply improves morphology preservation: boundary-crossed
+  rate drops from `0.8395` for raw BPE to `0.4569`.
+- `kumru_2b` is a strong lossless public-tokenizer baseline and stays close in
+  the diagnostic score, but it crosses many more TRmorph reference boundaries
+  than MorphBPE.
+- `vbart_large_base`, `turna`, and `berturk_cased` look strong on some fertility
+  metrics, but their high round-trip failure rates make them lossy baselines
+  rather than drop-in raw-text nanochat tokenizers.
+- The trade-off is still real: TRmorph MorphBPE spends more tokens on the same
+  raw text, so the final project claim must use model validation BPB and CETVEL,
+  not only tokenizer-only optimization.
 
 ## Matched LLM Training Plan
 
