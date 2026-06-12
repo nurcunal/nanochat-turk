@@ -77,3 +77,39 @@ The optimized sbatch was changed to a safer memory-bounded default:
 - `TOKENIZER_THREADS_PER_WORKER=1`
 
 Do not infer a tokenizer failure from `493906`; it was an operational OOM.
+
+## 2026-06-12 Zemberek reference-metric slot release
+
+Goal: run the matched `50,000`-document Zemberek TRmorph-reference metric without
+touching `a080` or the problematic baseline metrics job `493751`.
+
+Actions taken:
+
+- Held the pending tail of the TurkishDelight segmentation resume array:
+  `494059_[20-29]`.
+- Canceled exactly one running TurkishDelight task, `494059_19` on `a044`, to
+  free a CPU node.
+- Submitted `494080` (`nanochat-zemb50k-metrics`) with
+  `runs/uhem_tokenizer_metric_zemberek_50k_trmorph_reference.sbatch`.
+- The metric job ran on `a051` and completed successfully in `00:00:49`.
+- Released the held TurkishDelight pending tail after the Zemberek metric job
+  started; `494059_20` backfilled onto `a044`.
+
+Canceled TurkishDelight segmentation task to restart later:
+
+- `494059_19`
+
+Restart command after the active TurkishDelight segmentation wave has room:
+
+```bash
+ssh -o BatchMode=yes uhem-altay
+cd /ari/users/nunal/nanochat-turk
+sbatch --array=19 runs/uhem_nakane_segment_morphbpe_tdelight_32k_array.sbatch
+squeue -u "$USER" -o "%.18i %.10P %.35j %.2t %.12M %.6D %N %R"
+```
+
+Zemberek output archived from UHeM:
+
+```text
+/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/report/tokenizer_metrics_50k_trmorph_reference/morphbpe_zemberek_32768_metrics.json
+```

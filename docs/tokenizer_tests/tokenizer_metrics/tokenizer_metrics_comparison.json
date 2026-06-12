@@ -39,6 +39,25 @@
       "metrics_path": "docs/tokenizer_tests/tokenizer_metrics/morphbpe_trmorph_32768_metrics.json"
     },
     {
+      "tokenizer": "morphbpe_zemberek_32768",
+      "implementation": "morphbpe",
+      "docs": 50000,
+      "bytes": 186328421,
+      "tokens": 41443968,
+      "bytes_per_token": 4.495911709033266,
+      "tokens_per_word": 1.7986247826851722,
+      "isolated_word_tokens_per_word": 1.98103,
+      "single_token_word_rate": 0.340608,
+      "long_word_tokens_per_word": 2.7639429997754856,
+      "boundary_crossed_rate": 0.5906357189204674,
+      "crossing_tokens_per_1k_tokens": 138.42851630423033,
+      "roundtrip_failure_rate": 0.0,
+      "unique_token_rate": 0.9949951171875,
+      "vocab_utf8_decodable_rate": 0.9948411123660673,
+      "encode_tokens_per_sec": 1472567.15477262,
+      "metrics_path": "docs/tokenizer_tests/tokenizer_metrics/morphbpe_zemberek_32768_metrics.json"
+    },
+    {
       "tokenizer": "kumru_2b",
       "implementation": "bpe",
       "docs": 50000,

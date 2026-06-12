@@ -30,4 +30,4 @@ needed to reproduce tokenizer loading and evaluation.
 | --- | --- | --- |
 | [`bpe_32768`](bpe_32768/) | none | Raw unsegmented BPE baseline. |
 | [`morphbpe_trmorph_32768`](morphbpe_trmorph_32768/) | TRmorph | Archived with raw and TRmorph-reference metrics. |
-| [`morphbpe_zemberek_32768`](morphbpe_zemberek_32768/) | Zemberek | Archived with raw 10k tokenizer metric; matched boundary-reference metric pending. |
+| [`morphbpe_zemberek_32768`](morphbpe_zemberek_32768/) | Zemberek | Archived with raw 10k and matched TRmorph-reference metrics. |

@@ -118,11 +118,12 @@ before encoding, so all tokenizers receive identical raw Turkish text. True BPB
 is model-dependent, so this table reports tokenizer-only diagnostics and should
 be read as a pretraining-independent ranking, not the final model ranking.
 
-Ranking is calculated from the checked-in comparable metrics only. Zemberek now
-has a raw `10,000`-document metric archived in
-[docs/tokenizer_tests/tokenizer_metrics/morphbpe_zemberek_32768_raw_metrics.json](docs/tokenizer_tests/tokenizer_metrics/morphbpe_zemberek_32768_raw_metrics.json),
-but Zemberek and TurkishDelightNLP are not ranked here until they have matching
-TRmorph-reference metrics checked into the repo. The score is intentionally
+Ranking is calculated from the checked-in comparable metrics only. Zemberek is
+now ranked because it has the same `50,000`-document TRmorph-reference metric as
+the other rows; its earlier raw `10,000`-document diagnostic remains archived in
+[docs/tokenizer_tests/tokenizer_metrics/morphbpe_zemberek_32768_raw_metrics.json](docs/tokenizer_tests/tokenizer_metrics/morphbpe_zemberek_32768_raw_metrics.json).
+TurkishDelightNLP is still excluded from this table until its matching
+TRmorph-reference metric is checked into the repo. The score is intentionally
 transparent:
 
 1. For each metric, tokenizers are ranked best-to-worst; ties receive the average
@@ -150,13 +151,14 @@ but it should not outrank lossless candidates for nanochat pretraining.
 
 | Rank | Tokenizer | Impl. | Primary score | Diagnostic score | Roundtrip fail | Bytes/token up | Tokens/word down | Boundary crossed down | Crossing tok/1k down | Encode tok/s up | Result |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| 1 | `morphbpe_trmorph_32768` | morphbpe | 60.3 | 60.3 | 0.0000 | 4.4514 | 1.8166 | 0.4569 | 125.3 | 13,419,184 | candidate |
-| 2 | `kumru_2b` | bpe | 57.3 | 57.3 | 0.0000 | 4.8488 | 1.6677 | 0.7745 | 189.9 | 818,251 | candidate |
-| 3 | `cosmos_turkish_gpt2` | bpe | 33.7 | 33.7 | 0.0000 | 5.1938 | 1.5570 | 0.8694 | 220.6 | 681,476 | candidate |
-| 4 | `bpe_32768` | bpe | 25.2 | 25.2 | 0.0000 | 5.0051 | 1.6157 | 0.8395 | 210.4 | 12,127,686 | candidate |
-| 5 | `vbart_large_base` | unigram | 3.0 | 63.3 | 0.9521 | 5.1827 | 1.5603 | 0.8015 | 203.4 | 579,818 | lossy baseline |
-| 6 | `turna` | unigram | 3.0 | 62.3 | 0.9521 | 5.1827 | 1.5603 | 0.8015 | 203.4 | 540,988 | lossy baseline |
-| 7 | `berturk_cased` | wordpiece | 0.3 | 47.8 | 0.9929 | 5.0897 | 1.5888 | 0.8045 | 205.0 | 863,345 | lossy baseline |
+| 1 | `morphbpe_trmorph_32768` | morphbpe | 60.7 | 60.7 | 0.0000 | 4.4514 | 1.8166 | 0.4569 | 125.3 | 13,419,184 | candidate |
+| 2 | `morphbpe_zemberek_32768` | morphbpe | 55.3 | 55.3 | 0.0000 | 4.4959 | 1.7986 | 0.5906 | 138.4 | 1,472,567 | candidate |
+| 2 | `kumru_2b` | bpe | 55.3 | 55.3 | 0.0000 | 4.8488 | 1.6677 | 0.7745 | 189.9 | 818,251 | candidate |
+| 4 | `cosmos_turkish_gpt2` | bpe | 35.0 | 35.0 | 0.0000 | 5.1938 | 1.5570 | 0.8694 | 220.6 | 681,476 | candidate |
+| 5 | `bpe_32768` | bpe | 26.6 | 26.6 | 0.0000 | 5.0051 | 1.6157 | 0.8395 | 210.4 | 12,127,686 | candidate |
+| 6 | `vbart_large_base` | unigram | 2.9 | 60.4 | 0.9521 | 5.1827 | 1.5603 | 0.8015 | 203.4 | 579,818 | lossy baseline |
+| 7 | `turna` | unigram | 2.9 | 59.6 | 0.9521 | 5.1827 | 1.5603 | 0.8015 | 203.4 | 540,988 | lossy baseline |
+| 8 | `berturk_cased` | wordpiece | 0.3 | 47.1 | 0.9929 | 5.0897 | 1.5888 | 0.8045 | 205.0 | 863,345 | lossy baseline |
 
 Full source metrics live in
 [docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md](docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md).
@@ -169,9 +171,12 @@ paths for each row.
 - `morphbpe_trmorph_32768` is ranked first because it is lossless, fastest in
   this harness, and sharply improves morphology preservation: boundary-crossed
   rate drops from `0.8395` for raw BPE to `0.4569`.
+- `morphbpe_zemberek_32768` ties `kumru_2b` under the current weighted-rank
+  score. Zemberek is better on TRmorph-reference boundary preservation, while
+  Kumru is more compressive and has lower word fertility.
 - `kumru_2b` is a strong lossless public-tokenizer baseline and stays close in
-  the diagnostic score, but it crosses many more TRmorph reference boundaries
-  than MorphBPE.
+  the diagnostic score, but it crosses more TRmorph reference boundaries than
+  either checked-in MorphBPE tokenizer.
 - `vbart_large_base`, `turna`, and `berturk_cased` look strong on some fertility
   metrics, but their high round-trip failure rates make them lossy baselines
   rather than drop-in raw-text nanochat tokenizers.
@@ -188,7 +193,7 @@ and evaluation fixed. At the 32k vocabulary tier, the primary model cells are:
 | ---: | ---: | --- | --- | --- |
 | 32,768 | d20 | raw BPE | `tr_d20_bpe_32768_chinchilla20` | Trained; CETVEL tasks 01-13 archived. |
 | 32,768 | d20 | MorphBPE + TRmorph | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | Tokenizer trained and archived; model run script ready. |
-| 32,768 | d20 | MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | Tokenizer archived with raw metric; d20/CETVEL work active. |
+| 32,768 | d20 | MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | Tokenizer archived with raw and TRmorph-reference metrics; d20/CETVEL work active. |
 | 32,768 | d20 | MorphBPE + TurkishDelightNLP | `tr_d20_morphbpe_tdelight_32768_chinchilla20` | Pipeline scripts/preflight in progress. |
 
 The larger-vocabulary plan is documented in

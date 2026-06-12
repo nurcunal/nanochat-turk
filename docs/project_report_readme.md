@@ -1,6 +1,6 @@
 # nanochat-turk Project Report README
 
-Last updated: 2026-06-09
+Last updated: 2026-06-12
 
 This document is the running memory for the `nanochat-turk` project. It
 summarizes the Codex project threads, especially `Plan Turkish tokenizer study`,
@@ -52,12 +52,13 @@ The current baseline is:
 - FineWeb-2 Turkish raw text;
 - CETVEL evaluation before SFT.
 
-The first MorphBPE target is:
+The first completed MorphBPE tokenizer targets are:
 
-- tokenizer name `morphbpe_trmorph_32768`;
-- same raw FineWeb-2 Turkish text during LLM pretraining;
-- segmentation used only to constrain BPE merge learning;
-- no runtime segmenter required for user prompts or CETVEL prompts.
+- `morphbpe_trmorph_32768`, trained with TRmorph boundaries;
+- `morphbpe_zemberek_32768`, trained with Zemberek boundaries;
+- both use the same raw FineWeb-2 Turkish text during LLM pretraining;
+- segmentation is used only to constrain BPE merge learning;
+- no runtime segmenter is required for user prompts or CETVEL prompts.
 
 ## Main Project Plan
 
@@ -415,6 +416,9 @@ Implemented in:
 
 - `runs/uhem_nakane_prepare_morphbpe_trmorph_32k.sbatch`
 - `runs/uhem_nakane_a100x4_morphbpe_trmorph_32k.sbatch`
+- `runs/uhem_nakane_finalize_morphbpe_zemberek_32k.sbatch`
+- `runs/uhem_nakane_a100x4_morphbpe_zemberek_32k.sbatch`
+- `runs/uhem_tokenizer_metric_zemberek_50k_trmorph_reference.sbatch`
 
 What was checked:
 
@@ -433,14 +437,17 @@ What was checked:
 - CPU prep memory was corrected from `256G` to `240G` because `cpu2dq` nodes
   advertise `250000M`.
 
-Current next action from the tokenizer thread:
+Current tokenizer artifact state:
 
-- Submit the CPU prep job first.
-- It materializes the full TRmorph segmented corpus and trains the real
-  `morphbpe_trmorph_32768` tokenizer.
-- Do not start GPU training until the production tokenizer artifacts exist.
-- Once prep completes, prefer a single 4xA100 node unless queue conditions
-  improve; 2-node and 4-node starts were estimated much later when last checked.
+- `bpe_32768`, `morphbpe_trmorph_32768`, and
+  `morphbpe_zemberek_32768` are archived under `artifacts/tokenizers/`.
+- The comparable `50,000`-document TRmorph-reference metric table now includes
+  raw BPE, TRmorph MorphBPE, Zemberek MorphBPE, and public Turkish tokenizer
+  baselines.
+- TurkishDelightNLP remains the main missing 32k MorphBPE tokenizer artifact.
+  Its segmentation jobs should be resumed using
+  `docs/tokenizer_tests/uhem_restart_notes.md` so canceled shards are not
+  forgotten.
 
 Key commits:
 
@@ -564,6 +571,38 @@ Use in report:
 > evidence. The final claim must come from tokenizer metrics, validation BPB,
 > and CETVEL scores after matched LLM training.
 
+### Tokenizer Diagnostic Result
+
+The checked-in tokenizer comparison currently uses a matched `50,000`-document
+TRmorph-reference sample. All tokenizers encode the same raw Turkish text; the
+TRmorph boundaries are used only to measure morphology preservation.
+
+The transparent weighted-rank score in the main `README.md` gives:
+
+- rank 1: `morphbpe_trmorph_32768`, primary score `60.7`;
+- rank 2 tie: `morphbpe_zemberek_32768`, primary score `55.3`;
+- rank 2 tie: `kumru_2b`, primary score `55.3`;
+- rank 4: `cosmos_turkish_gpt2`, primary score `35.0`;
+- rank 5: `bpe_32768`, primary score `26.6`;
+- lossy public baselines remain below these after the round-trip safety gate.
+
+Interpretation:
+
+- TRmorph is the strongest current tokenizer-only candidate because it has the
+  best boundary preservation and is lossless.
+- Zemberek is now a serious candidate rather than only an archived control: it
+  beats public/raw BPE on TRmorph-reference boundary metrics, but is slower in
+  this harness and less compressive than Kumru.
+- Kumru remains a strong public lossless baseline because it is compact and has
+  low word fertility, but crosses more reference morpheme boundaries.
+
+Use in report:
+
+> Tokenizer diagnostics favor MorphBPE for morphology preservation, especially
+> TRmorph-constrained MorphBPE, but the final project claim must still be
+> decided by matched validation BPB and CETVEL rather than tokenizer-only
+> metrics alone.
+
 ### Baseline Raw-BPE CETVEL Result
 
 The raw-BPE d20 model benchmark was being monitored in the UHeM benchmark
@@ -586,25 +625,27 @@ Use in report:
 
 Immediate:
 
-1. Finish or stop the current raw-BPE CETVEL run according to the benchmark
-   decision: stop after `tquad` if that is still the active plan, then upload
-   the partial result set with explicit subset labeling.
-2. Upload the raw-BPE d20 model/checkpoint/tokenizer/CETVEL artifacts to HF.
-3. Submit the UHeM CPU prep job:
-   `runs/uhem_nakane_prepare_morphbpe_trmorph_32k.sbatch`.
-4. Verify the production artifacts:
-   `$HOME/nanochat-turk-morphbpe-trmorph-32768/tokenizers/morphbpe_trmorph_32768`.
-5. Launch the `morphbpe_trmorph_32768` d20 run on 1x 4A100 unless queue
-   conditions improve.
+1. Keep the checked-in tokenizer artifact and metric tables synchronized with
+   UHeM outputs, especially when full-corpus metrics finish.
+2. Restart the intentionally canceled TurkishDelight segmentation shards listed
+   in `docs/tokenizer_tests/uhem_restart_notes.md`.
+3. Finish the `morphbpe_tdelight_32768` tokenizer and run its matched
+   TRmorph-reference metric.
+4. Launch or continue matched d20 model runs for the candidate tokenizers, then
+   compare validation BPB and CETVEL.
+5. Upload final model/checkpoint/tokenizer/CETVEL artifacts with explicit subset
+   labels for any partial benchmark runs.
 
 Short-term tokenizer study:
 
-1. Run tokenizer-only metrics for `bpe_32768` and `morphbpe_trmorph_32768`.
-2. Materialize Zemberek and TurkishDelight segmented corpora.
-3. Train `morphbpe_zemberek_32768` and `morphbpe_tdelight_32768`.
-4. Run tokenizer-only metrics and boundary-violation metrics.
-5. Decide whether all three should go to full d20 training or whether one is
-   ruled out by tokenizer-only evidence.
+1. Preserve the current ranked comparison for `bpe_32768`,
+   `morphbpe_trmorph_32768`, `morphbpe_zemberek_32768`, and public baselines.
+2. Complete TurkishDelightNLP segmentation, tokenizer training, and matched
+   metrics.
+3. Decide whether TurkishDelight goes to full d20 training or is ruled out by
+   tokenizer-only evidence.
+4. Use matched model validation BPB and CETVEL, not tokenizer diagnostics alone,
+   to choose the final project winner.
 
 Operational note for the full tokenizer metrics: the first full-corpus UHeM run
 used `runs/uhem_tokenizer_metrics_compare_32k.sbatch`, which is conservative
@@ -761,6 +802,8 @@ Safe current claims:
 - Segmenter screening suggests TRmorph and TurkishDelight are the strongest
   candidates to carry forward.
 - Raw-text MorphBPE training is implemented and smoke-tested.
+- TRmorph and Zemberek 32k MorphBPE tokenizer artifacts are archived with
+  matched `50,000`-document TRmorph-reference tokenizer metrics.
 
 Claims to avoid until more evidence exists:
 
