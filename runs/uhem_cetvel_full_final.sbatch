@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 
 # Run the full CETVEL benchmark on the final d20/32k base checkpoint.
 #
@@ -22,6 +22,12 @@ set -euo pipefail
 
 REPO_DIR="${SLURM_SUBMIT_DIR:-$PWD}"
 cd "$REPO_DIR"
+
+if [ -f /etc/profile.d/modules.sh ]; then
+    source /etc/profile.d/modules.sh
+elif [ -f /usr/share/lmod/lmod/init/bash ]; then
+    source /usr/share/lmod/lmod/init/bash
+fi
 
 module purge
 module load cuda/cuda-12.5-a100q
