@@ -23,6 +23,12 @@ Additional reference metrics:
 Kumru and Cosmos were evaluated from public Hugging Face tokenizer files only;
 no model weights were downloaded. They are not included in the current
 MorphBPE-paper ranking until they are recomputed with `mu_e` and `mu_c`.
+The targeted recompute job is
+`runs/uhem_tokenizer_metrics_external_refs_32k.sbatch`; by default it measures
+only Kumru and Cosmos and writes a combined local-plus-external comparison table.
+The general full/parallel comparison jobs can also include external tokenizers
+by setting `INCLUDE_HF=1`; their external list is controlled by
+`HF_TOKENIZER_SPECS` in the form `repo_id|output_name|implementation`.
 
 Additional checked-in single-tokenizer metrics:
 

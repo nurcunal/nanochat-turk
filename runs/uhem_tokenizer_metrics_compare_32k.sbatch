@@ -53,6 +53,12 @@ export MORPH_CONSISTENCY_PAIRS_PER_CLUSTER="${MORPH_CONSISTENCY_PAIRS_PER_CLUSTE
 export MORPH_CONSISTENCY_RESAMPLES="${MORPH_CONSISTENCY_RESAMPLES:-10}"
 export NUM_THREADS="${NUM_THREADS:-${SLURM_CPUS_PER_TASK:-32}}"
 export INCLUDE_HF="${INCLUDE_HF:-0}"
+# Semicolon-separated external tokenizer specs:
+#   repo_id|output_name|implementation
+# Keep the default to lossless public BPE references that can plausibly serve as
+# raw-text tokenizer baselines. Older lossy/architecture-specific references can
+# still be passed explicitly through HF_TOKENIZER_SPECS when needed.
+export HF_TOKENIZER_SPECS="${HF_TOKENIZER_SPECS:-vngrs-ai/Kumru-2B|kumru_2b|bpe;ytu-ce-cosmos/turkish-gpt2|cosmos_turkish_gpt2|bpe}"
 
 mkdir -p "$METRICS_DIR"
 
@@ -126,18 +132,19 @@ if [ -d "$ZEMBEREK_BASE_DIR/tokenizers/morphbpe_zemberek_32768" ]; then
 fi
 
 if [ "$INCLUDE_HF" = "1" ]; then
-    run_hf_tokenizer_metrics vngrs-ai/Kumru-2B kumru_2b
-    run_hf_tokenizer_metrics dbmdz/bert-base-turkish-cased berturk_cased wordpiece
-    run_hf_tokenizer_metrics ytu-ce-cosmos/turkish-gpt2 cosmos_turkish_gpt2
-    run_hf_tokenizer_metrics boun-tabi-LMG/TURNA turna
-    run_hf_tokenizer_metrics vngrs-ai/VBART-Large-Base vbart_large_base
-    METRIC_ARGS+=(
-        --metric "$METRICS_DIR/kumru_2b_metrics.json"
-        --metric "$METRICS_DIR/berturk_cased_metrics.json"
-        --metric "$METRICS_DIR/cosmos_turkish_gpt2_metrics.json"
-        --metric "$METRICS_DIR/turna_metrics.json"
-        --metric "$METRICS_DIR/vbart_large_base_metrics.json"
-    )
+    IFS=';' read -ra HF_SPECS <<< "$HF_TOKENIZER_SPECS"
+    for spec in "${HF_SPECS[@]}"; do
+        [ -n "$spec" ] || continue
+        IFS='|' read -r model_id output_name implementation <<< "$spec"
+        if [ -z "${model_id:-}" ] || [ -z "${output_name:-}" ]; then
+            echo "Bad HF tokenizer spec: $spec" >&2
+            exit 2
+        fi
+        run_hf_tokenizer_metrics "$model_id" "$output_name" "${implementation:-}"
+        METRIC_ARGS+=(
+            --metric "$METRICS_DIR/${output_name}_metrics.json"
+        )
+    done
 fi
 
 python -m scripts.compare_tokenizer_metrics \

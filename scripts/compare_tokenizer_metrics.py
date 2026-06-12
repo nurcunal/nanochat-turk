@@ -14,15 +14,6 @@ def load_json(path: str) -> dict[str, Any]:
         return json.load(f)
 
 
-def get_nested(payload: dict[str, Any], path: str, default: Any = "") -> Any:
-    value: Any = payload
-    for part in path.split("."):
-        if not isinstance(value, dict) or part not in value:
-            return default
-        value = value[part]
-    return value
-
-
 def fmt(value: Any, digits: int = 4) -> str:
     if value is None:
         return ""
@@ -68,9 +59,13 @@ def summarize(payload: dict[str, Any], path: str) -> dict[str, Any]:
     morph_alignment = morphology.get("alignment", {})
     morph_consistency = morphology.get("consistency", {})
     vocab = payload.get("vocabulary", {})
+    tokenizer_config = payload.get("tokenizer_config", {})
     row = {
         "tokenizer": payload.get("tokenizer_name", Path(path).stem),
-        "implementation": get_nested(payload, "tokenizer_config.implementation", ""),
+        "implementation": tokenizer_config.get("implementation", ""),
+        "source": tokenizer_config.get("source", "local"),
+        "model_id": tokenizer_config.get("model_id", ""),
+        "vocab_size": vocab.get("vocab_size", tokenizer_config.get("vocab_size", "")),
         "docs": payload.get("docs", 0),
         "bytes": payload.get("bytes", 0),
         "tokens": payload.get("tokens", 0),
@@ -113,15 +108,17 @@ def render_markdown(rows: list[dict[str, Any]]) -> str:
         "`mu_e`, then higher `mu_c` F1, then lower fertility `phi` as an "
         "efficiency tie-breaker. This ordering is not a custom weighted score.",
         "",
-        "| Rank | Tokenizer | Impl. | Docs | Bytes/token ↑ | Tokens/word phi ↓ | Isolated fertility ↓ | Morph edit mu_e ↓ | Morph edit norm ↓ | Morph exact ↑ | Morph consistency P ↑ | Morph consistency R ↑ | Morph consistency F1 mu_c ↑ | Boundary crossed ↓ | Roundtrip fail ↓ | Encode tok/s ↑ |",
-        "|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| Rank | Tokenizer | Source | Impl. | Vocab | Docs | Bytes/token ↑ | Tokens/word phi ↓ | Isolated fertility ↓ | Morph edit mu_e ↓ | Morph edit norm ↓ | Morph exact ↑ | Morph consistency P ↑ | Morph consistency R ↑ | Morph consistency F1 mu_c ↑ | Boundary crossed ↓ | Roundtrip fail ↓ | Encode tok/s ↑ |",
+        "|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in rows:
         lines.append(
-            "| {rank} | {tokenizer} | {implementation} | {docs} | {bpt} | {tpw} | {itpw} | {med} | {medn} | {mex} | {mcp} | {mcr} | {mcf1} | {boundary} | {rt} | {speed} |".format(
+            "| {rank} | {tokenizer} | {source} | {implementation} | {vocab} | {docs} | {bpt} | {tpw} | {itpw} | {med} | {medn} | {mex} | {mcp} | {mcr} | {mcf1} | {boundary} | {rt} | {speed} |".format(
                 rank=row["paper_style_rank"],
                 tokenizer=row["tokenizer"],
+                source=row["model_id"] or row["source"],
                 implementation=row["implementation"],
+                vocab=fmt(row["vocab_size"], 0),
                 docs=fmt(row["docs"], 0),
                 bpt=fmt(row["bytes_per_token"]),
                 tpw=fmt(row["tokens_per_word"]),
