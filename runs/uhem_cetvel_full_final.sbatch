@@ -57,7 +57,11 @@ export CETVEL_GENERATION_PROGRESS_EVERY="${CETVEL_GENERATION_PROGRESS_EVERY:-1}"
 mkdir -p "$WANDB_DIR" "$HF_DATASETS_CACHE"
 
 source .venv/bin/activate
-python -m pip install -q "datasets==2.19.2"
+if python -m pip --version >/dev/null 2>&1; then
+    python -m pip install -q "datasets==2.19.2"
+else
+    uv pip install -q "datasets==2.19.2"
+fi
 
 CHECKPOINT_DIR="$NANOCHAT_BASE_DIR/base_checkpoints/$MODEL_TAG"
 CETVEL_MODEL_STEP="${CETVEL_MODEL_STEP:-17100}"
