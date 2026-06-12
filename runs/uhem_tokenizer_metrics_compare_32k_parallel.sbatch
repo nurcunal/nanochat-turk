@@ -12,9 +12,9 @@
 #SBATCH --partition=cpu2dq
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=64
+#SBATCH --cpus-per-task=32
 #SBATCH --time=1-00:00:00
-#SBATCH --mem=64G
+#SBATCH --mem=128G
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
 
@@ -44,8 +44,9 @@ export METRICS_DIR="${METRICS_DIR:-$MORPH_BASE_DIR/report/tokenizer_metrics_32k_
 export HF_HOME="${HF_HOME:-$MORPH_BASE_DIR/huggingface}"
 export MAX_DOCS="${MAX_DOCS:-0}"
 export MAX_WORD_METRICS="${MAX_WORD_METRICS:-500000}"
-AVAILABLE_CPUS="${SLURM_CPUS_ON_NODE:-${SLURM_CPUS_PER_TASK:-64}}"
-export NUM_WORKERS="${NUM_WORKERS:-$AVAILABLE_CPUS}"
+# Keep the default memory-bounded. A 128-worker attempt was fast but exceeded
+# 300 GB RSS on UHeM and was killed by Slurm.
+export NUM_WORKERS="${NUM_WORKERS:-${SLURM_CPUS_PER_TASK:-32}}"
 export TOKENIZER_THREADS_PER_WORKER="${TOKENIZER_THREADS_PER_WORKER:-1}"
 export PROGRESS_EVERY="${PROGRESS_EVERY:-5}"
 export INCLUDE_HF="${INCLUDE_HF:-0}"

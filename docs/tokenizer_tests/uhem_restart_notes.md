@@ -56,3 +56,24 @@ replacement array finishes, verify whether `493858` is still valid; if Slurm
 marks its dependency unsatisfied because tasks `10`, `11`, `14`, or `15` were
 canceled in the original array, resubmit the finalize sbatch after all
 segmentation shards are present.
+
+## 2026-06-12 optimized tokenizer metrics retry
+
+Job `493906` (`nanochat-tokenizer-metrics32k-opt`) confirmed that row-group
+parallelism works, but the default was too aggressive:
+
+- `num_workers=128`
+- requested memory: `64G`
+- failed after `00:19:59` with exit code `137`
+- Slurm reported about `304 GB` memory utilized
+- last progress line was around `85080 / 372849` row groups for the first
+  tokenizer pass
+
+The optimized sbatch was changed to a safer memory-bounded default:
+
+- `--cpus-per-task=32`
+- `--mem=128G`
+- `NUM_WORKERS=${SLURM_CPUS_PER_TASK:-32}`
+- `TOKENIZER_THREADS_PER_WORKER=1`
+
+Do not infer a tokenizer failure from `493906`; it was an operational OOM.
