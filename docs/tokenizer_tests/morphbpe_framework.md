@@ -183,7 +183,12 @@ assert decoded == segmented_text.replace(MORPHEME_BOUNDARY, "")
 Before full UHeM training, run tokenizer-only checks:
 
 - encode/decode reversibility;
-- BPB/compression on raw validation text;
-- tokens per byte/word;
+- compression on raw validation text;
+- fertility `phi` / tokens per word;
+- Morphological Edit Distance `mu_e`;
+- Morphological Consistency precision, recall, and F1 `mu_c`;
 - percentage of candidate merge tokens that would cross known boundaries;
 - throughput.
+
+True BPB is model-dependent and should be read from trained model validation
+loss, not from tokenizer-only metrics.

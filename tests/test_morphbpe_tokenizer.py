@@ -8,11 +8,112 @@ from nanochat.morphology import (
     strip_morpheme_boundaries,
 )
 from nanochat.tokenizer import RustBPETokenizer
+from scripts.tokenizer_metrics import (
+    extract_segmented_words,
+    morphological_alignment_stats,
+    morphological_consistency_stats,
+    sequence_edit_distance,
+)
+
+
+class _FakeMetricEncoding:
+    def __init__(self, pieces):
+        self.pieces = pieces
+
+    def decode_single_token_bytes(self, token_id):
+        return self.pieces[token_id]
+
+
+class _FakeMetricTokenizer:
+    def __init__(self, encoded_by_surface, pieces):
+        self.encoded_by_surface = encoded_by_surface
+        self.enc = _FakeMetricEncoding(pieces)
+
+    def encode(self, text, num_threads=0):
+        del num_threads
+        if isinstance(text, str):
+            return self.encoded_by_surface[text]
+        return [self.encoded_by_surface[item] for item in text]
 
 
 def test_morph_boundary_strip_helper():
     text = f"ev{MORPHEME_BOUNDARY}ler{MORPHEME_BOUNDARY}den"
     assert strip_morpheme_boundaries(text) == "evlerden"
+
+
+def test_extract_segmented_words_for_morphology_metrics():
+    text = f"ev{MORPHEME_BOUNDARY}ler eve git{MORPHEME_BOUNDARY}ti."
+    assert extract_segmented_words(text) == [
+        ("evler", ("ev", "ler")),
+        ("eve", ("eve",)),
+        ("gitti", ("git", "ti")),
+    ]
+
+
+def test_sequence_edit_distance_over_morpheme_token_pieces():
+    assert sequence_edit_distance((b"ev", b"ler"), (b"ev", b"ler")) == 0
+    assert sequence_edit_distance((b"ev", b"ler"), (b"evler",)) == 2
+    assert sequence_edit_distance((b"ev", b"ler"), (b"ev", b"ler", b"den")) == 1
+
+
+def test_morphology_alignment_metrics_exact_and_cross_morpheme_token():
+    tokenizer = _FakeMetricTokenizer(
+        {
+            "evler": [1, 2],
+            "evlerden": [3],
+        },
+        {
+            1: b"ev",
+            2: b"ler",
+            3: b"evlerden",
+        },
+    )
+    metrics = morphological_alignment_stats(
+        tokenizer,
+        [
+            ("evler", ("ev", "ler")),
+            ("evlerden", ("ev", "ler", "den")),
+        ],
+        num_threads=1,
+    )
+
+    assert metrics["sample_word_occurrences"] == 2
+    assert metrics["exact_morpheme_sequence_rate"] == 0.5
+    assert metrics["morphological_edit_distance"] == 1.5
+
+
+def test_morphology_consistency_metrics_are_binary_shared_relations():
+    tokenizer = _FakeMetricTokenizer(
+        {
+            "evler": [1, 2],
+            "evden": [1, 3],
+            "kitaplar": [4, 2],
+        },
+        {
+            1: b"ev",
+            2: b"ler",
+            3: b"den",
+            4: b"kitap",
+        },
+    )
+    metrics = morphological_consistency_stats(
+        tokenizer,
+        [
+            ("evler", ("ev", "ler")),
+            ("evden", ("ev", "den")),
+            ("kitaplar", ("kitap", "lar")),
+        ],
+        num_threads=1,
+        max_words=0,
+        n_clusters=1,
+        pairs_per_cluster=10,
+        resamples=1,
+        seed=13,
+    )
+
+    assert metrics["precision_mean"] == 0.5
+    assert metrics["recall_mean"] == 1.0
+    assert round(metrics["f1_mean"], 4) == 0.6667
 
 
 def test_rustbpe_decode_strips_morph_boundaries_after_reload(tmp_path):

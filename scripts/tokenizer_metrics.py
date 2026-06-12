@@ -12,10 +12,12 @@ from __future__ import annotations
 
 import argparse
 import bisect
+import hashlib
 import json
 import math
 import os
 import re
+import random
 import time
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -38,6 +40,10 @@ from tokenizers import Tokenizer as HFTokenizer
 
 
 WORD_RE = re.compile(r"\w+", flags=re.UNICODE)
+SEGMENTED_WORD_RE = re.compile(
+    rf"[\w{re.escape(MORPHEME_BOUNDARY)}]+",
+    flags=re.UNICODE,
+)
 
 _WORKER_TOKENIZER = None
 _WORKER_TEXT_COLUMN = "text"
@@ -125,6 +131,14 @@ def distribution_stats_from_counts(counts: Counter[int]) -> dict[str, float | in
         "p99": percentile_from_counts(counts, 0.99),
         "max": max(counts),
     }
+
+
+def mean_std(values: list[float]) -> dict[str, float]:
+    if not values:
+        return {"mean": 0.0, "std": 0.0}
+    mean = sum(values) / len(values)
+    variance = sum((value - mean) ** 2 for value in values) / len(values)
+    return {"mean": mean, "std": math.sqrt(variance)}
 
 
 def load_tokenizer_config(tokenizer_dir: str) -> dict[str, Any]:
@@ -417,6 +431,352 @@ def word_fertility_stats_from_words(
         "token_count_distribution": distribution_stats(lengths),
         "long_word_tokens_per_word": safe_div(sum(long_lengths), len(long_lengths)),
         "long_word_count": len(long_lengths),
+    }
+
+
+def extract_segmented_words(
+    text: str,
+    *,
+    boundary: str = MORPHEME_BOUNDARY,
+) -> list[tuple[str, tuple[str, ...]]]:
+    """Return `(surface, morphemes)` pairs from a boundary-marked document."""
+
+    out: list[tuple[str, tuple[str, ...]]] = []
+    for raw_word in SEGMENTED_WORD_RE.findall(text):
+        morphemes = tuple(part for part in raw_word.split(boundary) if part)
+        if not morphemes:
+            continue
+        surface = "".join(morphemes)
+        if surface:
+            out.append((surface, morphemes))
+    return out
+
+
+def collect_morph_metric_words(
+    *,
+    split: str,
+    data_dir: str,
+    text_column: str,
+    morph_boundary: str,
+    max_docs: int,
+    max_words: int,
+) -> list[tuple[str, tuple[str, ...]]]:
+    """Collect segmented word references for MorphBPE paper metrics."""
+
+    if max_words < 0:
+        return []
+
+    words: list[tuple[str, tuple[str, ...]]] = []
+    docs_seen = 0
+    for batch in parquets_iter_batched(
+        split=split,
+        data_dir=data_dir,
+        text_column=text_column,
+    ):
+        if max_docs > 0:
+            remaining_docs = max_docs - docs_seen
+            if remaining_docs <= 0:
+                break
+            batch = batch[:remaining_docs]
+        for doc in batch:
+            words.extend(
+                extract_segmented_words(
+                    doc,
+                    boundary=morph_boundary,
+                )
+            )
+            if max_words > 0 and len(words) >= max_words:
+                return words[:max_words]
+        docs_seen += len(batch)
+    return words
+
+
+def token_piece_bytes(tokenizer, token_id: int) -> bytes:
+    if hasattr(tokenizer, "enc"):
+        return tokenizer.enc.decode_single_token_bytes(token_id)
+    return tokenizer.decode([token_id]).encode("utf-8")
+
+
+def token_piece_sequence_bytes(tokenizer, ids: list[int]) -> tuple[bytes, ...]:
+    return tuple(token_piece_bytes(tokenizer, token_id) for token_id in ids)
+
+
+def sequence_edit_distance(a: tuple[bytes, ...], b: tuple[bytes, ...]) -> int:
+    """Levenshtein distance over morpheme/token byte-piece sequences."""
+
+    if not a:
+        return len(b)
+    if not b:
+        return len(a)
+    previous = list(range(len(b) + 1))
+    for i, left in enumerate(a, start=1):
+        current = [i]
+        for j, right in enumerate(b, start=1):
+            substitution = previous[j - 1] + (0 if left == right else 1)
+            insertion = current[j - 1] + 1
+            deletion = previous[j] + 1
+            current.append(min(substitution, insertion, deletion))
+        previous = current
+    return previous[-1]
+
+
+def morphological_alignment_stats(
+    tokenizer,
+    segmented_words: list[tuple[str, tuple[str, ...]]],
+    *,
+    num_threads: int,
+) -> dict[str, Any]:
+    """Paper-style Morphological Edit Distance (`mu_e`) metrics."""
+
+    if not segmented_words:
+        return {
+            "sample_word_occurrences": 0,
+            "unique_surface_words": 0,
+            "morphological_edit_distance": 0.0,
+            "morphological_edit_distance_normalized": 0.0,
+            "morphological_edit_distance_unique": 0.0,
+            "morphological_edit_distance_normalized_unique": 0.0,
+            "exact_morpheme_sequence_rate": 0.0,
+            "mean_morphemes_per_word": 0.0,
+            "mean_token_pieces_per_word": 0.0,
+            "edit_distance_distribution": distribution_stats([]),
+        }
+
+    unique_surfaces = list(dict.fromkeys(surface for surface, _ in segmented_words))
+    encoded_unique = tokenizer.encode(unique_surfaces, num_threads=num_threads)
+    token_pieces_by_surface = {
+        surface: token_piece_sequence_bytes(tokenizer, ids)
+        for surface, ids in zip(unique_surfaces, encoded_unique)
+    }
+
+    occurrence_distances: list[int] = []
+    occurrence_normalized: list[float] = []
+    occurrence_morpheme_counts: list[int] = []
+    occurrence_token_counts: list[int] = []
+    exact_occurrences = 0
+
+    first_by_surface: dict[str, tuple[str, ...]] = {}
+    for surface, morphemes in segmented_words:
+        first_by_surface.setdefault(surface, morphemes)
+        gold = tuple(part.encode("utf-8") for part in morphemes)
+        pred = token_pieces_by_surface[surface]
+        distance = sequence_edit_distance(gold, pred)
+        occurrence_distances.append(distance)
+        occurrence_normalized.append(safe_div(distance, len(gold)))
+        occurrence_morpheme_counts.append(len(gold))
+        occurrence_token_counts.append(len(pred))
+        if gold == pred:
+            exact_occurrences += 1
+
+    unique_distances: list[int] = []
+    unique_normalized: list[float] = []
+    for surface, morphemes in first_by_surface.items():
+        gold = tuple(part.encode("utf-8") for part in morphemes)
+        pred = token_pieces_by_surface[surface]
+        distance = sequence_edit_distance(gold, pred)
+        unique_distances.append(distance)
+        unique_normalized.append(safe_div(distance, len(gold)))
+
+    return {
+        "sample_word_occurrences": len(segmented_words),
+        "unique_surface_words": len(unique_surfaces),
+        "morphological_edit_distance": safe_div(sum(occurrence_distances), len(occurrence_distances)),
+        "morphological_edit_distance_normalized": safe_div(sum(occurrence_normalized), len(occurrence_normalized)),
+        "morphological_edit_distance_unique": safe_div(sum(unique_distances), len(unique_distances)),
+        "morphological_edit_distance_normalized_unique": safe_div(sum(unique_normalized), len(unique_normalized)),
+        "exact_morpheme_sequence_rate": safe_div(exact_occurrences, len(segmented_words)),
+        "mean_morphemes_per_word": safe_div(sum(occurrence_morpheme_counts), len(occurrence_morpheme_counts)),
+        "mean_token_pieces_per_word": safe_div(sum(occurrence_token_counts), len(occurrence_token_counts)),
+        "edit_distance_distribution": distribution_stats(occurrence_distances),
+    }
+
+
+def stable_hash_int(value: bytes | str) -> int:
+    raw = value if isinstance(value, bytes) else value.encode("utf-8")
+    return int.from_bytes(hashlib.blake2b(raw, digest_size=8).digest(), "big")
+
+
+def cluster_morpheme_sets(
+    surfaces: list[str],
+    morpheme_sets: list[set[bytes]],
+    *,
+    n_clusters: int,
+    seed: int,
+) -> tuple[list[list[int]], str]:
+    n_items = len(surfaces)
+    if n_items == 0:
+        return [], "empty"
+    k = max(1, min(n_clusters, n_items))
+    if k == n_items:
+        return [[idx] for idx in range(n_items)], "singleton"
+
+    try:
+        from sklearn.cluster import MiniBatchKMeans
+        from sklearn.feature_extraction import FeatureHasher
+
+        features = [
+            {piece.hex(): 1.0 for piece in sorted(morph_set)}
+            for morph_set in morpheme_sets
+        ]
+        matrix = FeatureHasher(
+            n_features=512,
+            input_type="dict",
+            alternate_sign=False,
+        ).transform(features)
+        labels = MiniBatchKMeans(
+            n_clusters=k,
+            random_state=seed,
+            batch_size=min(4096, max(256, n_items)),
+            n_init=3,
+        ).fit_predict(matrix)
+        clusters: list[list[int]] = [[] for _ in range(k)]
+        for idx, label in enumerate(labels):
+            clusters[int(label)].append(idx)
+        return [cluster for cluster in clusters if cluster], "sklearn_minibatch_kmeans"
+    except Exception:
+        clusters = [[] for _ in range(k)]
+        for idx, (surface, morph_set) in enumerate(zip(surfaces, morpheme_sets)):
+            key = min(morph_set, default=surface.encode("utf-8"))
+            clusters[stable_hash_int(key) % k].append(idx)
+        return [cluster for cluster in clusters if cluster], "hash_fallback"
+
+
+def sample_cluster_pairs(
+    cluster: list[int],
+    *,
+    pairs_per_cluster: int,
+    rng: random.Random,
+) -> list[tuple[int, int]]:
+    if len(cluster) < 2 or pairs_per_cluster <= 0:
+        return []
+    max_pairs = len(cluster) * (len(cluster) - 1) // 2
+    if max_pairs <= pairs_per_cluster:
+        return [
+            (cluster[i], cluster[j])
+            for i in range(len(cluster))
+            for j in range(i + 1, len(cluster))
+        ]
+
+    pairs: set[tuple[int, int]] = set()
+    while len(pairs) < pairs_per_cluster:
+        left, right = rng.sample(cluster, 2)
+        if left > right:
+            left, right = right, left
+        pairs.add((left, right))
+    return list(pairs)
+
+
+def f1_score(precision: float, recall: float) -> float:
+    return safe_div(2.0 * precision * recall, precision + recall)
+
+
+def morphological_consistency_stats(
+    tokenizer,
+    segmented_words: list[tuple[str, tuple[str, ...]]],
+    *,
+    num_threads: int,
+    max_words: int,
+    n_clusters: int,
+    pairs_per_cluster: int,
+    resamples: int,
+    seed: int,
+) -> dict[str, Any]:
+    """Paper-style Morphological Consistency precision/recall/F1 (`mu_c`)."""
+
+    if not segmented_words:
+        return {
+            "sample_unique_words": 0,
+            "clusters_requested": n_clusters,
+            "clusters_used": 0,
+            "pairs_per_cluster": pairs_per_cluster,
+            "resamples": resamples,
+            "clustering": "empty",
+            "precision_mean": 0.0,
+            "precision_std": 0.0,
+            "recall_mean": 0.0,
+            "recall_std": 0.0,
+            "f1_mean": 0.0,
+            "f1_std": 0.0,
+            "f1_from_mean_precision_recall": 0.0,
+            "mean_pairs_per_resample": 0.0,
+        }
+
+    by_surface: dict[str, tuple[str, ...]] = {}
+    for surface, morphemes in segmented_words:
+        by_surface.setdefault(surface, morphemes)
+        if max_words > 0 and len(by_surface) >= max_words:
+            break
+
+    surfaces = list(by_surface)
+    encoded = tokenizer.encode(surfaces, num_threads=num_threads)
+    morph_sets = [
+        {part.encode("utf-8") for part in by_surface[surface]}
+        for surface in surfaces
+    ]
+    token_sets = [
+        set(token_piece_sequence_bytes(tokenizer, ids))
+        for ids in encoded
+    ]
+    clusters, clustering_method = cluster_morpheme_sets(
+        surfaces,
+        morph_sets,
+        n_clusters=n_clusters,
+        seed=seed,
+    )
+
+    precisions: list[float] = []
+    recalls: list[float] = []
+    f1s: list[float] = []
+    pair_counts: list[int] = []
+    for sample_idx in range(max(1, resamples)):
+        rng = random.Random(seed + sample_idx)
+        true_positive = 0
+        token_shared_pairs = 0
+        morph_shared_pairs = 0
+        total_pairs = 0
+        for cluster in clusters:
+            for left, right in sample_cluster_pairs(
+                cluster,
+                pairs_per_cluster=pairs_per_cluster,
+                rng=rng,
+            ):
+                shares_morpheme = bool(morph_sets[left] & morph_sets[right])
+                shares_token = bool(token_sets[left] & token_sets[right])
+                if shares_token:
+                    token_shared_pairs += 1
+                if shares_morpheme:
+                    morph_shared_pairs += 1
+                if shares_token and shares_morpheme:
+                    true_positive += 1
+                total_pairs += 1
+        precision = safe_div(true_positive, token_shared_pairs)
+        recall = safe_div(true_positive, morph_shared_pairs)
+        precisions.append(precision)
+        recalls.append(recall)
+        f1s.append(f1_score(precision, recall))
+        pair_counts.append(total_pairs)
+
+    precision_stats = mean_std(precisions)
+    recall_stats = mean_std(recalls)
+    f1_stats = mean_std(f1s)
+    return {
+        "sample_unique_words": len(surfaces),
+        "clusters_requested": n_clusters,
+        "clusters_used": len(clusters),
+        "pairs_per_cluster": pairs_per_cluster,
+        "resamples": max(1, resamples),
+        "clustering": clustering_method,
+        "precision_mean": precision_stats["mean"],
+        "precision_std": precision_stats["std"],
+        "recall_mean": recall_stats["mean"],
+        "recall_std": recall_stats["std"],
+        "f1_mean": f1_stats["mean"],
+        "f1_std": f1_stats["std"],
+        "f1_from_mean_precision_recall": f1_score(
+            precision_stats["mean"],
+            recall_stats["mean"],
+        ),
+        "mean_pairs_per_resample": safe_div(sum(pair_counts), len(pair_counts)),
     }
 
 
@@ -883,6 +1243,7 @@ def finalize_metrics(
     tokenizer_config: dict[str, Any],
     aggregate: dict[str, Any],
     word_metric_words: list[str],
+    morph_metric_words: list[tuple[str, tuple[str, ...]]],
 ) -> dict[str, Any]:
     docs_count = aggregate["docs_count"]
     total_tokens = aggregate["total_tokens"]
@@ -908,6 +1269,27 @@ def finalize_metrics(
     word_metric_threads = args.num_threads
     if args.workers > 1:
         word_metric_threads = max(args.num_threads, min(args.workers, 32))
+
+    morphology_metrics: dict[str, Any] = {
+        "enabled": bool(args.input_has_morph_boundaries and not args.disable_morphology_metrics),
+        "sample_word_occurrences": len(morph_metric_words),
+    }
+    if morphology_metrics["enabled"]:
+        morphology_metrics["alignment"] = morphological_alignment_stats(
+            tokenizer,
+            morph_metric_words,
+            num_threads=word_metric_threads,
+        )
+        morphology_metrics["consistency"] = morphological_consistency_stats(
+            tokenizer,
+            morph_metric_words,
+            num_threads=word_metric_threads,
+            max_words=args.morph_consistency_max_words,
+            n_clusters=args.morph_consistency_clusters,
+            pairs_per_cluster=args.morph_consistency_pairs_per_cluster,
+            resamples=args.morph_consistency_resamples,
+            seed=args.morph_consistency_seed,
+        )
 
     return {
         "tokenizer_name": tokenizer_config.get("name") or get_tokenizer_name(),
@@ -943,6 +1325,7 @@ def finalize_metrics(
             word_metric_words,
             num_threads=word_metric_threads,
         ),
+        "morphology": morphology_metrics,
         "vocabulary": vocabulary_stats(tokenizer),
         "morph_boundary": boundary_stats,
         "roundtrip_failures": aggregate["roundtrip_failures"],
@@ -1025,6 +1408,50 @@ def main() -> None:
             "Use 0 for all words in sampled docs."
         ),
     )
+    parser.add_argument(
+        "--max-morph-metrics",
+        type=int,
+        default=200000,
+        help=(
+            "Maximum segmented word occurrences for MorphBPE paper metrics. "
+            "Use 0 for all words in sampled docs, or -1 to skip collection."
+        ),
+    )
+    parser.add_argument(
+        "--disable-morphology-metrics",
+        action="store_true",
+        help="Skip MorphBPE paper metrics even when morpheme boundaries are present.",
+    )
+    parser.add_argument(
+        "--morph-consistency-max-words",
+        type=int,
+        default=50000,
+        help="Maximum unique surface words for Morph-Consistency sampling.",
+    )
+    parser.add_argument(
+        "--morph-consistency-clusters",
+        type=int,
+        default=100,
+        help="Morph-Consistency clusters; MorphBPE paper uses k=100.",
+    )
+    parser.add_argument(
+        "--morph-consistency-pairs-per-cluster",
+        type=int,
+        default=50,
+        help="Word pairs sampled inside each cluster; MorphBPE paper uses C=50.",
+    )
+    parser.add_argument(
+        "--morph-consistency-resamples",
+        type=int,
+        default=10,
+        help="Bootstrap resamples for Morph-Consistency; MorphBPE paper uses N=10.",
+    )
+    parser.add_argument(
+        "--morph-consistency-seed",
+        type=int,
+        default=13,
+        help="Deterministic seed for Morph-Consistency clustering/pair sampling.",
+    )
     parser.add_argument("--num-threads", type=int, default=8)
     parser.add_argument(
         "--workers",
@@ -1060,6 +1487,17 @@ def main() -> None:
     else:
         aggregate, word_metric_words = run_serial_metrics(args, tokenizer)
 
+    morph_metric_words: list[tuple[str, tuple[str, ...]]] = []
+    if args.input_has_morph_boundaries and not args.disable_morphology_metrics:
+        morph_metric_words = collect_morph_metric_words(
+            split=args.split,
+            data_dir=args.data_dir or DATA_DIR,
+            text_column=args.text_column,
+            morph_boundary=args.morph_boundary,
+            max_docs=args.max_docs,
+            max_words=args.max_morph_metrics,
+        )
+
     metrics = finalize_metrics(
         args=args,
         tokenizer=tokenizer,
@@ -1067,6 +1505,7 @@ def main() -> None:
         tokenizer_config=tokenizer_config,
         aggregate=aggregate,
         word_metric_words=word_metric_words,
+        morph_metric_words=morph_metric_words,
     )
 
     print(json.dumps(metrics, ensure_ascii=False, indent=2))

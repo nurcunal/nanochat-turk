@@ -38,23 +38,63 @@
     "max": 181931
   },
   "word_fertility_isolated": {
-    "sample_words": 500000,
-    "unique_words": 102875,
-    "tokens": 1023600,
-    "tokens_per_word": 2.0472,
-    "single_token_word_rate": 0.310544,
-    "multi_token_word_rate": 0.689456,
+    "sample_words": 200000,
+    "unique_words": 51512,
+    "tokens": 406233,
+    "tokens_per_word": 2.031165,
+    "single_token_word_rate": 0.31892,
+    "multi_token_word_rate": 0.68108,
     "token_count_distribution": {
-      "count": 500000,
-      "mean": 2.0472,
+      "count": 200000,
+      "mean": 2.031165,
       "p50": 2.0,
       "p90": 3.0,
       "p95": 4.0,
       "p99": 5.0,
-      "max": 35
+      "max": 21
     },
-    "long_word_tokens_per_word": 2.8417174025013536,
-    "long_word_count": 151438
+    "long_word_tokens_per_word": 2.845947029157343,
+    "long_word_count": 59882
+  },
+  "morphology": {
+    "enabled": true,
+    "sample_word_occurrences": 200000,
+    "alignment": {
+      "sample_word_occurrences": 200000,
+      "unique_surface_words": 51512,
+      "morphological_edit_distance": 1.683605,
+      "morphological_edit_distance_normalized": 1.2083357083333333,
+      "morphological_edit_distance_unique": 2.6131969249883524,
+      "morphological_edit_distance_normalized_unique": 1.8158763977325671,
+      "exact_morpheme_sequence_rate": 0.334215,
+      "mean_morphemes_per_word": 1.540765,
+      "mean_token_pieces_per_word": 2.031165,
+      "edit_distance_distribution": {
+        "count": 200000,
+        "mean": 1.683605,
+        "p50": 2.0,
+        "p90": 3.0,
+        "p95": 4.0,
+        "p99": 5.0,
+        "max": 21
+      }
+    },
+    "consistency": {
+      "sample_unique_words": 50000,
+      "clusters_requested": 100,
+      "clusters_used": 98,
+      "pairs_per_cluster": 50,
+      "resamples": 10,
+      "clustering": "sklearn_minibatch_kmeans",
+      "precision_mean": 0.9629714975548775,
+      "precision_std": 0.006825585385904644,
+      "recall_mean": 0.19486674979640622,
+      "recall_std": 0.00570779629352472,
+      "f1_mean": 0.3241012879712356,
+      "f1_std": 0.007922701849503465,
+      "f1_from_mean_precision_recall": 0.32414048560647396,
+      "mean_pairs_per_resample": 3912.0
+    }
   },
   "vocabulary": {
     "vocab_size": 32768,
@@ -83,7 +123,13 @@
   },
   "roundtrip_failures": 0,
   "roundtrip_failure_rate": 0.0,
-  "encode_seconds": 3.069671630859375,
-  "encode_docs_per_sec": 16288.387167327786,
-  "encode_tokens_per_sec": 12127686.110053983
+  "encode_seconds": 7.562672138214111,
+  "encode_docs_per_sec": 6611.4197582823235,
+  "encode_tokens_per_sec": 4922600.546424218,
+  "metric_wall_seconds": 107.77834486961365,
+  "metric_docs_per_wall_sec": 463.91508480194415,
+  "metric_tokens_per_wall_sec": 345412.7454363593,
+  "metric_workers": 1,
+  "metric_tokenizer_threads_per_worker": 8,
+  "metric_row_group_tasks": 200
 }

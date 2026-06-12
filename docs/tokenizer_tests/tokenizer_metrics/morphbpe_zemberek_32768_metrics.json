@@ -59,23 +59,63 @@
     "max": 192543
   },
   "word_fertility_isolated": {
-    "sample_words": 500000,
-    "unique_words": 102875,
-    "tokens": 990515,
-    "tokens_per_word": 1.98103,
-    "single_token_word_rate": 0.340608,
-    "multi_token_word_rate": 0.659392,
+    "sample_words": 200000,
+    "unique_words": 51512,
+    "tokens": 394961,
+    "tokens_per_word": 1.974805,
+    "single_token_word_rate": 0.347935,
+    "multi_token_word_rate": 0.652065,
     "token_count_distribution": {
-      "count": 500000,
-      "mean": 1.98103,
+      "count": 200000,
+      "mean": 1.974805,
       "p50": 2.0,
       "p90": 3.0,
       "p95": 4.0,
       "p99": 4.0,
-      "max": 35
+      "max": 19
     },
-    "long_word_tokens_per_word": 2.7639429997754856,
-    "long_word_count": 151438
+    "long_word_tokens_per_word": 2.7805350522694634,
+    "long_word_count": 59882
+  },
+  "morphology": {
+    "enabled": true,
+    "sample_word_occurrences": 200000,
+    "alignment": {
+      "sample_word_occurrences": 200000,
+      "unique_surface_words": 51512,
+      "morphological_edit_distance": 1.4817,
+      "morphological_edit_distance_normalized": 1.060466375,
+      "morphological_edit_distance_unique": 2.393384065848734,
+      "morphological_edit_distance_normalized_unique": 1.6788817815913444,
+      "exact_morpheme_sequence_rate": 0.40398,
+      "mean_morphemes_per_word": 1.540765,
+      "mean_token_pieces_per_word": 1.974805,
+      "edit_distance_distribution": {
+        "count": 200000,
+        "mean": 1.4817,
+        "p50": 2.0,
+        "p90": 3.0,
+        "p95": 4.0,
+        "p99": 5.0,
+        "max": 19
+      }
+    },
+    "consistency": {
+      "sample_unique_words": 50000,
+      "clusters_requested": 100,
+      "clusters_used": 98,
+      "pairs_per_cluster": 50,
+      "resamples": 10,
+      "clustering": "sklearn_minibatch_kmeans",
+      "precision_mean": 0.9830601592773839,
+      "precision_std": 0.003923700032385608,
+      "recall_mean": 0.2799106138291328,
+      "recall_std": 0.0072613980909739554,
+      "f1_mean": 0.4357018029153973,
+      "f1_std": 0.008928947156641038,
+      "f1_from_mean_precision_recall": 0.4357487575701648,
+      "mean_pairs_per_resample": 3912.0
+    }
   },
   "vocabulary": {
     "vocab_size": 32768,
@@ -104,13 +144,13 @@
   },
   "roundtrip_failures": 0,
   "roundtrip_failure_rate": 0.0,
-  "encode_seconds": 28.144025802612305,
-  "encode_docs_per_sec": 1776.575972132567,
-  "encode_tokens_per_sec": 1472567.15477262,
-  "metric_wall_seconds": 35.84444713592529,
-  "metric_docs_per_wall_sec": 1394.9162002804956,
-  "metric_tokens_per_wall_sec": 1156217.247342129,
-  "metric_workers": 8,
-  "metric_tokenizer_threads_per_worker": 1,
+  "encode_seconds": 8.164777278900146,
+  "encode_docs_per_sec": 6123.865758005753,
+  "encode_tokens_per_sec": 5075945.930221724,
+  "metric_wall_seconds": 108.35149455070496,
+  "metric_docs_per_wall_sec": 461.461101273519,
+  "metric_tokens_per_wall_sec": 382495.5822884896,
+  "metric_workers": 1,
+  "metric_tokenizer_threads_per_worker": 8,
   "metric_row_group_tasks": 200
 }

@@ -132,8 +132,10 @@ publishing the checkpoint/tokenizer bundle.
 Run tokenizer-only evaluation before committing UHeM GPU time:
 
 - Compression: bytes/token, chars/token, fertility, tokens/word.
-- Turkish morphology: boundary violation rate, token purity, morphological edit
-  distance, morphological consistency F1.
+- Turkish MorphBPE paper metrics: fertility `phi`, Morphological Edit Distance
+  `mu_e`, and Morphological Consistency precision/recall/F1 `mu_c`.
+- Turkish engineering diagnostics: boundary violation rate, exact morpheme
+  sequence rate, token purity, reversibility, vocabulary shape, and throughput.
 - Systems: encode throughput and segmentation/cache throughput.
 - Coverage: behavior on noisy web text, OOV words, punctuation, numbers, URLs,
   code-like text, and named entities.

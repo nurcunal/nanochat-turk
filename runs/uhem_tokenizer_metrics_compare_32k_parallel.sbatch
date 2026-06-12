@@ -39,11 +39,17 @@ cd "$REPO_DIR"
 export PATH="$HOME/.local/bin:$PATH"
 export RAW_BASE_DIR="${RAW_BASE_DIR:-$HOME/nanochat-turk-d20-bpe32k}"
 export MORPH_BASE_DIR="${MORPH_BASE_DIR:-$HOME/nanochat-turk-morphbpe-trmorph-32768}"
+export ZEMBEREK_BASE_DIR="${ZEMBEREK_BASE_DIR:-$HOME/nanochat-turk-morphbpe-zemberek-32768}"
 export SEGMENTED_DATA_DIR="${SEGMENTED_DATA_DIR:-$MORPH_BASE_DIR/datasets/trmorph-segmented}"
 export METRICS_DIR="${METRICS_DIR:-$MORPH_BASE_DIR/report/tokenizer_metrics_32k_full_parallel}"
 export HF_HOME="${HF_HOME:-$MORPH_BASE_DIR/huggingface}"
 export MAX_DOCS="${MAX_DOCS:-0}"
 export MAX_WORD_METRICS="${MAX_WORD_METRICS:-500000}"
+export MAX_MORPH_METRICS="${MAX_MORPH_METRICS:-500000}"
+export MORPH_CONSISTENCY_MAX_WORDS="${MORPH_CONSISTENCY_MAX_WORDS:-50000}"
+export MORPH_CONSISTENCY_CLUSTERS="${MORPH_CONSISTENCY_CLUSTERS:-100}"
+export MORPH_CONSISTENCY_PAIRS_PER_CLUSTER="${MORPH_CONSISTENCY_PAIRS_PER_CLUSTER:-50}"
+export MORPH_CONSISTENCY_RESAMPLES="${MORPH_CONSISTENCY_RESAMPLES:-10}"
 # Keep the default memory-bounded. A 128-worker attempt was fast but exceeded
 # 300 GB RSS on UHeM and was killed by Slurm.
 export NUM_WORKERS="${NUM_WORKERS:-${SLURM_CPUS_PER_TASK:-32}}"
@@ -69,7 +75,7 @@ fi
 
 echo "repo_dir=$REPO_DIR"
 echo "metrics_dir=$METRICS_DIR"
-echo "max_docs=$MAX_DOCS max_word_metrics=$MAX_WORD_METRICS"
+echo "max_docs=$MAX_DOCS max_word_metrics=$MAX_WORD_METRICS max_morph_metrics=$MAX_MORPH_METRICS"
 echo "num_workers=$NUM_WORKERS tokenizer_threads_per_worker=$TOKENIZER_THREADS_PER_WORKER"
 echo "include_hf=$INCLUDE_HF progress_every=$PROGRESS_EVERY"
 
@@ -79,6 +85,11 @@ COMMON_METRIC_ARGS=(
     --input-has-morph-boundaries
     --max-docs "$MAX_DOCS"
     --max-word-metrics "$MAX_WORD_METRICS"
+    --max-morph-metrics "$MAX_MORPH_METRICS"
+    --morph-consistency-max-words "$MORPH_CONSISTENCY_MAX_WORDS"
+    --morph-consistency-clusters "$MORPH_CONSISTENCY_CLUSTERS"
+    --morph-consistency-pairs-per-cluster "$MORPH_CONSISTENCY_PAIRS_PER_CLUSTER"
+    --morph-consistency-resamples "$MORPH_CONSISTENCY_RESAMPLES"
     --workers "$NUM_WORKERS"
     --num-threads "$TOKENIZER_THREADS_PER_WORKER"
     --progress-every "$PROGRESS_EVERY"
@@ -120,6 +131,13 @@ METRIC_ARGS=(
     --metric "$METRICS_DIR/bpe_32768_metrics.json"
     --metric "$METRICS_DIR/morphbpe_trmorph_32768_metrics.json"
 )
+
+if [ -d "$ZEMBEREK_BASE_DIR/tokenizers/morphbpe_zemberek_32768" ]; then
+    run_local_tokenizer_metrics "$ZEMBEREK_BASE_DIR/tokenizers/morphbpe_zemberek_32768" morphbpe_zemberek_32768
+    METRIC_ARGS+=(
+        --metric "$METRICS_DIR/morphbpe_zemberek_32768_metrics.json"
+    )
+fi
 
 if [ "$INCLUDE_HF" = "1" ]; then
     run_hf_tokenizer_metrics vngrs-ai/Kumru-2B kumru_2b
