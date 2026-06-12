@@ -45,4 +45,25 @@ copied back and committed after the corresponding tokenizer jobs complete.
 
 ## Submitted Jobs
 
-Pending fill-in after Slurm submission.
+Submission was prepared locally and pushed to GitHub in commit `e947763`, but
+the live UHeM submission could not be completed from the local Codex session
+because SSH hostname resolution for `altay.uhem.itu.edu.tr` failed repeatedly:
+
+```text
+ssh: Could not resolve hostname altay.uhem.itu.edu.tr: -65563
+```
+
+Once SSH resolution is healthy again, sync or pull the committed launchers on
+UHeM and submit the grid with:
+
+```bash
+cd /ari/users/nunal/nanochat-turk
+TDELIGHT_READY_DEPENDENCY=494159 \
+  bash runs/uhem_submit_64k_128k_tokenizer_ablation.sh | tee vocab64_128_submit_$(date +%Y%m%d_%H%M%S).tsv
+```
+
+Use `TDELIGHT_READY_DEPENDENCY=494159` because job `494159`
+(`nanochat-finalize-mbpe-tdlt32k-v2`) is the existing TurkishDelight finalizer
+queued behind the last TurkishDelight segmentation shard. The 64k/128k
+TurkishDelight tokenizer jobs should wait for it so they train on the complete
+segmented corpus.
