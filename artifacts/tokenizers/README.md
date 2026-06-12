@@ -31,11 +31,11 @@ needed to reproduce tokenizer loading and evaluation.
 | [`bpe_32768`](bpe_32768/) | none | Raw unsegmented BPE baseline. |
 | [`morphbpe_trmorph_32768`](morphbpe_trmorph_32768/) | TRmorph | Archived with raw and TRmorph-reference metrics. |
 | [`morphbpe_zemberek_32768`](morphbpe_zemberek_32768/) | Zemberek | Archived with raw 10k and matched TRmorph-reference metrics. |
-| `bpe_65536` | none | UHeM tokenizer job `494181`; archive after completion. |
+| `bpe_65536` | none | UHeM tokenizer job `494181` completed; bundle exists on UHeM, local GitHub mirror pending transfer. |
 | `morphbpe_trmorph_65536` | TRmorph | UHeM tokenizer job `494182`; archive after completion. |
 | `morphbpe_zemberek_65536` | Zemberek | UHeM tokenizer job `494183`; archive after completion. |
 | `morphbpe_tdelight_65536` | TurkishDelightNLP | UHeM tokenizer job `494184`; waits on TurkishDelight 32k finalizer `494159`. |
-| `bpe_131072` | none | UHeM tokenizer job `494185`; archive after completion. |
+| `bpe_131072` | none | UHeM tokenizer job `494185` completed; bundle exists on UHeM, local GitHub mirror pending transfer. |
 | `morphbpe_trmorph_131072` | TRmorph | UHeM tokenizer job `494186`; archive after completion. |
 | `morphbpe_zemberek_131072` | Zemberek | UHeM tokenizer job `494187`; archive after completion. |
 | `morphbpe_tdelight_131072` | TurkishDelightNLP | UHeM tokenizer job `494188`; waits on TurkishDelight 32k finalizer `494159`. |

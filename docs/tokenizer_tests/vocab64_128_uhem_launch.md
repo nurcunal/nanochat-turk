@@ -78,3 +78,30 @@ patching the submitter to parse the last numeric job id from `sbatch` output.
 | 131,072 | MorphBPE | TRmorph | `494186` | `494194` | tokenizer running; train waits on tokenizer |
 | 131,072 | MorphBPE | Zemberek | `494187` | `494195` | tokenizer running; train waits on tokenizer |
 | 131,072 | MorphBPE | TurkishDelightNLP | `494188` | `494196` | tokenizer waits on `494159`; train waits on tokenizer |
+
+## 2026-06-12 Tokenizer Completion Check
+
+Raw BPE tokenizer jobs completed:
+
+| Tokenizer | Job | State | Raw metric bundle |
+| --- | ---: | --- | --- |
+| `bpe_65536` | `494181` | `COMPLETED`, exit `0:0` | `/ari/users/nunal/nanochat-turk/artifacts/tokenizers/bpe_65536/metrics/raw_metrics.json` |
+| `bpe_131072` | `494185` | `COMPLETED`, exit `0:0` | `/ari/users/nunal/nanochat-turk/artifacts/tokenizers/bpe_131072/metrics/raw_metrics.json` |
+
+The full TRmorph-reference metric pass for these completed tokenizers was
+submitted as job `494204` (`tok-metrics-bpe-large`). It will compute
+`raw_vs_trmorph_reference_metrics.json` for both completed raw BPE tokenizers
+and refresh `docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.*`
+with the 64k/128k rows. At submission time it was pending on CPU resources.
+
+A compact tarball containing the completed raw BPE tokenizer bundles was
+prepared on UHeM:
+
+```text
+/ari/users/nunal/bpe_large_tokenizer_artifacts.tgz
+```
+
+Local transfer of that tarball repeatedly failed because local DNS resolution
+for `altay.uhem.itu.edu.tr` intermittently failed during SSH data-transfer
+commands. Therefore the tokenizer bundles are complete on UHeM but were not yet
+mirrored into the local GitHub checkout in this check.
