@@ -21,14 +21,19 @@ Additional reference metrics:
 - `cosmos_turkish_gpt2`: `ytu-ce-cosmos/turkish-gpt2` tokenizer.
 
 Kumru and Cosmos were evaluated from public Hugging Face tokenizer files only;
-no model weights were downloaded. They are not included in the current
-MorphBPE-paper ranking until they are recomputed with `mu_e` and `mu_c`.
+no model weights were downloaded. They were recomputed with `mu_e` and `mu_c`
+by UHeM job `494176` (`nanochat-tokenizer-extrefs32k`), which completed in
+`00:01:13` on node `a071` with Slurm `CPUTime=02:35:44`.
 The targeted recompute job is
 `runs/uhem_tokenizer_metrics_external_refs_32k.sbatch`; by default it measures
-only Kumru and Cosmos and writes a combined local-plus-external comparison table.
+only Kumru and Cosmos and writes a combined local-plus-external comparison table:
+`tokenizer_metrics_comparison_with_external.md/json`.
 The general full/parallel comparison jobs can also include external tokenizers
 by setting `INCLUDE_HF=1`; their external list is controlled by
 `HF_TOKENIZER_SPECS` in the form `repo_id|output_name|implementation`.
+
+External rows have about `50k` vocabulary items, so they are public references,
+not same-vocab controlled ablations against the `32k` nanochat tokenizers.
 
 Additional checked-in single-tokenizer metrics:
 

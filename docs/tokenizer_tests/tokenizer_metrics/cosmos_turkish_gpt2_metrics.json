@@ -9,7 +9,7 @@
     "vocab_size": 50257
   },
   "split": "train",
-  "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph-segmented",
+  "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/datasets/trmorph-segmented",
   "text_column": "segmented_text",
   "input_has_morph_boundaries": true,
   "morph_boundary_codepoint": "U+E000",
@@ -38,23 +38,63 @@
     "max": 168433
   },
   "word_fertility_isolated": {
-    "sample_words": 500000,
-    "unique_words": 102875,
-    "tokens": 941804,
-    "tokens_per_word": 1.883608,
-    "single_token_word_rate": 0.373974,
-    "multi_token_word_rate": 0.626026,
+    "sample_words": 200000,
+    "unique_words": 51512,
+    "tokens": 373556,
+    "tokens_per_word": 1.86778,
+    "single_token_word_rate": 0.38466,
+    "multi_token_word_rate": 0.61534,
     "token_count_distribution": {
-      "count": 500000,
-      "mean": 1.883608,
+      "count": 200000,
+      "mean": 1.86778,
       "p50": 2.0,
       "p90": 3.0,
       "p95": 3.0,
       "p99": 4.0,
-      "max": 35
+      "max": 20
     },
-    "long_word_tokens_per_word": 2.6115506015663175,
-    "long_word_count": 151438
+    "long_word_tokens_per_word": 2.612905380581811,
+    "long_word_count": 59882
+  },
+  "morphology": {
+    "enabled": true,
+    "sample_word_occurrences": 200000,
+    "alignment": {
+      "sample_word_occurrences": 200000,
+      "unique_surface_words": 51512,
+      "morphological_edit_distance": 1.483935,
+      "morphological_edit_distance_normalized": 1.03090875,
+      "morphological_edit_distance_unique": 2.410875135890666,
+      "morphological_edit_distance_normalized_unique": 1.654927977946886,
+      "exact_morpheme_sequence_rate": 0.39645,
+      "mean_morphemes_per_word": 1.540765,
+      "mean_token_pieces_per_word": 1.86778,
+      "edit_distance_distribution": {
+        "count": 200000,
+        "mean": 1.483935,
+        "p50": 2.0,
+        "p90": 3.0,
+        "p95": 3.0,
+        "p99": 4.0,
+        "max": 20
+      }
+    },
+    "consistency": {
+      "sample_unique_words": 50000,
+      "clusters_requested": 100,
+      "clusters_used": 98,
+      "pairs_per_cluster": 50,
+      "resamples": 10,
+      "clustering": "sklearn_minibatch_kmeans",
+      "precision_mean": 0.9767659652279663,
+      "precision_std": 0.004037032711757793,
+      "recall_mean": 0.17734122385617637,
+      "recall_std": 0.006196640890160865,
+      "f1_mean": 0.30013730244640824,
+      "f1_std": 0.008974314004239302,
+      "f1_from_mean_precision_recall": 0.30018160069178446,
+      "mean_pairs_per_resample": 3912.0
+    }
   },
   "vocabulary": {
     "vocab_size": 50257,
@@ -83,7 +123,13 @@
   },
   "roundtrip_failures": 0,
   "roundtrip_failure_rate": 0.0,
-  "encode_seconds": 52.64356541633606,
-  "encode_docs_per_sec": 949.7836934974066,
-  "encode_tokens_per_sec": 681476.3535918744
+  "encode_seconds": 98.54847812652588,
+  "encode_docs_per_sec": 507.3645067943643,
+  "encode_tokens_per_sec": 364037.5344400533,
+  "metric_wall_seconds": 11.84230351448059,
+  "metric_docs_per_wall_sec": 4222.151538242602,
+  "metric_tokens_per_wall_sec": 3029422.8615346807,
+  "metric_workers": 32,
+  "metric_tokenizer_threads_per_worker": 1,
+  "metric_row_group_tasks": 200
 }

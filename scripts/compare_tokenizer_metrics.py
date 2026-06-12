@@ -107,6 +107,8 @@ def render_markdown(rows: list[dict[str, Any]]) -> str:
         "Rows are sorted by MorphBPE-paper-style intrinsic quality: lower "
         "`mu_e`, then higher `mu_c` F1, then lower fertility `phi` as an "
         "efficiency tie-breaker. This ordering is not a custom weighted score.",
+        "When rows have different vocabulary sizes or sources, the rank is a "
+        "descriptive tokenizer-metric sort, not a controlled ablation result.",
         "",
         "| Rank | Tokenizer | Source | Impl. | Vocab | Docs | Bytes/token ↑ | Tokens/word phi ↓ | Isolated fertility ↓ | Morph edit mu_e ↓ | Morph edit norm ↓ | Morph exact ↑ | Morph consistency P ↑ | Morph consistency R ↑ | Morph consistency F1 mu_c ↑ | Boundary crossed ↓ | Roundtrip fail ↓ | Encode tok/s ↑ |",
         "|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",

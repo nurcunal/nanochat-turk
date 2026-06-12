@@ -153,22 +153,29 @@ for each row.
 
 ### Public Tokenizer References
 
-`kumru_2b` and `cosmos_turkish_gpt2` were evaluated earlier by loading their
-public Hugging Face tokenizer files only through `scripts.tokenizer_metrics`;
-no model weights were downloaded or used. In other words, we did have access to
-their tokenizer definitions at evaluation time, even though we did not train or
-load their LLMs. If a public tokenizer file cannot be accessed from Hugging Face
-or local cache, it should not be included in a reproducible tokenizer table.
+`kumru_2b` and `cosmos_turkish_gpt2` were recomputed with the same
+MorphBPE-paper metric implementation by UHeM job `494176`
+(`nanochat-tokenizer-extrefs32k`). They are loaded from public Hugging Face
+tokenizer files only; no model weights are downloaded or used. In other words,
+we have access to their tokenizer definitions, not their training recipe or a
+matched nanochat model.
 
-Those external BPE tokenizers are kept as reference diagnostics, not as active
-MorphBPE-paper-ranked candidates, until they are recomputed with the current
-`mu_e` and `mu_c` implementation. The old comparable engineering diagnostics
-were:
+These rows are external references because their vocabularies are about `50k`,
+not the controlled `32k` vocabulary used by our current ablations. They are
+useful for tokenizer diagnostics, but they should not replace same-vocab model
+comparisons.
 
-| External tokenizer | Source | Bytes/token up | Tokens/word down | Boundary crossed down | Roundtrip fail | Status |
-| --- | --- | ---: | ---: | ---: | ---: | --- |
-| `kumru_2b` | `vngrs-ai/Kumru-2B` tokenizer files | 4.8488 | 1.6677 | 0.7745 | 0.0000 | public BPE reference; needs `mu_e`/`mu_c` recompute |
-| `cosmos_turkish_gpt2` | `ytu-ce-cosmos/turkish-gpt2` tokenizer files | 5.1938 | 1.5570 | 0.8694 | 0.0000 | public BPE reference; needs `mu_e`/`mu_c` recompute |
+| External tokenizer | Source | Vocab | phi down | mu_e down | mu_c F1 up | Morph exact up | Boundary crossed down | Bytes/token up | Status |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| `kumru_2b` | `vngrs-ai/Kumru-2B` tokenizer files | 50,176 | 1.6677 | 1.3500 | 0.3436 | 0.4515 | 0.7745 | 4.8488 | public BPE reference |
+| `cosmos_turkish_gpt2` | `ytu-ce-cosmos/turkish-gpt2` tokenizer files | 50,257 | 1.5570 | 1.4839 | 0.3001 | 0.3965 | 0.8694 | 5.1938 | public BPE reference |
+
+The combined local-plus-external table is checked in at
+[docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison_with_external.md](docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison_with_external.md).
+Kumru is especially instructive: its larger vocabulary gives it the best
+`mu_e` and exact morpheme-sequence rate in this diagnostic, but TRmorph MorphBPE
+still has much better Morph-Consistency (`mu_c`) and far fewer crossed morpheme
+boundaries.
 
 `vbart_large_base`, `turna`, and `berturk_cased` were removed from the main
 README comparison because their earlier runs were lossy/normalizing or

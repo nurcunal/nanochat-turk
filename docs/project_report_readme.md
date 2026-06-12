@@ -603,8 +603,12 @@ Public tokenizer caveat:
 
 - Kumru and Cosmos were measured from public Hugging Face tokenizer files only,
   without model weights.
-- They are now treated as external engineering references, not paper-ranked
-  candidates, until recomputed with the current `mu_e` and `mu_c` implementation.
+- They were recomputed with the current `mu_e` and `mu_c` implementation by UHeM
+  job `494176`, but remain external engineering references because their
+  vocabularies are about `50k`, not the controlled `32k` ablation setting.
+- Kumru has strong `mu_e=1.3500` and exact morpheme-sequence rate `0.4515`, but
+  TRmorph MorphBPE has stronger Morph-Consistency (`0.5129` versus `0.3436`)
+  and much lower boundary crossing (`0.4569` versus `0.7745`).
 
 Interpretation:
 
