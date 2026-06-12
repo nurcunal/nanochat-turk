@@ -2,6 +2,10 @@
 
 This folder stores tokenizer-only metrics for produced tokenizer artifacts.
 
+See [ranking_methodology.md](ranking_methodology.md) for the diagnostic score
+formula, weight rationale, and sensitivity caveats used by the main README
+ranking table.
+
 Current comparison:
 
 - `bpe_32768`: raw unsegmented BPE baseline.

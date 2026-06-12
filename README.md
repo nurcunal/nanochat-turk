@@ -124,7 +124,8 @@ the other rows; its earlier raw `10,000`-document diagnostic remains archived in
 [docs/tokenizer_tests/tokenizer_metrics/morphbpe_zemberek_32768_raw_metrics.json](docs/tokenizer_tests/tokenizer_metrics/morphbpe_zemberek_32768_raw_metrics.json).
 TurkishDelightNLP is still excluded from this table until its matching
 TRmorph-reference metric is checked into the repo. The score is intentionally
-transparent:
+transparent and documented in
+[docs/tokenizer_tests/tokenizer_metrics/ranking_methodology.md](docs/tokenizer_tests/tokenizer_metrics/ranking_methodology.md):
 
 1. For each metric, tokenizers are ranked best-to-worst; ties receive the average
    rank.
@@ -148,6 +149,19 @@ transparent:
 The round-trip factor is a raw-text safety gate: a tokenizer that normalizes or
 cannot decode back to the original document may remain a useful public baseline,
 but it should not outrank lossless candidates for nanochat pretraining.
+
+These weights are a project-specific morphology-prioritized heuristic, not a
+universal tokenizer benchmark. Morphology preservation receives the largest
+share (`45%`) because the central hypothesis is that Turkish BPE should avoid
+crossing productive morpheme boundaries. Word fertility (`28%`) captures
+fragmentation of Turkish forms, compression (`15%`) captures raw-text exposure
+under a fixed token budget, and throughput (`12%`) is included but kept below
+the linguistic and compression terms because it is implementation- and
+hardware-dependent. Sensitivity checks are reported in the methodology note:
+equal or compression-heavy weights favor public compact tokenizers more, while
+morphology-heavy weights favor the MorphBPE candidates. Therefore this table is
+a screening view for tokenizer candidates; validation BPB and CETVEL decide the
+final model-facing claim.
 
 | Rank | Tokenizer | Impl. | Primary score | Diagnostic score | Roundtrip fail | Bytes/token up | Tokens/word down | Boundary crossed down | Crossing tok/1k down | Encode tok/s up | Result |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |

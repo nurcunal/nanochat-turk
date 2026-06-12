@@ -586,6 +586,31 @@ The transparent weighted-rank score in the main `README.md` gives:
 - rank 5: `bpe_32768`, primary score `26.6`;
 - lossy public baselines remain below these after the round-trip safety gate.
 
+Score justification:
+
+- The score is a morphology-prioritized screening heuristic, not a final
+  universal tokenizer ranking.
+- Morphology preservation receives `45%` of the diagnostic score because the
+  main hypothesis is that Turkish tokenizers should avoid crossing productive
+  morpheme boundaries.
+- Word fertility receives `28%` because agglutinative forms should not be
+  excessively fragmented.
+- Compression receives `15%` because fixed token budgets imply different raw
+  text exposure.
+- Throughput receives `12%` because it matters operationally, but is partly an
+  implementation and hardware artifact.
+- The round-trip failure multiplier is a safety gate so lossy normalizing
+  tokenizers cannot outrank lossless raw-text candidates.
+
+Sensitivity caveat:
+
+- Equal weighting or compression-heavy weighting can move public compact
+  tokenizers above MorphBPE candidates.
+- Morphology-heavy weighting strengthens the TRmorph and Zemberek MorphBPE
+  ranking.
+- Therefore the score should be reported as evidence for candidate selection,
+  while validation BPB and CETVEL decide the final model-facing claim.
+
 Interpretation:
 
 - TRmorph is the strongest current tokenizer-only candidate because it has the
