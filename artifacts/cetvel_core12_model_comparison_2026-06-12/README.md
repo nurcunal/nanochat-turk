@@ -13,7 +13,9 @@ BPE baseline and the available MorphBPE variant runs.
   `xquad_tr` because it reports F1 on a different scale
 - Benchmark speed: progress-log core-12 `total_elapsed` divided by `39,441`
   expanded effective examples
-- Validation BPB source: final checkpoint `meta_017100.json`
+- Final validation BPB source: final checkpoint `meta_017100.json`
+- Lowest validation BPB source: `loop_state.min_val_bpb` in final checkpoint
+  metadata
 - Final train loss source: last printed training step, `step 17099/17100`
 
 The raw BPE run has a larger checked-in artifact for tasks 01-13 under
@@ -23,11 +25,11 @@ comparable.
 
 ## Run Summary
 
-| Run | Tokenizer | CETVEL job | Slice | Core-12 elapsed | CETVEL ex/s up | Speed vs raw | Val BPB | Final train loss | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
-| --- | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Raw BPE d20 | `bpe_32768` | `493293` | tasks 01-13 archived; common tasks 01-12 used here | 50m20s | 13.06 | 1.000x | 0.6232 | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
-| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | `494056` | core tasks 01-12 | 52m38s | 12.49 | 0.956x | 0.6266 | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
-| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | `494057` | core tasks 01-12 | 50m30s | 13.02 | 0.997x | 0.6250 | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
+| Run | Tokenizer | CETVEL job | Slice | Core-12 elapsed | CETVEL ex/s up | Speed vs raw | Final val BPB | Lowest val BPB | Final train loss | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
+| --- | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Raw BPE d20 | `bpe_32768` | `493293` | tasks 01-13 archived; common tasks 01-12 used here | 50m20s | 13.06 | 1.000x | 0.6232 | 0.6232 | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
+| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | `494056` | core tasks 01-12 | 52m38s | 12.49 | 0.956x | 0.6266 | 0.6266 | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
+| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | `494057` | core tasks 01-12 | 50m30s | 13.02 | 0.997x | 0.6250 | 0.6250 | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
 
 ## Task Metrics
 
@@ -79,10 +81,12 @@ The core-11 macro moves only modestly from raw BPE to TRmorph MorphBPE
 task-specific rather than uniform: MorphBPE improves `news_cat` and
 `trclaim19`, while raw BPE remains stronger on tasks such as `exams_tr`,
 `belebele_tr`, and `offenseval_tr`. TRmorph has the best XQuAD F1 in this slice.
-Raw BPE has the best validation BPB. Final train loss is included as run
-telemetry, but validation BPB is the comparable loss metric across tokenizers.
-The benchmark-speed column is nearly tied for raw BPE and Zemberek MorphBPE,
-with TRmorph MorphBPE about 4% slower end-to-end in this matched harness.
+Raw BPE has the best final and lowest validation BPB. The lowest value equals
+the final value for all rows because validation kept improving through step
+`17100`. Final train loss is included as run telemetry, but validation BPB is
+the comparable loss metric across tokenizers. The benchmark-speed column is
+nearly tied for raw BPE and Zemberek MorphBPE, with TRmorph MorphBPE about 4%
+slower end-to-end in this matched harness.
 
 Use this table as early model-facing evidence, not as a final tokenizer verdict.
 The runs are pre-SFT base models and the generation-heavy CETVEL tasks are not

@@ -637,24 +637,26 @@ speed divides the logged core-12 elapsed time by `39,441` expanded effective
 examples; use it as an end-to-end inference-throughput proxy, not as a pure
 hardware benchmark:
 
-| Run | Tokenizer | CETVEL job | Core-12 elapsed | CETVEL ex/s up | Final train loss | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Raw BPE d20 | `bpe_32768` | `493293` | 50m20s | 13.06 | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
-| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | `494056` | 52m38s | 12.49 | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
-| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | `494057` | 50m30s | 13.02 | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
+| Run | Tokenizer | CETVEL job | Core-12 elapsed | CETVEL ex/s up | Final val BPB | Lowest val BPB | Final train loss | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Raw BPE d20 | `bpe_32768` | `493293` | 50m20s | 13.06 | 0.6232 | 0.6232 | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
+| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | `494056` | 52m38s | 12.49 | 0.6266 | 0.6266 | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
+| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | `494057` | 50m30s | 13.02 | 0.6250 | 0.6250 | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
 
 Training-loss context:
 
-| Run | Final validation BPB | Final train loss |
-| --- | ---: | ---: |
-| Raw BPE d20 | 0.6232 | 2.4899 |
-| MorphBPE + TRmorph d20 | 0.6266 | 2.0106 |
-| MorphBPE + Zemberek d20 | 0.6250 | 2.3227 |
+| Run | Final validation BPB | Lowest validation BPB | Final train loss |
+| --- | ---: | ---: | ---: |
+| Raw BPE d20 | 0.6232 | 0.6232 | 2.4899 |
+| MorphBPE + TRmorph d20 | 0.6266 | 0.6266 | 2.0106 |
+| MorphBPE + Zemberek d20 | 0.6250 | 0.6250 | 2.3227 |
 
 Core-11 macro averages the classification/loglikelihood tasks and excludes
 `xquad_tr`, which is reported as F1 on a different scale. Final validation BPB
-comes from `meta_017100.json`; final train loss comes from the final printed
-training step. The detailed table and source paths are in
+comes from `meta_017100.json`; lowest validation BPB comes from
+`loop_state.min_val_bpb` in the final checkpoint metadata; final train loss
+comes from the final printed training step. The detailed table and source paths
+are in
 `docs/cetvel_model_comparison.md` and
 `artifacts/cetvel_core12_model_comparison_2026-06-12/`.
 
@@ -666,9 +668,11 @@ Interpretation:
   `trclaim19`, with Zemberek much stronger there.
 - Raw BPE remains better on tasks such as `exams_tr`, `belebele_tr`, and
   `offenseval_tr`.
-- Raw BPE has the best final validation BPB in this slice, so tokenizer-only
-  morphology gains have not translated into a lower byte-normalized validation
-  loss yet.
+- Raw BPE has the best final and lowest validation BPB in this slice, so
+  tokenizer-only morphology gains have not translated into a lower
+  byte-normalized validation loss yet. For all three rows, the lowest
+  validation BPB equals the final validation BPB because validation kept
+  improving through step `17100`.
 - Final train loss is useful run telemetry, but validation BPB is the comparable
   cross-tokenizer loss metric because token units differ.
 - Benchmark throughput is nearly tied for raw BPE and Zemberek MorphBPE in the

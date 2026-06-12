@@ -40,7 +40,8 @@
   "notes": [
     "The raw BPE run contains a larger tasks 01-13 archive; only tasks 01-12 are used for this common-slice comparison.",
     "Core-11 macro excludes xquad_tr because that task reports F1 on a different scale.",
-    "Validation BPB is taken from meta_017100.json; final train loss is taken from the last printed training step.",
+    "Final validation BPB is taken from meta_017100.json; lowest validation BPB is taken from loop_state.min_val_bpb in the final checkpoint metadata.",
+    "Final train loss is taken from the last printed training step.",
     "Benchmark speed is CETVEL progress-log core-12 total_elapsed divided by 39,441 expanded effective examples.",
     "Benchmark speed is an end-to-end inference-throughput proxy for the matched harness, not an isolated hardware benchmark.",
     "Full expanded CETVEL outputs remain on UHeM; this artifact stores compact summary metrics for GitHub review."
