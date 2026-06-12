@@ -22,8 +22,8 @@ supports the Turkish morphology-aware tokenizer ablation.
   the TurkishDelight wrapper.
 - [UHeM restart notes](uhem_restart_notes.md): intentional pauses/cancellations
   and exact restart commands for cluster jobs.
-- [Tokenizer metric ranking methodology](tokenizer_metrics/ranking_methodology.md):
-  diagnostic score formula, weight rationale, and sensitivity caveats.
+- [Tokenizer metrics](tokenizer_metrics/): MorphBPE paper-style intrinsic
+  metrics and compact checked-in comparison tables.
 
 ## Small Result Files
 

@@ -1,35 +1,34 @@
 # Tokenizer Metrics
 
 This folder stores tokenizer-only metrics for produced tokenizer artifacts.
-
-See [ranking_methodology.md](ranking_methodology.md) for the diagnostic score
-formula, weight rationale, and sensitivity caveats used by the main README
-ranking table.
+The active comparison follows the MorphBPE paper's intrinsic metrics rather than
+a custom weighted score.
 
 Current comparison:
 
-- `bpe_32768`: raw unsegmented BPE baseline.
 - `morphbpe_trmorph_32768`: TRmorph-constrained MorphBPE tokenizer.
 - `morphbpe_zemberek_32768`: Zemberek-constrained MorphBPE tokenizer.
+- `bpe_32768`: raw unsegmented BPE baseline.
 
 The current checked-in table focuses on produced `nanochat-turk` tokenizer
-artifacts. Public Turkish tokenizer JSONs from earlier diagnostics remain in
-this folder as reference files, but they are not part of the MorphBPE-paper
-comparison table unless recomputed against the same segmented reference.
+artifacts. Public Turkish tokenizer JSONs from earlier diagnostics remain only
+for lossless BPE references that could plausibly serve as raw-text tokenizer
+baselines.
 
 Additional reference metrics:
 
 - `kumru_2b`: `vngrs-ai/Kumru-2B` public Turkish LLM tokenizer.
-- `berturk_cased`: `dbmdz/bert-base-turkish-cased` WordPiece tokenizer.
 - `cosmos_turkish_gpt2`: `ytu-ce-cosmos/turkish-gpt2` tokenizer.
-- `turna`: `boun-tabi-LMG/TURNA` tokenizer.
-- `vbart_large_base`: `vngrs-ai/VBART-Large-Base` tokenizer.
+
+Kumru and Cosmos were evaluated from public Hugging Face tokenizer files only;
+no model weights were downloaded. They are not included in the current
+MorphBPE-paper ranking until they are recomputed with `mu_e` and `mu_c`.
 
 Additional checked-in single-tokenizer metrics:
 
 - `morphbpe_zemberek_32768_raw_metrics.json`: raw-text `10,000`-document metric
   for the Zemberek MorphBPE tokenizer. This file is useful for artifact
-  inspection, but the ranked comparison uses
+  inspection, but the paper-style comparison uses
   `morphbpe_zemberek_32768_metrics.json`, the matched `50,000`-document
   TRmorph-reference boundary run.
 

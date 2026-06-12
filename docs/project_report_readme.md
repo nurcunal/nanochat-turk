@@ -577,49 +577,46 @@ The checked-in tokenizer comparison currently uses a matched `50,000`-document
 TRmorph-reference sample. All tokenizers encode the same raw Turkish text; the
 TRmorph boundaries are used only to measure morphology preservation.
 
-The transparent weighted-rank score in the main `README.md` gives:
+The main `README.md` now follows the MorphBPE paper rather than a custom
+weighted-rank score. The paper-style intrinsic order is:
 
-- rank 1: `morphbpe_trmorph_32768`, primary score `60.7`;
-- rank 2 tie: `morphbpe_zemberek_32768`, primary score `55.3`;
-- rank 2 tie: `kumru_2b`, primary score `55.3`;
-- rank 4: `cosmos_turkish_gpt2`, primary score `35.0`;
-- rank 5: `bpe_32768`, primary score `26.6`;
-- lossy public baselines remain below these after the round-trip safety gate.
+- rank 1: `morphbpe_trmorph_32768`, `phi=1.8166`, `mu_e=1.4126`,
+  `mu_c=0.5129`;
+- rank 2: `morphbpe_zemberek_32768`, `phi=1.7986`, `mu_e=1.4817`,
+  `mu_c=0.4357`;
+- rank 3: `bpe_32768`, `phi=1.6157`, `mu_e=1.6836`, `mu_c=0.3241`.
 
-Score justification:
+Ranking justification:
 
-- The score is a morphology-prioritized screening heuristic, not a final
-  universal tokenizer ranking.
-- Morphology preservation receives `45%` of the diagnostic score because the
-  main hypothesis is that Turkish tokenizers should avoid crossing productive
-  morpheme boundaries.
-- Word fertility receives `28%` because agglutinative forms should not be
-  excessively fragmented.
-- Compression receives `15%` because fixed token budgets imply different raw
-  text exposure.
-- Throughput receives `12%` because it matters operationally, but is partly an
-  implementation and hardware artifact.
-- The round-trip failure multiplier is a safety gate so lossy normalizing
-  tokenizers cannot outrank lossless raw-text candidates.
+- The MorphBPE paper evaluates tokenizers with fertility `phi`, Morphological
+  Edit Distance `mu_e`, and Morphological Consistency `mu_c`.
+- For agglutinative languages, lower fertility is an efficiency advantage but
+  not the main morphology-quality criterion.
+- TRmorph ranks first because it has the lowest `mu_e`, highest `mu_c`, highest
+  exact morpheme-sequence rate, and lowest boundary-crossing rate.
+- Zemberek ranks second because it improves both `mu_e` and `mu_c` over raw BPE,
+  but less strongly than TRmorph on the TRmorph reference segmentation.
+- Raw BPE ranks third by paper-style morphology metrics, despite being the most
+  compact trained tokenizer.
 
-Sensitivity caveat:
+Public tokenizer caveat:
 
-- Equal weighting or compression-heavy weighting can move public compact
-  tokenizers above MorphBPE candidates.
-- Morphology-heavy weighting strengthens the TRmorph and Zemberek MorphBPE
-  ranking.
-- Therefore the score should be reported as evidence for candidate selection,
-  while validation BPB and CETVEL decide the final model-facing claim.
+- Kumru and Cosmos were measured from public Hugging Face tokenizer files only,
+  without model weights.
+- They are now treated as external engineering references, not paper-ranked
+  candidates, until recomputed with the current `mu_e` and `mu_c` implementation.
 
 Interpretation:
 
 - TRmorph is the strongest current tokenizer-only candidate because it has the
-  best boundary preservation and is lossless.
+  best `mu_e`, `mu_c`, exact morpheme-sequence rate, and boundary preservation.
 - Zemberek is now a serious candidate rather than only an archived control: it
-  beats public/raw BPE on TRmorph-reference boundary metrics, but is slower in
-  this harness and less compressive than Kumru.
-- Kumru remains a strong public lossless baseline because it is compact and has
-  low word fertility, but crosses more reference morpheme boundaries.
+  improves the MorphBPE-paper metrics over raw BPE, but less strongly than
+  TRmorph on the TRmorph-reference sample.
+- Raw BPE remains the compact baseline and has the best current d20 validation
+  BPB, so tokenizer-only morphology gains still need model-level confirmation.
+- Kumru and Cosmos remain public tokenizer references only; they are not in the
+  current paper-style ranking until recomputed with `mu_e` and `mu_c`.
 
 Use in report:
 

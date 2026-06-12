@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
+import math
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +31,34 @@ def fmt(value: Any, digits: int = 4) -> str:
     if isinstance(value, float):
         return f"{value:.{digits}f}"
     return str(value)
+
+
+def as_float(value: Any, default: float) -> float:
+    if value == "":
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def paper_style_sort_key(row: dict[str, Any]) -> tuple[float, float, float, float, str]:
+    """MorphBPE-paper-style ordering without a synthetic weighted score."""
+
+    return (
+        as_float(row["morph_edit_distance"], math.inf),
+        -as_float(row["morph_consistency_f1"], -math.inf),
+        as_float(row["tokens_per_word"], math.inf),
+        as_float(row["boundary_crossed_rate"], math.inf),
+        row["tokenizer"],
+    )
+
+
+def rank_rows_paper_style(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    ranked = []
+    for rank, row in enumerate(sorted(rows, key=paper_style_sort_key), start=1):
+        ranked.append({"paper_style_rank": rank, **row})
+    return ranked
 
 
 def summarize(payload: dict[str, Any], path: str) -> dict[str, Any]:
@@ -81,12 +109,17 @@ def render_markdown(rows: list[dict[str, Any]]) -> str:
         "MorphBPE paper morphology metrics, boundary behavior, reversibility, "
         "and throughput.",
         "",
-        "| Tokenizer | Impl. | Docs | Bytes/token ↑ | Tokens/word phi ↓ | Isolated fertility ↓ | Morph edit mu_e ↓ | Morph edit norm ↓ | Morph exact ↑ | Morph consistency P ↑ | Morph consistency R ↑ | Morph consistency F1 mu_c ↑ | Boundary crossed ↓ | Roundtrip fail ↓ | Encode tok/s ↑ |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "Rows are sorted by MorphBPE-paper-style intrinsic quality: lower "
+        "`mu_e`, then higher `mu_c` F1, then lower fertility `phi` as an "
+        "efficiency tie-breaker. This ordering is not a custom weighted score.",
+        "",
+        "| Rank | Tokenizer | Impl. | Docs | Bytes/token ↑ | Tokens/word phi ↓ | Isolated fertility ↓ | Morph edit mu_e ↓ | Morph edit norm ↓ | Morph exact ↑ | Morph consistency P ↑ | Morph consistency R ↑ | Morph consistency F1 mu_c ↑ | Boundary crossed ↓ | Roundtrip fail ↓ | Encode tok/s ↑ |",
+        "|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in rows:
         lines.append(
-            "| {tokenizer} | {implementation} | {docs} | {bpt} | {tpw} | {itpw} | {med} | {medn} | {mex} | {mcp} | {mcr} | {mcf1} | {boundary} | {rt} | {speed} |".format(
+            "| {rank} | {tokenizer} | {implementation} | {docs} | {bpt} | {tpw} | {itpw} | {med} | {medn} | {mex} | {mcp} | {mcr} | {mcf1} | {boundary} | {rt} | {speed} |".format(
+                rank=row["paper_style_rank"],
                 tokenizer=row["tokenizer"],
                 implementation=row["implementation"],
                 docs=fmt(row["docs"], 0),
@@ -153,7 +186,7 @@ def main() -> None:
     parser.add_argument("--output-json", required=True)
     args = parser.parse_args()
 
-    rows = [summarize(load_json(path), path) for path in args.metric]
+    rows = rank_rows_paper_style([summarize(load_json(path), path) for path in args.metric])
     output_json = Path(args.output_json)
     output_md = Path(args.output_md)
     output_json.parent.mkdir(parents=True, exist_ok=True)

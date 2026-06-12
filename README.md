@@ -33,7 +33,7 @@ decodes raw Turkish text without requiring a runtime segmenter.
 | Turkish data pipeline | FineWeb-2 Turkish download, parquet reading, UHeM runs, checkpointing, and artifact capture work end to end. | [docs/turkish_foundation.md](docs/turkish_foundation.md), [artifacts/uhem_smoke_2026-06-07_job492393](artifacts/uhem_smoke_2026-06-07_job492393) |
 | Segmenter screening | TRmorph, Zemberek, TurkishDelightNLP, and identity control benchmarked on deterministic FineWeb-2 Turkish samples. | [docs/tokenizer_tests/segmenter_benchmark_status.md](docs/tokenizer_tests/segmenter_benchmark_status.md), [docs/tokenizer_tests/codex_local_judge_results.md](docs/tokenizer_tests/codex_local_judge_results.md) |
 | MorphBPE implementation | Raw-text MorphBPE tokenizer training implemented and tested. Segmentation constrains merge learning only. | [docs/tokenizer_tests/morphbpe_framework.md](docs/tokenizer_tests/morphbpe_framework.md), [tests/test_morphbpe_tokenizer.py](tests/test_morphbpe_tokenizer.py) |
-| Tokenizer artifacts | Raw BPE, TRmorph MorphBPE, and Zemberek MorphBPE 32k tokenizers archived; public Turkish tokenizer baselines measured. | [artifacts/tokenizers](artifacts/tokenizers), [docs/tokenizer_tests/tokenizer_metrics](docs/tokenizer_tests/tokenizer_metrics) |
+| Tokenizer artifacts | Raw BPE, TRmorph MorphBPE, and Zemberek MorphBPE 32k tokenizers archived; paper-style intrinsic metrics computed. | [artifacts/tokenizers](artifacts/tokenizers), [docs/tokenizer_tests/tokenizer_metrics](docs/tokenizer_tests/tokenizer_metrics) |
 | Base LLM benchmark | Raw-BPE, TRmorph MorphBPE, and Zemberek MorphBPE d20 base models evaluated on the common CETVEL core slice before SFT. | [docs/cetvel_model_comparison.md](docs/cetvel_model_comparison.md), [artifacts/cetvel_core12_model_comparison_2026-06-12](artifacts/cetvel_core12_model_comparison_2026-06-12) |
 
 ## Data Ground
@@ -115,92 +115,80 @@ to constrain the merge table.
 
 The checked-in tokenizer comparison uses the same first `50,000` documents from
 the TRmorph-segmented FineWeb-2 Turkish corpus. The boundary marker is stripped
-before encoding, so all tokenizers receive identical raw Turkish text. True BPB
-is model-dependent, so the diagnostic score below remains tokenizer-only. For
-tokenizers that have completed matched d20 model runs, the table also reports
-final validation BPB from `meta_017100.json`; public/tokenizer-only baselines
-are marked `-`.
+before encoding, so every tokenizer receives identical raw Turkish text.
+MorphBPE-paper metrics are computed over `200,000` segmented word occurrences,
+with Morph-Consistency using the paper defaults: `k=100` clusters, `C=50` word
+pairs per cluster, and `N=10` resamples.
 
-Ranking is calculated from the checked-in comparable metrics only. Zemberek is
-now ranked because it has the same `50,000`-document TRmorph-reference metric as
-the other rows; its earlier raw `10,000`-document diagnostic remains archived in
-[docs/tokenizer_tests/tokenizer_metrics/morphbpe_zemberek_32768_raw_metrics.json](docs/tokenizer_tests/tokenizer_metrics/morphbpe_zemberek_32768_raw_metrics.json).
-TurkishDelightNLP is still excluded from this table until its matching
-TRmorph-reference metric is checked into the repo. The score is intentionally
-transparent and documented in
-[docs/tokenizer_tests/tokenizer_metrics/ranking_methodology.md](docs/tokenizer_tests/tokenizer_metrics/ranking_methodology.md):
+Following the MorphBPE paper, this table does not use a custom weighted ranking
+formula. The paper-facing intrinsic ordering is based on:
 
-1. For each metric, tokenizers are ranked best-to-worst; ties receive the average
-   rank.
-2. The diagnostic score uses a weighted average rank over morphology
-   preservation, compression, word fertility, and throughput:
+- fertility `phi`: tokens per whitespace word, lower is more compact;
+- Morphological Edit Distance `mu_e`: lower means token pieces align better with
+  gold morpheme pieces;
+- Morphological Consistency `mu_c`: higher means words that share morphemes also
+  share tokenizer pieces, and shared tokenizer pieces more often correspond to
+  shared morphemes.
 
-   | Group | Metric | Weight |
-   | --- | --- | ---: |
-   | Morphology | Boundary crossed down | 28% |
-   | Morphology | Crossing tokens per 1k down | 17% |
-   | Compression | Bytes/token up | 15% |
-   | Word fertility | Corpus tokens/word down | 8% |
-   | Word fertility | Isolated word fertility down | 8% |
-   | Word fertility | Single-token words up | 6% |
-   | Word fertility | Long-word fertility down | 6% |
-   | Throughput | Encode tokens/sec up | 12% |
+For Turkish, the paper-style interpretation is not "lowest fertility wins."
+MorphBPE is expected to spend more tokens on agglutinative forms if that buys
+better morpheme alignment and consistency. Therefore the rank below prioritizes
+`mu_e` and `mu_c`, with `phi` reported as the efficiency cost. Extra engineering
+diagnostics are kept beside the paper metrics because they matter for actual
+nanochat pretraining: boundary-crossing rate, bytes/token, isolated-word
+fertility, reversibility, encode speed, and d20 validation BPB where a matched
+model exists.
 
-3. `Diagnostic score = 100 * (1 - (weighted average rank - 1) / (N - 1))`.
-4. `Primary score = diagnostic score * (1 - roundtrip failure rate)`.
-
-The round-trip factor is a raw-text safety gate: a tokenizer that normalizes or
-cannot decode back to the original document may remain a useful public baseline,
-but it should not outrank lossless candidates for nanochat pretraining.
-
-These weights are a project-specific morphology-prioritized heuristic, not a
-universal tokenizer benchmark. Morphology preservation receives the largest
-share (`45%`) because the central hypothesis is that Turkish BPE should avoid
-crossing productive morpheme boundaries. Word fertility (`28%`) captures
-fragmentation of Turkish forms, compression (`15%`) captures raw-text exposure
-under a fixed token budget, and throughput (`12%`) is included but kept below
-the linguistic and compression terms because it is implementation- and
-hardware-dependent. Sensitivity checks are reported in the methodology note:
-equal or compression-heavy weights favor public compact tokenizers more, while
-morphology-heavy weights favor the MorphBPE candidates. Therefore this table is
-a screening view for tokenizer candidates; validation BPB and CETVEL decide the
-final model-facing claim.
-
-| Rank | Tokenizer | Impl. | Primary score | Diagnostic score | Val BPB d20 down | Roundtrip fail | Bytes/token up | Tokens/word down | Boundary crossed down | Crossing tok/1k down | Encode tok/s up | Result |
-| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| 1 | `morphbpe_trmorph_32768` | morphbpe | 60.7 | 60.7 | 0.6266 | 0.0000 | 4.4514 | 1.8166 | 0.4569 | 125.3 | 13,419,184 | trained d20 |
-| 2 | `morphbpe_zemberek_32768` | morphbpe | 55.3 | 55.3 | 0.6250 | 0.0000 | 4.4959 | 1.7986 | 0.5906 | 138.4 | 1,472,567 | trained d20 |
-| 2 | `kumru_2b` | bpe | 55.3 | 55.3 | - | 0.0000 | 4.8488 | 1.6677 | 0.7745 | 189.9 | 818,251 | tokenizer baseline |
-| 4 | `cosmos_turkish_gpt2` | bpe | 35.0 | 35.0 | - | 0.0000 | 5.1938 | 1.5570 | 0.8694 | 220.6 | 681,476 | tokenizer baseline |
-| 5 | `bpe_32768` | bpe | 26.6 | 26.6 | 0.6232 | 0.0000 | 5.0051 | 1.6157 | 0.8395 | 210.4 | 12,127,686 | trained d20 |
-| 6 | `vbart_large_base` | unigram | 2.9 | 60.4 | - | 0.9521 | 5.1827 | 1.5603 | 0.8015 | 203.4 | 579,818 | lossy baseline |
-| 7 | `turna` | unigram | 2.9 | 59.6 | - | 0.9521 | 5.1827 | 1.5603 | 0.8015 | 203.4 | 540,988 | lossy baseline |
-| 8 | `berturk_cased` | wordpiece | 0.3 | 47.1 | - | 0.9929 | 5.0897 | 1.5888 | 0.8045 | 205.0 | 863,345 | lossy baseline |
+| Paper-style rank | Tokenizer | Impl. | Segmenter | phi down | mu_e down | mu_c F1 up | Morph exact up | Boundary crossed down | Bytes/token up | Isolated fertility down | Roundtrip fail | Encode tok/s up | Val BPB d20 down | Status |
+| ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | `morphbpe_trmorph_32768` | morphbpe | TRmorph | 1.8166 | 1.4126 | 0.5129 | 0.4258 | 0.4569 | 4.4514 | 1.9821 | 0.0000 | 5,111,947 | 0.6266 | trained d20 |
+| 2 | `morphbpe_zemberek_32768` | morphbpe | Zemberek | 1.7986 | 1.4817 | 0.4357 | 0.4040 | 0.5906 | 4.4959 | 1.9748 | 0.0000 | 5,075,946 | 0.6250 | trained d20 |
+| 3 | `bpe_32768` | bpe | none | 1.6157 | 1.6836 | 0.3241 | 0.3342 | 0.8395 | 5.0051 | 2.0312 | 0.0000 | 4,922,601 | 0.6232 | trained d20 |
 
 Full source metrics live in
 [docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md](docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md).
-The complete metric files include token counts, isolated-word fertility,
-single-token word rate, long-word fertility, vocabulary diagnostics, and source
-paths for each row.
+The complete metric files also include token counts, normalized edit distance,
+Morph-Consistency precision/recall/std, vocabulary diagnostics, and source paths
+for each row.
+
+### Public Tokenizer References
+
+`kumru_2b` and `cosmos_turkish_gpt2` were evaluated earlier by loading their
+public Hugging Face tokenizer files only through `scripts.tokenizer_metrics`;
+no model weights were downloaded or used. In other words, we did have access to
+their tokenizer definitions at evaluation time, even though we did not train or
+load their LLMs. If a public tokenizer file cannot be accessed from Hugging Face
+or local cache, it should not be included in a reproducible tokenizer table.
+
+Those external BPE tokenizers are kept as reference diagnostics, not as active
+MorphBPE-paper-ranked candidates, until they are recomputed with the current
+`mu_e` and `mu_c` implementation. The old comparable engineering diagnostics
+were:
+
+| External tokenizer | Source | Bytes/token up | Tokens/word down | Boundary crossed down | Roundtrip fail | Status |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| `kumru_2b` | `vngrs-ai/Kumru-2B` tokenizer files | 4.8488 | 1.6677 | 0.7745 | 0.0000 | public BPE reference; needs `mu_e`/`mu_c` recompute |
+| `cosmos_turkish_gpt2` | `ytu-ce-cosmos/turkish-gpt2` tokenizer files | 5.1938 | 1.5570 | 0.8694 | 0.0000 | public BPE reference; needs `mu_e`/`mu_c` recompute |
+
+`vbart_large_base`, `turna`, and `berturk_cased` were removed from the main
+README comparison because their earlier runs were lossy/normalizing or
+architecture-specific references rather than plausible raw-text nanochat
+pretraining tokenizers.
 
 ### Tokenizer Takeaways
 
-- `morphbpe_trmorph_32768` is ranked first because it is lossless, fastest in
-  this harness, and sharply improves morphology preservation: boundary-crossed
-  rate drops from `0.8395` for raw BPE to `0.4569`.
-- `morphbpe_zemberek_32768` ties `kumru_2b` under the current weighted-rank
-  score. Zemberek is better on TRmorph-reference boundary preservation, while
-  Kumru is more compressive and has lower word fertility.
-- `kumru_2b` is a strong lossless public-tokenizer baseline and stays close in
-  the diagnostic score, but it crosses more TRmorph reference boundaries than
-  either checked-in MorphBPE tokenizer.
-- `vbart_large_base`, `turna`, and `berturk_cased` look strong on some fertility
-  metrics, but their high round-trip failure rates make them lossy baselines
-  rather than drop-in raw-text nanochat tokenizers.
-- The trade-off is still real: TRmorph MorphBPE spends more tokens on the same
-  raw text, and the first d20 validation BPB values still slightly favor raw
-  BPE. The final project claim must use validation BPB and CETVEL, not only
-  tokenizer-only optimization.
+- TRmorph MorphBPE ranks first by the MorphBPE paper logic: it has the lowest
+  `mu_e`, highest `mu_c`, highest exact morpheme-sequence rate, and lowest
+  boundary-crossing rate among checked-in 32k tokenizers.
+- Zemberek MorphBPE is second: it also improves morphology alignment and
+  consistency over raw BPE, but less strongly than TRmorph on the TRmorph
+  reference segmentation.
+- Raw BPE remains the most compact checked-in trained tokenizer by `phi`,
+  bytes/token, and current d20 validation BPB. That is the central trade-off:
+  MorphBPE improves morphology metrics while spending more tokens.
+- The final project claim must still combine tokenizer-only metrics with matched
+  validation BPB and CETVEL. The paper-style intrinsic metrics justify carrying
+  TRmorph and Zemberek forward; they do not by themselves prove the best model.
 
 ## Matched LLM Training Plan
 

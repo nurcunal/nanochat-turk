@@ -23,7 +23,7 @@ live under [tokenizer_tests/](tokenizer_tests/):
 
 - MorphBPE framework and raw-text inference contract.
 - Turkish segmenter benchmarks and examples.
-- Tokenizer metric comparison and ranking methodology.
+- Tokenizer metric comparison using MorphBPE paper-style metrics.
 - Local/LLM judge workflow and committed small judge outputs.
 - TurkishDelightNLP setup notes.
 

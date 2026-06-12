@@ -2,11 +2,13 @@
 
 Tokenizer-only metrics are measured before model training. True BPB is model-dependent and should be reported from validation loss after each pretraining run; this table reports tokenizer compression, fertility, MorphBPE paper morphology metrics, boundary behavior, reversibility, and throughput.
 
-| Tokenizer | Impl. | Docs | Bytes/token ↑ | Tokens/word phi ↓ | Isolated fertility ↓ | Morph edit mu_e ↓ | Morph edit norm ↓ | Morph exact ↑ | Morph consistency P ↑ | Morph consistency R ↑ | Morph consistency F1 mu_c ↑ | Boundary crossed ↓ | Roundtrip fail ↓ | Encode tok/s ↑ |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| bpe_32768 | bpe | 50,000 | 5.0051 | 1.6157 | 2.0312 | 1.6836 | 1.2083 | 0.3342 | 0.9630 | 0.1949 | 0.3241 | 0.8395 | 0.0000 | 4922601 |
-| morphbpe_trmorph_32768 | morphbpe | 50,000 | 4.4514 | 1.8166 | 1.9821 | 1.4126 | 1.0166 | 0.4258 | 0.9865 | 0.3466 | 0.5129 | 0.4569 | 0.0000 | 5111947 |
-| morphbpe_zemberek_32768 | morphbpe | 50,000 | 4.4959 | 1.7986 | 1.9748 | 1.4817 | 1.0605 | 0.4040 | 0.9831 | 0.2799 | 0.4357 | 0.5906 | 0.0000 | 5075946 |
+Rows are sorted by MorphBPE-paper-style intrinsic quality: lower `mu_e`, then higher `mu_c` F1, then lower fertility `phi` as an efficiency tie-breaker. This ordering is not a custom weighted score.
+
+| Rank | Tokenizer | Impl. | Docs | Bytes/token ↑ | Tokens/word phi ↓ | Isolated fertility ↓ | Morph edit mu_e ↓ | Morph edit norm ↓ | Morph exact ↑ | Morph consistency P ↑ | Morph consistency R ↑ | Morph consistency F1 mu_c ↑ | Boundary crossed ↓ | Roundtrip fail ↓ | Encode tok/s ↑ |
+|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 | morphbpe_trmorph_32768 | morphbpe | 50,000 | 4.4514 | 1.8166 | 1.9821 | 1.4126 | 1.0166 | 0.4258 | 0.9865 | 0.3466 | 0.5129 | 0.4569 | 0.0000 | 5111947 |
+| 2 | morphbpe_zemberek_32768 | morphbpe | 50,000 | 4.4959 | 1.7986 | 1.9748 | 1.4817 | 1.0605 | 0.4040 | 0.9831 | 0.2799 | 0.4357 | 0.5906 | 0.0000 | 5075946 |
+| 3 | bpe_32768 | bpe | 50,000 | 5.0051 | 1.6157 | 2.0312 | 1.6836 | 1.2083 | 0.3342 | 0.9630 | 0.1949 | 0.3241 | 0.8395 | 0.0000 | 4922601 |
 
 ## Metric Notes
 
@@ -25,12 +27,12 @@ Tokenizer-only metrics are measured before model training. True BPB is model-dep
 
 | Tokenizer | Morph word occurrences | Consistency unique words | Consistency clustering |
 |---|---:|---:|---|
-| bpe_32768 | 200,000 | 50,000 | sklearn_minibatch_kmeans |
 | morphbpe_trmorph_32768 | 200,000 | 50,000 | sklearn_minibatch_kmeans |
 | morphbpe_zemberek_32768 | 200,000 | 50,000 | sklearn_minibatch_kmeans |
+| bpe_32768 | 200,000 | 50,000 | sklearn_minibatch_kmeans |
 
 ## Source Files
 
-- `bpe_32768`: `docs/tokenizer_tests/tokenizer_metrics/bpe_32768_metrics.json`
 - `morphbpe_trmorph_32768`: `docs/tokenizer_tests/tokenizer_metrics/morphbpe_trmorph_32768_metrics.json`
 - `morphbpe_zemberek_32768`: `docs/tokenizer_tests/tokenizer_metrics/morphbpe_zemberek_32768_metrics.json`
+- `bpe_32768`: `docs/tokenizer_tests/tokenizer_metrics/bpe_32768_metrics.json`
