@@ -120,6 +120,10 @@ def _maybe_setup_cetvel(cetvel_dir: str) -> None:
     _pip_install(["-e", harness_dir])
     if os.path.isfile(req_path):
         _pip_install(["-r", req_path])
+    # CETVEL's Turkish NLI tasks still depend on legacy HF dataset scripts.
+    # Some dependency resolutions pull datasets>=4, which rejects those scripts;
+    # force the known-compatible version after installing CETVEL requirements.
+    _pip_install(["datasets==2.19.2"])
     _prepend_pythonpath(harness_dir)
 
 
