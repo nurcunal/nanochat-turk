@@ -136,14 +136,17 @@ better morpheme alignment and consistency. Therefore the rank below prioritizes
 `mu_e` and `mu_c`, with `phi` reported as the efficiency cost. Extra engineering
 diagnostics are kept beside the paper metrics because they matter for actual
 nanochat pretraining: boundary-crossing rate, bytes/token, isolated-word
-fertility, reversibility, encode speed, and d20 validation BPB where a matched
-model exists.
+fertility, reversibility, encode speed, and validation BPB where a matched model
+exists. The 64k/128k rows are descriptive tokenizer-only rows until their
+matched d16/d12 runs finish.
 
-| Paper-style rank | Tokenizer | Impl. | Segmenter | phi down | mu_e down | mu_c F1 up | Morph exact up | Boundary crossed down | Bytes/token up | Isolated fertility down | Roundtrip fail | Encode tok/s up | Val BPB d20 down | Status |
-| ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| 1 | `morphbpe_trmorph_32768` | morphbpe | TRmorph | 1.8166 | 1.4126 | 0.5129 | 0.4258 | 0.4569 | 4.4514 | 1.9821 | 0.0000 | 5,111,947 | 0.6266 | trained d20 |
-| 2 | `morphbpe_zemberek_32768` | morphbpe | Zemberek | 1.7986 | 1.4817 | 0.4357 | 0.4040 | 0.5906 | 4.4959 | 1.9748 | 0.0000 | 5,075,946 | 0.6250 | trained d20 |
-| 3 | `bpe_32768` | bpe | none | 1.6157 | 1.6836 | 0.3241 | 0.3342 | 0.8395 | 5.0051 | 2.0312 | 0.0000 | 4,922,601 | 0.6232 | trained d20 |
+| Paper-style rank | Tokenizer | Vocab | Impl. | Segmenter | phi down | mu_e down | mu_c F1 up | Morph exact up | Boundary crossed down | Bytes/token up | Isolated fertility down | Roundtrip fail | Encode tok/s up | Val BPB down | Status |
+| ---: | --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | `bpe_131072` | 131,072 | bpe | none | 1.3915 | 1.2623 | 0.2412 | 0.4701 | 0.9346 | 5.8114 | 1.6372 | 0.0000 | 3,133,245 | - | tokenizer-only; d12 running |
+| 2 | `morphbpe_trmorph_32768` | 32,768 | morphbpe | TRmorph | 1.8166 | 1.4126 | 0.5129 | 0.4258 | 0.4569 | 4.4514 | 1.9821 | 0.0000 | 5,111,947 | 0.6266 | trained d20 |
+| 3 | `bpe_65536` | 65,536 | bpe | none | 1.4856 | 1.4627 | 0.2863 | 0.4004 | 0.8939 | 5.4434 | 1.8322 | 0.0000 | 3,238,593 | - | tokenizer-only; d16 running |
+| 4 | `morphbpe_zemberek_32768` | 32,768 | morphbpe | Zemberek | 1.7986 | 1.4817 | 0.4357 | 0.4040 | 0.5906 | 4.4959 | 1.9748 | 0.0000 | 5,075,946 | 0.6250 | trained d20 |
+| 5 | `bpe_32768` | 32,768 | bpe | none | 1.6157 | 1.6836 | 0.3241 | 0.3342 | 0.8395 | 5.0051 | 2.0312 | 0.0000 | 4,922,601 | 0.6232 | trained d20 |
 
 Full source metrics live in
 [docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md](docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md).
@@ -151,10 +154,11 @@ The complete metric files also include token counts, normalized edit distance,
 Morph-Consistency precision/recall/std, vocabulary diagnostics, and source paths
 for each row.
 
-The linked comparison also now includes the completed `bpe_65536` and
-`bpe_131072` tokenizer-only rows. Treat those larger-vocab rows as descriptive
-cross-vocabulary diagnostics until their matched d16/d12 model runs finish and
-produce validation BPB plus CETVEL results.
+Treat the larger-vocab raw BPE rows as cross-vocabulary diagnostics: they show
+that bigger raw BPE vocabularies improve compression, fertility, and `mu_e`, but
+they still cross many TRmorph morpheme boundaries and have lower `mu_c` than the
+32k MorphBPE rows. They become controlled ablation evidence only after their
+matched d16/d12 model runs produce validation BPB plus CETVEL results.
 
 ### Public Tokenizer References
 
@@ -189,15 +193,19 @@ pretraining tokenizers.
 
 ### Tokenizer Takeaways
 
-- TRmorph MorphBPE ranks first by the MorphBPE paper logic: it has the lowest
-  `mu_e`, highest `mu_c`, highest exact morpheme-sequence rate, and lowest
-  boundary-crossing rate among checked-in 32k tokenizers.
-- Zemberek MorphBPE is second: it also improves morphology alignment and
-  consistency over raw BPE, but less strongly than TRmorph on the TRmorph
-  reference segmentation.
-- Raw BPE remains the most compact checked-in trained tokenizer by `phi`,
-  bytes/token, and current d20 validation BPB. That is the central trade-off:
-  MorphBPE improves morphology metrics while spending more tokens.
+- Among the controlled 32k rows, TRmorph MorphBPE remains the strongest
+  morphology-aware tokenizer: it has the highest `mu_c`, best
+  boundary-crossing rate, and strongest same-vocab morpheme alignment trade-off.
+- Zemberek MorphBPE is second among the 32k rows: it also improves morphology
+  alignment and consistency over 32k raw BPE, but less strongly than TRmorph on
+  the TRmorph reference segmentation.
+- Larger raw BPE vocabularies improve compression, fertility, and `mu_e`, but
+  still cross many morpheme boundaries and have much lower `mu_c` than 32k
+  MorphBPE. Their model value is an open question until the d16/d12 runs finish.
+- The current d20 raw BPE model still has the best checked-in validation BPB
+  among trained 32k models. That is the central trade-off: MorphBPE improves
+  morphology metrics while spending more tokens, and model results decide
+  whether that trade-off pays off.
 - The final project claim must still combine tokenizer-only metrics with matched
   validation BPB and CETVEL. The paper-style intrinsic metrics justify carrying
   TRmorph and Zemberek forward; they do not by themselves prove the best model.
