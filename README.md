@@ -13,11 +13,12 @@ indexes live in [docs/README.md](docs/README.md) and
 [artifacts/README.md](artifacts/README.md).
 
 The project has moved from a generic nanochat fork into a controlled Turkish LLM
-optimization study. The central question is:
+tokenizer ablation study. The central question is:
 
-> Given an approximately fixed Turkish pretraining budget, which data and
-> tokenizer choices produce the best tokenizer diagnostics, validation BPB, and
-> CETVEL performance?
+> With model parameter size, pretraining budget, and FineWeb-2 Turkish data held
+> fixed, which tokenizer choice - especially MorphBPE tokenizers trained from
+> different morphological segmenters - produces the best tokenizer diagnostics,
+> validation BPB, and CETVEL performance?
 
 Turkish is agglutinative, so a frequency-only BPE tokenizer can learn pieces
 that cut across productive morpheme boundaries. Our main experiment therefore
