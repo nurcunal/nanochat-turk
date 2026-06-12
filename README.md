@@ -33,7 +33,7 @@ decodes raw Turkish text without requiring a runtime segmenter.
 | Segmenter screening | TRmorph, Zemberek, TurkishDelightNLP, and identity control benchmarked on deterministic FineWeb-2 Turkish samples. | [docs/tokenizer_tests/segmenter_benchmark_status.md](docs/tokenizer_tests/segmenter_benchmark_status.md), [docs/tokenizer_tests/codex_local_judge_results.md](docs/tokenizer_tests/codex_local_judge_results.md) |
 | MorphBPE implementation | Raw-text MorphBPE tokenizer training implemented and tested. Segmentation constrains merge learning only. | [docs/tokenizer_tests/morphbpe_framework.md](docs/tokenizer_tests/morphbpe_framework.md), [tests/test_morphbpe_tokenizer.py](tests/test_morphbpe_tokenizer.py) |
 | Tokenizer artifacts | Raw BPE, TRmorph MorphBPE, and Zemberek MorphBPE 32k tokenizers archived; public Turkish tokenizer baselines measured. | [artifacts/tokenizers](artifacts/tokenizers), [docs/tokenizer_tests/tokenizer_metrics](docs/tokenizer_tests/tokenizer_metrics) |
-| Base LLM benchmark | Raw-BPE d20 base model trained and evaluated on CETVEL tasks 01-13 before SFT. | [artifacts/cetvel_base_subset_2026-06-09_job493293](artifacts/cetvel_base_subset_2026-06-09_job493293) |
+| Base LLM benchmark | Raw-BPE, TRmorph MorphBPE, and Zemberek MorphBPE d20 base models evaluated on the common CETVEL core slice before SFT. | [docs/cetvel_model_comparison.md](docs/cetvel_model_comparison.md), [artifacts/cetvel_core12_model_comparison_2026-06-12](artifacts/cetvel_core12_model_comparison_2026-06-12) |
 
 ## Data Ground
 
@@ -205,9 +205,9 @@ and evaluation fixed. At the 32k vocabulary tier, the primary model cells are:
 
 | Vocab | Depth | Tokenizer | Model tag | Current status |
 | ---: | ---: | --- | --- | --- |
-| 32,768 | d20 | raw BPE | `tr_d20_bpe_32768_chinchilla20` | Trained; CETVEL tasks 01-13 archived. |
-| 32,768 | d20 | MorphBPE + TRmorph | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | Tokenizer trained and archived; model run script ready. |
-| 32,768 | d20 | MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | Tokenizer archived with raw and TRmorph-reference metrics; d20/CETVEL work active. |
+| 32,768 | d20 | raw BPE | `tr_d20_bpe_32768_chinchilla20` | Trained; CETVEL tasks 01-13 archived and common core slice compared. |
+| 32,768 | d20 | MorphBPE + TRmorph | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | Trained; CETVEL core tasks 01-12 complete. |
+| 32,768 | d20 | MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | Trained; CETVEL core tasks 01-12 complete. |
 | 32,768 | d20 | MorphBPE + TurkishDelightNLP | `tr_d20_morphbpe_tdelight_32768_chinchilla20` | Pipeline scripts/preflight in progress. |
 
 The larger-vocabulary plan is documented in
@@ -215,50 +215,34 @@ The larger-vocabulary plan is documented in
 models use d16, and 131,072-vocab models use d12, keeping total parameters near
 the current approximately 1B-parameter budget.
 
-## Current Base-Model CETVEL Result
+## Current Base-Model CETVEL Comparison
 
-The completed base-model benchmark currently checked into the repo is the raw
-BPE d20 run before SFT:
+The completed model-facing comparison currently uses CETVEL core tasks 01-12.
+All rows are d20 base models evaluated before SFT at model step `17100`. The raw
+BPE run has a larger tasks 01-13 archive, but the table below uses the common
+tasks 01-12 slice so the raw baseline and MorphBPE variants are comparable.
 
-| Field | Value |
-| --- | --- |
-| Model tag | `tr_d20_bpe_32768_chinchilla20` |
-| Tokenizer | `bpe_32768` |
-| Step | `17100` |
-| Training job | UHeM `492421` |
-| CETVEL job | UHeM `493293` |
-| Artifact | [artifacts/cetvel_base_subset_2026-06-09_job493293](artifacts/cetvel_base_subset_2026-06-09_job493293) |
+Core-11 macro is the mean over the classification/loglikelihood tasks; `xquad_tr`
+F1 is reported separately because it is on a different scale.
 
-The run was intentionally stopped after `tquad`. Tasks 01-13 cover the
-base-model selection and extractive-QA slice. The remaining CETVEL generation
-and instruction-style tasks are better reserved for SFT models or for later
-base-model diagnostics.
+| Run | Tokenizer | Segmenter | CETVEL job | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Raw BPE d20 | `bpe_32768` | none | `493293` | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
+| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | TRmorph | `494056` | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
+| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | Zemberek | `494057` | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
 
-| Task | n | Metric | Value |
-| --- | ---: | --- | ---: |
-| `belebele_tr` | 900 | `acc_norm` | 0.2522 |
-| `cetvel_xcopa_tr` | 500 | `acc` | 0.6180 |
-| `cetvel_xnli_tr` | 5,010 | `acc_norm` | 0.3335 |
-| `check_worthiness` | 2,188 | `acc_norm` | 0.4287 |
-| `exams_tr` | 393 | `acc_norm` | 0.3104 |
-| `mnli_tr` | 10,000 | `acc_norm` | 0.3210 |
-| `news_cat` | 250 | `acc_norm` | 0.6760 |
-| `offenseval_tr` | 3,528 | `acc_norm` | 0.7971 |
-| `relevance_judgment` | 2,188 | `acc_norm` | 0.5590 |
-| `snli_tr` | 10,000 | `acc_norm` | 0.3234 |
-| `tquad` | 892 | `f1` | 5.2603 |
-| `trclaim19` | - | `acc_norm` | 0.4938 |
-| `turkish_plu` | - | `acc_norm` | 0.5027 |
-| `turkish_plu_goal_inference` | 837 | `acc_norm` | 0.4241 |
-| `turkish_plu_next_event_prediction` | 655 | `acc_norm` | 0.5344 |
-| `turkish_plu_step_inference` | 612 | `acc_norm` | 0.4771 |
-| `turkish_plu_step_ordering` | 1,021 | `acc_norm` | 0.5622 |
-| `xfact_tr` | 169 | `acc_norm` | 0.3373 |
-| `xquad_tr` | 1,190 | `f1` | 3.0985 |
+Detailed task metrics and source result paths live in
+[docs/cetvel_model_comparison.md](docs/cetvel_model_comparison.md) and the
+compact artifact summary
+[artifacts/cetvel_core12_model_comparison_2026-06-12](artifacts/cetvel_core12_model_comparison_2026-06-12).
+The raw-BPE tasks 01-13 archive remains in
+[artifacts/cetvel_base_subset_2026-06-09_job493293](artifacts/cetvel_base_subset_2026-06-09_job493293).
 
-These numbers are a baseline, not the final claim. The tokenizer study becomes
-meaningful only after the MorphBPE-tokenized models are trained with the same
-budget and evaluated through the same CETVEL adapter.
+Early model-facing evidence is mixed rather than uniformly pro-MorphBPE:
+TRmorph MorphBPE has the best XQuAD F1, Zemberek MorphBPE has the strongest
+core-11 macro, and raw BPE still wins several individual tasks. These results
+should be reported as base-model evidence before SFT, not as a final
+instruction-following or generation-quality claim.
 
 ## Reproduction Pointers
 

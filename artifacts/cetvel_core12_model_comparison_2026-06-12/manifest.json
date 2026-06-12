@@ -1,0 +1,36 @@
+{
+  "kind": "cetvel_core12_model_comparison",
+  "created_at": "2026-06-12",
+  "path_in_repo": "artifacts/cetvel_core12_model_comparison_2026-06-12",
+  "models": [
+    {
+      "model_tag": "tr_d20_bpe_32768_chinchilla20",
+      "tokenizer": "bpe_32768",
+      "segmenter": "none",
+      "model_step": 17100,
+      "cetvel_job_id": "493293",
+      "source_results_path": "/ari/users/nunal/nanochat-turk-d20-bpe32k/cetvel_out/full_kvcache_20260609_185114/cetvel_full_partial_results.json"
+    },
+    {
+      "model_tag": "tr_d20_morphbpe_trmorph_32768_chinchilla20",
+      "tokenizer": "morphbpe_trmorph_32768",
+      "segmenter": "TRmorph",
+      "model_step": 17100,
+      "cetvel_job_id": "494056",
+      "source_results_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/cetvel_out/core_tasks_01_12/cetvel_core_results.json"
+    },
+    {
+      "model_tag": "tr_d20_morphbpe_zemberek_32768_chinchilla20",
+      "tokenizer": "morphbpe_zemberek_32768",
+      "segmenter": "Zemberek",
+      "model_step": 17100,
+      "cetvel_job_id": "494057",
+      "source_results_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/cetvel_out/core_tasks_01_12/cetvel_core_results.json"
+    }
+  ],
+  "notes": [
+    "The raw BPE run contains a larger tasks 01-13 archive; only tasks 01-12 are used for this common-slice comparison.",
+    "Core-11 macro excludes xquad_tr because that task reports F1 on a different scale.",
+    "Full expanded CETVEL outputs remain on UHeM; this artifact stores compact summary metrics for GitHub review."
+  ]
+}

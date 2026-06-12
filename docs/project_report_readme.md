@@ -628,36 +628,54 @@ Use in report:
 > decided by matched validation BPB and CETVEL rather than tokenizer-only
 > metrics alone.
 
-### Baseline Raw-BPE CETVEL Result
+### CETVEL Model Comparison Result
 
-The raw-BPE d20 model benchmark was being monitored in the UHeM benchmark
-thread. The optimized CETVEL run wrote task-level partial artifacts and reached
-the generation-heavy section. The recommended reporting stance was:
+The first model-facing tokenizer comparison is now checked into the repo. It
+compares d20 base models at step `17100` on CETVEL core tasks 01-12:
 
-- headline base-model benchmark: tasks 1-11;
-- optionally include XQuAD/TQuAD as extractive QA diagnostics if completed;
-- defer open generation, summarization, translation, and grammar correction
-  headline claims to post-SFT models.
+| Run | Tokenizer | CETVEL job | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Raw BPE d20 | `bpe_32768` | `493293` | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
+| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | `494056` | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
+| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | `494057` | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
+
+Core-11 macro averages the classification/loglikelihood tasks and excludes
+`xquad_tr`, which is reported as F1 on a different scale. The detailed table and
+source paths are in `docs/cetvel_model_comparison.md` and
+`artifacts/cetvel_core12_model_comparison_2026-06-12/`.
+
+Interpretation:
+
+- Zemberek MorphBPE has the strongest core-11 macro in this slice.
+- TRmorph MorphBPE has the best XQuAD F1.
+- Both MorphBPE variants improve `news_cat`; both improve or hold close on
+  `trclaim19`, with Zemberek much stronger there.
+- Raw BPE remains better on tasks such as `exams_tr`, `belebele_tr`, and
+  `offenseval_tr`.
+- The evidence is mixed, task-specific, and pre-SFT. It supports carrying the
+  MorphBPE variants forward, but not a blanket claim that MorphBPE uniformly
+  improves Turkish model performance.
 
 Use in report:
 
-> For the base model, we emphasize selection/loglikelihood CETVEL tasks because
-> they directly measure next-token likelihood over answer alternatives. We do
-> not interpret poor open-generation performance as conclusive evidence against
-> pretraining quality before SFT.
+> On the common CETVEL core slice, MorphBPE variants produce modest model-facing
+> gains over raw BPE on aggregate, but the gains are task-specific. We therefore
+> treat CETVEL core as early evidence for tokenizer selection rather than a
+> final claim about post-SFT assistant quality.
 
 ## Next Steps
 
 Immediate:
 
-1. Keep the checked-in tokenizer artifact and metric tables synchronized with
-   UHeM outputs, especially when full-corpus metrics finish.
+1. Keep the checked-in tokenizer, model-run, and CETVEL comparison tables
+   synchronized with UHeM outputs, especially when full-corpus metrics or new
+   benchmark slices finish.
 2. Restart the intentionally canceled TurkishDelight segmentation shards listed
    in `docs/tokenizer_tests/uhem_restart_notes.md`.
-3. Finish the `morphbpe_tdelight_32768` tokenizer and run its matched
-   TRmorph-reference metric.
-4. Launch or continue matched d20 model runs for the candidate tokenizers, then
-   compare validation BPB and CETVEL.
+3. Finish the `morphbpe_tdelight_32768` tokenizer, matched tokenizer metric,
+   d20 model run, and CETVEL core comparison.
+4. Decide whether the current core-12 slice is enough for the first report table
+   or whether full-CETVEL/post-SFT runs are needed before final claims.
 5. Upload final model/checkpoint/tokenizer/CETVEL artifacts with explicit subset
    labels for any partial benchmark runs.
 
@@ -758,8 +776,11 @@ Separate results by maturity:
 1. Infrastructure smoke passed.
 2. Segmenter screening results.
 3. Raw-BPE baseline training/evaluation artifacts.
-4. MorphBPE preflight readiness.
-5. Full matched LLM ablation results once available.
+4. Tokenizer-only comparison for raw BPE, TRmorph MorphBPE, Zemberek MorphBPE,
+   and public baselines.
+5. CETVEL core-12 model comparison for raw BPE, TRmorph MorphBPE, and Zemberek
+   MorphBPE.
+6. TurkishDelight and full/post-SFT matched ablation results once available.
 
 Do not overclaim from partial CETVEL or local judge results.
 
@@ -796,6 +817,10 @@ tokenizers/checkpoints/results on Hugging Face.
   `docs/tokenizer_tests/turkishdelight_setup.md`
 - UHeM smoke artifact:
   `artifacts/uhem_smoke_2026-06-07_job492393/`
+- CETVEL model comparison:
+  `docs/cetvel_model_comparison.md`
+- CETVEL model-comparison artifact:
+  `artifacts/cetvel_core12_model_comparison_2026-06-12/`
 - Core training script:
   `scripts/base_train.py`
 - CETVEL runner:
@@ -829,10 +854,12 @@ Safe current claims:
 - Raw-text MorphBPE training is implemented and smoke-tested.
 - TRmorph and Zemberek 32k MorphBPE tokenizer artifacts are archived with
   matched `50,000`-document TRmorph-reference tokenizer metrics.
+- Raw BPE, TRmorph MorphBPE, and Zemberek MorphBPE d20 base models have a
+  checked-in common CETVEL core-12 comparison at step `17100`.
 
 Claims to avoid until more evidence exists:
 
-- "MorphBPE improves Turkish LLM performance."
+- "MorphBPE uniformly improves Turkish LLM performance."
 - "TRmorph is definitively the best tokenizer segmenter."
 - "The base model has completed full CETVEL" unless all 20 tasks and artifacts
   are available.

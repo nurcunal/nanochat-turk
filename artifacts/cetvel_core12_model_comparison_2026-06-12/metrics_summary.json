@@ -1,0 +1,179 @@
+{
+  "kind": "cetvel_core12_model_comparison",
+  "created_at": "2026-06-12",
+  "description": "Comparable CETVEL core-12 base-model slice for raw BPE and completed MorphBPE variant runs.",
+  "primary_metric_policy": {
+    "classification_tasks": "Use acc_norm,none when available; use acc,none for cetvel_xcopa_tr.",
+    "qa_tasks": "Keep xquad_tr f1,none separate from the macro because it is on a different scale."
+  },
+  "macro_core11_tasks": [
+    "exams_tr",
+    "belebele_tr",
+    "turkish_plu",
+    "cetvel_xcopa_tr",
+    "cetvel_xnli_tr",
+    "mnli_tr",
+    "snli_tr",
+    "news_cat",
+    "offenseval_tr",
+    "trclaim19",
+    "xfact_tr"
+  ],
+  "runs": [
+    {
+      "run_id": "raw_bpe_d20",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d20_bpe_32768_chinchilla20",
+      "model_step": 17100,
+      "segmenter": "none",
+      "cetvel_job_id": "493293",
+      "cetvel_slice": "full_kvcache partial, tasks 01-13; compared here on common core tasks 01-12",
+      "source_results_path": "/ari/users/nunal/nanochat-turk-d20-bpe32k/cetvel_out/full_kvcache_20260609_185114/cetvel_full_partial_results.json",
+      "repo_artifact": "artifacts/cetvel_base_subset_2026-06-09_job493293",
+      "macro_core11": 0.4514,
+      "delta_macro_core11_vs_raw_bpe": 0.0,
+      "xquad_tr_f1": 3.0985,
+      "delta_xquad_tr_f1_vs_raw_bpe": 0.0
+    },
+    {
+      "run_id": "morphbpe_trmorph_d20",
+      "tokenizer": "morphbpe_trmorph_32768",
+      "model_tag": "tr_d20_morphbpe_trmorph_32768_chinchilla20",
+      "model_step": 17100,
+      "segmenter": "TRmorph",
+      "cetvel_job_id": "494056",
+      "cetvel_slice": "core tasks 01-12",
+      "source_results_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "repo_artifact": null,
+      "macro_core11": 0.4541,
+      "delta_macro_core11_vs_raw_bpe": 0.0027,
+      "xquad_tr_f1": 3.4786,
+      "delta_xquad_tr_f1_vs_raw_bpe": 0.3801
+    },
+    {
+      "run_id": "morphbpe_zemberek_d20",
+      "tokenizer": "morphbpe_zemberek_32768",
+      "model_tag": "tr_d20_morphbpe_zemberek_32768_chinchilla20",
+      "model_step": 17100,
+      "segmenter": "Zemberek",
+      "cetvel_job_id": "494057",
+      "cetvel_slice": "core tasks 01-12",
+      "source_results_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "repo_artifact": null,
+      "macro_core11": 0.4618,
+      "delta_macro_core11_vs_raw_bpe": 0.0104,
+      "xquad_tr_f1": 3.2633,
+      "delta_xquad_tr_f1_vs_raw_bpe": 0.1648
+    }
+  ],
+  "task_metrics": [
+    {
+      "task": "exams_tr",
+      "metric": "acc_norm,none",
+      "raw_bpe_d20": 0.3104,
+      "morphbpe_trmorph_d20": 0.2875,
+      "delta_trmorph_vs_raw_bpe": -0.0229,
+      "morphbpe_zemberek_d20": 0.2952,
+      "delta_zemberek_vs_raw_bpe": -0.0153
+    },
+    {
+      "task": "belebele_tr",
+      "metric": "acc_norm,none",
+      "raw_bpe_d20": 0.2522,
+      "morphbpe_trmorph_d20": 0.2356,
+      "delta_trmorph_vs_raw_bpe": -0.0167,
+      "morphbpe_zemberek_d20": 0.2433,
+      "delta_zemberek_vs_raw_bpe": -0.0089
+    },
+    {
+      "task": "turkish_plu",
+      "metric": "acc_norm,none",
+      "raw_bpe_d20": 0.5027,
+      "morphbpe_trmorph_d20": 0.5146,
+      "delta_trmorph_vs_raw_bpe": 0.0118,
+      "morphbpe_zemberek_d20": 0.5011,
+      "delta_zemberek_vs_raw_bpe": -0.0016
+    },
+    {
+      "task": "cetvel_xcopa_tr",
+      "metric": "acc,none",
+      "raw_bpe_d20": 0.618,
+      "morphbpe_trmorph_d20": 0.608,
+      "delta_trmorph_vs_raw_bpe": -0.01,
+      "morphbpe_zemberek_d20": 0.622,
+      "delta_zemberek_vs_raw_bpe": 0.004
+    },
+    {
+      "task": "cetvel_xnli_tr",
+      "metric": "acc_norm,none",
+      "raw_bpe_d20": 0.3335,
+      "morphbpe_trmorph_d20": 0.3301,
+      "delta_trmorph_vs_raw_bpe": -0.0034,
+      "morphbpe_zemberek_d20": 0.3325,
+      "delta_zemberek_vs_raw_bpe": -0.001
+    },
+    {
+      "task": "mnli_tr",
+      "metric": "acc_norm,none",
+      "raw_bpe_d20": 0.321,
+      "morphbpe_trmorph_d20": 0.3215,
+      "delta_trmorph_vs_raw_bpe": 0.0005,
+      "morphbpe_zemberek_d20": 0.3216,
+      "delta_zemberek_vs_raw_bpe": 0.0006
+    },
+    {
+      "task": "snli_tr",
+      "metric": "acc_norm,none",
+      "raw_bpe_d20": 0.3234,
+      "morphbpe_trmorph_d20": 0.3235,
+      "delta_trmorph_vs_raw_bpe": 0.0001,
+      "morphbpe_zemberek_d20": 0.3195,
+      "delta_zemberek_vs_raw_bpe": -0.0039
+    },
+    {
+      "task": "news_cat",
+      "metric": "acc_norm,none",
+      "raw_bpe_d20": 0.676,
+      "morphbpe_trmorph_d20": 0.732,
+      "delta_trmorph_vs_raw_bpe": 0.056,
+      "morphbpe_zemberek_d20": 0.724,
+      "delta_zemberek_vs_raw_bpe": 0.048
+    },
+    {
+      "task": "offenseval_tr",
+      "metric": "acc_norm,none",
+      "raw_bpe_d20": 0.7971,
+      "morphbpe_trmorph_d20": 0.7764,
+      "delta_trmorph_vs_raw_bpe": -0.0207,
+      "morphbpe_zemberek_d20": 0.7937,
+      "delta_zemberek_vs_raw_bpe": -0.0034
+    },
+    {
+      "task": "trclaim19",
+      "metric": "acc_norm,none",
+      "raw_bpe_d20": 0.4938,
+      "morphbpe_trmorph_d20": 0.5283,
+      "delta_trmorph_vs_raw_bpe": 0.0345,
+      "morphbpe_zemberek_d20": 0.601,
+      "delta_zemberek_vs_raw_bpe": 0.1072
+    },
+    {
+      "task": "xfact_tr",
+      "metric": "acc_norm,none",
+      "raw_bpe_d20": 0.3373,
+      "morphbpe_trmorph_d20": 0.3373,
+      "delta_trmorph_vs_raw_bpe": 0.0,
+      "morphbpe_zemberek_d20": 0.3254,
+      "delta_zemberek_vs_raw_bpe": -0.0118
+    },
+    {
+      "task": "xquad_tr",
+      "metric": "f1,none",
+      "raw_bpe_d20": 3.0985,
+      "morphbpe_trmorph_d20": 3.4786,
+      "delta_trmorph_vs_raw_bpe": 0.3801,
+      "morphbpe_zemberek_d20": 3.2633,
+      "delta_zemberek_vs_raw_bpe": 0.1648
+    }
+  ]
+}

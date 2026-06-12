@@ -9,6 +9,9 @@ audit from GitHub. It is not intended to mirror every generated file from UHeM.
   CETVEL base-model subset results for the raw `tr_d20_bpe_32768_chinchilla20`
   model, stopped after `tquad` because the remaining tasks are mostly
   generation/instruction-style diagnostics better suited to a future SFT model.
+- [cetvel_core12_model_comparison_2026-06-12](cetvel_core12_model_comparison_2026-06-12/):
+  compact common-slice CETVEL comparison for the raw BPE, TRmorph MorphBPE, and
+  Zemberek MorphBPE d20 base-model runs.
 - [uhem_smoke_2026-06-07_job492393](uhem_smoke_2026-06-07_job492393/):
   completed UHeM A100 smoke test proving the Turkish data, tokenizer,
   pretraining, checkpoint, and BPB-eval path works end to end.
@@ -49,4 +52,5 @@ Examples:
 ```text
 uhem_smoke_2026-06-07_job492393/
 cetvel_base_subset_2026-06-09_job493293/
+cetvel_core12_model_comparison_2026-06-12/
 ```

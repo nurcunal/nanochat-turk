@@ -66,6 +66,24 @@ The minimum full-scale run matrix is:
 | 131,072 | d12 | MorphBPE + Zemberek | `tr_d12_morphbpe_zemberek_131072_chinchilla20` |
 | 131,072 | d12 | MorphBPE + TurkishDelightNLP | `tr_d12_morphbpe_tdelight_131072_chinchilla20` |
 
+## Current 32k Evidence
+
+The first completed d20/32k model-facing comparison is documented in
+[`docs/cetvel_model_comparison.md`](cetvel_model_comparison.md) and summarized
+under
+[`artifacts/cetvel_core12_model_comparison_2026-06-12`](../artifacts/cetvel_core12_model_comparison_2026-06-12/).
+
+| Tokenizer | Model tag | CETVEL core status | Core-11 macro | XQuAD F1 |
+| --- | --- | --- | ---: | ---: |
+| raw BPE | `tr_d20_bpe_32768_chinchilla20` | tasks 01-13 archived; common tasks 01-12 used for comparison | 0.4514 | 3.0985 |
+| MorphBPE + TRmorph | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | core tasks 01-12 complete | 0.4541 | 3.4786 |
+| MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | core tasks 01-12 complete | 0.4618 | 3.2633 |
+| MorphBPE + TurkishDelightNLP | `tr_d20_morphbpe_tdelight_32768_chinchilla20` | pending | - | - |
+
+This early evidence is mixed: the MorphBPE variants improve the common
+core-task macro, but not uniformly across every task. Treat it as base-model
+evidence for candidate selection, not as a final post-SFT quality claim.
+
 Optional later controls:
 
 - `morphbpe_hybrid`: rule-based segmentation when confident, neural fallback

@@ -128,6 +128,10 @@ This records bytes/token, chars/token, tokens/word fertility, and encode speed.
 The morphology-aware tokenizer study plan lives in
 `docs/tokenizer_ablation_plan.md`.
 
+Current base-model CETVEL comparisons are summarized in
+`docs/cetvel_model_comparison.md`. The checked-in common slice compares raw BPE,
+TRmorph MorphBPE, and Zemberek MorphBPE d20 models at step `17100`.
+
 ## CETVEL Suites
 
 `scripts.cetvel_eval` defines three suites:

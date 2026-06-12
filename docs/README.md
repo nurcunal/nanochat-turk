@@ -11,6 +11,8 @@ being evaluated.
   data, A100/UHeM, CETVEL, and run-script workflow.
 - [Project report README](project_report_readme.md): running project memory and
   report-writing scaffold.
+- [CETVEL model comparison](cetvel_model_comparison.md): raw BPE versus
+  MorphBPE base-model results on the common core task slice.
 - [Tokenizer ablation plan](tokenizer_ablation_plan.md): controlled MorphBPE
   and tokenizer comparison plan.
 
