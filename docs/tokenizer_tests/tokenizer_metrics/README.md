@@ -94,3 +94,6 @@ reported from validation loss after pretraining. The files here report
 pretraining-independent tokenizer diagnostics: compression, fertility,
 MorphBPE morphology metrics, boundary-crossing behavior, reversibility,
 vocabulary shape, and encode speed.
+
+For the current trained LLM model names and validation BPB values, see
+[`docs/model_bpb_inventory.md`](../../model_bpb_inventory.md).

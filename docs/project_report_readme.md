@@ -629,6 +629,45 @@ Use in report:
 > decided by matched validation BPB and CETVEL rather than tokenizer-only
 > metrics alone.
 
+### All Trained Model BPB Inventory
+
+The current UHeM model inventory contains the following base-model checkpoints.
+Values come from `meta_017100.json`; for all completed rows, final validation
+BPB equals the lowest validation BPB recorded by `loop_state.min_val_bpb`.
+
+| Vocab | Depth | Tokenizer | Model tag | Step | Final val BPB | Lowest val BPB | Status |
+| ---: | ---: | --- | --- | ---: | ---: | ---: | --- |
+| 32,768 | d20 | `bpe_32768` | `tr_d20_bpe_32768_chinchilla20` | 17100 | 0.6232 | 0.6232 | CETVEL core compared |
+| 32,768 | d20 | `morphbpe_trmorph_32768` | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | 17100 | 0.6266 | 0.6266 | CETVEL core compared |
+| 32,768 | d20 | `morphbpe_zemberek_32768` | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | 17100 | 0.6250 | 0.6250 | CETVEL core compared |
+| 32,768 | d20 | `morphbpe_tdelight_32768` | `tr_d20_morphbpe_tdelight_32768_chinchilla20` | - | - | - | tokenizer exists; no full checkpoint found |
+| 65,536 | d16 | `bpe_65536` | `tr_d16_bpe_65536_chinchilla20` | 17100 | 0.6409 | 0.6409 | CETVEL pending |
+| 65,536 | d16 | `morphbpe_trmorph_65536` | `tr_d16_morphbpe_trmorph_65536_chinchilla20` | 17100 | 0.6521 | 0.6521 | CETVEL pending |
+| 65,536 | d16 | `morphbpe_zemberek_65536` | `tr_d16_morphbpe_zemberek_65536_chinchilla20` | 17100 | 0.6514 | 0.6514 | CETVEL pending |
+| 65,536 | d16 | `morphbpe_tdelight_65536` | `tr_d16_morphbpe_tdelight_65536_chinchilla20` | 17100 | 0.6510 | 0.6510 | CETVEL pending |
+| 131,072 | d12 | `bpe_131072` | `tr_d12_bpe_131072_chinchilla20` | 17100 | 0.6749 | 0.6749 | CETVEL pending |
+| 131,072 | d12 | `morphbpe_trmorph_131072` | `tr_d12_morphbpe_trmorph_131072_chinchilla20` | 17100 | 0.6917 | 0.6917 | CETVEL pending |
+| 131,072 | d12 | `morphbpe_zemberek_131072` | `tr_d12_morphbpe_zemberek_131072_chinchilla20` | 17100 | 0.6940 | 0.6940 | CETVEL pending |
+| 131,072 | d12 | `morphbpe_tdelight_131072` | `tr_d12_morphbpe_tdelight_131072_chinchilla20` | 17100 | 0.6820 | 0.6820 | CETVEL pending |
+
+Interpretation:
+
+- The best current validation BPB is the 32k raw-BPE d20 model at `0.6232`.
+- Within the 32k MorphBPE rows, Zemberek has lower BPB than TRmorph, while
+  TRmorph remains stronger on tokenizer-only morphology metrics and XQuAD F1.
+- The 64k and 128k rows are trained and should be reported as base-model BPB
+  evidence, but they still need CETVEL before they can support a benchmark
+  quality claim.
+- The 32k TurkishDelightNLP tokenizer exists, but no full d20 checkpoint was
+  found under the expected UHeM path.
+
+Use in report:
+
+> We report validation BPB from the final checkpoint metadata for each completed
+> base-model run. The current BPB leader is the 32k raw-BPE d20 model, while the
+> larger-vocabulary and TurkishDelightNLP runs provide additional fixed-budget
+> ablation evidence pending CETVEL evaluation.
+
 ### CETVEL Model Comparison Result
 
 The first model-facing tokenizer comparison is now checked into the repo. It

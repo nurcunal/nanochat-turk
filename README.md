@@ -137,14 +137,14 @@ better morpheme alignment and consistency. Therefore the rank below prioritizes
 diagnostics are kept beside the paper metrics because they matter for actual
 nanochat pretraining: boundary-crossing rate, bytes/token, isolated-word
 fertility, reversibility, encode speed, and validation BPB where a matched model
-exists. The 64k/128k rows are descriptive tokenizer-only rows until their
-matched d16/d12 runs finish.
+exists. The 64k/128k raw-BPE rows now include matched model BPB, but their
+CETVEL comparisons are still pending.
 
 | Paper-style rank | Tokenizer | Vocab | Impl. | Segmenter | phi down | mu_e down | mu_c F1 up | Morph exact up | Boundary crossed down | Bytes/token up | Isolated fertility down | Roundtrip fail | Encode tok/s up | Val BPB down | Status |
 | ---: | --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| 1 | `bpe_131072` | 131,072 | bpe | none | 1.3915 | 1.2623 | 0.2412 | 0.4701 | 0.9346 | 5.8114 | 1.6372 | 0.0000 | 3,133,245 | - | tokenizer-only; d12 running |
+| 1 | `bpe_131072` | 131,072 | bpe | none | 1.3915 | 1.2623 | 0.2412 | 0.4701 | 0.9346 | 5.8114 | 1.6372 | 0.0000 | 3,133,245 | 0.6749 | trained d12; CETVEL pending |
 | 2 | `morphbpe_trmorph_32768` | 32,768 | morphbpe | TRmorph | 1.8166 | 1.4126 | 0.5129 | 0.4258 | 0.4569 | 4.4514 | 1.9821 | 0.0000 | 5,111,947 | 0.6266 | trained d20 |
-| 3 | `bpe_65536` | 65,536 | bpe | none | 1.4856 | 1.4627 | 0.2863 | 0.4004 | 0.8939 | 5.4434 | 1.8322 | 0.0000 | 3,238,593 | - | tokenizer-only; d16 running |
+| 3 | `bpe_65536` | 65,536 | bpe | none | 1.4856 | 1.4627 | 0.2863 | 0.4004 | 0.8939 | 5.4434 | 1.8322 | 0.0000 | 3,238,593 | 0.6409 | trained d16; CETVEL pending |
 | 4 | `morphbpe_zemberek_32768` | 32,768 | morphbpe | Zemberek | 1.7986 | 1.4817 | 0.4357 | 0.4040 | 0.5906 | 4.4959 | 1.9748 | 0.0000 | 5,075,946 | 0.6250 | trained d20 |
 | 5 | `bpe_32768` | 32,768 | bpe | none | 1.6157 | 1.6836 | 0.3241 | 0.3342 | 0.8395 | 5.0051 | 2.0312 | 0.0000 | 4,922,601 | 0.6232 | trained d20 |
 
@@ -157,8 +157,8 @@ for each row.
 Treat the larger-vocab raw BPE rows as cross-vocabulary diagnostics: they show
 that bigger raw BPE vocabularies improve compression, fertility, and `mu_e`, but
 they still cross many TRmorph morpheme boundaries and have lower `mu_c` than the
-32k MorphBPE rows. They become controlled ablation evidence only after their
-matched d16/d12 model runs produce validation BPB plus CETVEL results.
+32k MorphBPE rows. They now have matched d16/d12 validation BPB, but they still
+need CETVEL before they can support a benchmark-quality claim.
 
 ### Public Tokenizer References
 
@@ -201,7 +201,8 @@ pretraining tokenizers.
   the TRmorph reference segmentation.
 - Larger raw BPE vocabularies improve compression, fertility, and `mu_e`, but
   still cross many morpheme boundaries and have much lower `mu_c` than 32k
-  MorphBPE. Their model value is an open question until the d16/d12 runs finish.
+  MorphBPE. The d16/d12 model runs are now trained; their BPB results are in
+  the model inventory, while CETVEL comparison remains pending for those tiers.
 - The current d20 raw BPE model still has the best checked-in validation BPB
   among trained 32k models. That is the central trade-off: MorphBPE improves
   morphology metrics while spending more tokens, and model results decide
@@ -213,19 +214,30 @@ pretraining tokenizers.
 ## Matched LLM Training Plan
 
 The full study keeps corpus source, document order, training recipe, optimizer,
-and evaluation fixed. At the 32k vocabulary tier, the primary model cells are:
+and evaluation fixed. The 65,536-vocab rows use d16 and the 131,072-vocab rows
+use d12, keeping total parameters near the current approximately 1B-parameter
+budget. BPB values come from each completed run's `meta_017100.json`; for the
+completed rows, final validation BPB equals the lowest validation BPB recorded
+in checkpoint metadata.
 
-| Vocab | Depth | Tokenizer | Model tag | Current status |
-| ---: | ---: | --- | --- | --- |
-| 32,768 | d20 | raw BPE | `tr_d20_bpe_32768_chinchilla20` | Trained; CETVEL tasks 01-13 archived and common core slice compared. |
-| 32,768 | d20 | MorphBPE + TRmorph | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | Trained; CETVEL core tasks 01-12 complete. |
-| 32,768 | d20 | MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | Trained; CETVEL core tasks 01-12 complete. |
-| 32,768 | d20 | MorphBPE + TurkishDelightNLP | `tr_d20_morphbpe_tdelight_32768_chinchilla20` | Pipeline scripts/preflight in progress. |
+| Vocab | Depth | Tokenizer | Model tag | Step | Final val BPB | Lowest val BPB | Current status |
+| ---: | ---: | --- | --- | ---: | ---: | ---: | --- |
+| 32,768 | d20 | raw BPE | `tr_d20_bpe_32768_chinchilla20` | 17100 | 0.6232 | 0.6232 | Trained; CETVEL tasks 01-13 archived and common core slice compared. |
+| 32,768 | d20 | MorphBPE + TRmorph | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | 17100 | 0.6266 | 0.6266 | Trained; CETVEL core tasks 01-12 complete. |
+| 32,768 | d20 | MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | 17100 | 0.6250 | 0.6250 | Trained; CETVEL core tasks 01-12 complete. |
+| 32,768 | d20 | MorphBPE + TurkishDelightNLP | `tr_d20_morphbpe_tdelight_32768_chinchilla20` | - | - | - | Tokenizer exists; no full d20 checkpoint found. |
+| 65,536 | d16 | raw BPE | `tr_d16_bpe_65536_chinchilla20` | 17100 | 0.6409 | 0.6409 | Trained; CETVEL pending. |
+| 65,536 | d16 | MorphBPE + TRmorph | `tr_d16_morphbpe_trmorph_65536_chinchilla20` | 17100 | 0.6521 | 0.6521 | Trained; CETVEL pending. |
+| 65,536 | d16 | MorphBPE + Zemberek | `tr_d16_morphbpe_zemberek_65536_chinchilla20` | 17100 | 0.6514 | 0.6514 | Trained; CETVEL pending. |
+| 65,536 | d16 | MorphBPE + TurkishDelightNLP | `tr_d16_morphbpe_tdelight_65536_chinchilla20` | 17100 | 0.6510 | 0.6510 | Trained; CETVEL pending. |
+| 131,072 | d12 | raw BPE | `tr_d12_bpe_131072_chinchilla20` | 17100 | 0.6749 | 0.6749 | Trained; CETVEL pending. |
+| 131,072 | d12 | MorphBPE + TRmorph | `tr_d12_morphbpe_trmorph_131072_chinchilla20` | 17100 | 0.6917 | 0.6917 | Trained; CETVEL pending. |
+| 131,072 | d12 | MorphBPE + Zemberek | `tr_d12_morphbpe_zemberek_131072_chinchilla20` | 17100 | 0.6940 | 0.6940 | Trained; CETVEL pending. |
+| 131,072 | d12 | MorphBPE + TurkishDelightNLP | `tr_d12_morphbpe_tdelight_131072_chinchilla20` | 17100 | 0.6820 | 0.6820 | Trained; CETVEL pending. |
 
-The larger-vocabulary plan is documented in
-[docs/tokenizer_ablation_plan.md](docs/tokenizer_ablation_plan.md): 65,536-vocab
-models use d16, and 131,072-vocab models use d12, keeping total parameters near
-the current approximately 1B-parameter budget.
+The same inventory with source checkpoint paths lives in
+[docs/model_bpb_inventory.md](docs/model_bpb_inventory.md), and the study design
+lives in [docs/tokenizer_ablation_plan.md](docs/tokenizer_ablation_plan.md).
 
 ## Current Base-Model CETVEL Comparison
 
