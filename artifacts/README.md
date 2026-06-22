@@ -6,7 +6,7 @@ audit from GitHub. It is not intended to mirror every generated file from UHeM.
 ## Current Artifacts
 
 - [cetvel_base_subset_2026-06-09_job493293](cetvel_base_subset_2026-06-09_job493293/):
-  CETVEL base-model subset results for the raw `tr_d20_bpe_32768_chinchilla20`
+  CETVEL base-model subset results for the raw `tr_d20_bpe_32k`
   model, stopped after `tquad` because the remaining tasks are mostly
   generation/instruction-style diagnostics better suited to a future SFT model.
 - [cetvel_core12_model_comparison_2026-06-12](cetvel_core12_model_comparison_2026-06-12/):

@@ -1,0 +1,28 @@
+{
+  "name": "morphbpe_trmorph_65536",
+  "implementation": "morphbpe",
+  "vocab_size": 65536,
+  "max_chars": 2000000000,
+  "doc_cap": 10000,
+  "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph",
+  "text_column": "segmented_text",
+  "morph_boundary": "\ue000",
+  "morph_boundary_codepoints": "U+E000",
+  "requires_runtime_segmentation": false,
+  "training_uses_morph_boundaries": true,
+  "training_boundary_semantics": "merge_constraint_only",
+  "decode_strip": "",
+  "iterator_stats": {
+    "docs": 734628,
+    "chars": 2000003945,
+    "docs_with_boundary": 734624
+  },
+  "morphbpe_iterator_stats": {
+    "docs": 734628,
+    "docs_with_boundary": 734624,
+    "visible_chars": 1858612668,
+    "regex_chunks": 297199201,
+    "training_chunks": 438575477,
+    "boundary_splits": 141376276
+  }
+}

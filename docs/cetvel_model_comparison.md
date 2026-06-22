@@ -8,9 +8,9 @@ models at the same checkpoint step.
 
 The completed comparable slice is CETVEL core tasks 01-12 for:
 
-- raw BPE baseline, `tr_d20_bpe_32768_chinchilla20`;
-- TRmorph MorphBPE, `tr_d20_morphbpe_trmorph_32768_chinchilla20`;
-- Zemberek MorphBPE, `tr_d20_morphbpe_zemberek_32768_chinchilla20`.
+- raw BPE baseline, `tr_d20_bpe_32k`;
+- TRmorph MorphBPE, `tr_d20_morphbpe_trmorph_32k`;
+- Zemberek MorphBPE, `tr_d20_morphbpe_zemberek_32k`.
 
 All rows use model step `17100`. Final validation BPB comes from the final
 checkpoint metadata, while lowest validation BPB comes from the run's tracked
@@ -29,9 +29,9 @@ an isolated GPU kernel or tokens/sec measurement.
 
 | Run | Tokenizer | Segmenter | CETVEL job | Core-12 elapsed | CETVEL ex/s up | Speed vs raw | Final val BPB | Lowest val BPB | Final train loss | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE | Source |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| Raw BPE d20 | `bpe_32768` | none | `493293` | 50m20s | 13.06 | 1.000x | 0.6232 | 0.6232 | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 | [raw artifact](../artifacts/cetvel_base_subset_2026-06-09_job493293/) |
-| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | TRmorph | `494056` | 52m38s | 12.49 | 0.956x | 0.6266 | 0.6266 | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 | [comparison artifact](../artifacts/cetvel_core12_model_comparison_2026-06-12/) |
-| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | Zemberek | `494057` | 50m30s | 13.02 | 0.997x | 0.6250 | 0.6250 | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 | [comparison artifact](../artifacts/cetvel_core12_model_comparison_2026-06-12/) |
+| Raw BPE d20 | `bpe_32k` | none | `493293` | 50m20s | 13.06 | 1.000x | 0.6232 | 0.6232 | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 | [raw artifact](../artifacts/cetvel_base_subset_2026-06-09_job493293/) |
+| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32k` | TRmorph | `494056` | 52m38s | 12.49 | 0.956x | 0.6266 | 0.6266 | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 | [comparison artifact](../artifacts/cetvel_core12_model_comparison_2026-06-12/) |
+| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32k` | Zemberek | `494057` | 50m30s | 13.02 | 0.997x | 0.6250 | 0.6250 | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 | [comparison artifact](../artifacts/cetvel_core12_model_comparison_2026-06-12/) |
 
 ## Per-Task Core Comparison
 

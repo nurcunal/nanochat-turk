@@ -2,7 +2,7 @@
 
 This document preserves the preliminary study design for optimizing the
 `nanochat-turk` tokenizer. The current UHeM production run,
-`tr_d20_bpe_32768_chinchilla20`, is the first baseline cell in the study.
+`tr_d20_bpe_32k`, is the first baseline cell in the study.
 
 ## Goal
 
@@ -45,26 +45,26 @@ The primary model tiers are:
 
 | Vocab size | Depth | Approx params | Training token positions | Tokens/param |
 | ---: | ---: | ---: | ---: | ---: |
-| 32,768 | d20 | 896.5M | 17.930B | 20.00 |
-| 65,536 | d16 | 872.4M | 17.930B | 20.55 |
-| 131,072 | d12 | 890.2M | 17.930B | 20.14 |
+| 32k | d20 | 896.5M | 17.930B | 20.00 |
+| 64k | d16 | 872.4M | 17.930B | 20.55 |
+| 128k | d12 | 890.2M | 17.930B | 20.14 |
 
 The current full-scale run matrix is:
 
 | Vocab | Depth | Tokenizer | Model tag | Step | Final val BPB | Lowest val BPB | Current status |
 | ---: | ---: | --- | --- | ---: | ---: | ---: | --- |
-| 32,768 | d20 | raw BPE | `tr_d20_bpe_32768_chinchilla20` | 17100 | 0.6232 | 0.6232 | trained; CETVEL core compared |
-| 32,768 | d20 | MorphBPE + TRmorph | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | 17100 | 0.6266 | 0.6266 | trained; CETVEL core compared |
-| 32,768 | d20 | MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | 17100 | 0.6250 | 0.6250 | trained; CETVEL core compared |
-| 32,768 | d20 | MorphBPE + TurkishDelightNLP | `tr_d20_morphbpe_tdelight_32768_chinchilla20` | - | - | - | tokenizer exists; no full checkpoint found |
-| 65,536 | d16 | raw BPE | `tr_d16_bpe_65536_chinchilla20` | 17100 | 0.6409 | 0.6409 | trained; CETVEL pending |
-| 65,536 | d16 | MorphBPE + TRmorph | `tr_d16_morphbpe_trmorph_65536_chinchilla20` | 17100 | 0.6521 | 0.6521 | trained; CETVEL pending |
-| 65,536 | d16 | MorphBPE + Zemberek | `tr_d16_morphbpe_zemberek_65536_chinchilla20` | 17100 | 0.6514 | 0.6514 | trained; CETVEL pending |
-| 65,536 | d16 | MorphBPE + TurkishDelightNLP | `tr_d16_morphbpe_tdelight_65536_chinchilla20` | 17100 | 0.6510 | 0.6510 | trained; CETVEL pending |
-| 131,072 | d12 | raw BPE | `tr_d12_bpe_131072_chinchilla20` | 17100 | 0.6749 | 0.6749 | trained; CETVEL pending |
-| 131,072 | d12 | MorphBPE + TRmorph | `tr_d12_morphbpe_trmorph_131072_chinchilla20` | 17100 | 0.6917 | 0.6917 | trained; CETVEL pending |
-| 131,072 | d12 | MorphBPE + Zemberek | `tr_d12_morphbpe_zemberek_131072_chinchilla20` | 17100 | 0.6940 | 0.6940 | trained; CETVEL pending |
-| 131,072 | d12 | MorphBPE + TurkishDelightNLP | `tr_d12_morphbpe_tdelight_131072_chinchilla20` | 17100 | 0.6820 | 0.6820 | trained; CETVEL pending |
+| 32k | d20 | raw BPE | `tr_d20_bpe_32k` | 17100 | 0.6232 | 0.6232 | trained; CETVEL core compared |
+| 32k | d20 | MorphBPE + TRmorph | `tr_d20_morphbpe_trmorph_32k` | 17100 | 0.6266 | 0.6266 | trained; CETVEL core compared |
+| 32k | d20 | MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32k` | 17100 | 0.6250 | 0.6250 | trained; CETVEL core compared |
+| 32k | d20 | MorphBPE + TurkishDelightNLP | `tr_d20_morphbpe_tdelight_32k` | - | - | - | tokenizer exists; no full checkpoint found |
+| 64k | d16 | raw BPE | `tr_d16_bpe_64k` | 17100 | 0.6409 | 0.6409 | trained; CETVEL pending |
+| 64k | d16 | MorphBPE + TRmorph | `tr_d16_morphbpe_trmorph_64k` | 17100 | 0.6521 | 0.6521 | trained; CETVEL pending |
+| 64k | d16 | MorphBPE + Zemberek | `tr_d16_morphbpe_zemberek_64k` | 17100 | 0.6514 | 0.6514 | trained; CETVEL pending |
+| 64k | d16 | MorphBPE + TurkishDelightNLP | `tr_d16_morphbpe_tdelight_64k` | 17100 | 0.6510 | 0.6510 | trained; CETVEL pending |
+| 128k | d12 | raw BPE | `tr_d12_bpe_128k` | 17100 | 0.6749 | 0.6749 | trained; CETVEL pending |
+| 128k | d12 | MorphBPE + TRmorph | `tr_d12_morphbpe_trmorph_128k` | 17100 | 0.6917 | 0.6917 | trained; CETVEL pending |
+| 128k | d12 | MorphBPE + Zemberek | `tr_d12_morphbpe_zemberek_128k` | 17100 | 0.6940 | 0.6940 | trained; CETVEL pending |
+| 128k | d12 | MorphBPE + TurkishDelightNLP | `tr_d12_morphbpe_tdelight_128k` | 17100 | 0.6820 | 0.6820 | trained; CETVEL pending |
 
 The same model-name/BPB inventory with UHeM metadata paths is maintained in
 [`docs/model_bpb_inventory.md`](model_bpb_inventory.md).
@@ -78,10 +78,10 @@ under
 
 | Tokenizer | Model tag | CETVEL core status | Final val BPB | Lowest val BPB | Final train loss | CETVEL ex/s up | Core-11 macro | XQuAD F1 |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| raw BPE | `tr_d20_bpe_32768_chinchilla20` | tasks 01-13 archived; common tasks 01-12 used for comparison | 0.6232 | 0.6232 | 2.4899 | 13.06 | 0.4514 | 3.0985 |
-| MorphBPE + TRmorph | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | core tasks 01-12 complete | 0.6266 | 0.6266 | 2.0106 | 12.49 | 0.4541 | 3.4786 |
-| MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | core tasks 01-12 complete | 0.6250 | 0.6250 | 2.3227 | 13.02 | 0.4618 | 3.2633 |
-| MorphBPE + TurkishDelightNLP | `tr_d20_morphbpe_tdelight_32768_chinchilla20` | tokenizer exists; no full checkpoint found | - | - | - | - | - | - |
+| raw BPE | `tr_d20_bpe_32k` | tasks 01-13 archived; common tasks 01-12 used for comparison | 0.6232 | 0.6232 | 2.4899 | 13.06 | 0.4514 | 3.0985 |
+| MorphBPE + TRmorph | `tr_d20_morphbpe_trmorph_32k` | core tasks 01-12 complete | 0.6266 | 0.6266 | 2.0106 | 12.49 | 0.4541 | 3.4786 |
+| MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32k` | core tasks 01-12 complete | 0.6250 | 0.6250 | 2.3227 | 13.02 | 0.4618 | 3.2633 |
+| MorphBPE + TurkishDelightNLP | `tr_d20_morphbpe_tdelight_32k` | tokenizer exists; no full checkpoint found | - | - | - | - | - | - |
 
 This early evidence is mixed: the MorphBPE variants improve the common
 core-task macro, but raw BPE currently has the best final and lowest validation

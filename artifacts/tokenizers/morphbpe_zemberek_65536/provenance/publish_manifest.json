@@ -1,0 +1,87 @@
+{
+  "base_dir": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-65536",
+  "files": [
+    {
+      "bundle_path": "tokenizer.pkl",
+      "sha256": "8316086ec767c181553753a8f2fe45d0aa6136f5354c626225ea379be2524d1e",
+      "size_bytes": 872607,
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-65536/tokenizers/morphbpe_zemberek_65536/tokenizer.pkl"
+    },
+    {
+      "bundle_path": "tokenizer_config.json",
+      "sha256": "86f481a38fef95d876edb4daa3ec81bdcb2925772cf3e67dc008024c2f32716a",
+      "size_bytes": 838,
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-65536/tokenizers/morphbpe_zemberek_65536/tokenizer_config.json"
+    },
+    {
+      "bundle_path": "token_bytes.pt",
+      "sha256": "6f3959ad62820a85c59ef2592e945e6afa67b65c51d00ab931b564abe348a2c3",
+      "size_bytes": 263721,
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-65536/tokenizers/morphbpe_zemberek_65536/token_bytes.pt"
+    },
+    {
+      "bundle_path": "metrics/raw_metrics.json",
+      "sha256": "33601c1690117883e5acdd70b98a0f375408f4506ceb41e0ff087b677b6f94e8",
+      "size_bytes": 3590,
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-65536/morphbpe_zemberek_65536_raw_metrics.json"
+    },
+    {
+      "bundle_path": "provenance/segmentation_manifest.json",
+      "sha256": "fa94e7e16d55571ec3ea99d6a3b2086e23125a982ff5bae4fe05ac6f94d570cf",
+      "size_bytes": 29331,
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/segmented/zemberek-segmented/manifest.json"
+    },
+    {
+      "bundle_path": "provenance/segmented_dataset_manifest.json",
+      "sha256": "fddf792437d7f119644a3cca0adca54ced98d7bfd4491a28cb4fb95978754eb1",
+      "size_bytes": 1317,
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/segmented/zemberek-segmented/fineweb2_manifest.json"
+    },
+    {
+      "bundle_path": "README.md",
+      "sha256": "d572ad6ced290e6001d9ac2c35015ee3658800b7f6f415a646d4d664005eb109",
+      "size_bytes": 2168,
+      "source_path": "/tmp/tmp7aijgfin/README.md"
+    }
+  ],
+  "generated_at_utc": "2026-06-12T15:15:34.423849+00:00",
+  "git_branch": "",
+  "git_commit": "",
+  "git_dirty": false,
+  "metrics_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-65536/morphbpe_zemberek_65536_raw_metrics.json",
+  "repo_id": "",
+  "repo_prefix": "morphbpe_zemberek_65536",
+  "repo_type": "model",
+  "segmentation_manifest": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/segmented/zemberek-segmented/manifest.json",
+  "segmented_dataset_manifest": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/segmented/zemberek-segmented/fineweb2_manifest.json",
+  "tokenizer_config": {
+    "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/segmented/zemberek-segmented",
+    "decode_strip": "",
+    "doc_cap": 10000,
+    "implementation": "morphbpe",
+    "iterator_stats": {
+      "chars": 2000007497,
+      "docs": 737406,
+      "docs_with_boundary": 737406
+    },
+    "max_chars": 2000000000,
+    "morph_boundary": "",
+    "morph_boundary_codepoints": "U+E000",
+    "morphbpe_iterator_stats": {
+      "boundary_splits": 132161414,
+      "docs": 737406,
+      "docs_with_boundary": 737406,
+      "regex_chunks": 298657152,
+      "training_chunks": 430818566,
+      "visible_chars": 1867844008
+    },
+    "name": "morphbpe_zemberek_65536",
+    "requires_runtime_segmentation": false,
+    "text_column": "segmented_text",
+    "training_boundary_semantics": "merge_constraint_only",
+    "training_uses_morph_boundaries": true,
+    "vocab_size": 65536
+  },
+  "tokenizer_dir": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-65536/tokenizers/morphbpe_zemberek_65536",
+  "tokenizer_name": "morphbpe_zemberek_65536"
+}

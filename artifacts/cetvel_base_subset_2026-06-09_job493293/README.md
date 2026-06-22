@@ -2,7 +2,7 @@
 
 This folder contains the completed CETVEL results for the raw nanochat Turkish BPE base model before SFT.
 
-- Model tag: `tr_d20_bpe_32768_chinchilla20`
+- Model tag: `tr_d20_bpe_32k`
 - Model step: `17100`
 - Checkpoint format: raw nanochat checkpoint, BPE tokenizer
 - Training job id: `492421`

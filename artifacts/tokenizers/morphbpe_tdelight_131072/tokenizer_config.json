@@ -1,0 +1,28 @@
+{
+  "name": "morphbpe_tdelight_131072",
+  "implementation": "morphbpe",
+  "vocab_size": 131072,
+  "max_chars": 2000000000,
+  "doc_cap": 10000,
+  "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-32768/segmented/tdelight-segmented",
+  "text_column": "segmented_text",
+  "morph_boundary": "\ue000",
+  "morph_boundary_codepoints": "U+E000",
+  "requires_runtime_segmentation": false,
+  "training_uses_morph_boundaries": true,
+  "training_boundary_semantics": "merge_constraint_only",
+  "decode_strip": "",
+  "iterator_stats": {
+    "docs": 735229,
+    "chars": 2000001793,
+    "docs_with_boundary": 735229
+  },
+  "morphbpe_iterator_stats": {
+    "docs": 735229,
+    "docs_with_boundary": 735229,
+    "visible_chars": 1860663994,
+    "regex_chunks": 297521010,
+    "training_chunks": 436854926,
+    "boundary_splits": 139333916
+  }
+}

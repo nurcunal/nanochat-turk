@@ -1,0 +1,120 @@
+{
+  "tokenizer_name": "morphbpe_trmorph_131072",
+  "tokenizer_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-131072/tokenizers/morphbpe_trmorph_131072",
+  "tokenizer_config": {
+    "name": "morphbpe_trmorph_131072",
+    "implementation": "morphbpe",
+    "vocab_size": 131072,
+    "max_chars": 2000000000,
+    "doc_cap": 10000,
+    "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph",
+    "text_column": "segmented_text",
+    "morph_boundary": "",
+    "morph_boundary_codepoints": "U+E000",
+    "requires_runtime_segmentation": false,
+    "training_uses_morph_boundaries": true,
+    "training_boundary_semantics": "merge_constraint_only",
+    "decode_strip": "",
+    "iterator_stats": {
+      "docs": 734628,
+      "chars": 2000003945,
+      "docs_with_boundary": 734624
+    },
+    "morphbpe_iterator_stats": {
+      "docs": 734628,
+      "docs_with_boundary": 734624,
+      "visible_chars": 1858612668,
+      "regex_chunks": 297199201,
+      "training_chunks": 438575477,
+      "boundary_splits": 141376276
+    }
+  },
+  "split": "train",
+  "data_dir": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_data_fineweb2_tur_latn",
+  "text_column": "text",
+  "input_has_morph_boundaries": false,
+  "morph_boundary_codepoint": "U+E000",
+  "docs": 10000,
+  "bytes": 48975401,
+  "chars": 44851222,
+  "words": 6077942,
+  "tokens": 10047209,
+  "unique_tokens_in_sample": 116097,
+  "unique_token_rate_in_sample": 0.8857498168945312,
+  "decode_strip": "",
+  "docs_with_decode_strip": 0,
+  "bytes_per_token": 4.874527941043129,
+  "chars_per_token": 4.464047876380396,
+  "tokens_per_byte": 0.20514807015056397,
+  "tokens_per_char": 0.22401193439055017,
+  "tokens_per_word": 1.6530610196675124,
+  "token_fertility": 1.6530610196675124,
+  "tokens_per_doc_distribution": {
+    "count": 10000,
+    "mean": 1004.7209,
+    "p50": 376.0,
+    "p90": 1895.4000000000015,
+    "p95": 3161.0499999999993,
+    "p99": 9364.92000000002,
+    "max": 167175
+  },
+  "word_fertility_isolated": {
+    "sample_words": 200000,
+    "unique_words": 51512,
+    "tokens": 318059,
+    "tokens_per_word": 1.590295,
+    "single_token_word_rate": 0.517385,
+    "multi_token_word_rate": 0.482615,
+    "token_count_distribution": {
+      "count": 200000,
+      "mean": 1.590295,
+      "p50": 1.0,
+      "p90": 2.0,
+      "p95": 3.0,
+      "p99": 4.0,
+      "max": 17
+    },
+    "long_word_tokens_per_word": 2.194799772886677,
+    "long_word_count": 59882
+  },
+  "morphology": {
+    "enabled": false,
+    "sample_word_occurrences": 0
+  },
+  "vocabulary": {
+    "vocab_size": 131072,
+    "special_tokens": 9,
+    "mergeable_tokens_seen": 131063,
+    "utf8_decodable_token_rate": 0.9974973867529356,
+    "token_byte_length_distribution": {
+      "count": 131063,
+      "mean": 7.772849698236726,
+      "p50": 7.0,
+      "p90": 14.0,
+      "p95": 16.0,
+      "p99": 19.0,
+      "max": 96
+    }
+  },
+  "morph_boundary": {
+    "eligible_docs": 0,
+    "boundary_count": 0,
+    "crossing_tokens": 0,
+    "crossed_boundaries": 0,
+    "docs_with_crossing": 0,
+    "crossed_boundary_rate": 0.0,
+    "docs_with_crossing_rate": 0.0,
+    "crossing_tokens_per_1k_tokens": 0.0
+  },
+  "roundtrip_failures": 0,
+  "roundtrip_failure_rate": 0.0,
+  "encode_seconds": 1.4944944381713867,
+  "encode_docs_per_sec": 6691.225972199445,
+  "encode_tokens_per_sec": 6722814.580891601,
+  "metric_wall_seconds": 5.284554481506348,
+  "metric_docs_per_wall_sec": 1892.3071064922633,
+  "metric_tokens_per_wall_sec": 1901240.4991113027,
+  "metric_workers": 1,
+  "metric_tokenizer_threads_per_worker": 8,
+  "metric_row_group_tasks": 10
+}

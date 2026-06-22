@@ -1,0 +1,87 @@
+{
+  "base_dir": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-65536",
+  "files": [
+    {
+      "bundle_path": "tokenizer.pkl",
+      "sha256": "f64c7e0d45b794528bbca4b4f543e846c2ffd0b979aa97d2865f27dd9b74ceec",
+      "size_bytes": 850534,
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-65536/tokenizers/morphbpe_tdelight_65536/tokenizer.pkl"
+    },
+    {
+      "bundle_path": "tokenizer_config.json",
+      "sha256": "ac049b0ef08627ab69569bb7edbefe6c48ee70f394952fa7424d3a876f7d2904",
+      "size_bytes": 838,
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-65536/tokenizers/morphbpe_tdelight_65536/tokenizer_config.json"
+    },
+    {
+      "bundle_path": "token_bytes.pt",
+      "sha256": "79c7bb149a65f48eee260c3ea2009a735395b56065272fc1bbe2013589cda89e",
+      "size_bytes": 263721,
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-65536/tokenizers/morphbpe_tdelight_65536/token_bytes.pt"
+    },
+    {
+      "bundle_path": "metrics/raw_metrics.json",
+      "sha256": "44e969f3ce7c9731ce424ae231151f1f5f3519a1c4b8addc2f66a27729860698",
+      "size_bytes": 3598,
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-65536/morphbpe_tdelight_65536_raw_metrics.json"
+    },
+    {
+      "bundle_path": "provenance/segmentation_manifest.json",
+      "sha256": "85a360cd59626b88239215ccfb5dc1cbb31054daf864cb5175ea81fc444f7edd",
+      "size_bytes": 29128,
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-32768/segmented/tdelight-segmented/manifest.json"
+    },
+    {
+      "bundle_path": "provenance/segmented_dataset_manifest.json",
+      "sha256": "378a5b47b4c956236dc31b27359a643add37d2b6b00cef16dd9c5bfff8a0765f",
+      "size_bytes": 1317,
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-32768/segmented/tdelight-segmented/fineweb2_manifest.json"
+    },
+    {
+      "bundle_path": "README.md",
+      "sha256": "dd9a4675f36a0e08c014dd16b10d8325607cb86e859743109a2ce7366ccb7a56",
+      "size_bytes": 2165,
+      "source_path": "/tmp/tmp8ajt1lip/README.md"
+    }
+  ],
+  "generated_at_utc": "2026-06-12T18:48:33.856425+00:00",
+  "git_branch": "",
+  "git_commit": "",
+  "git_dirty": false,
+  "metrics_path": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-65536/morphbpe_tdelight_65536_raw_metrics.json",
+  "repo_id": "",
+  "repo_prefix": "morphbpe_tdelight_65536",
+  "repo_type": "model",
+  "segmentation_manifest": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-32768/segmented/tdelight-segmented/manifest.json",
+  "segmented_dataset_manifest": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-32768/segmented/tdelight-segmented/fineweb2_manifest.json",
+  "tokenizer_config": {
+    "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-32768/segmented/tdelight-segmented",
+    "decode_strip": "",
+    "doc_cap": 10000,
+    "implementation": "morphbpe",
+    "iterator_stats": {
+      "chars": 2000001793,
+      "docs": 735229,
+      "docs_with_boundary": 735229
+    },
+    "max_chars": 2000000000,
+    "morph_boundary": "",
+    "morph_boundary_codepoints": "U+E000",
+    "morphbpe_iterator_stats": {
+      "boundary_splits": 139333916,
+      "docs": 735229,
+      "docs_with_boundary": 735229,
+      "regex_chunks": 297521010,
+      "training_chunks": 436854926,
+      "visible_chars": 1860663994
+    },
+    "name": "morphbpe_tdelight_65536",
+    "requires_runtime_segmentation": false,
+    "text_column": "segmented_text",
+    "training_boundary_semantics": "merge_constraint_only",
+    "training_uses_morph_boundaries": true,
+    "vocab_size": 65536
+  },
+  "tokenizer_dir": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-65536/tokenizers/morphbpe_tdelight_65536",
+  "tokenizer_name": "morphbpe_tdelight_65536"
+}

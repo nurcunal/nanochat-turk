@@ -33,7 +33,7 @@ decodes raw Turkish text without requiring a runtime segmenter.
 | Turkish data pipeline | FineWeb-2 Turkish download, parquet reading, UHeM runs, checkpointing, and artifact capture work end to end. | [docs/turkish_foundation.md](docs/turkish_foundation.md), [artifacts/uhem_smoke_2026-06-07_job492393](artifacts/uhem_smoke_2026-06-07_job492393) |
 | Segmenter screening | TRmorph, Zemberek, TurkishDelightNLP, and identity control benchmarked on deterministic FineWeb-2 Turkish samples. | [docs/tokenizer_tests/segmenter_benchmark_status.md](docs/tokenizer_tests/segmenter_benchmark_status.md), [docs/tokenizer_tests/codex_local_judge_results.md](docs/tokenizer_tests/codex_local_judge_results.md) |
 | MorphBPE implementation | Raw-text MorphBPE tokenizer training implemented and tested. Segmentation constrains merge learning only. | [docs/tokenizer_tests/morphbpe_framework.md](docs/tokenizer_tests/morphbpe_framework.md), [tests/test_morphbpe_tokenizer.py](tests/test_morphbpe_tokenizer.py) |
-| Tokenizer artifacts | Raw BPE, TRmorph MorphBPE, and Zemberek MorphBPE 32k tokenizers archived; paper-style intrinsic metrics computed. | [artifacts/tokenizers](artifacts/tokenizers), [docs/tokenizer_tests/tokenizer_metrics](docs/tokenizer_tests/tokenizer_metrics) |
+| Tokenizer artifacts | Raw BPE plus TRmorph, Zemberek, and TurkishDelightNLP MorphBPE tokenizers archived across 32k/64k/128k tiers; 50k paper-style intrinsic metrics computed. | [artifacts/tokenizers](artifacts/tokenizers), [docs/tokenizer_tests/tokenizer_metrics](docs/tokenizer_tests/tokenizer_metrics) |
 | Base LLM benchmark | Raw-BPE, TRmorph MorphBPE, and Zemberek MorphBPE d20 base models evaluated on the common CETVEL core slice before SFT. | [docs/cetvel_model_comparison.md](docs/cetvel_model_comparison.md), [artifacts/cetvel_core12_model_comparison_2026-06-12](artifacts/cetvel_core12_model_comparison_2026-06-12) |
 
 ## Data Ground
@@ -115,10 +115,11 @@ to constrain the merge table.
 
 The checked-in tokenizer comparison uses the same first `50,000` documents from
 the TRmorph-segmented FineWeb-2 Turkish corpus. The boundary marker is stripped
-before encoding, so every tokenizer receives identical raw Turkish text.
-MorphBPE-paper metrics are computed over `200,000` segmented word occurrences,
-with Morph-Consistency using the paper defaults: `k=100` clusters, `C=50` word
-pairs per cluster, and `N=10` resamples.
+before encoding, so every tokenizer receives identical raw Turkish text. The
+current 12-row table was refreshed by UHeM job `496881`
+(`tok-mbpe-50k`), which completed in `00:18:41`. Full-corpus metrics are being
+computed separately by job `496882` (`tok-metrics-full`) and will replace the
+sample table when complete.
 
 Following the MorphBPE paper, this table does not use a custom weighted ranking
 formula. The paper-facing intrinsic ordering is based on:
@@ -137,52 +138,33 @@ better morpheme alignment and consistency. Therefore the rank below prioritizes
 diagnostics are kept beside the paper metrics because they matter for actual
 nanochat pretraining: boundary-crossing rate, bytes/token, isolated-word
 fertility, reversibility, encode speed, and validation BPB where a matched model
-exists. The 64k/128k raw-BPE rows now include matched model BPB, but their
-CETVEL comparisons are still pending.
+exists. The 64k/128k rows now include matched model BPB, but their CETVEL
+comparisons are still pending.
 
 | Paper-style rank | Tokenizer | Vocab | Impl. | Segmenter | phi down | mu_e down | mu_c F1 up | Morph exact up | Boundary crossed down | Bytes/token up | Isolated fertility down | Roundtrip fail | Encode tok/s up | Val BPB down | Status |
 | ---: | --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| 1 | `bpe_131072` | 131,072 | bpe | none | 1.3915 | 1.2623 | 0.2412 | 0.4701 | 0.9346 | 5.8114 | 1.6372 | 0.0000 | 3,133,245 | 0.6749 | trained d12; CETVEL pending |
-| 2 | `morphbpe_trmorph_32768` | 32,768 | morphbpe | TRmorph | 1.8166 | 1.4126 | 0.5129 | 0.4258 | 0.4569 | 4.4514 | 1.9821 | 0.0000 | 5,111,947 | 0.6266 | trained d20 |
-| 3 | `bpe_65536` | 65,536 | bpe | none | 1.4856 | 1.4627 | 0.2863 | 0.4004 | 0.8939 | 5.4434 | 1.8322 | 0.0000 | 3,238,593 | 0.6409 | trained d16; CETVEL pending |
-| 4 | `morphbpe_zemberek_32768` | 32,768 | morphbpe | Zemberek | 1.7986 | 1.4817 | 0.4357 | 0.4040 | 0.5906 | 4.4959 | 1.9748 | 0.0000 | 5,075,946 | 0.6250 | trained d20 |
-| 5 | `bpe_32768` | 32,768 | bpe | none | 1.6157 | 1.6836 | 0.3241 | 0.3342 | 0.8395 | 5.0051 | 2.0312 | 0.0000 | 4,922,601 | 0.6232 | trained d20 |
+| 1 | `morphbpe_trmorph_131072` | 131,072 | morphbpe | TRmorph | 1.6304 | 1.0045 | 0.3786 | 0.5666 | 0.5351 | 4.9597 | 1.6027 | 0.0000 | 3,284,424 | 0.6917 | trained d12; CETVEL pending |
+| 2 | `morphbpe_zemberek_131072` | 131,072 | morphbpe | Zemberek | 1.6248 | 1.0859 | 0.3330 | 0.5380 | 0.6587 | 4.9770 | 1.6026 | 0.0000 | 3,350,519 | 0.6940 | trained d12; CETVEL pending |
+| 3 | `morphbpe_tdelight_131072` | 131,072 | morphbpe | TurkishDelightNLP | 1.5109 | 1.1345 | 0.3971 | 0.5137 | 0.7811 | 5.3521 | 1.6481 | 0.0000 | 3,271,241 | 0.6820 | trained d12; CETVEL pending |
+| 4 | `morphbpe_trmorph_65536` | 65,536 | morphbpe | TRmorph | 1.7121 | 1.1697 | 0.4421 | 0.5056 | 0.4931 | 4.7230 | 1.7625 | 0.0000 | 3,659,255 | 0.6521 | trained d16; CETVEL pending |
+| 5 | `morphbpe_zemberek_65536` | 65,536 | morphbpe | Zemberek | 1.7030 | 1.2527 | 0.3743 | 0.4782 | 0.6245 | 4.7485 | 1.7616 | 0.0000 | 3,611,250 | 0.6514 | trained d16; CETVEL pending |
+| 6 | `bpe_131072` | 131,072 | bpe | none | 1.3915 | 1.2623 | 0.2412 | 0.4701 | 0.9346 | 5.8114 | 1.6372 | 0.0000 | 3,133,245 | 0.6749 | trained d12; CETVEL pending |
+| 7 | `morphbpe_tdelight_65536` | 65,536 | morphbpe | TurkishDelightNLP | 1.6091 | 1.3071 | 0.4296 | 0.4556 | 0.7179 | 5.0254 | 1.8192 | 0.0000 | 3,409,250 | 0.6510 | trained d16; CETVEL pending |
+| 8 | `morphbpe_trmorph_32768` | 32,768 | morphbpe | TRmorph | 1.8166 | 1.4126 | 0.5129 | 0.4258 | 0.4569 | 4.4514 | 1.9821 | 0.0000 | 5,111,947 | 0.6266 | trained d20; CETVEL core |
+| 9 | `bpe_65536` | 65,536 | bpe | none | 1.4856 | 1.4627 | 0.2863 | 0.4004 | 0.8939 | 5.4434 | 1.8322 | 0.0000 | 3,238,593 | 0.6409 | trained d16; CETVEL pending |
+| 10 | `morphbpe_zemberek_32768` | 32,768 | morphbpe | Zemberek | 1.7986 | 1.4817 | 0.4357 | 0.4040 | 0.5906 | 4.4959 | 1.9748 | 0.0000 | 5,075,946 | 0.6250 | trained d20; CETVEL core |
+| 11 | `morphbpe_tdelight_32768` | 32,768 | morphbpe | TurkishDelightNLP | 1.7366 | 1.5544 | 0.4795 | 0.3754 | 0.6443 | 4.6564 | 2.0357 | 0.0000 | 3,758,650 | - | tokenizer only; no d20 checkpoint found |
+| 12 | `bpe_32768` | 32,768 | bpe | none | 1.6157 | 1.6836 | 0.3241 | 0.3342 | 0.8395 | 5.0051 | 2.0312 | 0.0000 | 4,922,601 | 0.6232 | trained d20; CETVEL core |
 
-### All Produced Tokenizer Inventory
-
-The table below lists every current project tokenizer bundle found on UHeM. The
-32k raw/TRmorph/Zemberek rows and the 64k/128k raw-BPE rows have matched
-TRmorph-reference MorphBPE-paper metrics. The other larger MorphBPE and
-TurkishDelightNLP rows currently have raw-text tokenizer metrics only, so the
-paper-style morphology columns are marked pending.
-
-| Tokenizer | Vocab | Impl. | Segmenter | Metric source | Bytes/token up | phi down | Isolated fertility down | mu_e down | mu_c F1 up | Boundary crossed down | Encode tok/s up | Model BPB/status |
-| --- | ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| `bpe_32768` | 32,768 | bpe | none | 50k TRmorph-ref | 5.0051 | 1.6157 | 2.0312 | 1.6836 | 0.3241 | 0.8395 | 4,922,601 | 0.6232; d20 CETVEL core |
-| `morphbpe_trmorph_32768` | 32,768 | morphbpe | TRmorph | 50k TRmorph-ref | 4.4514 | 1.8166 | 1.9821 | 1.4126 | 0.5129 | 0.4569 | 5,111,947 | 0.6266; d20 CETVEL core |
-| `morphbpe_zemberek_32768` | 32,768 | morphbpe | Zemberek | 50k TRmorph-ref | 4.4959 | 1.7986 | 1.9748 | 1.4817 | 0.4357 | 0.5906 | 5,075,946 | 0.6250; d20 CETVEL core |
-| `morphbpe_tdelight_32768` | 32,768 | morphbpe | TurkishDelightNLP | 10k raw-text | 4.5626 | 1.7661 | 2.0291 | - | - | - | 7,654,341 | tokenizer only; no checkpoint found |
-| `bpe_65536` | 65,536 | bpe | none | 50k TRmorph-ref | 5.4434 | 1.4856 | 1.8322 | 1.4627 | 0.2863 | 0.8939 | 3,238,593 | 0.6409; d16 CETVEL pending |
-| `morphbpe_trmorph_65536` | 65,536 | morphbpe | TRmorph | 10k raw-text | 4.6385 | 1.7372 | 1.7493 | - | - | - | 6,561,717 | 0.6521; d16 CETVEL pending |
-| `morphbpe_zemberek_65536` | 65,536 | morphbpe | Zemberek | 10k raw-text | 4.6614 | 1.7286 | 1.7480 | - | - | - | 7,365,990 | 0.6514; d16 CETVEL pending |
-| `morphbpe_tdelight_65536` | 65,536 | morphbpe | TurkishDelightNLP | 10k raw-text | 4.9237 | 1.6365 | 1.8068 | - | - | - | 7,042,968 | 0.6510; d16 CETVEL pending |
-| `bpe_131072` | 131,072 | bpe | none | 50k TRmorph-ref | 5.8114 | 1.3915 | 1.6372 | 1.2623 | 0.2412 | 0.9346 | 3,133,245 | 0.6749; d12 CETVEL pending |
-| `morphbpe_trmorph_131072` | 131,072 | morphbpe | TRmorph | 10k raw-text | 4.8745 | 1.6531 | 1.5903 | - | - | - | 6,722,815 | 0.6917; d12 CETVEL pending |
-| `morphbpe_zemberek_131072` | 131,072 | morphbpe | Zemberek | 10k raw-text | 4.8910 | 1.6475 | 1.5916 | - | - | - | 6,319,152 | 0.6940; d12 CETVEL pending |
-| `morphbpe_tdelight_131072` | 131,072 | morphbpe | TurkishDelightNLP | 10k raw-text | 5.2495 | 1.5350 | 1.6369 | - | - | - | 6,557,236 | 0.6820; d12 CETVEL pending |
-
-The checked-in five-row paper-style comparison lives in
+The checked-in 12-row paper-style comparison lives in
 [docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md](docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md).
 Those metric files include token counts, normalized edit distance,
 Morph-Consistency precision/recall/std, vocabulary diagnostics, and source
-paths. The larger MorphBPE and TurkishDelightNLP rows summarize raw-text metric
-files that remain on UHeM next to their tokenizer bundles.
+paths. The comparison file also records morphology metric sample sizes per row.
 
-Treat the larger-vocab raw BPE rows as cross-vocabulary diagnostics: they show
-that bigger raw BPE vocabularies improve compression, fertility, and `mu_e`, but
-they still cross many TRmorph morpheme boundaries and have lower `mu_c` than the
-32k MorphBPE rows. They now have matched d16/d12 validation BPB, but they still
-need CETVEL before they can support a benchmark-quality claim.
+Treat cross-vocabulary ranks as descriptive diagnostics rather than final model
+evidence. The table shows how tokenizers behave intrinsically, but the paper
+claim still requires matched validation BPB and CETVEL for each vocabulary tier.
 
 ### Public Tokenizer References
 
@@ -217,28 +199,28 @@ pretraining tokenizers.
 
 ### Tokenizer Takeaways
 
-- Among the controlled 32k rows, TRmorph MorphBPE remains the strongest
-  morphology-aware tokenizer: it has the highest `mu_c`, best
-  boundary-crossing rate, and strongest same-vocab morpheme alignment trade-off.
-- Zemberek MorphBPE is second among the 32k rows: it also improves morphology
-  alignment and consistency over 32k raw BPE, but less strongly than TRmorph on
-  the TRmorph reference segmentation.
-- Larger raw BPE vocabularies improve compression, fertility, and `mu_e`, but
-  still cross many morpheme boundaries and have much lower `mu_c` than 32k
-  MorphBPE. The d16/d12 model runs are now trained; their BPB results are in
-  the model inventory, while CETVEL comparison remains pending for those tiers.
+- TRmorph MorphBPE is the strongest intrinsic tokenizer family in the current
+  sample: it ranks first at 128k and 64k, and it remains the best 32k row on
+  boundary crossing and Morph-Consistency.
+- TurkishDelightNLP is now a real contender rather than a placeholder. It gives
+  strong compression, especially at 128k, but crosses more TRmorph reference
+  boundaries than TRmorph or Zemberek MorphBPE.
+- Raw BPE still wins compression and BPB in some matched model rows, but it
+  crosses many more morpheme boundaries and has lower Morph-Consistency than
+  morphology-constrained BPE.
 - The current d20 raw BPE model still has the best checked-in validation BPB
   among trained 32k models. That is the central trade-off: MorphBPE improves
   morphology metrics while spending more tokens, and model results decide
   whether that trade-off pays off.
-- The final project claim must still combine tokenizer-only metrics with matched
+- The final project claim must combine tokenizer-only metrics with matched
   validation BPB and CETVEL. The paper-style intrinsic metrics justify carrying
-  TRmorph and Zemberek forward; they do not by themselves prove the best model.
+  TRmorph, Zemberek, and TurkishDelightNLP forward; they do not by themselves
+  prove the best model.
 
 ## Matched LLM Training Plan
 
 The full study keeps corpus source, document order, training recipe, optimizer,
-and evaluation fixed. The 65,536-vocab rows use d16 and the 131,072-vocab rows
+and evaluation fixed. The 64k-vocab rows use d16 and the 128k-vocab rows
 use d12, keeping total parameters near the current approximately 1B-parameter
 budget. BPB values come from each completed run's `meta_017100.json`; for the
 completed rows, final validation BPB equals the lowest validation BPB recorded
@@ -248,18 +230,18 @@ yet.
 
 | Vocab | Depth | Tokenizer | Model tag | Step | Final val BPB | Lowest val BPB | CETVEL job/status | Core-11 macro | XQuAD F1 | CETVEL ex/s |
 | ---: | ---: | --- | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: |
-| 32,768 | d20 | raw BPE | `tr_d20_bpe_32768_chinchilla20` | 17100 | 0.6232 | 0.6232 | `493293`, common tasks 01-12; tasks 01-13 archived | 0.4514 | 3.0985 | 13.06 |
-| 32,768 | d20 | MorphBPE + TRmorph | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | 17100 | 0.6266 | 0.6266 | `494056`, core tasks 01-12 | 0.4541 | 3.4786 | 12.49 |
-| 32,768 | d20 | MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | 17100 | 0.6250 | 0.6250 | `494057`, core tasks 01-12 | 0.4618 | 3.2633 | 13.02 |
-| 32,768 | d20 | MorphBPE + TurkishDelightNLP | `tr_d20_morphbpe_tdelight_32768_chinchilla20` | - | - | - | tokenizer exists; no full checkpoint found | - | - | - |
-| 65,536 | d16 | raw BPE | `tr_d16_bpe_65536_chinchilla20` | 17100 | 0.6409 | 0.6409 | CETVEL pending | - | - | - |
-| 65,536 | d16 | MorphBPE + TRmorph | `tr_d16_morphbpe_trmorph_65536_chinchilla20` | 17100 | 0.6521 | 0.6521 | CETVEL pending | - | - | - |
-| 65,536 | d16 | MorphBPE + Zemberek | `tr_d16_morphbpe_zemberek_65536_chinchilla20` | 17100 | 0.6514 | 0.6514 | CETVEL pending | - | - | - |
-| 65,536 | d16 | MorphBPE + TurkishDelightNLP | `tr_d16_morphbpe_tdelight_65536_chinchilla20` | 17100 | 0.6510 | 0.6510 | CETVEL pending | - | - | - |
-| 131,072 | d12 | raw BPE | `tr_d12_bpe_131072_chinchilla20` | 17100 | 0.6749 | 0.6749 | CETVEL pending | - | - | - |
-| 131,072 | d12 | MorphBPE + TRmorph | `tr_d12_morphbpe_trmorph_131072_chinchilla20` | 17100 | 0.6917 | 0.6917 | CETVEL pending | - | - | - |
-| 131,072 | d12 | MorphBPE + Zemberek | `tr_d12_morphbpe_zemberek_131072_chinchilla20` | 17100 | 0.6940 | 0.6940 | CETVEL pending | - | - | - |
-| 131,072 | d12 | MorphBPE + TurkishDelightNLP | `tr_d12_morphbpe_tdelight_131072_chinchilla20` | 17100 | 0.6820 | 0.6820 | CETVEL pending | - | - | - |
+| 32k | d20 | raw BPE | `tr_d20_bpe_32k` | 17100 | 0.6232 | 0.6232 | `493293`, common tasks 01-12; tasks 01-13 archived | 0.4514 | 3.0985 | 13.06 |
+| 32k | d20 | MorphBPE + TRmorph | `tr_d20_morphbpe_trmorph_32k` | 17100 | 0.6266 | 0.6266 | `494056`, core tasks 01-12 | 0.4541 | 3.4786 | 12.49 |
+| 32k | d20 | MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32k` | 17100 | 0.6250 | 0.6250 | `494057`, core tasks 01-12 | 0.4618 | 3.2633 | 13.02 |
+| 32k | d20 | MorphBPE + TurkishDelightNLP | `tr_d20_morphbpe_tdelight_32k` | - | - | - | tokenizer exists; no full checkpoint found | - | - | - |
+| 64k | d16 | raw BPE | `tr_d16_bpe_64k` | 17100 | 0.6409 | 0.6409 | CETVEL pending | - | - | - |
+| 64k | d16 | MorphBPE + TRmorph | `tr_d16_morphbpe_trmorph_64k` | 17100 | 0.6521 | 0.6521 | CETVEL pending | - | - | - |
+| 64k | d16 | MorphBPE + Zemberek | `tr_d16_morphbpe_zemberek_64k` | 17100 | 0.6514 | 0.6514 | CETVEL pending | - | - | - |
+| 64k | d16 | MorphBPE + TurkishDelightNLP | `tr_d16_morphbpe_tdelight_64k` | 17100 | 0.6510 | 0.6510 | CETVEL pending | - | - | - |
+| 128k | d12 | raw BPE | `tr_d12_bpe_128k` | 17100 | 0.6749 | 0.6749 | CETVEL pending | - | - | - |
+| 128k | d12 | MorphBPE + TRmorph | `tr_d12_morphbpe_trmorph_128k` | 17100 | 0.6917 | 0.6917 | CETVEL pending | - | - | - |
+| 128k | d12 | MorphBPE + Zemberek | `tr_d12_morphbpe_zemberek_128k` | 17100 | 0.6940 | 0.6940 | CETVEL pending | - | - | - |
+| 128k | d12 | MorphBPE + TurkishDelightNLP | `tr_d12_morphbpe_tdelight_128k` | 17100 | 0.6820 | 0.6820 | CETVEL pending | - | - | - |
 
 The same inventory with source checkpoint paths lives in
 [docs/model_bpb_inventory.md](docs/model_bpb_inventory.md), and the study design
@@ -280,9 +262,9 @@ GPU-kernel measurement.
 
 | Run | Model tag | Tokenizer | Segmenter | Step | CETVEL job | Compared slice | Core-12 elapsed | CETVEL ex/s up | Speed vs raw | Final val BPB | Lowest val BPB | Final train loss | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
 | --- | --- | --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Raw BPE d20 | `tr_d20_bpe_32768_chinchilla20` | `bpe_32768` | none | 17100 | `493293` | common tasks 01-12; tasks 01-13 archived | 50m20s | 13.06 | 1.000x | 0.6232 | 0.6232 | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
-| MorphBPE + TRmorph d20 | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | `morphbpe_trmorph_32768` | TRmorph | 17100 | `494056` | core tasks 01-12 | 52m38s | 12.49 | 0.956x | 0.6266 | 0.6266 | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
-| MorphBPE + Zemberek d20 | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | `morphbpe_zemberek_32768` | Zemberek | 17100 | `494057` | core tasks 01-12 | 50m30s | 13.02 | 0.997x | 0.6250 | 0.6250 | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
+| Raw BPE d20 | `tr_d20_bpe_32k` | `bpe_32k` | none | 17100 | `493293` | common tasks 01-12; tasks 01-13 archived | 50m20s | 13.06 | 1.000x | 0.6232 | 0.6232 | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
+| MorphBPE + TRmorph d20 | `tr_d20_morphbpe_trmorph_32k` | `morphbpe_trmorph_32k` | TRmorph | 17100 | `494056` | core tasks 01-12 | 52m38s | 12.49 | 0.956x | 0.6266 | 0.6266 | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
+| MorphBPE + Zemberek d20 | `tr_d20_morphbpe_zemberek_32k` | `morphbpe_zemberek_32k` | Zemberek | 17100 | `494057` | core tasks 01-12 | 50m30s | 13.02 | 0.997x | 0.6250 | 0.6250 | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
 
 Task-level CETVEL core-slice metrics:
 

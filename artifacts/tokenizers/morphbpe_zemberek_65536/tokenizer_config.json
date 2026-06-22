@@ -1,0 +1,28 @@
+{
+  "name": "morphbpe_zemberek_65536",
+  "implementation": "morphbpe",
+  "vocab_size": 65536,
+  "max_chars": 2000000000,
+  "doc_cap": 10000,
+  "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/segmented/zemberek-segmented",
+  "text_column": "segmented_text",
+  "morph_boundary": "\ue000",
+  "morph_boundary_codepoints": "U+E000",
+  "requires_runtime_segmentation": false,
+  "training_uses_morph_boundaries": true,
+  "training_boundary_semantics": "merge_constraint_only",
+  "decode_strip": "",
+  "iterator_stats": {
+    "docs": 737406,
+    "chars": 2000007497,
+    "docs_with_boundary": 737406
+  },
+  "morphbpe_iterator_stats": {
+    "docs": 737406,
+    "docs_with_boundary": 737406,
+    "visible_chars": 1867844008,
+    "regex_chunks": 298657152,
+    "training_chunks": 430818566,
+    "boundary_splits": 132161414
+  }
+}

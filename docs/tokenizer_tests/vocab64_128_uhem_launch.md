@@ -107,3 +107,33 @@ Local transfer initially failed because local DNS resolution for
 The final transfer used an escalated SSH call to the configured hostname and
 mirrored the completed bundles plus full metric files into the local GitHub
 checkout.
+
+## 2026-06-22 MorphBPE Completion And Metrics Import
+
+All remaining 64k/128k tokenizer finalizer jobs completed successfully:
+
+| Tokenizer | Job | State | Notes |
+| --- | ---: | --- | --- |
+| `morphbpe_trmorph_65536` | `494182` | `COMPLETED`, exit `0:0` | Archived under `artifacts/tokenizers/`. |
+| `morphbpe_zemberek_65536` | `494183` | `COMPLETED`, exit `0:0` | Archived under `artifacts/tokenizers/`. |
+| `morphbpe_tdelight_65536` | `494184` | `COMPLETED`, exit `0:0` | Waited on 32k TurkishDelight finalizer `494159`; archived under `artifacts/tokenizers/`. |
+| `morphbpe_trmorph_131072` | `494186` | `COMPLETED`, exit `0:0` | Archived under `artifacts/tokenizers/`. |
+| `morphbpe_zemberek_131072` | `494187` | `COMPLETED`, exit `0:0` | Archived under `artifacts/tokenizers/`. |
+| `morphbpe_tdelight_131072` | `494188` | `COMPLETED`, exit `0:0` | Waited on 32k TurkishDelight finalizer `494159`; archived under `artifacts/tokenizers/`. |
+
+The TurkishDelight 32k tokenizer also exists and was archived locally as
+`artifacts/tokenizers/morphbpe_tdelight_32768/`. The UHeM finalizer job was
+`494159`, elapsed `01:35:05`, exit `0:0`. Its `token_bytes.pt` was regenerated
+locally from the imported tokenizer using the same byte-accounting logic as
+`scripts/tok_train.py`.
+
+The expanded 50k TRmorph-reference tokenizer metric pass completed as job
+`496881` (`tok-mbpe-50k`), elapsed `00:18:41`, Slurm `CPUTime=00:59:45`, node
+`a071`. It refreshed
+`docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md/json`
+with 12 local tokenizer rows and wrote the new TurkishDelight metric JSON files.
+
+The first all-tokenizer full-corpus job `494219` failed with exit code `137`
+after Slurm killed it for memory (`245.90 GB` used against `192 GB`). The
+metrics scheduler was updated to bound in-flight parquet row-group futures, and
+the repaired full-corpus job is running as `496882` (`tok-metrics-full`).
