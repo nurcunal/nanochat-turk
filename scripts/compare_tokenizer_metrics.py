@@ -55,6 +55,7 @@ def rank_rows_paper_style(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def summarize(payload: dict[str, Any], path: str) -> dict[str, Any]:
     word = payload.get("word_fertility_isolated", {})
     boundary = payload.get("morph_boundary", {})
+    paper = payload.get("paper_metrics", {})
     morphology = payload.get("morphology", {})
     morph_alignment = morphology.get("alignment", {})
     morph_consistency = morphology.get("consistency", {})
@@ -70,19 +71,46 @@ def summarize(payload: dict[str, Any], path: str) -> dict[str, Any]:
         "bytes": payload.get("bytes", 0),
         "tokens": payload.get("tokens", 0),
         "bytes_per_token": payload.get("bytes_per_token", 0.0),
-        "tokens_per_word": payload.get("tokens_per_word", 0.0),
+        "tokens_per_word": paper.get("fertility_phi", payload.get("tokens_per_word", 0.0)),
         "isolated_word_tokens_per_word": word.get("tokens_per_word", 0.0),
         "single_token_word_rate": word.get("single_token_word_rate", 0.0),
         "long_word_tokens_per_word": word.get("long_word_tokens_per_word", 0.0),
-        "morph_edit_distance": morph_alignment.get("morphological_edit_distance", ""),
-        "morph_edit_distance_norm": morph_alignment.get("morphological_edit_distance_normalized", ""),
-        "morph_exact_sequence_rate": morph_alignment.get("exact_morpheme_sequence_rate", ""),
-        "morph_consistency_precision": morph_consistency.get("precision_mean", ""),
-        "morph_consistency_recall": morph_consistency.get("recall_mean", ""),
-        "morph_consistency_f1": morph_consistency.get("f1_mean", ""),
-        "morph_consistency_clustering": morph_consistency.get("clustering", ""),
-        "morph_sample_words": morph_alignment.get("sample_word_occurrences", morphology.get("sample_word_occurrences", "")),
-        "morph_consistency_words": morph_consistency.get("sample_unique_words", ""),
+        "morph_edit_distance": paper.get(
+            "morphological_edit_distance_mu_e",
+            morph_alignment.get("morphological_edit_distance", ""),
+        ),
+        "morph_edit_distance_norm": paper.get(
+            "morphological_edit_distance_normalized",
+            morph_alignment.get("morphological_edit_distance_normalized", ""),
+        ),
+        "morph_exact_sequence_rate": paper.get(
+            "morphological_exact_sequence_rate",
+            morph_alignment.get("exact_morpheme_sequence_rate", ""),
+        ),
+        "morph_consistency_precision": paper.get(
+            "morphological_consistency_precision",
+            morph_consistency.get("precision_mean", ""),
+        ),
+        "morph_consistency_recall": paper.get(
+            "morphological_consistency_recall",
+            morph_consistency.get("recall_mean", ""),
+        ),
+        "morph_consistency_f1": paper.get(
+            "morphological_consistency_f1_mu_c",
+            morph_consistency.get("f1_mean", ""),
+        ),
+        "morph_consistency_clustering": paper.get(
+            "morphological_consistency_clustering",
+            morph_consistency.get("clustering", ""),
+        ),
+        "morph_sample_words": paper.get(
+            "morphology_sample_word_occurrences",
+            morph_alignment.get("sample_word_occurrences", morphology.get("sample_word_occurrences", "")),
+        ),
+        "morph_consistency_words": paper.get(
+            "morphology_consistency_unique_words",
+            morph_consistency.get("sample_unique_words", ""),
+        ),
         "boundary_crossed_rate": boundary.get("crossed_boundary_rate", 0.0),
         "crossing_tokens_per_1k_tokens": boundary.get("crossing_tokens_per_1k_tokens", 0.0),
         "roundtrip_failure_rate": payload.get("roundtrip_failure_rate", 0.0),

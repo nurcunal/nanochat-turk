@@ -9,6 +9,7 @@ from nanochat.morphology import (
 )
 from nanochat.tokenizer import RustBPETokenizer
 from scripts.tokenizer_metrics import (
+    build_paper_metrics_summary,
     extract_segmented_words,
     morphological_alignment_stats,
     morphological_consistency_stats,
@@ -114,6 +115,40 @@ def test_morphology_consistency_metrics_are_binary_shared_relations():
     assert metrics["precision_mean"] == 0.5
     assert metrics["recall_mean"] == 1.0
     assert round(metrics["f1_mean"], 4) == 0.6667
+
+
+def test_paper_metrics_summary_exposes_morphbpe_aliases():
+    summary = build_paper_metrics_summary(
+        total_tokens=9,
+        total_words=6,
+        morphology_metrics={
+            "sample_word_occurrences": 3,
+            "alignment": {
+                "sample_word_occurrences": 3,
+                "morphological_edit_distance": 1.25,
+                "morphological_edit_distance_normalized": 0.5,
+                "exact_morpheme_sequence_rate": 0.4,
+            },
+            "consistency": {
+                "precision_mean": 0.75,
+                "recall_mean": 0.5,
+                "f1_mean": 0.6,
+                "precision_std": 0.01,
+                "recall_std": 0.02,
+                "f1_std": 0.03,
+                "clusters_requested": 100,
+                "pairs_per_cluster": 50,
+                "resamples": 10,
+                "clustering": "sklearn_minibatch_kmeans",
+                "sample_unique_words": 2,
+            },
+        },
+    )
+
+    assert summary["fertility_phi"] == 1.5
+    assert summary["morphological_edit_distance_mu_e"] == 1.25
+    assert summary["morphological_consistency_f1_mu_c"] == 0.6
+    assert summary["morphological_consistency_clusters"] == 100
 
 
 def test_rustbpe_decode_strips_morph_boundaries_after_reload(tmp_path):

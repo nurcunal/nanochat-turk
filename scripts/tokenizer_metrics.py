@@ -780,6 +780,41 @@ def morphological_consistency_stats(
     }
 
 
+def build_paper_metrics_summary(
+    *,
+    total_tokens: int,
+    total_words: int,
+    morphology_metrics: dict[str, Any],
+) -> dict[str, Any]:
+    """Stable MorphBPE-paper aliases for downstream tables and artifacts."""
+
+    alignment = morphology_metrics.get("alignment", {})
+    consistency = morphology_metrics.get("consistency", {})
+    return {
+        "fertility_phi": safe_div(total_tokens, total_words),
+        "morphological_edit_distance_mu_e": alignment.get("morphological_edit_distance"),
+        "morphological_edit_distance_normalized": alignment.get(
+            "morphological_edit_distance_normalized"
+        ),
+        "morphological_exact_sequence_rate": alignment.get("exact_morpheme_sequence_rate"),
+        "morphological_consistency_precision": consistency.get("precision_mean"),
+        "morphological_consistency_recall": consistency.get("recall_mean"),
+        "morphological_consistency_f1_mu_c": consistency.get("f1_mean"),
+        "morphological_consistency_precision_std": consistency.get("precision_std"),
+        "morphological_consistency_recall_std": consistency.get("recall_std"),
+        "morphological_consistency_f1_std": consistency.get("f1_std"),
+        "morphological_consistency_clusters": consistency.get("clusters_requested"),
+        "morphological_consistency_pairs_per_cluster": consistency.get("pairs_per_cluster"),
+        "morphological_consistency_resamples": consistency.get("resamples"),
+        "morphological_consistency_clustering": consistency.get("clustering"),
+        "morphology_sample_word_occurrences": alignment.get(
+            "sample_word_occurrences",
+            morphology_metrics.get("sample_word_occurrences"),
+        ),
+        "morphology_consistency_unique_words": consistency.get("sample_unique_words"),
+    }
+
+
 def vocabulary_stats(tokenizer) -> dict[str, Any]:
     if isinstance(tokenizer, HuggingFaceTokenizerAdapter):
         vocab = tokenizer.backend.get_vocab(with_added_tokens=True)
@@ -1305,6 +1340,12 @@ def finalize_metrics(
             seed=args.morph_consistency_seed,
         )
 
+    paper_metrics = build_paper_metrics_summary(
+        total_tokens=total_tokens,
+        total_words=total_words,
+        morphology_metrics=morphology_metrics,
+    )
+
     return {
         "tokenizer_name": tokenizer_config.get("name") or get_tokenizer_name(),
         "tokenizer_dir": tokenizer_dir,
@@ -1333,6 +1374,7 @@ def finalize_metrics(
         "tokens_per_char": safe_div(total_tokens, total_chars),
         "tokens_per_word": safe_div(total_tokens, total_words),
         "token_fertility": safe_div(total_tokens, total_words),
+        "paper_metrics": paper_metrics,
         "tokens_per_doc_distribution": distribution_stats_from_counts(aggregate["token_length_counts"]),
         "word_fertility_isolated": word_fertility_stats_from_words(
             tokenizer,

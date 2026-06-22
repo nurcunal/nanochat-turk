@@ -113,6 +113,21 @@ This is different from pre-segmented BPE. Pre-segmented BPE would put boundary
 markers or segmented text into the model stream. MorphBPE uses segmentation only
 to constrain the merge table.
 
+The MorphBPE paper metrics are implemented in
+[`scripts/tokenizer_metrics.py`](scripts/tokenizer_metrics.py) and surfaced in
+the checked-in comparison tables:
+
+- fertility `phi`: corpus tokens per whitespace word;
+- Morphological Edit Distance `mu_e`: dynamic-programming edit distance between
+  the reference morpheme sequence and the tokenizer byte-piece sequence;
+- Morphological Consistency `mu_c`: F1 over binary shared-morpheme/shared-token
+  relationships, with precision measuring whether shared tokens imply shared
+  morphemes and recall measuring whether shared morphemes imply shared tokens.
+
+Future metric JSON files also include a top-level `paper_metrics` block with
+stable aliases for these values, while older checked-in metric files retain the
+same values under `tokens_per_word` and `morphology.*`.
+
 The checked-in tokenizer comparison uses the same first `50,000` documents from
 the TRmorph-segmented FineWeb-2 Turkish corpus. The boundary marker is stripped
 before encoding, so every tokenizer receives identical raw Turkish text. The
