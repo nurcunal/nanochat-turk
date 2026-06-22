@@ -1,10 +1,12 @@
-# morphbpe_zemberek_32768
+# morphbpe_zemberek_32k
+
+Exact tokenizer ID in configs and loading snippets: `morphbpe_zemberek_32768`.
 
 Zemberek MorphBPE tokenizer for the Turkish nanochat tokenizer ablation.
 
 - Segmenter: Zemberek via `zemberek-python`
 - Tokenizer implementation: MorphBPE
-- Vocabulary size: 32,768
+- Vocabulary size: 32k
 - Morpheme boundary marker: `U+E000`
 - Boundary semantics: merge constraint only
 - Runtime segmentation required: no

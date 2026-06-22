@@ -143,18 +143,18 @@ comparisons are still pending.
 
 | Paper-style rank | Tokenizer | Vocab | Impl. | Segmenter | phi down | mu_e down | mu_c F1 up | Morph exact up | Boundary crossed down | Bytes/token up | Isolated fertility down | Roundtrip fail | Encode tok/s up | Val BPB down | Status |
 | ---: | --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| 1 | `morphbpe_trmorph_131072` | 131,072 | morphbpe | TRmorph | 1.6304 | 1.0045 | 0.3786 | 0.5666 | 0.5351 | 4.9597 | 1.6027 | 0.0000 | 3,284,424 | 0.6917 | trained d12; CETVEL pending |
-| 2 | `morphbpe_zemberek_131072` | 131,072 | morphbpe | Zemberek | 1.6248 | 1.0859 | 0.3330 | 0.5380 | 0.6587 | 4.9770 | 1.6026 | 0.0000 | 3,350,519 | 0.6940 | trained d12; CETVEL pending |
-| 3 | `morphbpe_tdelight_131072` | 131,072 | morphbpe | TurkishDelightNLP | 1.5109 | 1.1345 | 0.3971 | 0.5137 | 0.7811 | 5.3521 | 1.6481 | 0.0000 | 3,271,241 | 0.6820 | trained d12; CETVEL pending |
-| 4 | `morphbpe_trmorph_65536` | 65,536 | morphbpe | TRmorph | 1.7121 | 1.1697 | 0.4421 | 0.5056 | 0.4931 | 4.7230 | 1.7625 | 0.0000 | 3,659,255 | 0.6521 | trained d16; CETVEL pending |
-| 5 | `morphbpe_zemberek_65536` | 65,536 | morphbpe | Zemberek | 1.7030 | 1.2527 | 0.3743 | 0.4782 | 0.6245 | 4.7485 | 1.7616 | 0.0000 | 3,611,250 | 0.6514 | trained d16; CETVEL pending |
-| 6 | `bpe_131072` | 131,072 | bpe | none | 1.3915 | 1.2623 | 0.2412 | 0.4701 | 0.9346 | 5.8114 | 1.6372 | 0.0000 | 3,133,245 | 0.6749 | trained d12; CETVEL pending |
-| 7 | `morphbpe_tdelight_65536` | 65,536 | morphbpe | TurkishDelightNLP | 1.6091 | 1.3071 | 0.4296 | 0.4556 | 0.7179 | 5.0254 | 1.8192 | 0.0000 | 3,409,250 | 0.6510 | trained d16; CETVEL pending |
-| 8 | `morphbpe_trmorph_32768` | 32,768 | morphbpe | TRmorph | 1.8166 | 1.4126 | 0.5129 | 0.4258 | 0.4569 | 4.4514 | 1.9821 | 0.0000 | 5,111,947 | 0.6266 | trained d20; CETVEL core |
-| 9 | `bpe_65536` | 65,536 | bpe | none | 1.4856 | 1.4627 | 0.2863 | 0.4004 | 0.8939 | 5.4434 | 1.8322 | 0.0000 | 3,238,593 | 0.6409 | trained d16; CETVEL pending |
-| 10 | `morphbpe_zemberek_32768` | 32,768 | morphbpe | Zemberek | 1.7986 | 1.4817 | 0.4357 | 0.4040 | 0.5906 | 4.4959 | 1.9748 | 0.0000 | 5,075,946 | 0.6250 | trained d20; CETVEL core |
-| 11 | `morphbpe_tdelight_32768` | 32,768 | morphbpe | TurkishDelightNLP | 1.7366 | 1.5544 | 0.4795 | 0.3754 | 0.6443 | 4.6564 | 2.0357 | 0.0000 | 3,758,650 | - | tokenizer only; no d20 checkpoint found |
-| 12 | `bpe_32768` | 32,768 | bpe | none | 1.6157 | 1.6836 | 0.3241 | 0.3342 | 0.8395 | 5.0051 | 2.0312 | 0.0000 | 4,922,601 | 0.6232 | trained d20; CETVEL core |
+| 1 | `morphbpe_trmorph_128k` | 128k | morphbpe | TRmorph | 1.6304 | 1.0045 | 0.3786 | 0.5666 | 0.5351 | 4.9597 | 1.6027 | 0.0000 | 3,284,424 | 0.6917 | trained d12; CETVEL pending |
+| 2 | `morphbpe_zemberek_128k` | 128k | morphbpe | Zemberek | 1.6248 | 1.0859 | 0.3330 | 0.5380 | 0.6587 | 4.9770 | 1.6026 | 0.0000 | 3,350,519 | 0.6940 | trained d12; CETVEL pending |
+| 3 | `morphbpe_tdelight_128k` | 128k | morphbpe | TurkishDelightNLP | 1.5109 | 1.1345 | 0.3971 | 0.5137 | 0.7811 | 5.3521 | 1.6481 | 0.0000 | 3,271,241 | 0.6820 | trained d12; CETVEL pending |
+| 4 | `morphbpe_trmorph_64k` | 64k | morphbpe | TRmorph | 1.7121 | 1.1697 | 0.4421 | 0.5056 | 0.4931 | 4.7230 | 1.7625 | 0.0000 | 3,659,255 | 0.6521 | trained d16; CETVEL pending |
+| 5 | `morphbpe_zemberek_64k` | 64k | morphbpe | Zemberek | 1.7030 | 1.2527 | 0.3743 | 0.4782 | 0.6245 | 4.7485 | 1.7616 | 0.0000 | 3,611,250 | 0.6514 | trained d16; CETVEL pending |
+| 6 | `bpe_128k` | 128k | bpe | none | 1.3915 | 1.2623 | 0.2412 | 0.4701 | 0.9346 | 5.8114 | 1.6372 | 0.0000 | 3,133,245 | 0.6749 | trained d12; CETVEL pending |
+| 7 | `morphbpe_tdelight_64k` | 64k | morphbpe | TurkishDelightNLP | 1.6091 | 1.3071 | 0.4296 | 0.4556 | 0.7179 | 5.0254 | 1.8192 | 0.0000 | 3,409,250 | 0.6510 | trained d16; CETVEL pending |
+| 8 | `morphbpe_trmorph_32k` | 32k | morphbpe | TRmorph | 1.8166 | 1.4126 | 0.5129 | 0.4258 | 0.4569 | 4.4514 | 1.9821 | 0.0000 | 5,111,947 | 0.6266 | trained d20; CETVEL core |
+| 9 | `bpe_64k` | 64k | bpe | none | 1.4856 | 1.4627 | 0.2863 | 0.4004 | 0.8939 | 5.4434 | 1.8322 | 0.0000 | 3,238,593 | 0.6409 | trained d16; CETVEL pending |
+| 10 | `morphbpe_zemberek_32k` | 32k | morphbpe | Zemberek | 1.7986 | 1.4817 | 0.4357 | 0.4040 | 0.5906 | 4.4959 | 1.9748 | 0.0000 | 5,075,946 | 0.6250 | trained d20; CETVEL core |
+| 11 | `morphbpe_tdelight_32k` | 32k | morphbpe | TurkishDelightNLP | 1.7366 | 1.5544 | 0.4795 | 0.3754 | 0.6443 | 4.6564 | 2.0357 | 0.0000 | 3,758,650 | - | tokenizer only; no d20 checkpoint found |
+| 12 | `bpe_32k` | 32k | bpe | none | 1.6157 | 1.6836 | 0.3241 | 0.3342 | 0.8395 | 5.0051 | 2.0312 | 0.0000 | 4,922,601 | 0.6232 | trained d20; CETVEL core |
 
 The checked-in 12-row paper-style comparison lives in
 [docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md](docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md).

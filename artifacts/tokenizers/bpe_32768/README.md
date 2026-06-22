@@ -1,10 +1,12 @@
-# bpe_32768
+# bpe_32k
+
+Exact tokenizer ID in configs and loading snippets: `bpe_32768`.
 
 Baseline raw BPE tokenizer for the Turkish nanochat runs.
 
 - Segmenter: none
 - Tokenizer implementation: BPE
-- Vocabulary size: 32,768
+- Vocabulary size: 32k
 - Training data: raw FineWeb-2 Turkish Latin corpus
 - UHeM tokenizer source:
   `/ari/users/nunal/nanochat-turk-d20-bpe32k/tokenizers/bpe_32768`
@@ -14,4 +16,4 @@ Baseline raw BPE tokenizer for the Turkish nanochat runs.
   `metrics/raw_vs_trmorph_reference_metrics.json`
 
 This is the unsegmented baseline tokenizer used by the current
-`tr_d20_bpe_32768_chinchilla20`/`tr-d20-bpe32k` baseline family.
+`tr_d20_bpe_32k`/`tr-d20-bpe32k` baseline family.

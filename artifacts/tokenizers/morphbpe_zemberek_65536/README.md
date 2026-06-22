@@ -9,7 +9,9 @@ tags:
 library_name: tiktoken
 ---
 
-# `morphbpe_zemberek_65536`
+# `morphbpe_zemberek_64k`
+
+Exact tokenizer ID in configs and loading snippets: `morphbpe_zemberek_65536`.
 
 This artifact stores a trained nanochat tokenizer bundle for the Turkish
 MorphBPE ablation study. It is a raw nanochat/tiktoken tokenizer artifact, not a

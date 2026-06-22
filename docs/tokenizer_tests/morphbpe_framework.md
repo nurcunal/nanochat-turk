@@ -132,7 +132,7 @@ export NANOCHAT_TEXT_COLUMN=text
 
 torchrun --standalone --nproc_per_node=4 -m scripts.base_train -- \
   --depth=20 \
-  --model-tag=tr_morphbpe_trmorph_32768_d20
+  --model-tag=tr_morphbpe_trmorph_32k_d20
 ```
 
 The morphological segmenter is not used during LLM pretraining or inference.

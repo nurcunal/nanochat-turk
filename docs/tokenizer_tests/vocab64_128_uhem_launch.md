@@ -9,14 +9,14 @@ the Turkish MorphBPE ablation.
 
 | Vocab | Depth | Tokenizer family | Segmenter | Tokenizer name | Model tag |
 | ---: | ---: | --- | --- | --- | --- |
-| 65,536 | d16 | raw BPE | none | `bpe_65536` | `tr_d16_bpe_65536_chinchilla20` |
-| 65,536 | d16 | MorphBPE | TRmorph | `morphbpe_trmorph_65536` | `tr_d16_morphbpe_trmorph_65536_chinchilla20` |
-| 65,536 | d16 | MorphBPE | Zemberek | `morphbpe_zemberek_65536` | `tr_d16_morphbpe_zemberek_65536_chinchilla20` |
-| 65,536 | d16 | MorphBPE | TurkishDelightNLP | `morphbpe_tdelight_65536` | `tr_d16_morphbpe_tdelight_65536_chinchilla20` |
-| 131,072 | d12 | raw BPE | none | `bpe_131072` | `tr_d12_bpe_131072_chinchilla20` |
-| 131,072 | d12 | MorphBPE | TRmorph | `morphbpe_trmorph_131072` | `tr_d12_morphbpe_trmorph_131072_chinchilla20` |
-| 131,072 | d12 | MorphBPE | Zemberek | `morphbpe_zemberek_131072` | `tr_d12_morphbpe_zemberek_131072_chinchilla20` |
-| 131,072 | d12 | MorphBPE | TurkishDelightNLP | `morphbpe_tdelight_131072` | `tr_d12_morphbpe_tdelight_131072_chinchilla20` |
+| 64k | d16 | raw BPE | none | `bpe_64k` | `tr_d16_bpe_64k` |
+| 64k | d16 | MorphBPE | TRmorph | `morphbpe_trmorph_64k` | `tr_d16_morphbpe_trmorph_64k` |
+| 64k | d16 | MorphBPE | Zemberek | `morphbpe_zemberek_64k` | `tr_d16_morphbpe_zemberek_64k` |
+| 64k | d16 | MorphBPE | TurkishDelightNLP | `morphbpe_tdelight_64k` | `tr_d16_morphbpe_tdelight_64k` |
+| 128k | d12 | raw BPE | none | `bpe_128k` | `tr_d12_bpe_128k` |
+| 128k | d12 | MorphBPE | TRmorph | `morphbpe_trmorph_128k` | `tr_d12_morphbpe_trmorph_128k` |
+| 128k | d12 | MorphBPE | Zemberek | `morphbpe_zemberek_128k` | `tr_d12_morphbpe_zemberek_128k` |
+| 128k | d12 | MorphBPE | TurkishDelightNLP | `morphbpe_tdelight_128k` | `tr_d12_morphbpe_tdelight_128k` |
 
 ## Launchers
 
@@ -70,14 +70,14 @@ patching the submitter to parse the last numeric job id from `sbatch` output.
 
 | Vocab | Tokenizer family | Segmenter | Tokenizer job | Train job | State at submission |
 | ---: | --- | --- | ---: | ---: | --- |
-| 65,536 | raw BPE | none | `494181` | `494189` | tokenizer running; train waits on tokenizer |
-| 65,536 | MorphBPE | TRmorph | `494182` | `494190` | tokenizer running; train waits on tokenizer |
-| 65,536 | MorphBPE | Zemberek | `494183` | `494191` | tokenizer running; train waits on tokenizer |
-| 65,536 | MorphBPE | TurkishDelightNLP | `494184` | `494192` | tokenizer waits on `494159`; train waits on tokenizer |
-| 131,072 | raw BPE | none | `494185` | `494193` | tokenizer running; train waits on tokenizer |
-| 131,072 | MorphBPE | TRmorph | `494186` | `494194` | tokenizer running; train waits on tokenizer |
-| 131,072 | MorphBPE | Zemberek | `494187` | `494195` | tokenizer running; train waits on tokenizer |
-| 131,072 | MorphBPE | TurkishDelightNLP | `494188` | `494196` | tokenizer waits on `494159`; train waits on tokenizer |
+| 64k | raw BPE | none | `494181` | `494189` | tokenizer running; train waits on tokenizer |
+| 64k | MorphBPE | TRmorph | `494182` | `494190` | tokenizer running; train waits on tokenizer |
+| 64k | MorphBPE | Zemberek | `494183` | `494191` | tokenizer running; train waits on tokenizer |
+| 64k | MorphBPE | TurkishDelightNLP | `494184` | `494192` | tokenizer waits on `494159`; train waits on tokenizer |
+| 128k | raw BPE | none | `494185` | `494193` | tokenizer running; train waits on tokenizer |
+| 128k | MorphBPE | TRmorph | `494186` | `494194` | tokenizer running; train waits on tokenizer |
+| 128k | MorphBPE | Zemberek | `494187` | `494195` | tokenizer running; train waits on tokenizer |
+| 128k | MorphBPE | TurkishDelightNLP | `494188` | `494196` | tokenizer waits on `494159`; train waits on tokenizer |
 
 ## 2026-06-12 Tokenizer Completion Check
 
@@ -85,8 +85,8 @@ Raw BPE tokenizer jobs completed:
 
 | Tokenizer | Job | State | Raw metric bundle |
 | --- | ---: | --- | --- |
-| `bpe_65536` | `494181` | `COMPLETED`, exit `0:0` | `/ari/users/nunal/nanochat-turk/artifacts/tokenizers/bpe_65536/metrics/raw_metrics.json` |
-| `bpe_131072` | `494185` | `COMPLETED`, exit `0:0` | `/ari/users/nunal/nanochat-turk/artifacts/tokenizers/bpe_131072/metrics/raw_metrics.json` |
+| `bpe_64k` | `494181` | `COMPLETED`, exit `0:0` | `/ari/users/nunal/nanochat-turk/artifacts/tokenizers/bpe_65536/metrics/raw_metrics.json` |
+| `bpe_128k` | `494185` | `COMPLETED`, exit `0:0` | `/ari/users/nunal/nanochat-turk/artifacts/tokenizers/bpe_131072/metrics/raw_metrics.json` |
 
 The full TRmorph-reference metric pass for these completed tokenizers completed
 as job `494204` (`tok-metrics-bpe-large`), exit `0:0`, elapsed `00:04:34`,
@@ -114,12 +114,12 @@ All remaining 64k/128k tokenizer finalizer jobs completed successfully:
 
 | Tokenizer | Job | State | Notes |
 | --- | ---: | --- | --- |
-| `morphbpe_trmorph_65536` | `494182` | `COMPLETED`, exit `0:0` | Archived under `artifacts/tokenizers/`. |
-| `morphbpe_zemberek_65536` | `494183` | `COMPLETED`, exit `0:0` | Archived under `artifacts/tokenizers/`. |
-| `morphbpe_tdelight_65536` | `494184` | `COMPLETED`, exit `0:0` | Waited on 32k TurkishDelight finalizer `494159`; archived under `artifacts/tokenizers/`. |
-| `morphbpe_trmorph_131072` | `494186` | `COMPLETED`, exit `0:0` | Archived under `artifacts/tokenizers/`. |
-| `morphbpe_zemberek_131072` | `494187` | `COMPLETED`, exit `0:0` | Archived under `artifacts/tokenizers/`. |
-| `morphbpe_tdelight_131072` | `494188` | `COMPLETED`, exit `0:0` | Waited on 32k TurkishDelight finalizer `494159`; archived under `artifacts/tokenizers/`. |
+| `morphbpe_trmorph_64k` | `494182` | `COMPLETED`, exit `0:0` | Archived under `artifacts/tokenizers/`. |
+| `morphbpe_zemberek_64k` | `494183` | `COMPLETED`, exit `0:0` | Archived under `artifacts/tokenizers/`. |
+| `morphbpe_tdelight_64k` | `494184` | `COMPLETED`, exit `0:0` | Waited on 32k TurkishDelight finalizer `494159`; archived under `artifacts/tokenizers/`. |
+| `morphbpe_trmorph_128k` | `494186` | `COMPLETED`, exit `0:0` | Archived under `artifacts/tokenizers/`. |
+| `morphbpe_zemberek_128k` | `494187` | `COMPLETED`, exit `0:0` | Archived under `artifacts/tokenizers/`. |
+| `morphbpe_tdelight_128k` | `494188` | `COMPLETED`, exit `0:0` | Waited on 32k TurkishDelight finalizer `494159`; archived under `artifacts/tokenizers/`. |
 
 The TurkishDelight 32k tokenizer also exists and was archived locally as
 `artifacts/tokenizers/morphbpe_tdelight_32768/`. The UHeM finalizer job was

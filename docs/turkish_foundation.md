@@ -111,7 +111,7 @@ python -m scripts.tok_train --vocab-size=32768 --tokenizer-name=$NANOCHAT_TOKENI
 
 Future tokenizer implementations should plug into the same naming convention:
 
-- `bpe_32768`, `bpe_65536`, `bpe_131072`
+- `bpe_32k`, `bpe_64k`, `bpe_128k` for report-facing labels
 - `morphbpe_*` for boundary-constrained merge training with raw-text inference
 - `preseg_bpe_*` for the visible boundary-marker control
 - `sentencepiece_*`
@@ -145,7 +145,7 @@ Examples:
 ```bash
 python -m scripts.cetvel_eval --list-suites
 python -m scripts.cetvel_eval --suite fast --limit 100 --model-tag tr_d12_bpe_32k
-python -m scripts.cetvel_eval --suite core --model-tag tr_d24_bpe_32k_chinchilla20
+python -m scripts.cetvel_eval --suite core --model-tag tr_d24_bpe_32k
 ```
 
 Use `--auto-setup` to clone CETVEL and install its lm-evaluation-harness
@@ -196,10 +196,10 @@ Recommended UHeM submissions:
 sbatch runs/uhem_smoke_a100.sbatch
 
 # 896.5M params @ 17.93B tokens
-sbatch --export=ALL,VOCAB_SIZE=32768,NANOCHAT_TOKENIZER_NAME=bpe_32768,DEPTH=20,MODEL_TAG=tr_d20_bpe_32768_chinchilla20 runs/uhem_a100.sbatch
+sbatch --export=ALL,VOCAB_SIZE=32768,NANOCHAT_TOKENIZER_NAME=bpe_32768,DEPTH=20,MODEL_TAG=tr_d20_bpe_32k runs/uhem_a100.sbatch
 
 # 872.4M params @ 17.45B tokens
-sbatch --export=ALL,VOCAB_SIZE=65536,NANOCHAT_TOKENIZER_NAME=bpe_65536,DEPTH=16,MODEL_TAG=tr_d16_bpe_65536_chinchilla20 runs/uhem_a100.sbatch
+sbatch --export=ALL,VOCAB_SIZE=65536,NANOCHAT_TOKENIZER_NAME=bpe_65536,DEPTH=16,MODEL_TAG=tr_d16_bpe_64k runs/uhem_a100.sbatch
 ```
 
 Cluster-specific details to fill in before the final runs can usually be

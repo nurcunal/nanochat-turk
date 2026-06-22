@@ -1,10 +1,12 @@
-# morphbpe_trmorph_32768
+# morphbpe_trmorph_32k
+
+Exact tokenizer ID in configs and loading snippets: `morphbpe_trmorph_32768`.
 
 TRmorph MorphBPE tokenizer for the Turkish nanochat tokenizer ablation.
 
 - Segmenter: TRmorph FST via `flookup`
 - Tokenizer implementation: MorphBPE
-- Vocabulary size: 32,768
+- Vocabulary size: 32k
 - Morpheme boundary marker: `U+E000`
 - Boundary semantics: merge constraint only
 - Runtime segmentation required: no

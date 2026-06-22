@@ -44,8 +44,8 @@ The tokenizer research question is:
 
 The current baseline is:
 
-- raw Rust BPE, `bpe_32768`;
-- model tag `tr_d20_bpe_32768_chinchilla20`;
+- raw Rust BPE, `bpe_32k`;
+- model tag `tr_d20_bpe_32k`;
 - depth `20`;
 - about `896.5M` total parameters;
 - about `17.93B` training token positions;
@@ -54,8 +54,8 @@ The current baseline is:
 
 The first completed MorphBPE tokenizer targets are:
 
-- `morphbpe_trmorph_32768`, trained with TRmorph boundaries;
-- `morphbpe_zemberek_32768`, trained with Zemberek boundaries;
+- `morphbpe_trmorph_32k`, trained with TRmorph boundaries;
+- `morphbpe_zemberek_32k`, trained with Zemberek boundaries;
 - both use the same raw FineWeb-2 Turkish text during LLM pretraining;
 - segmentation is used only to constrain BPE merge learning;
 - no runtime segmenter is required for user prompts or CETVEL prompts.
@@ -172,7 +172,7 @@ Summary:
 - Altay/UHeM job `492393`.
 - State `COMPLETED`, exit `0:0`.
 - 1x A100 80GB, partition `gpu2dq`.
-- Model tag `tr_d2_bpe_32768_uhem_smoke_chinchilla20`.
+- Model tag `tr_d2_bpe_32k_uhem_smoke`.
 - Depth `2`, `12.98M` parameters.
 - Training tokens `259,522,560`.
 - Tokens/total-params ratio `19.9999`.
@@ -439,8 +439,8 @@ What was checked:
 
 Current tokenizer artifact state:
 
-- `bpe_32768`, `morphbpe_trmorph_32768`, and
-  `morphbpe_zemberek_32768` are archived under `artifacts/tokenizers/`.
+- `bpe_32k`, `morphbpe_trmorph_32k`, and
+  `morphbpe_zemberek_32k` are archived under `artifacts/tokenizers/`.
 - The comparable `50,000`-document TRmorph-reference metric table now includes
   raw BPE, TRmorph MorphBPE, Zemberek MorphBPE, and public Turkish tokenizer
   baselines.
@@ -580,11 +580,12 @@ TRmorph boundaries are used only to measure morphology preservation.
 The main `README.md` now follows the MorphBPE paper rather than a custom
 weighted-rank score. The paper-style intrinsic order is:
 
-- rank 1: `morphbpe_trmorph_32768`, `phi=1.8166`, `mu_e=1.4126`,
-  `mu_c=0.5129`;
-- rank 2: `morphbpe_zemberek_32768`, `phi=1.7986`, `mu_e=1.4817`,
-  `mu_c=0.4357`;
-- rank 3: `bpe_32768`, `phi=1.6157`, `mu_e=1.6836`, `mu_c=0.3241`.
+- rank 1: `morphbpe_trmorph_128k`, `phi=1.6304`, `mu_e=1.0045`,
+  `mu_c=0.3786`;
+- rank 2: `morphbpe_zemberek_128k`, `phi=1.6248`, `mu_e=1.0859`,
+  `mu_c=0.3330`;
+- rank 3: `morphbpe_tdelight_128k`, `phi=1.5109`, `mu_e=1.1345`,
+  `mu_c=0.3971`.
 
 Ranking justification:
 
@@ -592,12 +593,13 @@ Ranking justification:
   Edit Distance `mu_e`, and Morphological Consistency `mu_c`.
 - For agglutinative languages, lower fertility is an efficiency advantage but
   not the main morphology-quality criterion.
-- TRmorph ranks first because it has the lowest `mu_e`, highest `mu_c`, highest
-  exact morpheme-sequence rate, and lowest boundary-crossing rate.
-- Zemberek ranks second because it improves both `mu_e` and `mu_c` over raw BPE,
-  but less strongly than TRmorph on the TRmorph reference segmentation.
-- Raw BPE ranks third by paper-style morphology metrics, despite being the most
-  compact trained tokenizer.
+- TRmorph 128k ranks first because it has the lowest `mu_e` and highest exact
+  morpheme-sequence rate in the 12-row intrinsic comparison.
+- Zemberek 128k ranks second because it also improves `mu_e` strongly, though
+  less than TRmorph on the TRmorph reference segmentation.
+- TurkishDelightNLP 128k ranks third because it combines strong compression
+  with competitive morphology metrics, while still crossing more TRmorph
+  reference boundaries than TRmorph and Zemberek.
 
 Public tokenizer caveat:
 
@@ -612,9 +614,10 @@ Public tokenizer caveat:
 
 Interpretation:
 
-- TRmorph is the strongest current tokenizer-only candidate because it has the
-  best `mu_e`, `mu_c`, exact morpheme-sequence rate, and boundary preservation.
-- Zemberek is now a serious candidate rather than only an archived control: it
+- TRmorph is the strongest current tokenizer-only family because it gives the
+  best `mu_e` and exact morpheme-sequence rate at 128k, and the best 32k
+  Morph-Consistency and boundary preservation in the matched d20 slice.
+- Zemberek is a serious candidate rather than only an archived control: it
   improves the MorphBPE-paper metrics over raw BPE, but less strongly than
   TRmorph on the TRmorph-reference sample.
 - Raw BPE remains the compact baseline and has the best current d20 validation
@@ -637,18 +640,18 @@ BPB equals the lowest validation BPB recorded by `loop_state.min_val_bpb`.
 
 | Vocab | Depth | Tokenizer | Model tag | Step | Final val BPB | Lowest val BPB | Status |
 | ---: | ---: | --- | --- | ---: | ---: | ---: | --- |
-| 32,768 | d20 | `bpe_32768` | `tr_d20_bpe_32768_chinchilla20` | 17100 | 0.6232 | 0.6232 | CETVEL core compared |
-| 32,768 | d20 | `morphbpe_trmorph_32768` | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | 17100 | 0.6266 | 0.6266 | CETVEL core compared |
-| 32,768 | d20 | `morphbpe_zemberek_32768` | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | 17100 | 0.6250 | 0.6250 | CETVEL core compared |
-| 32,768 | d20 | `morphbpe_tdelight_32768` | `tr_d20_morphbpe_tdelight_32768_chinchilla20` | - | - | - | tokenizer exists; no full checkpoint found |
-| 65,536 | d16 | `bpe_65536` | `tr_d16_bpe_65536_chinchilla20` | 17100 | 0.6409 | 0.6409 | CETVEL pending |
-| 65,536 | d16 | `morphbpe_trmorph_65536` | `tr_d16_morphbpe_trmorph_65536_chinchilla20` | 17100 | 0.6521 | 0.6521 | CETVEL pending |
-| 65,536 | d16 | `morphbpe_zemberek_65536` | `tr_d16_morphbpe_zemberek_65536_chinchilla20` | 17100 | 0.6514 | 0.6514 | CETVEL pending |
-| 65,536 | d16 | `morphbpe_tdelight_65536` | `tr_d16_morphbpe_tdelight_65536_chinchilla20` | 17100 | 0.6510 | 0.6510 | CETVEL pending |
-| 131,072 | d12 | `bpe_131072` | `tr_d12_bpe_131072_chinchilla20` | 17100 | 0.6749 | 0.6749 | CETVEL pending |
-| 131,072 | d12 | `morphbpe_trmorph_131072` | `tr_d12_morphbpe_trmorph_131072_chinchilla20` | 17100 | 0.6917 | 0.6917 | CETVEL pending |
-| 131,072 | d12 | `morphbpe_zemberek_131072` | `tr_d12_morphbpe_zemberek_131072_chinchilla20` | 17100 | 0.6940 | 0.6940 | CETVEL pending |
-| 131,072 | d12 | `morphbpe_tdelight_131072` | `tr_d12_morphbpe_tdelight_131072_chinchilla20` | 17100 | 0.6820 | 0.6820 | CETVEL pending |
+| 32k | d20 | `bpe_32k` | `tr_d20_bpe_32k` | 17100 | 0.6232 | 0.6232 | CETVEL core compared |
+| 32k | d20 | `morphbpe_trmorph_32k` | `tr_d20_morphbpe_trmorph_32k` | 17100 | 0.6266 | 0.6266 | CETVEL core compared |
+| 32k | d20 | `morphbpe_zemberek_32k` | `tr_d20_morphbpe_zemberek_32k` | 17100 | 0.6250 | 0.6250 | CETVEL core compared |
+| 32k | d20 | `morphbpe_tdelight_32k` | `tr_d20_morphbpe_tdelight_32k` | - | - | - | tokenizer exists; no full checkpoint found |
+| 64k | d16 | `bpe_64k` | `tr_d16_bpe_64k` | 17100 | 0.6409 | 0.6409 | CETVEL pending |
+| 64k | d16 | `morphbpe_trmorph_64k` | `tr_d16_morphbpe_trmorph_64k` | 17100 | 0.6521 | 0.6521 | CETVEL pending |
+| 64k | d16 | `morphbpe_zemberek_64k` | `tr_d16_morphbpe_zemberek_64k` | 17100 | 0.6514 | 0.6514 | CETVEL pending |
+| 64k | d16 | `morphbpe_tdelight_64k` | `tr_d16_morphbpe_tdelight_64k` | 17100 | 0.6510 | 0.6510 | CETVEL pending |
+| 128k | d12 | `bpe_128k` | `tr_d12_bpe_128k` | 17100 | 0.6749 | 0.6749 | CETVEL pending |
+| 128k | d12 | `morphbpe_trmorph_128k` | `tr_d12_morphbpe_trmorph_128k` | 17100 | 0.6917 | 0.6917 | CETVEL pending |
+| 128k | d12 | `morphbpe_zemberek_128k` | `tr_d12_morphbpe_zemberek_128k` | 17100 | 0.6940 | 0.6940 | CETVEL pending |
+| 128k | d12 | `morphbpe_tdelight_128k` | `tr_d12_morphbpe_tdelight_128k` | 17100 | 0.6820 | 0.6820 | CETVEL pending |
 
 Interpretation:
 
@@ -678,9 +681,9 @@ hardware benchmark:
 
 | Run | Tokenizer | CETVEL job | Core-12 elapsed | CETVEL ex/s up | Final val BPB | Lowest val BPB | Final train loss | Core-11 macro | Delta vs raw BPE | XQuAD F1 | Delta vs raw BPE |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Raw BPE d20 | `bpe_32768` | `493293` | 50m20s | 13.06 | 0.6232 | 0.6232 | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
-| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32768` | `494056` | 52m38s | 12.49 | 0.6266 | 0.6266 | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
-| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32768` | `494057` | 50m30s | 13.02 | 0.6250 | 0.6250 | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
+| Raw BPE d20 | `bpe_32k` | `493293` | 50m20s | 13.06 | 0.6232 | 0.6232 | 2.4899 | 0.4514 | +0.0000 | 3.0985 | +0.0000 |
+| MorphBPE + TRmorph d20 | `morphbpe_trmorph_32k` | `494056` | 52m38s | 12.49 | 0.6266 | 0.6266 | 2.0106 | 0.4541 | +0.0027 | 3.4786 | +0.3801 |
+| MorphBPE + Zemberek d20 | `morphbpe_zemberek_32k` | `494057` | 50m30s | 13.02 | 0.6250 | 0.6250 | 2.3227 | 0.4618 | +0.0104 | 3.2633 | +0.1648 |
 
 Training-loss context:
 
@@ -741,7 +744,7 @@ Immediate:
    benchmark slices finish.
 2. Restart the intentionally canceled TurkishDelight segmentation shards listed
    in `docs/tokenizer_tests/uhem_restart_notes.md`.
-3. Finish the `morphbpe_tdelight_32768` tokenizer, matched tokenizer metric,
+3. Finish the `morphbpe_tdelight_32k` tokenizer, matched tokenizer metric,
    d20 model run, and CETVEL core comparison.
 4. Decide whether the current core-12 slice is enough for the first report table
    or whether full-CETVEL/post-SFT runs are needed before final claims.
@@ -750,8 +753,8 @@ Immediate:
 
 Short-term tokenizer study:
 
-1. Preserve the current ranked comparison for `bpe_32768`,
-   `morphbpe_trmorph_32768`, `morphbpe_zemberek_32768`, and public baselines.
+1. Preserve the current ranked comparison for `bpe_32k`,
+   `morphbpe_trmorph_32k`, `morphbpe_zemberek_32k`, and public baselines.
 2. Complete TurkishDelightNLP segmentation, tokenizer training, and matched
    metrics.
 3. Decide whether TurkishDelight goes to full d20 training or is ruled out by

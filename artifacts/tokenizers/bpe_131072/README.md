@@ -9,7 +9,9 @@ tags:
 library_name: tiktoken
 ---
 
-# `bpe_131072`
+# `bpe_128k`
+
+Exact tokenizer ID in configs and loading snippets: `bpe_131072`.
 
 This artifact stores a trained nanochat tokenizer bundle for the Turkish
 MorphBPE ablation study. It is a raw nanochat/tiktoken tokenizer artifact, not a

@@ -19,12 +19,14 @@ nanochat base-model pipeline.
 ## Pipeline
 
 - Script: `runs/uhem_smoke_nakane_a100.sbatch`
-- Model tag: `tr_d2_bpe_32768_uhem_smoke_chinchilla20`
+- Model tag: `tr_d2_bpe_32k_uhem_smoke` (source checkpoint tag:
+  `tr_d2_bpe_32768_uhem_smoke_chinchilla20`)
 - Base directory on UHeM: `/ari/users/nunal/nanochat-turk-smoke-cache`
 - Dataset: `HuggingFaceFW/fineweb-2`, config `tur_Latn`
 - Training shards: `2` train shards plus final validation shard
 - Vocabulary size: `32768`
-- Tokenizer: `bpe_32768_uhem_smoke`
+- Tokenizer: `bpe_32k_uhem_smoke` (source tokenizer ID:
+  `bpe_32768_uhem_smoke`)
 - Depth: `2`
 - Total parameters: `12,976,182`
 - Training tokens: `259,522,560`

@@ -95,10 +95,10 @@ consumed included to account for tokenizer fertility.
 The framework is method-complete for a Turkish MorphBPE reproduction. Remaining
 paper-facing work is experimental rather than architectural:
 
-- finish full-corpus tokenizer metric jobs with `mu_e` and `mu_c`;
-- finish `morphbpe_tdelight_32768`;
+- finish the full-corpus tokenizer metric job with `mu_e` and `mu_c`;
+- decide whether to promote `morphbpe_tdelight_32k` to a matched d20 model;
 - run raw BPE, TRmorph, Zemberek, and TurkishDelight CETVEL under matched model
   settings;
-- repeat at `65,536` and `131,072` vocab sizes if compute permits;
+- run CETVEL for the completed `64k` and `128k` vocab-size models;
 - optionally run the vocabulary-size sweep used in the paper for selecting
   morphology-aligned vocabulary sizes.
