@@ -1,0 +1,85 @@
+{
+  "kind": "cetvel_core12_tokenizer_ablation",
+  "path_in_repo": "artifacts/cetvel_core12_tokenizer_ablation_2026-06-22",
+  "generated_at_utc": "2026-06-22T11:06:06.954404+00:00",
+  "source_tmp_dir": "/private/tmp/cetvel_import_20260622",
+  "source_uhem_paths": [
+    {
+      "run_id": "raw_bpe_d20",
+      "results": "/ari/users/nunal/nanochat-turk-d20-bpe32k/cetvel_out/full_kvcache_20260609_185114/cetvel_full_partial_results.json",
+      "log": "/ari/users/nunal/nanochat-turk/nanochat-cetvel-full-493293.out",
+      "meta": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_checkpoints/tr_d20_bpe_32768_chinchilla20/meta_017100.json"
+    },
+    {
+      "run_id": "morphbpe_trmorph_d20",
+      "results": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "log": "/ari/users/nunal/nanochat-turk/cetvel-core12-trmorph-d20-494056.out",
+      "meta": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/base_checkpoints/tr_d20_morphbpe_trmorph_32768_chinchilla20/meta_017100.json"
+    },
+    {
+      "run_id": "morphbpe_zemberek_d20",
+      "results": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "log": "/ari/users/nunal/nanochat-turk/cetvel-core12-zemberek-d20-494057.out",
+      "meta": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/base_checkpoints/tr_d20_morphbpe_zemberek_32768_chinchilla20/meta_017100.json"
+    },
+    {
+      "run_id": "raw_bpe_d16_64k",
+      "results": "/ari/users/nunal/nanochat-turk-bpe-65536/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "log": "/ari/users/nunal/nanochat-turk/cetvel-bpe64-496898.out",
+      "meta": "/ari/users/nunal/nanochat-turk-bpe-65536/base_checkpoints/tr_d16_bpe_65536_chinchilla20/meta_017100.json"
+    },
+    {
+      "run_id": "morphbpe_trmorph_d16_64k",
+      "results": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-65536/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "log": "/ari/users/nunal/nanochat-turk/cetvel-trm64-496899.out",
+      "meta": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-65536/base_checkpoints/tr_d16_morphbpe_trmorph_65536_chinchilla20/meta_017100.json"
+    },
+    {
+      "run_id": "morphbpe_zemberek_d16_64k",
+      "results": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-65536/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "log": "/ari/users/nunal/nanochat-turk/cetvel-zem64-496900.out",
+      "meta": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-65536/base_checkpoints/tr_d16_morphbpe_zemberek_65536_chinchilla20/meta_017100.json"
+    },
+    {
+      "run_id": "morphbpe_tdelight_d16_64k",
+      "results": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-65536/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "log": "/ari/users/nunal/nanochat-turk/cetvel-tdl64-496901.out",
+      "meta": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-65536/base_checkpoints/tr_d16_morphbpe_tdelight_65536_chinchilla20/meta_017100.json"
+    },
+    {
+      "run_id": "raw_bpe_d12_128k",
+      "results": "/ari/users/nunal/nanochat-turk-bpe-131072/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "log": "/ari/users/nunal/nanochat-turk/cetvel-bpe128-496902.out",
+      "meta": "/ari/users/nunal/nanochat-turk-bpe-131072/base_checkpoints/tr_d12_bpe_131072_chinchilla20/meta_017100.json"
+    },
+    {
+      "run_id": "morphbpe_trmorph_d12_128k",
+      "results": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-131072/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "log": "/ari/users/nunal/nanochat-turk/cetvel-trm128-496903.out",
+      "meta": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-131072/base_checkpoints/tr_d12_morphbpe_trmorph_131072_chinchilla20/meta_017100.json"
+    },
+    {
+      "run_id": "morphbpe_zemberek_d12_128k",
+      "results": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-131072/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "log": "/ari/users/nunal/nanochat-turk/cetvel-zem128-496904.out",
+      "meta": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-131072/base_checkpoints/tr_d12_morphbpe_zemberek_131072_chinchilla20/meta_017100.json"
+    },
+    {
+      "run_id": "morphbpe_tdelight_d12_128k",
+      "results": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-131072/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "log": "/ari/users/nunal/nanochat-turk/cetvel-tdl128-496905.out",
+      "meta": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-131072/base_checkpoints/tr_d12_morphbpe_tdelight_131072_chinchilla20/meta_017100.json"
+    }
+  ],
+  "files": [
+    "README.md",
+    "metrics_summary.json",
+    "manifest.json"
+  ],
+  "notes": [
+    "Mean over 11 classification/loglikelihood tasks; xquad_tr is excluded because it reports F1 on a different scale.",
+    "Deltas and speed ratios are computed against the raw BPE model within the same vocabulary/depth tier.",
+    "Raw CETVEL JSON files with samples remain on UHeM; this artifact stores compact metrics and source paths for GitHub.",
+    "CETVEL examples/sec uses 39,441 expanded effective examples for the common core-12 slice, matching the previous artifact convention."
+  ]
+}

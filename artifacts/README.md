@@ -12,6 +12,9 @@ audit from GitHub. It is not intended to mirror every generated file from UHeM.
 - [cetvel_core12_model_comparison_2026-06-12](cetvel_core12_model_comparison_2026-06-12/):
   compact common-slice CETVEL comparison for the raw BPE, TRmorph MorphBPE, and
   Zemberek MorphBPE d20 base-model runs.
+- [cetvel_core12_tokenizer_ablation_2026-06-22](cetvel_core12_tokenizer_ablation_2026-06-22/):
+  compact CETVEL core-12 tokenizer ablation summary across the 32k/d20,
+  64k/d16, and 128k/d12 base-model rows.
 - [uhem_smoke_2026-06-07_job492393](uhem_smoke_2026-06-07_job492393/):
   completed UHeM A100 smoke test proving the Turkish data, tokenizer,
   pretraining, checkpoint, and BPB-eval path works end to end.
@@ -53,4 +56,5 @@ Examples:
 uhem_smoke_2026-06-07_job492393/
 cetvel_base_subset_2026-06-09_job493293/
 cetvel_core12_model_comparison_2026-06-12/
+cetvel_core12_tokenizer_ablation_2026-06-22/
 ```

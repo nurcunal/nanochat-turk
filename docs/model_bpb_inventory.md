@@ -18,23 +18,24 @@ omitted from model tags, and vocabulary sizes are written as `32k`, `64k`, and
 | 32k | d20 | `morphbpe_trmorph_32k` | `tr_d20_morphbpe_trmorph_32k` | 17100 | 0.6266 | 0.6266 | CETVEL core compared |
 | 32k | d20 | `morphbpe_zemberek_32k` | `tr_d20_morphbpe_zemberek_32k` | 17100 | 0.6250 | 0.6250 | CETVEL core compared |
 | 32k | d20 | `morphbpe_tdelight_32k` | `tr_d20_morphbpe_tdelight_32k` | - | - | - | tokenizer exists; no full LLM checkpoint found |
-| 64k | d16 | `bpe_64k` | `tr_d16_bpe_64k` | 17100 | 0.6409 | 0.6409 | trained; CETVEL pending |
-| 64k | d16 | `morphbpe_trmorph_64k` | `tr_d16_morphbpe_trmorph_64k` | 17100 | 0.6521 | 0.6521 | trained; CETVEL pending |
-| 64k | d16 | `morphbpe_zemberek_64k` | `tr_d16_morphbpe_zemberek_64k` | 17100 | 0.6514 | 0.6514 | trained; CETVEL pending |
-| 64k | d16 | `morphbpe_tdelight_64k` | `tr_d16_morphbpe_tdelight_64k` | 17100 | 0.6510 | 0.6510 | trained; CETVEL pending |
-| 128k | d12 | `bpe_128k` | `tr_d12_bpe_128k` | 17100 | 0.6749 | 0.6749 | trained; CETVEL pending |
-| 128k | d12 | `morphbpe_trmorph_128k` | `tr_d12_morphbpe_trmorph_128k` | 17100 | 0.6917 | 0.6917 | trained; CETVEL pending |
-| 128k | d12 | `morphbpe_zemberek_128k` | `tr_d12_morphbpe_zemberek_128k` | 17100 | 0.6940 | 0.6940 | trained; CETVEL pending |
-| 128k | d12 | `morphbpe_tdelight_128k` | `tr_d12_morphbpe_tdelight_128k` | 17100 | 0.6820 | 0.6820 | trained; CETVEL pending |
+| 64k | d16 | `bpe_64k` | `tr_d16_bpe_64k` | 17100 | 0.6409 | 0.6409 | CETVEL core compared |
+| 64k | d16 | `morphbpe_trmorph_64k` | `tr_d16_morphbpe_trmorph_64k` | 17100 | 0.6521 | 0.6521 | CETVEL core compared |
+| 64k | d16 | `morphbpe_zemberek_64k` | `tr_d16_morphbpe_zemberek_64k` | 17100 | 0.6514 | 0.6514 | CETVEL core compared |
+| 64k | d16 | `morphbpe_tdelight_64k` | `tr_d16_morphbpe_tdelight_64k` | 17100 | 0.6510 | 0.6510 | CETVEL core compared |
+| 128k | d12 | `bpe_128k` | `tr_d12_bpe_128k` | 17100 | 0.6749 | 0.6749 | CETVEL core compared |
+| 128k | d12 | `morphbpe_trmorph_128k` | `tr_d12_morphbpe_trmorph_128k` | 17100 | 0.6917 | 0.6917 | CETVEL core compared |
+| 128k | d12 | `morphbpe_zemberek_128k` | `tr_d12_morphbpe_zemberek_128k` | 17100 | 0.6940 | 0.6940 | CETVEL core compared |
+| 128k | d12 | `morphbpe_tdelight_128k` | `tr_d12_morphbpe_tdelight_128k` | 17100 | 0.6820 | 0.6820 | CETVEL core compared |
 
 ## Reading The BPB Matrix
 
 Validation BPB is the comparable loss metric across tokenizers because it is
 normalized by bytes rather than tokenizer-specific prediction units. The raw
 BPE 32k d20 model currently has the best checked-in final validation BPB
-overall. The larger-vocabulary d16/d12 rows are trained and useful for the
-fixed-parameter-budget ablation, but they still need CETVEL comparison before
-they can support a downstream quality claim.
+overall. The larger-vocabulary d16/d12 rows now have CETVEL core-12 comparisons, so
+the table can be read as a fixed-parameter-budget BPB plus benchmark inventory.
+Downstream quality claims still need post-SFT or broader generation-oriented
+evaluation.
 
 The 32k TurkishDelightNLP row is intentionally listed as tokenizer-only: the
 tokenizer and raw tokenizer metrics exist on UHeM, but no full d20 base-model
