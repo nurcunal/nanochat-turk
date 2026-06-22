@@ -148,11 +148,35 @@ CETVEL comparisons are still pending.
 | 4 | `morphbpe_zemberek_32768` | 32,768 | morphbpe | Zemberek | 1.7986 | 1.4817 | 0.4357 | 0.4040 | 0.5906 | 4.4959 | 1.9748 | 0.0000 | 5,075,946 | 0.6250 | trained d20 |
 | 5 | `bpe_32768` | 32,768 | bpe | none | 1.6157 | 1.6836 | 0.3241 | 0.3342 | 0.8395 | 5.0051 | 2.0312 | 0.0000 | 4,922,601 | 0.6232 | trained d20 |
 
-Full source metrics live in
+### All Produced Tokenizer Inventory
+
+The table below lists every current project tokenizer bundle found on UHeM. The
+32k raw/TRmorph/Zemberek rows and the 64k/128k raw-BPE rows have matched
+TRmorph-reference MorphBPE-paper metrics. The other larger MorphBPE and
+TurkishDelightNLP rows currently have raw-text tokenizer metrics only, so the
+paper-style morphology columns are marked pending.
+
+| Tokenizer | Vocab | Impl. | Segmenter | Metric source | Bytes/token up | phi down | Isolated fertility down | mu_e down | mu_c F1 up | Boundary crossed down | Encode tok/s up | Model BPB/status |
+| --- | ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| `bpe_32768` | 32,768 | bpe | none | 50k TRmorph-ref | 5.0051 | 1.6157 | 2.0312 | 1.6836 | 0.3241 | 0.8395 | 4,922,601 | 0.6232; d20 CETVEL core |
+| `morphbpe_trmorph_32768` | 32,768 | morphbpe | TRmorph | 50k TRmorph-ref | 4.4514 | 1.8166 | 1.9821 | 1.4126 | 0.5129 | 0.4569 | 5,111,947 | 0.6266; d20 CETVEL core |
+| `morphbpe_zemberek_32768` | 32,768 | morphbpe | Zemberek | 50k TRmorph-ref | 4.4959 | 1.7986 | 1.9748 | 1.4817 | 0.4357 | 0.5906 | 5,075,946 | 0.6250; d20 CETVEL core |
+| `morphbpe_tdelight_32768` | 32,768 | morphbpe | TurkishDelightNLP | 10k raw-text | 4.5626 | 1.7661 | 2.0291 | - | - | - | 7,654,341 | tokenizer only; no checkpoint found |
+| `bpe_65536` | 65,536 | bpe | none | 50k TRmorph-ref | 5.4434 | 1.4856 | 1.8322 | 1.4627 | 0.2863 | 0.8939 | 3,238,593 | 0.6409; d16 CETVEL pending |
+| `morphbpe_trmorph_65536` | 65,536 | morphbpe | TRmorph | 10k raw-text | 4.6385 | 1.7372 | 1.7493 | - | - | - | 6,561,717 | 0.6521; d16 CETVEL pending |
+| `morphbpe_zemberek_65536` | 65,536 | morphbpe | Zemberek | 10k raw-text | 4.6614 | 1.7286 | 1.7480 | - | - | - | 7,365,990 | 0.6514; d16 CETVEL pending |
+| `morphbpe_tdelight_65536` | 65,536 | morphbpe | TurkishDelightNLP | 10k raw-text | 4.9237 | 1.6365 | 1.8068 | - | - | - | 7,042,968 | 0.6510; d16 CETVEL pending |
+| `bpe_131072` | 131,072 | bpe | none | 50k TRmorph-ref | 5.8114 | 1.3915 | 1.6372 | 1.2623 | 0.2412 | 0.9346 | 3,133,245 | 0.6749; d12 CETVEL pending |
+| `morphbpe_trmorph_131072` | 131,072 | morphbpe | TRmorph | 10k raw-text | 4.8745 | 1.6531 | 1.5903 | - | - | - | 6,722,815 | 0.6917; d12 CETVEL pending |
+| `morphbpe_zemberek_131072` | 131,072 | morphbpe | Zemberek | 10k raw-text | 4.8910 | 1.6475 | 1.5916 | - | - | - | 6,319,152 | 0.6940; d12 CETVEL pending |
+| `morphbpe_tdelight_131072` | 131,072 | morphbpe | TurkishDelightNLP | 10k raw-text | 5.2495 | 1.5350 | 1.6369 | - | - | - | 6,557,236 | 0.6820; d12 CETVEL pending |
+
+The checked-in five-row paper-style comparison lives in
 [docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md](docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md).
-The complete metric files also include token counts, normalized edit distance,
-Morph-Consistency precision/recall/std, vocabulary diagnostics, and source paths
-for each row.
+Those metric files include token counts, normalized edit distance,
+Morph-Consistency precision/recall/std, vocabulary diagnostics, and source
+paths. The larger MorphBPE and TurkishDelightNLP rows summarize raw-text metric
+files that remain on UHeM next to their tokenizer bundles.
 
 Treat the larger-vocab raw BPE rows as cross-vocabulary diagnostics: they show
 that bigger raw BPE vocabularies improve compression, fertility, and `mu_e`, but
@@ -218,22 +242,24 @@ and evaluation fixed. The 65,536-vocab rows use d16 and the 131,072-vocab rows
 use d12, keeping total parameters near the current approximately 1B-parameter
 budget. BPB values come from each completed run's `meta_017100.json`; for the
 completed rows, final validation BPB equals the lowest validation BPB recorded
-in checkpoint metadata.
+in checkpoint metadata. The all-model table below also includes the available
+CETVEL benchmark summaries; rows marked pending have no checked-in CETVEL output
+yet.
 
-| Vocab | Depth | Tokenizer | Model tag | Step | Final val BPB | Lowest val BPB | Current status |
-| ---: | ---: | --- | --- | ---: | ---: | ---: | --- |
-| 32,768 | d20 | raw BPE | `tr_d20_bpe_32768_chinchilla20` | 17100 | 0.6232 | 0.6232 | Trained; CETVEL tasks 01-13 archived and common core slice compared. |
-| 32,768 | d20 | MorphBPE + TRmorph | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | 17100 | 0.6266 | 0.6266 | Trained; CETVEL core tasks 01-12 complete. |
-| 32,768 | d20 | MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | 17100 | 0.6250 | 0.6250 | Trained; CETVEL core tasks 01-12 complete. |
-| 32,768 | d20 | MorphBPE + TurkishDelightNLP | `tr_d20_morphbpe_tdelight_32768_chinchilla20` | - | - | - | Tokenizer exists; no full d20 checkpoint found. |
-| 65,536 | d16 | raw BPE | `tr_d16_bpe_65536_chinchilla20` | 17100 | 0.6409 | 0.6409 | Trained; CETVEL pending. |
-| 65,536 | d16 | MorphBPE + TRmorph | `tr_d16_morphbpe_trmorph_65536_chinchilla20` | 17100 | 0.6521 | 0.6521 | Trained; CETVEL pending. |
-| 65,536 | d16 | MorphBPE + Zemberek | `tr_d16_morphbpe_zemberek_65536_chinchilla20` | 17100 | 0.6514 | 0.6514 | Trained; CETVEL pending. |
-| 65,536 | d16 | MorphBPE + TurkishDelightNLP | `tr_d16_morphbpe_tdelight_65536_chinchilla20` | 17100 | 0.6510 | 0.6510 | Trained; CETVEL pending. |
-| 131,072 | d12 | raw BPE | `tr_d12_bpe_131072_chinchilla20` | 17100 | 0.6749 | 0.6749 | Trained; CETVEL pending. |
-| 131,072 | d12 | MorphBPE + TRmorph | `tr_d12_morphbpe_trmorph_131072_chinchilla20` | 17100 | 0.6917 | 0.6917 | Trained; CETVEL pending. |
-| 131,072 | d12 | MorphBPE + Zemberek | `tr_d12_morphbpe_zemberek_131072_chinchilla20` | 17100 | 0.6940 | 0.6940 | Trained; CETVEL pending. |
-| 131,072 | d12 | MorphBPE + TurkishDelightNLP | `tr_d12_morphbpe_tdelight_131072_chinchilla20` | 17100 | 0.6820 | 0.6820 | Trained; CETVEL pending. |
+| Vocab | Depth | Tokenizer | Model tag | Step | Final val BPB | Lowest val BPB | CETVEL job/status | Core-11 macro | XQuAD F1 | CETVEL ex/s |
+| ---: | ---: | --- | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: |
+| 32,768 | d20 | raw BPE | `tr_d20_bpe_32768_chinchilla20` | 17100 | 0.6232 | 0.6232 | `493293`, common tasks 01-12; tasks 01-13 archived | 0.4514 | 3.0985 | 13.06 |
+| 32,768 | d20 | MorphBPE + TRmorph | `tr_d20_morphbpe_trmorph_32768_chinchilla20` | 17100 | 0.6266 | 0.6266 | `494056`, core tasks 01-12 | 0.4541 | 3.4786 | 12.49 |
+| 32,768 | d20 | MorphBPE + Zemberek | `tr_d20_morphbpe_zemberek_32768_chinchilla20` | 17100 | 0.6250 | 0.6250 | `494057`, core tasks 01-12 | 0.4618 | 3.2633 | 13.02 |
+| 32,768 | d20 | MorphBPE + TurkishDelightNLP | `tr_d20_morphbpe_tdelight_32768_chinchilla20` | - | - | - | tokenizer exists; no full checkpoint found | - | - | - |
+| 65,536 | d16 | raw BPE | `tr_d16_bpe_65536_chinchilla20` | 17100 | 0.6409 | 0.6409 | CETVEL pending | - | - | - |
+| 65,536 | d16 | MorphBPE + TRmorph | `tr_d16_morphbpe_trmorph_65536_chinchilla20` | 17100 | 0.6521 | 0.6521 | CETVEL pending | - | - | - |
+| 65,536 | d16 | MorphBPE + Zemberek | `tr_d16_morphbpe_zemberek_65536_chinchilla20` | 17100 | 0.6514 | 0.6514 | CETVEL pending | - | - | - |
+| 65,536 | d16 | MorphBPE + TurkishDelightNLP | `tr_d16_morphbpe_tdelight_65536_chinchilla20` | 17100 | 0.6510 | 0.6510 | CETVEL pending | - | - | - |
+| 131,072 | d12 | raw BPE | `tr_d12_bpe_131072_chinchilla20` | 17100 | 0.6749 | 0.6749 | CETVEL pending | - | - | - |
+| 131,072 | d12 | MorphBPE + TRmorph | `tr_d12_morphbpe_trmorph_131072_chinchilla20` | 17100 | 0.6917 | 0.6917 | CETVEL pending | - | - | - |
+| 131,072 | d12 | MorphBPE + Zemberek | `tr_d12_morphbpe_zemberek_131072_chinchilla20` | 17100 | 0.6940 | 0.6940 | CETVEL pending | - | - | - |
+| 131,072 | d12 | MorphBPE + TurkishDelightNLP | `tr_d12_morphbpe_tdelight_131072_chinchilla20` | 17100 | 0.6820 | 0.6820 | CETVEL pending | - | - | - |
 
 The same inventory with source checkpoint paths lives in
 [docs/model_bpb_inventory.md](docs/model_bpb_inventory.md), and the study design
