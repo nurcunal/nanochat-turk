@@ -55,6 +55,7 @@ export MORPH_CONSISTENCY_RESAMPLES="${MORPH_CONSISTENCY_RESAMPLES:-10}"
 export NUM_WORKERS="${NUM_WORKERS:-${SLURM_CPUS_PER_TASK:-32}}"
 export TOKENIZER_THREADS_PER_WORKER="${TOKENIZER_THREADS_PER_WORKER:-1}"
 export PROGRESS_EVERY="${PROGRESS_EVERY:-5}"
+export MAX_IN_FLIGHT="${MAX_IN_FLIGHT:-64}"
 export INCLUDE_HF="${INCLUDE_HF:-0}"
 # Semicolon-separated external tokenizer specs:
 #   repo_id|output_name|implementation
@@ -82,7 +83,7 @@ fi
 echo "repo_dir=$REPO_DIR"
 echo "metrics_dir=$METRICS_DIR"
 echo "max_docs=$MAX_DOCS max_word_metrics=$MAX_WORD_METRICS max_morph_metrics=$MAX_MORPH_METRICS"
-echo "num_workers=$NUM_WORKERS tokenizer_threads_per_worker=$TOKENIZER_THREADS_PER_WORKER"
+echo "num_workers=$NUM_WORKERS tokenizer_threads_per_worker=$TOKENIZER_THREADS_PER_WORKER max_in_flight=$MAX_IN_FLIGHT"
 echo "include_hf=$INCLUDE_HF progress_every=$PROGRESS_EVERY"
 echo "hf_tokenizer_specs=$HF_TOKENIZER_SPECS"
 
@@ -100,6 +101,7 @@ COMMON_METRIC_ARGS=(
     --workers "$NUM_WORKERS"
     --num-threads "$TOKENIZER_THREADS_PER_WORKER"
     --progress-every "$PROGRESS_EVERY"
+    --max-in-flight "$MAX_IN_FLIGHT"
     --no-report
 )
 

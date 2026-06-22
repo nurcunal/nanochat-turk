@@ -1,9 +1,10 @@
 #!/bin/bash -l
 
 # Compute 50k-document TRmorph-reference tokenizer metrics for completed
-# large-vocab MorphBPE tokenizers, then refresh the sample comparison table.
+# MorphBPE tokenizers that were not in the initial 32k table, then refresh the
+# sample comparison table.
 
-#SBATCH --job-name=tok-mbpe-large-50k
+#SBATCH --job-name=tok-mbpe-50k
 #SBATCH --account=nakane
 #SBATCH --partition=cpu2dq
 #SBATCH --nodes=1
@@ -100,6 +101,16 @@ run_metrics \
     "$REPO_DIR/artifacts/tokenizers/morphbpe_zemberek_65536/metrics/trmorph_reference_50k_metrics.json"
 
 run_metrics \
+    morphbpe_tdelight_32768 \
+    "$HOME/nanochat-turk-morphbpe-tdelight-32768/tokenizers/morphbpe_tdelight_32768" \
+    "$REPO_DIR/artifacts/tokenizers/morphbpe_tdelight_32768/metrics/trmorph_reference_50k_metrics.json"
+
+run_metrics \
+    morphbpe_tdelight_65536 \
+    "$HOME/nanochat-turk-morphbpe-tdelight-65536/tokenizers/morphbpe_tdelight_65536" \
+    "$REPO_DIR/artifacts/tokenizers/morphbpe_tdelight_65536/metrics/trmorph_reference_50k_metrics.json"
+
+run_metrics \
     morphbpe_trmorph_131072 \
     "$HOME/nanochat-turk-morphbpe-trmorph-131072/tokenizers/morphbpe_trmorph_131072" \
     "$REPO_DIR/artifacts/tokenizers/morphbpe_trmorph_131072/metrics/trmorph_reference_50k_metrics.json"
@@ -109,17 +120,25 @@ run_metrics \
     "$HOME/nanochat-turk-morphbpe-zemberek-131072/tokenizers/morphbpe_zemberek_131072" \
     "$REPO_DIR/artifacts/tokenizers/morphbpe_zemberek_131072/metrics/trmorph_reference_50k_metrics.json"
 
+run_metrics \
+    morphbpe_tdelight_131072 \
+    "$HOME/nanochat-turk-morphbpe-tdelight-131072/tokenizers/morphbpe_tdelight_131072" \
+    "$REPO_DIR/artifacts/tokenizers/morphbpe_tdelight_131072/metrics/trmorph_reference_50k_metrics.json"
+
 python -m scripts.compare_tokenizer_metrics \
     --metric docs/tokenizer_tests/tokenizer_metrics/morphbpe_trmorph_32768_metrics.json \
     --metric docs/tokenizer_tests/tokenizer_metrics/morphbpe_zemberek_32768_metrics.json \
+    --metric docs/tokenizer_tests/tokenizer_metrics/morphbpe_tdelight_32768_metrics.json \
     --metric docs/tokenizer_tests/tokenizer_metrics/bpe_32768_metrics.json \
     --metric docs/tokenizer_tests/tokenizer_metrics/bpe_65536_metrics.json \
     --metric docs/tokenizer_tests/tokenizer_metrics/bpe_131072_metrics.json \
     --metric docs/tokenizer_tests/tokenizer_metrics/morphbpe_trmorph_65536_metrics.json \
     --metric docs/tokenizer_tests/tokenizer_metrics/morphbpe_zemberek_65536_metrics.json \
+    --metric docs/tokenizer_tests/tokenizer_metrics/morphbpe_tdelight_65536_metrics.json \
     --metric docs/tokenizer_tests/tokenizer_metrics/morphbpe_trmorph_131072_metrics.json \
     --metric docs/tokenizer_tests/tokenizer_metrics/morphbpe_zemberek_131072_metrics.json \
+    --metric docs/tokenizer_tests/tokenizer_metrics/morphbpe_tdelight_131072_metrics.json \
     --output-md docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md \
     --output-json docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.json
 
-echo "Wrote 50k large MorphBPE tokenizer metrics and refreshed sample comparison table."
+echo "Wrote 50k MorphBPE tokenizer metrics and refreshed sample comparison table."

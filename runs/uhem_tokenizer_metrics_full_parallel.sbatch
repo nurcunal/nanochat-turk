@@ -15,7 +15,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
 #SBATCH --time=2-00:00:00
-#SBATCH --mem=192G
+#SBATCH --mem=240G
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
 
@@ -61,6 +61,7 @@ MORPH_CONSISTENCY_RESAMPLES="${MORPH_CONSISTENCY_RESAMPLES:-10}"
 NUM_WORKERS="${NUM_WORKERS:-${SLURM_CPUS_PER_TASK:-32}}"
 TOKENIZER_THREADS_PER_WORKER="${TOKENIZER_THREADS_PER_WORKER:-1}"
 PROGRESS_EVERY="${PROGRESS_EVERY:-5}"
+MAX_IN_FLIGHT="${MAX_IN_FLIGHT:-64}"
 
 export TOKENIZERS_PARALLELISM="${TOKENIZERS_PARALLELISM:-false}"
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
@@ -76,7 +77,7 @@ mkdir -p "$METRICS_DIR"
 echo "segmented_data_dir=$SEGMENTED_DATA_DIR"
 echo "metrics_dir=$METRICS_DIR"
 echo "max_docs=$MAX_DOCS max_word_metrics=$MAX_WORD_METRICS max_morph_metrics=$MAX_MORPH_METRICS"
-echo "num_workers=$NUM_WORKERS tokenizer_threads_per_worker=$TOKENIZER_THREADS_PER_WORKER"
+echo "num_workers=$NUM_WORKERS tokenizer_threads_per_worker=$TOKENIZER_THREADS_PER_WORKER max_in_flight=$MAX_IN_FLIGHT"
 
 COMMON_METRIC_ARGS=(
     --data-dir "$SEGMENTED_DATA_DIR"
@@ -92,6 +93,7 @@ COMMON_METRIC_ARGS=(
     --workers "$NUM_WORKERS"
     --num-threads "$TOKENIZER_THREADS_PER_WORKER"
     --progress-every "$PROGRESS_EVERY"
+    --max-in-flight "$MAX_IN_FLIGHT"
     --no-report
 )
 
@@ -135,6 +137,11 @@ run_metrics_if_present \
     "$REPO_DIR/artifacts/tokenizers/morphbpe_zemberek_32768/metrics"
 
 run_metrics_if_present \
+    morphbpe_tdelight_32768 \
+    "$HOME/nanochat-turk-morphbpe-tdelight-32768/tokenizers/morphbpe_tdelight_32768" \
+    "$REPO_DIR/artifacts/tokenizers/morphbpe_tdelight_32768/metrics"
+
+run_metrics_if_present \
     bpe_65536 \
     "$HOME/nanochat-turk-bpe-65536/tokenizers/bpe_65536" \
     "$REPO_DIR/artifacts/tokenizers/bpe_65536/metrics"
@@ -150,6 +157,11 @@ run_metrics_if_present \
     "$REPO_DIR/artifacts/tokenizers/morphbpe_zemberek_65536/metrics"
 
 run_metrics_if_present \
+    morphbpe_tdelight_65536 \
+    "$HOME/nanochat-turk-morphbpe-tdelight-65536/tokenizers/morphbpe_tdelight_65536" \
+    "$REPO_DIR/artifacts/tokenizers/morphbpe_tdelight_65536/metrics"
+
+run_metrics_if_present \
     bpe_131072 \
     "$HOME/nanochat-turk-bpe-131072/tokenizers/bpe_131072" \
     "$REPO_DIR/artifacts/tokenizers/bpe_131072/metrics"
@@ -163,6 +175,11 @@ run_metrics_if_present \
     morphbpe_zemberek_131072 \
     "$HOME/nanochat-turk-morphbpe-zemberek-131072/tokenizers/morphbpe_zemberek_131072" \
     "$REPO_DIR/artifacts/tokenizers/morphbpe_zemberek_131072/metrics"
+
+run_metrics_if_present \
+    morphbpe_tdelight_131072 \
+    "$HOME/nanochat-turk-morphbpe-tdelight-131072/tokenizers/morphbpe_tdelight_131072" \
+    "$REPO_DIR/artifacts/tokenizers/morphbpe_tdelight_131072/metrics"
 
 if [ "${#METRIC_ARGS[@]}" -eq 0 ]; then
     echo "No tokenizer metrics were produced." >&2

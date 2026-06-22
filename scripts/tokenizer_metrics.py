@@ -20,7 +20,7 @@ import re
 import random
 import time
 from collections import Counter
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from pathlib import Path
 from typing import Any
 
@@ -1193,11 +1193,12 @@ def run_parallel_metrics(
     aggregate = empty_metric_accumulator()
     aggregate["effective_workers"] = workers
     wall_t0 = time.time()
+    max_in_flight = max(workers, args.max_in_flight or workers * 4)
     print(
         (
             f"Running tokenizer metrics over {len(tasks)} row groups "
             f"with {workers} worker processes and {args.num_threads} tokenizer "
-            "thread(s) per worker."
+            f"thread(s) per worker; max_in_flight={max_in_flight}."
         ),
         flush=True,
     )
@@ -1212,17 +1213,30 @@ def run_parallel_metrics(
             args.num_threads,
         ),
     ) as executor:
-        futures = [executor.submit(process_row_group_task, task) for task in tasks]
-        for done, future in enumerate(as_completed(futures), start=1):
-            merge_metric_accumulator(aggregate, future.result())
+        task_iter = iter(tasks)
+        pending = set()
+        for _ in range(min(max_in_flight, len(tasks))):
+            pending.add(executor.submit(process_row_group_task, next(task_iter)))
+
+        done_count = 0
+        while pending:
+            done_futures, pending = wait(pending, return_when=FIRST_COMPLETED)
+            for future in done_futures:
+                merge_metric_accumulator(aggregate, future.result())
+                done_count += 1
+                try:
+                    pending.add(executor.submit(process_row_group_task, next(task_iter)))
+                except StopIteration:
+                    pass
+
             if (
                 args.progress_every > 0
-                and (done == len(futures) or done % args.progress_every == 0)
+                and (done_count == len(tasks) or done_count % args.progress_every == 0)
             ):
                 elapsed = time.time() - wall_t0
                 print(
                     (
-                        f"progress row_groups={done}/{len(futures)} "
+                        f"progress row_groups={done_count}/{len(tasks)} "
                         f"docs={aggregate['docs_count']} "
                         f"tokens={aggregate['total_tokens']} "
                         f"wall_seconds={elapsed:.1f} "
@@ -1467,6 +1481,15 @@ def main() -> None:
         type=int,
         default=10,
         help="Print parallel progress every N completed row groups. Use 0 to disable.",
+    )
+    parser.add_argument(
+        "--max-in-flight",
+        type=int,
+        default=0,
+        help=(
+            "Maximum submitted row-group tasks kept in memory for --workers > 1. "
+            "Default = workers * 4."
+        ),
     )
     parser.add_argument("--hf-batch-size", type=int, default=1000)
     parser.add_argument("--output", type=str, default="", help="Optional JSON output path")
