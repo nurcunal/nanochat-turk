@@ -287,9 +287,10 @@ Face owner inventory, repository manifests, and file hashes on 2026-07-15.
   weights and raw outputs should use Hugging Face, Releases, or LFS; rewriting
   published history is not recommended as routine cleanup.
 
-The target of this maintenance change is to create and push the requested
-`main` line from the completed Turkish work. GitHub's default branch must then
-be changed separately so this README becomes the repository landing page.
+This maintenance change created and pushed the requested `main` line from the
+completed Turkish work, beginning with commit `0b89945`. GitHub still reports
+`master` as the default branch; that setting must be changed separately so the
+current README becomes the repository landing page.
 
 ### Hugging Face
 
@@ -343,8 +344,9 @@ manifests before uploading.
   Face inventory, artifact hashes, and stale documentation.
 - [x] Make the root README a concise current landing page and add repository
   indexes for documentation and launchers.
-- [ ] Push the completed work to `main` and make `main` the GitHub default
-  branch.
+- [x] Create and push the completed work to `main`.
+- [ ] Make `main` the GitHub default branch (the settings session was not
+  authenticated during this audit).
 - [ ] Regenerate all 12 tokenizer bundles' manifests after final card edits;
   populate Hub repo ID, source commit, immutable dataset revision, segmenter
   revision, command, environment, and checksums.
