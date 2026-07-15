@@ -59,8 +59,10 @@ Paper-facing final tokenizer metrics should use a full-corpus UHeM run. The
 first single-process full 32k job `493751` timed out after `2-00:00:26`, and the
 first all-tokenizer parallel job `494219` failed after Slurm killed it for
 memory (`245.90 GB` used against `192 GB`). The metrics scheduler now keeps a
-bounded number of row-group futures in memory via `--max-in-flight`, and the
-repaired all-tokenizer full job is running as `496882` (`tok-metrics-full`).
+bounded number of row-group futures in memory via `--max-in-flight`. A repaired
+all-tokenizer job was submitted as `496882` (`tok-metrics-full`), but this
+checkout contains no finished output from it; verify UHeM and import the result
+before claiming the full-corpus pass is complete.
 
 Operational note: the original full run is intentionally conservative and
 single-process. The optimized companion

@@ -8,8 +8,8 @@ supports the Turkish morphology-aware tokenizer ablation.
 
 - [MorphBPE framework](morphbpe_framework.md): explains `morphbpe` versus
   `preseg_bpe`, the `U+E000` boundary marker, and raw-text inference.
-- [MorphBPE paper alignment](morphbpe_paper_alignment.md): checklist mapping
-  the Turkish implementation and metrics to the MorphBPE paper.
+- [MorphBPE paper alignment](../../MorphBPE-alignment.md): canonical assessment
+  of method fidelity, completed evidence, publication state, gaps, and TODOs.
 - [Segmenter benchmark status](segmenter_benchmark_status.md): current
   TRmorph, Zemberek, TurkishDelightNLP, and identity benchmark results.
 - [Segmenter examples](segmenter_examples.md): small original-vs-segmented

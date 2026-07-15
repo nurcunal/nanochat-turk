@@ -5,7 +5,7 @@ tags:
 - nanochat
 - turkish
 - tokenizer
-- morphbpe
+- bpe
 library_name: tiktoken
 ---
 

@@ -1,6 +1,15 @@
 # nanochat-turk Project Report README
 
-Last updated: 2026-06-12
+> **Historical project-memory log.** This document began on 2026-06-12 and was
+> amended with later June results, so it is not a clean point-in-time snapshot
+> or the current status page. It is kept for provenance. Use the root
+> [`MorphBPE-alignment.md`](../MorphBPE-alignment.md), the concise
+> [`README.md`](../README.md), and the
+> [June 22 CETVEL artifact](../artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/)
+> for current claims and results.
+
+Original log date: 2026-06-12; contains later additions through at least
+2026-06-22.
 
 This document is the running memory for the `nanochat-turk` project. It
 summarizes the Codex project threads, especially `Plan Turkish tokenizer study`,

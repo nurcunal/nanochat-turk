@@ -99,6 +99,12 @@ def write_readme(
     metrics: dict[str, Any] | None,
     manifest: dict[str, Any],
 ) -> None:
+    implementation = str(tokenizer_config.get("implementation", "bpe"))
+    method_tag = {
+        "bpe": "bpe",
+        "morphbpe": "morphbpe",
+        "preseg_bpe": "preseg-bpe",
+    }.get(implementation, implementation.replace("_", "-"))
     metrics_lines = ""
     if metrics:
         preferred = [
@@ -130,7 +136,7 @@ tags:
 - nanochat
 - turkish
 - tokenizer
-- morphbpe
+- {method_tag}
 library_name: tiktoken
 ---
 

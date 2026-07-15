@@ -1,40 +1,55 @@
-# nanochat-turk Documentation
+# Documentation Guide
 
-This folder keeps the project-facing documentation for the Turkish nanochat
-branch. It is organized so the GitHub page answers three questions quickly:
-what the project is doing, how the pipeline runs, and how the tokenizer study is
-being evaluated.
+The canonical project assessment is the root
+[`MorphBPE-alignment.md`](../MorphBPE-alignment.md). It records the current
+paper comparison, completed evidence, publication state, limitations, and TODO
+list. Use this index to distinguish current result sources from historical
+operations notes.
 
-## Start Here
+## Current Research Sources
 
-- [Turkish foundation pipeline](turkish_foundation.md): active training,
-  data, A100/UHeM, CETVEL, and run-script workflow.
-- [Project report README](project_report_readme.md): running project memory and
-  report-writing scaffold.
-- [LLM model BPB inventory](model_bpb_inventory.md): current trained model
-  names, checkpoint steps, validation BPB, and UHeM metadata paths.
-- [CETVEL model comparison](cetvel_model_comparison.md): raw BPE versus
-  MorphBPE base-model results on the common core task slice.
-- [Tokenizer ablation plan](tokenizer_ablation_plan.md): controlled MorphBPE
-  and tokenizer comparison plan.
+| Document | Role |
+| --- | --- |
+| [`MorphBPE-alignment.md`](../MorphBPE-alignment.md) | Canonical status, claims, release audit, and priorities. |
+| [`tokenizer_ablation_plan.md`](tokenizer_ablation_plan.md) | Controlled study design and matched model matrix. |
+| [`model_bpb_inventory.md`](model_bpb_inventory.md) | Completed model tags, steps, and validation BPB. |
+| [`cetvel_model_comparison.md`](cetvel_model_comparison.md) | Current common-slice CETVEL model results. |
+| [`tokenizer_tests/tokenizer_metrics/`](tokenizer_tests/tokenizer_metrics/) | Current 12-tokenizer intrinsic metrics and external references. |
+| [`tokenizer_tests/morphbpe_framework.md`](tokenizer_tests/morphbpe_framework.md) | Method implementation and raw-text inference contract. |
 
-## Tokenizer Study Notes
+## Pipeline and Reproduction Guides
 
-Tokenizer-specific implementation notes and small reproducible result summaries
-live under [tokenizer_tests/](tokenizer_tests/):
+| Document | Role |
+| --- | --- |
+| [`turkish_foundation.md`](turkish_foundation.md) | Data, training-horizon, UHeM, and CETVEL pipeline reference. |
+| [`tokenizer_tests/README.md`](tokenizer_tests/README.md) | Tokenizer/morphology documentation index. |
+| [`tokenizer_tests/llm_judge_pipeline.md`](tokenizer_tests/llm_judge_pipeline.md) | Blind segmenter-judging workflow. |
+| [`tokenizer_tests/turkishdelight_setup.md`](tokenizer_tests/turkishdelight_setup.md) | TurkishDelightNLP environment notes. |
+| [`../runs/README.md`](../runs/README.md) | Local and Slurm launcher index. |
 
-- MorphBPE framework and raw-text inference contract.
-- Turkish segmenter benchmarks and examples.
-- Tokenizer metric comparison using MorphBPE paper-style metrics.
-- Local/LLM judge workflow and committed small judge outputs.
-- TurkishDelightNLP setup notes.
+## Historical Records
+
+These files remain useful for provenance, but point-in-time plans and job states
+inside them are not current status:
+
+- [`project_report_readme.md`](project_report_readme.md) - historical long-form
+  project memory and report scaffold.
+- [`tokenizer_tests/vocab64_128_uhem_launch.md`](tokenizer_tests/vocab64_128_uhem_launch.md)
+  - 64k/128k launch record.
+- [`tokenizer_tests/uhem_restart_notes.md`](tokenizer_tests/uhem_restart_notes.md)
+  - exact pause/restart operations.
+- [`tokenizer_tests/morphbpe_trmorph_32k_uhem_operations.md`](tokenizer_tests/morphbpe_trmorph_32k_uhem_operations.md)
+  - 32k TRmorph job record.
+- [`tokenizer_tests/segmenter_benchmark_status.md`](tokenizer_tests/segmenter_benchmark_status.md)
+  - detailed initial segmenter benchmark log.
 
 ## Organization Rules
 
-- Keep top-level files in `docs/` for stable project plans, pipeline docs, and
-  report-writing scaffolds.
-- Keep tokenizer and morphology experiment notes under `docs/tokenizer_tests/`.
-- Keep small, reviewable result summaries in git when they support the report.
-- Keep large generated corpora, full model checkpoints, and large expanded
-  benchmark outputs on UHeM or Hugging Face, with only compact manifests or
-  archives under `artifacts/` when useful.
+- Keep one current claim/status document: `MorphBPE-alignment.md`.
+- Keep stable design and result summaries in `docs/`.
+- Keep tokenizer-specific material under `docs/tokenizer_tests/`.
+- Label dated launch, restart, and cluster notes as historical records.
+- Keep compact reviewable outputs in `artifacts/`; publish large weights and
+  distributable result bundles on Hugging Face with manifests and checksums.
+- Never infer completion from a submitted Slurm job ID. Import its terminal
+  state and output before updating current documentation.

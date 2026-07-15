@@ -1,5 +1,9 @@
 # Turkish Segmenter Benchmark Status
 
+> This file is the detailed benchmark and operations log for the initial
+> segmenter screen. The canonical current project assessment and TODO list are
+> in [`MorphBPE-alignment.md`](../../MorphBPE-alignment.md).
+
 This document tracks the first morphology-segmenter checks for the Turkish
 MorphBPE tokenizer study. Large data and JSON outputs live under
 `dev-ignore/` and are intentionally not committed.

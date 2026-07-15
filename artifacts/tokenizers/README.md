@@ -7,22 +7,27 @@ finishes. Each tokenizer should live under:
 artifacts/tokenizers/<tokenizer_name>/
 ```
 
-The expected bundle files are:
+Every bundle has the loadable tokenizer core:
 
 ```text
 tokenizer.pkl
 tokenizer_config.json
 token_bytes.pt
-metrics/raw_metrics.json
-provenance/publish_manifest.json
-provenance/segmentation_manifest.json
-provenance/segmented_dataset_manifest.json
 README.md
 ```
 
-Large segmented corpora and model checkpoints are not stored in GitHub. They
-remain on UHeM/Hugging Face; this directory is for the compact tokenizer outputs
-needed to reproduce tokenizer loading and evaluation.
+Metric JSON files live under `metrics/`. MorphBPE bundles should also carry
+segmentation and segmented-dataset manifests under `provenance/`; raw BPE has no
+segmentation manifest. A release-ready bundle should have
+`provenance/publish_manifest.json`, but the original raw BPE, TRmorph, and
+Zemberek 32k bundles predate that schema and do not yet have one. Regenerating
+all manifests is tracked in the canonical TODO list.
+
+Large segmented corpora and full production checkpoints are not stored in
+these tokenizer bundles; they remain on UHeM or belong on Hugging Face.
+Historical smoke model/optimizer checkpoints do exist elsewhere under
+`artifacts/` and are retained as provenance. This directory contains the
+compact tokenizer outputs needed for loading and evaluation.
 
 ## Current Bundles
 
@@ -41,6 +46,17 @@ needed to reproduce tokenizer loading and evaluation.
 | [`morphbpe_zemberek_128k`](morphbpe_zemberek_131072/) | Zemberek | Archived with raw and 50k TRmorph-reference metrics; tokenizer job `494187`, 50k metrics jobs `494218`/`496881`. |
 | [`morphbpe_tdelight_128k`](morphbpe_tdelight_131072/) | TurkishDelightNLP | Archived with raw and 50k TRmorph-reference metrics; tokenizer job `494188`, 50k metrics job `496881`. |
 
-Full-corpus tokenizer metrics are running separately as UHeM job `496882`
-(`tok-metrics-full`) and will add `full_trmorph_reference_metrics.json` files
-after completion.
+## Publication Status
+
+All 12 bundles are versioned in this GitHub repository. As of the verified
+2026-07-15 release audit, the intended Hugging Face repository
+`nurcunal/nanochat-turk-tokenizers` does not exist. The 32k raw BPE tokenizer is
+embedded in the public
+[`nurcunal/nanochat-turk-d20-bpe32k`](https://huggingface.co/nurcunal/nanochat-turk-d20-bpe32k)
+model repository; the other 11 bundles are not on Hugging Face. See the
+canonical [publication audit and TODO list](../../MorphBPE-alignment.md#publication-audit).
+
+The 50,000-document comparison is the complete result currently checked in.
+Job `496882` (`tok-metrics-full`) was submitted for a full-corpus pass, but no
+finished output from that job is present here. Verify its terminal UHeM state
+and import its outputs before describing the full-corpus metrics as complete.

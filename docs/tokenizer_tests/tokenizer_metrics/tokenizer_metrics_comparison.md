@@ -2,9 +2,9 @@
 
 Tokenizer-only metrics are measured before model training. True BPB is model-dependent and should be reported from validation loss after each pretraining run; this table reports tokenizer compression, fertility, MorphBPE paper morphology metrics, boundary behavior, reversibility, and throughput.
 
-Rows are sorted by MorphBPE-paper-style intrinsic quality: lower `mu_e`, then higher `mu_c` F1, then lower fertility `phi` as an efficiency tie-breaker. This ordering is not a custom weighted score.
+Rows use a repository-defined diagnostic order: lower `mu_e`, then higher `mu_c` F1, then lower fertility `phi`, then lower boundary crossing. The MorphBPE paper defines the metrics, not this ranking. Use the order only for navigation; compare claims within a matched vocabulary and source.
 
-| Rank | Tokenizer | Source | Impl. | Vocab | Docs | Bytes/token ↑ | Tokens/word phi ↓ | Isolated fertility ↓ | Morph edit mu_e ↓ | Morph edit norm ↓ | Morph exact ↑ | Morph consistency P ↑ | Morph consistency R ↑ | Morph consistency F1 mu_c ↑ | Boundary crossed ↓ | Roundtrip fail ↓ | Encode tok/s ↑ |
+| Order | Tokenizer | Source | Impl. | Vocab | Docs | Bytes/token ↑ | Tokens/word phi ↓ | Isolated fertility ↓ | Morph edit mu_e ↓ | Morph edit norm ↓ | Morph exact ↑ | Morph consistency P ↑ | Morph consistency R ↑ | Morph consistency F1 mu_c ↑ | Boundary crossed ↓ | Roundtrip fail ↓ | Encode tok/s ↑ |
 |---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | 1 | morphbpe_trmorph_128k | local | morphbpe | 128k | 50,000 | 4.9597 | 1.6304 | 1.6027 | 1.0045 | 0.6388 | 0.5666 | 0.9955 | 0.2338 | 0.3786 | 0.5351 | 0.0000 | 3284424 |
 | 2 | morphbpe_zemberek_128k | local | morphbpe | 128k | 50,000 | 4.9770 | 1.6248 | 1.6026 | 1.0859 | 0.6982 | 0.5380 | 0.9933 | 0.2001 | 0.3330 | 0.6587 | 0.0000 | 3350519 |

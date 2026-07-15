@@ -2,10 +2,9 @@
 
 Tokenizer-only metrics are measured before model training. True BPB is model-dependent and should be reported from validation loss after each pretraining run; this table reports tokenizer compression, fertility, MorphBPE paper morphology metrics, boundary behavior, reversibility, and throughput.
 
-Rows are sorted by MorphBPE-paper-style intrinsic quality: lower `mu_e`, then higher `mu_c` F1, then lower fertility `phi` as an efficiency tie-breaker. This ordering is not a custom weighted score.
-When rows have different vocabulary sizes or sources, the rank is a descriptive tokenizer-metric sort, not a controlled ablation result.
+Rows use a repository-defined diagnostic order: lower `mu_e`, then higher `mu_c` F1, then lower fertility `phi`, then lower boundary crossing. The MorphBPE paper defines the metrics, not this ranking. Use the order only for navigation; compare claims within a matched vocabulary and source.
 
-| Rank | Tokenizer | Source | Impl. | Vocab | Docs | Bytes/token ↑ | Tokens/word phi ↓ | Isolated fertility ↓ | Morph edit mu_e ↓ | Morph edit norm ↓ | Morph exact ↑ | Morph consistency P ↑ | Morph consistency R ↑ | Morph consistency F1 mu_c ↑ | Boundary crossed ↓ | Roundtrip fail ↓ | Encode tok/s ↑ |
+| Order | Tokenizer | Source | Impl. | Vocab | Docs | Bytes/token ↑ | Tokens/word phi ↓ | Isolated fertility ↓ | Morph edit mu_e ↓ | Morph edit norm ↓ | Morph exact ↑ | Morph consistency P ↑ | Morph consistency R ↑ | Morph consistency F1 mu_c ↑ | Boundary crossed ↓ | Roundtrip fail ↓ | Encode tok/s ↑ |
 |---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | 1 | kumru_2b | vngrs-ai/Kumru-2B | bpe | 50,176 | 50,000 | 4.8488 | 1.6677 | 1.6648 | 1.3500 | 0.9195 | 0.4515 | 0.9893 | 0.2079 | 0.3436 | 0.7745 | 0.0000 | 414496 |
 | 2 | morphbpe_trmorph_32k | local | morphbpe | 32k | 50,000 | 4.4514 | 1.8166 | 1.9821 | 1.4126 | 1.0166 | 0.4258 | 0.9865 | 0.3466 | 0.5129 | 0.4569 | 0.0000 | 5111947 |

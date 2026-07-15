@@ -1,5 +1,9 @@
 # Turkish Foundation Pipeline
 
+> This is an operational pipeline reference. For the current research status,
+> completed ablation matrix, and remaining work, see
+> [`MorphBPE-alignment.md`](../MorphBPE-alignment.md).
+
 This branch trains nanochat base models on FineWeb-2 Turkish (`tur_Latn`) and
 evaluates them with CETVEL. It intentionally stops at foundation/base models;
 SFT will be added after the base pipeline is stable.

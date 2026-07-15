@@ -34,7 +34,7 @@ def as_float(value: Any, default: float) -> float:
 
 
 def paper_style_sort_key(row: dict[str, Any]) -> tuple[float, float, float, float, str]:
-    """MorphBPE-paper-style ordering without a synthetic weighted score."""
+    """Repository diagnostic ordering over metrics defined by MorphBPE."""
 
     return (
         as_float(row["morph_edit_distance"], math.inf),
@@ -50,6 +50,29 @@ def rank_rows_paper_style(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for rank, row in enumerate(sorted(rows, key=paper_style_sort_key), start=1):
         ranked.append({"paper_style_rank": rank, **row})
     return ranked
+
+
+def display_tokenizer_name(name: str) -> str:
+    """Use compact vocabulary labels in Markdown without changing artifact IDs."""
+
+    for exact, compact in (
+        ("_131072", "_128k"),
+        ("_65536", "_64k"),
+        ("_32768", "_32k"),
+    ):
+        if name.endswith(exact):
+            return f"{name[:-len(exact)]}{compact}"
+    return name
+
+
+def display_vocab_size(value: Any) -> str:
+    """Use the study's compact labels for its three controlled vocabulary tiers."""
+
+    compact = {32768: "32k", 65536: "64k", 131072: "128k"}
+    try:
+        return compact.get(int(value), fmt(value, 0))
+    except (TypeError, ValueError):
+        return fmt(value, 0)
 
 
 def summarize(payload: dict[str, Any], path: str) -> dict[str, Any]:
@@ -132,23 +155,23 @@ def render_markdown(rows: list[dict[str, Any]]) -> str:
         "MorphBPE paper morphology metrics, boundary behavior, reversibility, "
         "and throughput.",
         "",
-        "Rows are sorted by MorphBPE-paper-style intrinsic quality: lower "
-        "`mu_e`, then higher `mu_c` F1, then lower fertility `phi` as an "
-        "efficiency tie-breaker. This ordering is not a custom weighted score.",
-        "When rows have different vocabulary sizes or sources, the rank is a "
-        "descriptive tokenizer-metric sort, not a controlled ablation result.",
+        "Rows use a repository-defined diagnostic order: lower `mu_e`, then "
+        "higher `mu_c` F1, then lower fertility `phi`, then lower boundary "
+        "crossing. The MorphBPE paper defines the metrics, not this ranking. "
+        "Use the order only for navigation; compare claims within a matched "
+        "vocabulary and source.",
         "",
-        "| Rank | Tokenizer | Source | Impl. | Vocab | Docs | Bytes/token ↑ | Tokens/word phi ↓ | Isolated fertility ↓ | Morph edit mu_e ↓ | Morph edit norm ↓ | Morph exact ↑ | Morph consistency P ↑ | Morph consistency R ↑ | Morph consistency F1 mu_c ↑ | Boundary crossed ↓ | Roundtrip fail ↓ | Encode tok/s ↑ |",
+        "| Order | Tokenizer | Source | Impl. | Vocab | Docs | Bytes/token ↑ | Tokens/word phi ↓ | Isolated fertility ↓ | Morph edit mu_e ↓ | Morph edit norm ↓ | Morph exact ↑ | Morph consistency P ↑ | Morph consistency R ↑ | Morph consistency F1 mu_c ↑ | Boundary crossed ↓ | Roundtrip fail ↓ | Encode tok/s ↑ |",
         "|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in rows:
         lines.append(
             "| {rank} | {tokenizer} | {source} | {implementation} | {vocab} | {docs} | {bpt} | {tpw} | {itpw} | {med} | {medn} | {mex} | {mcp} | {mcr} | {mcf1} | {boundary} | {rt} | {speed} |".format(
                 rank=row["paper_style_rank"],
-                tokenizer=row["tokenizer"],
+                tokenizer=display_tokenizer_name(row["tokenizer"]),
                 source=row["model_id"] or row["source"],
                 implementation=row["implementation"],
-                vocab=fmt(row["vocab_size"], 0),
+                vocab=display_vocab_size(row["vocab_size"]),
                 docs=fmt(row["docs"], 0),
                 bpt=fmt(row["bytes_per_token"]),
                 tpw=fmt(row["tokens_per_word"]),
@@ -188,7 +211,7 @@ def render_markdown(rows: list[dict[str, Any]]) -> str:
     for row in rows:
         lines.append(
             "| {tokenizer} | {words} | {consistency_words} | {clustering} |".format(
-                tokenizer=row["tokenizer"],
+                tokenizer=display_tokenizer_name(row["tokenizer"]),
                 words=fmt(row["morph_sample_words"], 0),
                 consistency_words=fmt(row["morph_consistency_words"], 0),
                 clustering=row["morph_consistency_clustering"],
@@ -201,7 +224,9 @@ def render_markdown(rows: list[dict[str, Any]]) -> str:
         "",
     ])
     for row in rows:
-        lines.append(f"- `{row['tokenizer']}`: `{row['metrics_path']}`")
+        lines.append(
+            f"- `{display_tokenizer_name(row['tokenizer'])}`: `{row['metrics_path']}`"
+        )
     lines.append("")
     return "\n".join(lines)
 

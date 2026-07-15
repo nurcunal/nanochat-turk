@@ -1,5 +1,10 @@
 # 64k/128k Tokenizer Ablation Launch
 
+> **Historical operations record.** This file preserves submission commands
+> and point-in-time Slurm states. All 64k/128k tokenizer, model-training, and
+> CETVEL rows described here later completed; current conclusions live in
+> [`MorphBPE-alignment.md`](../../MorphBPE-alignment.md).
+
 Date: 2026-06-12
 
 This note records the larger-vocabulary tokenizer and model-training launch for
@@ -135,5 +140,7 @@ with 12 local tokenizer rows and wrote the new TurkishDelight metric JSON files.
 
 The first all-tokenizer full-corpus job `494219` failed with exit code `137`
 after Slurm killed it for memory (`245.90 GB` used against `192 GB`). The
-metrics scheduler was updated to bound in-flight parquet row-group futures, and
-the repaired full-corpus job is running as `496882` (`tok-metrics-full`).
+metrics scheduler was updated to bound in-flight parquet row-group futures.
+Job `496882` (`tok-metrics-full`) was submitted, but no completed full-corpus
+output from it is present in this checkout; its final Slurm state must be
+verified on UHeM before claiming completion.
