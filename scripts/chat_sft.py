@@ -618,6 +618,11 @@ get_report().log(section="SFT", data=[
     }
 ])
 
-# cleanup
-wandb_run.finish() # wandb run finish
-compute_cleanup()
+# Cleanup must not skip distributed teardown when an optional telemetry backend
+# fails after the checkpoint has already been committed.
+try:
+    wandb_run.finish() # wandb run finish
+except Exception as exc:
+    print0(f"WARNING: W&B finalization failed after training: {exc!r}")
+finally:
+    compute_cleanup()

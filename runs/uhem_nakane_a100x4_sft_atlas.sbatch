@@ -49,6 +49,10 @@ export NANOCHAT_DTYPE="${NANOCHAT_DTYPE:-bfloat16}"
 export NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-$HOME/nanochat-turk-d20-bpe32k}"
 export NANOCHAT_TOKENIZER_NAME="${NANOCHAT_TOKENIZER_NAME:-bpe_32768}"
 export WANDB_DIR="${WANDB_DIR:-$NANOCHAT_BASE_DIR/wandb}"
+# UHeM compute nodes can reach the W&B API, but their Google Cloud Storage
+# upload endpoint is blocked. Keep the complete run locally and allow a later
+# `wandb sync`; callers can explicitly override this when the route is fixed.
+export WANDB_MODE="${WANDB_MODE:-offline}"
 export TOKENIZERS_PARALLELISM=false
 
 MODE="${MODE:-smoke}"
@@ -123,6 +127,7 @@ echo "MODEL_STEP=$MODEL_STEP"
 echo "NUM_ITERATIONS=$NUM_ITERATIONS"
 echo "LOAD_OPTIMIZER=$LOAD_OPTIMIZER"
 echo "RUN_NAME=$RUN_NAME"
+echo "WANDB_MODE=$WANDB_MODE"
 .venv/bin/python --version
 nvidia-smi
 
