@@ -17,9 +17,15 @@ import time
 import wandb
 import torch
 from nanochat.common import compute_init, compute_cleanup, print0, DummyWandb, get_base_dir, autodetect_device_type, get_peak_flops, COMPUTE_DTYPE, COMPUTE_DTYPE_REASON, is_ddp_initialized
-from nanochat.tokenizer import get_token_bytes
+from nanochat.tokenizer import get_token_bytes, get_tokenizer_name
 from nanochat.checkpoint_manager import save_checkpoint, load_model, load_optimizer_state
 from nanochat.loss_eval import evaluate_bpb
+from nanochat.sft_data import (
+    build_custom_sft_data_identity,
+    build_tokenizer_identity,
+    sha256_file,
+    verify_manifest_tokenizer,
+)
 import torch.distributed as dist
 from nanochat.flash_attention import HAS_FA3
 from nanochat.engine import Engine
@@ -43,6 +49,7 @@ parser.add_argument("--device-type", type=str, default="", help="cuda|cpu|mps (e
 parser.add_argument("--model-tag", type=str, default=None, help="model tag to load from")
 parser.add_argument("--model-step", type=int, default=None, help="model step to load from")
 parser.add_argument("--load-optimizer", type=int, default=1, help="warm-start optimizer from pretrained checkpoint (0=no, 1=yes)")
+parser.add_argument("--save-checkpoint", type=int, default=1, help="save the final SFT checkpoint (0=no, 1=yes)")
 # Training horizon
 parser.add_argument("--num-iterations", type=int, default=-1, help="number of optimization steps (-1 = full epoch)")
 # Batch sizes (default: inherit from pretrained checkpoint)
@@ -66,8 +73,28 @@ parser.add_argument("--chatcore-max-sample", type=int, default=24, help="max pro
 # Data mixture
 parser.add_argument("--mmlu-epochs", type=int, default=3, help="number of epochs of MMLU in training mixture (teaches Multiple Choice)")
 parser.add_argument("--gsm8k-epochs", type=int, default=4, help="number of epochs of GSM8K in training mixture (teaches Math and Tool Use)")
+parser.add_argument("--train-jsonl", type=str, default="", help="custom nanochat conversation JSONL for training")
+parser.add_argument("--val-jsonl", type=str, default="", help="custom nanochat conversation JSONL for validation")
+parser.add_argument("--data-manifest", type=str, default="", help="preparation manifest for custom JSONL (default: infer sibling manifest.json)")
+parser.add_argument("--custom-json-lazy", type=int, default=1, help="index custom JSONL by byte offset instead of loading it into memory")
 args = parser.parse_args()
-user_config = vars(args).copy()
+if bool(args.train_jsonl) != bool(args.val_jsonl):
+    parser.error("--train-jsonl and --val-jsonl must be provided together")
+if args.data_manifest and not args.train_jsonl:
+    parser.error("--data-manifest requires --train-jsonl and --val-jsonl")
+if args.num_iterations == 0 or args.num_iterations < -1:
+    parser.error("--num-iterations must be -1 (full epoch) or a positive optimizer-step count")
+for bool_arg in ("load_optimizer", "save_checkpoint", "custom_json_lazy"):
+    if getattr(args, bool_arg) not in (0, 1):
+        parser.error(f"--{bool_arg.replace('_', '-')} must be 0 or 1")
+requested_config = vars(args).copy()
+custom_data_identity = None
+if args.train_jsonl:
+    custom_data_identity = build_custom_sft_data_identity(
+        args.train_jsonl,
+        args.val_jsonl,
+        args.data_manifest or None,
+    )
 # -----------------------------------------------------------------------------
 
 # Compute init
@@ -86,7 +113,7 @@ else:
 
 # wandb logging init
 use_dummy_wandb = args.run == "dummy" or not master_process
-wandb_run = DummyWandb() if use_dummy_wandb else wandb.init(project="nanochat-sft", name=args.run, config=user_config)
+wandb_run = DummyWandb() if use_dummy_wandb else wandb.init(project="nanochat-sft", name=args.run, config=requested_config)
 
 # Flash Attention status
 if not HAS_FA3:
@@ -94,6 +121,21 @@ if not HAS_FA3:
 
 # Load the model and tokenizer
 model, tokenizer, meta = load_model("base", device, phase="train", model_tag=args.model_tag, step=args.model_step)
+
+# Bind the run to the exact tokenizer artifacts selected by this process. Older
+# base checkpoints did not record tokenizer_name, so the environment remains
+# the compatibility source of truth for those checkpoints.
+runtime_tokenizer_name = get_tokenizer_name()
+checkpoint_tokenizer_name = meta.get("tokenizer_name")
+if checkpoint_tokenizer_name and checkpoint_tokenizer_name != runtime_tokenizer_name:
+    raise ValueError(
+        "checkpoint tokenizer_name does not match NANOCHAT_TOKENIZER_NAME: "
+        f"{checkpoint_tokenizer_name!r} != {runtime_tokenizer_name!r}"
+    )
+resolved_tokenizer_name = checkpoint_tokenizer_name or runtime_tokenizer_name
+tokenizer_identity = build_tokenizer_identity(resolved_tokenizer_name)
+if custom_data_identity is not None:
+    verify_manifest_tokenizer(custom_data_identity, tokenizer_identity)
 
 # Inherit training hyperparameters from pretrained checkpoint (None = inherit, explicit value = override)
 pretrain_user_config = meta.get("user_config", {})
@@ -116,6 +158,18 @@ for name, fallback, source in [
     else:
         print0(f"Using {name}={arg_val}")
 
+if custom_data_identity is not None:
+    prepared_max_seq_len = custom_data_identity.get("max_seq_len")
+    if prepared_max_seq_len is not None and prepared_max_seq_len != args.max_seq_len:
+        raise ValueError(
+            "custom SFT data was audited for a different max_seq_len: "
+            f"{prepared_max_seq_len} != {args.max_seq_len}"
+        )
+
+user_config = vars(args).copy()
+if not use_dummy_wandb:
+    wandb_run.config.update(user_config, allow_val_change=True)
+
 orig_model = model
 model = torch.compile(model, dynamic=False)
 depth = model.config.n_layer
@@ -127,7 +181,10 @@ grad_accum_steps = args.total_batch_size // world_tokens_per_fwdbwd
 print0(f"Tokens / micro-batch / rank: {args.device_batch_size} x {args.max_seq_len} = {tokens_per_fwdbwd:,}")
 print0(f"Tokens / micro-batch: {world_tokens_per_fwdbwd:,}")
 print0(f"Total batch size {args.total_batch_size:,} => gradient accumulation steps: {grad_accum_steps}")
-token_bytes = get_token_bytes(device=device)
+target_train_microbatches = (
+    args.num_iterations * grad_accum_steps if args.num_iterations > 0 else None
+)
+token_bytes = get_token_bytes(device=device, tokenizer_name=resolved_tokenizer_name)
 
 # Initialize the Optimizer (combined MuonAdamW: Muon for matrix params, AdamW for rest)
 # Note that pretraining ramps weight_decay to zero by end of pretraining, so SFT continues with zero
@@ -162,22 +219,35 @@ for group in optimizer.param_groups:
 
 # SFT data mixture and DataLoader
 identity_conversations_filepath = os.path.join(base_dir, "identity_conversations.jsonl")
-train_tasks = [
-    SmolTalk(split="train"), # 460K rows of general conversations
-    CustomJSON(filepath=identity_conversations_filepath), # 1000 rows of synthetic identity conversations
-    CustomJSON(filepath=identity_conversations_filepath), # 2 epochs of these
-    *[MMLU(subset="all", split="auxiliary_train") for _ in range(args.mmlu_epochs)], # 100K rows per epoch
-    *[GSM8K(subset="main", split="train") for _ in range(args.gsm8k_epochs)], # 8K rows per epoch
-    SimpleSpelling(size=200000, split="train"), # 200K rows of Simple Spelling (e.g. spell the word 'apple')
-    SpellingBee(size=80000, split="train"), # 80K rows of Spelling Bee (e.g. how many 'r' are in 'strawberry'?)
-]
-train_dataset = TaskMixture(train_tasks)
-print0(f"Training mixture: {len(train_dataset):,} rows (MMLU x{args.mmlu_epochs}, GSM8K x{args.gsm8k_epochs})")
-val_dataset = TaskMixture([
-    SmolTalk(split="test"), # 24K rows in test set
-    MMLU(subset="all", split="test", stop=5200), # 14K rows in test set, use only 5.2K to match the train ratios
-    GSM8K(subset="main", split="test", stop=420), # 1.32K rows in test set, use only 420 to match the train ratios
-]) # total: 24K + 5.2K + 0.42K ~= 29.6K rows
+if args.train_jsonl:
+    lazy_custom_json = bool(args.custom_json_lazy)
+    train_dataset = CustomJSON(filepath=args.train_jsonl, lazy=lazy_custom_json)
+    val_dataset = CustomJSON(filepath=args.val_jsonl, lazy=lazy_custom_json)
+    print0(
+        f"Custom SFT data: {len(train_dataset):,} train rows, "
+        f"{len(val_dataset):,} validation rows (lazy={lazy_custom_json})"
+    )
+    if len(train_dataset) != custom_data_identity["train"]["rows"]:
+        raise RuntimeError("loaded training row count differs from the hashed data identity")
+    if len(val_dataset) != custom_data_identity["validation"]["rows"]:
+        raise RuntimeError("loaded validation row count differs from the hashed data identity")
+else:
+    train_tasks = [
+        SmolTalk(split="train"), # 460K rows of general conversations
+        CustomJSON(filepath=identity_conversations_filepath), # 1000 rows of synthetic identity conversations
+        CustomJSON(filepath=identity_conversations_filepath), # 2 epochs of these
+        *[MMLU(subset="all", split="auxiliary_train") for _ in range(args.mmlu_epochs)], # 100K rows per epoch
+        *[GSM8K(subset="main", split="train") for _ in range(args.gsm8k_epochs)], # 8K rows per epoch
+        SimpleSpelling(size=200000, split="train"), # 200K rows of Simple Spelling (e.g. spell the word 'apple')
+        SpellingBee(size=80000, split="train"), # 80K rows of Spelling Bee (e.g. how many 'r' are in 'strawberry'?)
+    ]
+    train_dataset = TaskMixture(train_tasks)
+    print0(f"Training mixture: {len(train_dataset):,} rows (MMLU x{args.mmlu_epochs}, GSM8K x{args.gsm8k_epochs})")
+    val_dataset = TaskMixture([
+        SmolTalk(split="test"), # 24K rows in test set
+        MMLU(subset="all", split="test", stop=5200), # 14K rows in test set, use only 5.2K to match the train ratios
+        GSM8K(subset="main", split="test", stop=420), # 1.32K rows in test set, use only 420 to match the train ratios
+    ]) # total: 24K + 5.2K + 0.42K ~= 29.6K rows
 # DataLoader is defined here, it emits inputs, targets : 2D tensors of shape (device_batch_size, max_seq_len)
 # A big problem is that we don't know the final num_iterations in advance. So we create
 # these two global variables and update them from within the data generator.
@@ -267,18 +337,25 @@ def sft_data_generator_bos_bestfit(split, buffer_size=100):
             rows.append(row[:row_capacity])
             mask_rows.append(mask_row[:row_capacity])
 
-        # Stopping condition to respect num_iterations, if given
+        # ``it`` counts yielded microbatches, including the one-batch prefetch.
+        # Stop only after the prefetch beyond the requested optimizer updates,
+        # so --num-iterations remains an optimizer-step count for any gradacc.
         it += 1
-        if 0 < args.num_iterations <= it and split == "train":
+        completed_microbatches = max(it - 1, 0)
+        if (
+            target_train_microbatches is not None
+            and completed_microbatches >= target_train_microbatches
+            and split == "train"
+        ):
             last_step = True
 
         # Update progress tracking (based on consumed, not cursor, to account for buffering)
         if split == "train":
             current_epoch = epoch
             if args.num_iterations > 0:
-                approx_progress = it / args.num_iterations
+                approx_progress = min(completed_microbatches / target_train_microbatches, 1.0)
             else:
-                approx_progress = consumed / dataset_size
+                approx_progress = min(consumed / dataset_size, 1.0)
             # Trigger last_step when we've consumed enough (instead of when cursor wraps)
             if consumed >= dataset_size:
                 last_step = True
@@ -395,10 +472,27 @@ while True:
         })
         model.train()
 
-    # save checkpoint at the end of the run (all ranks participate so each saves its optimizer shard)
-    if last_step:
+    # Save at the end of the run (all ranks participate so each saves its optimizer shard).
+    if last_step and args.save_checkpoint:
         output_dirname = args.model_tag if args.model_tag else f"d{depth}" # e.g. d12
         checkpoint_dir = os.path.join(base_dir, "chatsft_checkpoints", output_dirname)
+        resolved_base_step = meta.get("step", args.model_step)
+        resolved_base_tag = meta.get("model_tag", args.model_tag)
+        base_checkpoint_identity = {
+            "model_tag": resolved_base_tag,
+            "step": resolved_base_step,
+            "val_bpb": meta.get("val_bpb"),
+        }
+        if resolved_base_tag is not None and resolved_base_step is not None:
+            base_meta_path = os.path.join(
+                base_dir,
+                "base_checkpoints",
+                resolved_base_tag,
+                f"meta_{resolved_base_step:06d}.json",
+            )
+            if os.path.isfile(base_meta_path):
+                base_checkpoint_identity["metadata_path"] = base_meta_path
+                base_checkpoint_identity["metadata_sha256"] = sha256_file(base_meta_path)
         save_checkpoint(
             checkpoint_dir,
             step,
@@ -416,10 +510,16 @@ while True:
                     "n_embd": model.config.n_embd,
                     "window_pattern": model.config.window_pattern,
                 },
+                "base_checkpoint": base_checkpoint_identity,
+                "tokenizer_name": resolved_tokenizer_name,
+                "tokenizer": tokenizer_identity,
+                "sft_data": custom_data_identity,
                 "user_config": user_config, # inputs to the training script
             },
             rank=ddp_rank,
         )
+    elif last_step:
+        print0("Final checkpoint save disabled by --save-checkpoint=0")
 
     if last_step:
         break
