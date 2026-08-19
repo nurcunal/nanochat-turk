@@ -78,6 +78,14 @@ case "$MODE" in
         ;;
 esac
 
+# The base optimizer is sharded across four ranks. A one-GPU smoke can validate
+# the full forward/backward/update/eval path, but cannot restore a rank-0 shard
+# into the unsharded embedding and unembedding parameters.
+LOAD_OPTIMIZER=1
+if [ "$MODE" = smoke ] && [ "$WORLD_SIZE" -eq 1 ]; then
+    LOAD_OPTIMIZER=0
+fi
+
 if [ ! -x .venv/bin/python ]; then
     echo "Missing repository .venv at $REPO_DIR/.venv" >&2
     exit 2
@@ -113,6 +121,7 @@ echo "SFT_DATA_DIR=$SFT_DATA_DIR"
 echo "MODEL_TAG=$MODEL_TAG"
 echo "MODEL_STEP=$MODEL_STEP"
 echo "NUM_ITERATIONS=$NUM_ITERATIONS"
+echo "LOAD_OPTIMIZER=$LOAD_OPTIMIZER"
 echo "RUN_NAME=$RUN_NAME"
 .venv/bin/python --version
 nvidia-smi
@@ -131,7 +140,7 @@ nvidia-smi
 SFT_ARGS=(
     --model-tag="$MODEL_TAG"
     --model-step="$MODEL_STEP"
-    --load-optimizer=1
+    --load-optimizer="$LOAD_OPTIMIZER"
     --save-checkpoint="$SAVE_CHECKPOINT"
     --num-iterations="$NUM_ITERATIONS"
     --train-jsonl="$SFT_DATA_DIR/train.jsonl"
