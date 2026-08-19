@@ -4,6 +4,9 @@
 #
 # Smoke (two optimizer updates, no checkpoint):
 #   sbatch --export=ALL,MODE=smoke runs/uhem_nakane_a100x4_sft_atlas.sbatch
+# Faster one-GPU smoke when a100x4q is congested:
+#   sbatch --partition=a100q --gres=gpu:a100:1 \
+#     --export=ALL,MODE=smoke,WORLD_SIZE=1 runs/uhem_nakane_a100x4_sft_atlas.sbatch
 # Full (one pass through the training split, final checkpoint):
 #   sbatch --export=ALL,MODE=full runs/uhem_nakane_a100x4_sft_atlas.sbatch
 
@@ -79,8 +82,12 @@ if [ ! -x .venv/bin/python ]; then
     echo "Missing repository .venv at $REPO_DIR/.venv" >&2
     exit 2
 fi
-if [ "$WORLD_SIZE" -ne 4 ]; then
-    echo "This job requests four A100s and requires WORLD_SIZE=4" >&2
+if [ "$MODE" = full ] && [ "$WORLD_SIZE" -ne 4 ]; then
+    echo "Full SFT is locked to WORLD_SIZE=4" >&2
+    exit 2
+fi
+if [ "$MODE" = smoke ] && [ "$WORLD_SIZE" -ne 1 ] && [ "$WORLD_SIZE" -ne 4 ]; then
+    echo "Smoke SFT supports WORLD_SIZE=1 or WORLD_SIZE=4" >&2
     exit 2
 fi
 if [ "$MODE" = full ] && [ "${ALLOW_SFT_OVERWRITE:-0}" != 1 ]; then
@@ -115,7 +122,7 @@ nvidia-smi
     --tokenizer-dir "$TOKENIZER_DIR" \
     --base-checkpoint-dir "$BASE_CHECKPOINT_DIR" \
     --model-step "$MODEL_STEP" \
-    --world-size "$WORLD_SIZE" \
+    --world-size 4 \
     --expected-model-tag "$MODEL_TAG" \
     --expected-total-batch-size 1048576 \
     --disk-path "$NANOCHAT_BASE_DIR" \
