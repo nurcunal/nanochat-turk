@@ -151,6 +151,6 @@ SFT_ARGS=(
 )
 
 echo "SFT args: ${SFT_ARGS[*]}"
-torchrun --standalone --nproc_per_node="$WORLD_SIZE" -m scripts.chat_sft -- "${SFT_ARGS[@]}"
+.venv/bin/torchrun --standalone --nproc_per_node="$WORLD_SIZE" -m scripts.chat_sft -- "${SFT_ARGS[@]}"
 
 echo "SFT $MODE completed successfully at $(date --iso-8601=seconds)"
