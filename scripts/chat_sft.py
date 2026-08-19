@@ -477,7 +477,11 @@ while True:
         output_dirname = args.model_tag if args.model_tag else f"d{depth}" # e.g. d12
         checkpoint_dir = os.path.join(base_dir, "chatsft_checkpoints", output_dirname)
         resolved_base_step = meta.get("step", args.model_step)
-        resolved_base_tag = meta.get("model_tag", args.model_tag)
+        resolved_base_tag = (
+            meta.get("model_tag")
+            or meta.get("user_config", {}).get("model_tag")
+            or args.model_tag
+        )
         base_checkpoint_identity = {
             "model_tag": resolved_base_tag,
             "step": resolved_base_step,

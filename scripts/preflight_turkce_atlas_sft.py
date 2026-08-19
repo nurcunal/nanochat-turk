@@ -133,9 +133,12 @@ def _verify_checkpoint(
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
     if meta.get("step") != step:
         raise ValueError(f"base checkpoint step mismatch: {meta.get('step')} != {step}")
-    if meta.get("model_tag") != expected_model_tag:
+    recorded_model_tag = meta.get("model_tag") or meta.get("user_config", {}).get(
+        "model_tag"
+    )
+    if recorded_model_tag != expected_model_tag:
         raise ValueError(
-            f"base checkpoint model_tag mismatch: {meta.get('model_tag')} != {expected_model_tag}"
+            f"base checkpoint model_tag mismatch: {recorded_model_tag} != {expected_model_tag}"
         )
     model_config = meta.get("model_config", {})
     expected_config = {
