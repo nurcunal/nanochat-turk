@@ -457,18 +457,27 @@ def test_resource_projection_uses_stage_wall_not_process_cpu(
         sum(stage_wall.values()) * 1.5 * 128 / 3600
     )
     assert report["sample_selection"]["algorithm"] == (
-        "uri_ordered_interior_quartiles_per_source_and_hplt_bin_plus_macocu_genres_v4"
+        "non_hplt_uri_quartiles_plus_hplt_smallest_complete_shard_"
+        "per_wds_bin_plus_macocu_genres_v5"
     )
     assert report["sample_selection"]["object_order"] == (
         "source_plan_uri_ascending"
     )
-    assert report["sample_selection"]["size_based_selection"] is False
-    assert report["sample_selection"]["per_source_stream_spread_quantiles"] == [
+    assert report["sample_selection"]["size_based_selection"] is True
+    assert report["sample_selection"]["size_based_selection_scope"] == (
+        "hplt3_tr_only"
+    )
+    assert report["sample_selection"][
+        "non_hplt_per_source_stream_spread_quantiles"
+    ] == [
         0.25,
         0.5,
         0.75,
     ]
-    assert report["sample_selection"]["hplt_per_wds_bin_spread_quantiles"] == []
+    assert report["sample_selection"]["hplt_per_wds_bin_selection"] == (
+        "minimum_size_complete_shard_then_uri_v1"
+    )
+    assert report["sample_selection"]["hplt_selected_objects"] == []
     diagnostic_cpu = report["projection"]["diagnostic_process_cpu"][
         "stage_process_cpu_seconds_before_safety_factor"
     ]

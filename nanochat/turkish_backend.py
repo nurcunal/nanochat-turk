@@ -3118,18 +3118,31 @@ def build_resource_projection(
             "sample_cluster_receipt_sha256": cluster["canonical_sha256"],
             "billing_contract": dict(RESOURCE_BILLING_CONTRACT),
             "sample_selection": {
-                "algorithm": "uri_ordered_interior_quartiles_per_source_and_hplt_bin_plus_macocu_genres_v4",
+                "algorithm": (
+                    "non_hplt_uri_quartiles_plus_hplt_smallest_complete_shard_"
+                    "per_wds_bin_plus_macocu_genres_v5"
+                ),
                 "ranks": select_resource_sample_ranks(plan),
                 "covers_every_source": True,
                 "object_order": "source_plan_uri_ascending",
-                "size_based_selection": False,
-                "per_source_stream_spread_quantiles": [0.25, 0.5, 0.75],
+                "size_based_selection": True,
+                "size_based_selection_scope": "hplt3_tr_only",
+                "non_hplt_per_source_stream_spread_quantiles": [0.25, 0.5, 0.75],
                 "covers_hplt_wds_bins": [8, 9, 10],
-                "hplt_per_wds_bin_spread_quantiles": (
-                    [0.25, 0.5, 0.75]
-                    if any(item["source_id"] == "hplt3_tr" for item in plan["objects"])
-                    else []
+                "hplt_per_wds_bin_selection": (
+                    "minimum_size_complete_shard_then_uri_v1"
                 ),
+                "hplt_selected_objects": [
+                    {
+                        "rank": item["rank"],
+                        "wds_bin": item["wds_bin"],
+                        "size_bytes": item["size_bytes"],
+                        "uri": item["uri"],
+                    }
+                    for item in plan["objects"]
+                    if item["source_id"] == "hplt3_tr"
+                    and item["rank"] in select_resource_sample_ranks(plan)
+                ],
                 "covers_macocu_selected_genres": (
                     sorted(MACOCU_CONVERSATION_GENRES | MACOCU_GENERAL_GENRES)
                     if any(item["source_id"] == MACOCU_SOURCE_ID for item in plan["objects"])
