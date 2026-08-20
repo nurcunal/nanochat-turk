@@ -3355,8 +3355,13 @@ def _mot_member_disposition(
     path: PurePosixPath, *, asset: MotAssetContract, kind: str
 ) -> str:
     parts = path.parts
+    ocr_marker = "ocr" in {
+        token
+        for token in re.split(r"[_\W]+", path.as_posix().casefold())
+        if token
+    }
     if kind != "directory" and (
-        path.suffix.casefold() == ".pdf" or "ocr" in path.as_posix().casefold()
+        path.suffix.casefold() == ".pdf" or ocr_marker
     ):
         raise AnchorPreparationError(
             f"MOT PDF/OCR fallback members are forbidden: {path.as_posix()!r}"

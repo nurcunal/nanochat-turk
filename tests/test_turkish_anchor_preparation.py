@@ -1146,6 +1146,24 @@ def test_mot_has_no_pdf_or_ocr_fallback(
         )
 
 
+def test_mot_ocr_marker_does_not_match_ocr_letters_inside_a_word() -> None:
+    asset = MotAssetContract(
+        "tur_amerikaninsesi.tgz",
+        "tur_amerikaninsesi",
+        1,
+        MOT_V1_11_CONTRACT.assets[0].source_url,
+    )
+    disposition = anchor_preparation._mot_member_disposition(
+        anchor_preparation.PurePosixPath(
+            "tur_amerikaninsesi/article/"
+            "a_portekiz-basbakani-socrates-istifa-etti-118551879_894295.json"
+        ),
+        asset=asset,
+        kind="file",
+    )
+    assert disposition == "article_candidate"
+
+
 def _meta_payload(text_id: str, date: str, rows: list[tuple[str, str]]) -> bytes:
     lines = ["\t".join(PARLAMINT_NATIVE_META_HEADER)]
     indexes = {name: index for index, name in enumerate(PARLAMINT_NATIVE_META_HEADER)}
