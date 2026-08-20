@@ -201,6 +201,10 @@ def test_production_data_and_tokenizer_launchers_consume_exact_gate() -> None:
         "runs/uhem_turkish_tokenizer_train.sbatch": (
             "#SBATCH --time=1-00:00:00",
             "--tokenizer-sample-dir",
+            'BASELINE_TOKENIZER_DIR:-/ari/users/nunal/nanochat-turk-d20-bpe32k/tokenizers/bpe_32768',
+            '--baseline-tokenizer-dir "$BASELINE_TOKENIZER_DIR"',
+            "--baseline-preflight-only",
+            'test -f "$TOKENIZER_DIR/tokenizer.tiktoken"',
             "--cluster-launch-receipt",
         ),
         "runs/uhem_turkish_tokenizer_quality.sbatch": (
@@ -223,6 +227,10 @@ def test_production_data_and_tokenizer_launchers_consume_exact_gate() -> None:
         source = (ROOT / relative).read_text(encoding="utf-8")
         assert "scripts.turkish_packed_production validate-gate" in source
         assert all(fragment in source for fragment in required), relative
+        if relative == "runs/uhem_turkish_tokenizer_train.sbatch":
+            assert source.index("--baseline-preflight-only") < source.index(
+                'mkdir -p "$TOKENIZER_DIR" "$TOKENIZER_QUALITY_DIR"'
+            )
     for relative in (
         "runs/uhem_turkish_data_objects_packed_production.sbatch",
         "runs/uhem_turkish_data_buckets_packed_production.sbatch",
@@ -230,6 +238,25 @@ def test_production_data_and_tokenizer_launchers_consume_exact_gate() -> None:
     ):
         source = (ROOT / relative).read_text(encoding="utf-8")
         assert '--write-dir="$DATA_RUN_DIR"' in source, relative
+
+
+def test_operator_runbook_names_all_data_and_tokenizer_gates() -> None:
+    source = (ROOT / "docs" / "tr_d32_turkish_wsd_uhem.md").read_text(
+        encoding="utf-8"
+    )
+    for fragment in (
+        "runs/uhem_turkish_sample_quality_audit.sbatch",
+        "manual mixture-quality approval",
+        "resource approval",
+        "PRODUCTION_DATA_NODES",
+        "bash runs/uhem_d32_prepare_training_env.sh",
+        "BASELINE_TOKENIZER_DIR",
+        "tokenizer.tiktoken",
+        "APPROVED_SOURCE_TOKENS",
+        "QUOTA_HEADROOM_BYTES",
+        "Any mixture weight, source selector, or accepted-source policy change invalidates",
+    ):
+        assert fragment in source
 
 
 def test_family_preflight_and_upload_require_exact_cluster_launch() -> None:

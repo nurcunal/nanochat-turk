@@ -120,10 +120,17 @@ The object resource sample runs through
 `runs/uhem_turkish_data_objects_packed_sample.sbatch`: one exclusive cpu2dq
 allocation contains thirty-two 4-CPU worker lanes, and every sample rank belongs to
 exactly one serial lane. The post-cluster writer-probe job is the sole producer
-of the backend report and deliberately seals it with safety factor 1.0. After
-the bucket, cluster, and writer-probe jobs complete, submit
-`runs/uhem_d32_data_prep_storage_sample.sbatch` with an `afterok` dependency
-and the exact allocation IDs; it requires and consumes that existing report.
+of the backend report and deliberately seals it with safety factor 1.0. Run
+`runs/uhem_turkish_sample_quality_audit.sbatch` against that same completed
+sample/cluster lineage, inspect its accepted and rejected JSONL/plaintext
+examples, and explicitly seal the manual mixture-quality approval. Seal the
+resource approval only after that approval exists, because the resource
+decision binds it. Then submit `runs/uhem_d32_data_prep_storage_sample.sbatch`
+with an `afterok` dependency and the exact MaCoCu, bootstrap, object-sample,
+bucket-sample, cluster, quality-audit, and writer-probe allocation IDs. It also
+requires `RESOURCE_APPROVAL`, `MIXTURE_QUALITY_APPROVAL`, and an explicit
+`PRODUCTION_DATA_NODES`; it consumes the already sealed backend report and
+does not create or auto-approve either decision.
 The family gate then
 applies the recipe's 1.35 factor exactly once to seven explicit projected
 storage peaks and to future production CPU work. MaCoCu preparation, bootstrap,
@@ -132,6 +139,11 @@ not charged against the future-work projection a second time. Production
 source-object work uses an explicit node plan: thirty-two serial lanes share each
 128-CPU node, and CPU-saat is projected from the slowest lane on each node,
 not from thirty-two independent node charges.
+
+Any mixture weight, source selector, or accepted-source policy change invalidates
+the sample ranks, bounded quality audit, mixture-quality approval, resource
+report/approval, pack plan, and storage gate. Re-run and re-seal that entire
+lineage; never attach an old approval to a revised mixture.
 
 ### Executable post-gate data order
 
@@ -167,9 +179,26 @@ gate, and refuses output directories outside the gated BeeGFS tree/device.
    (12-hour ceiling). Each command requires `POOL_DIR` and the same exact
    `CLUSTER_LAUNCH_RECEIPT`; the sample, package, training receipt, quality
    report, and approval carry the parent-pool, QA, policy, and production chain.
+   Before tokenizer training or quality review, prepare the main Nanochat
+   `.venv` with `bash runs/uhem_d32_prepare_training_env.sh`; the separate
+   Turkish-data environment does not contain the tokenizer runtime. Set
+   `BASELINE_TOKENIZER_DIR` defaults to the pinned prior tokenizer at
+   `/ari/users/nunal/nanochat-turk-d20-bpe32k/tokenizers/bpe_32768`; its exact
+   three-file inventory is verified before any output directory is created.
+   The new `tr_general_raw_bpe_32k_v2` tokenizer is trained from the
+   deterministic full-pool row-group traversal, while its
+   fixed val-only holdout contains at least 50,000 documents or 128 MiB and
+   targets at least 32 documents in every available mixture/source/register
+   stratum (recording explicit source insufficiency). Automatic quality
+   must pass before a human can accept it. Preserve `tokenizer.pkl`, the
+   canonical `tokenizer.tiktoken`, `token_bytes.pt`, configuration, receipts,
+   report, and approval as one upload inventory.
 6. Run `runs/uhem_turkish_packing_preflight.sbatch` (12 hours), manually review
    and seal `packing_preflight_approval.json`, then run
-   `runs/uhem_turkish_corpus_finalize.sbatch` (48 hours). The final corpus must
+   `runs/uhem_turkish_corpus_finalize.sbatch` (48 hours). Set
+   `APPROVED_SOURCE_TOKENS` to the exact approved source-token target in the
+   packing approval and obtain a fresh scheduler/project quota reading for
+   `QUOTA_HEADROOM_BYTES` immediately before submitting the finalizer. The final corpus must
    match the exact pool, QA approval, tokenizer, quality approval, packing
    approval, and production chain before family preflight can pass.
 
