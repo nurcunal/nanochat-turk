@@ -13,12 +13,13 @@
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
 
-set -euo pipefail
+set -eo pipefail
 
 source /etc/profile.d/modules.sh
 module use /ari/progs/modulefiles
 module purge
 module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
+set -u
 
 : "${SMOKE_JOB_ID:?Set the completed parent GPU smoke job ID}"
 : "${SMOKE_NODES:?Set SMOKE_NODES to 2 or 4}"

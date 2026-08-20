@@ -13,12 +13,13 @@
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
 
-set -euo pipefail
+set -eo pipefail
 
 source /etc/profile.d/modules.sh
 module use /ari/progs/modulefiles
 module purge
 module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
+set -u
 
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
 UV_BIN="${UV_BIN:-$HOME/.local/bin/uv}"

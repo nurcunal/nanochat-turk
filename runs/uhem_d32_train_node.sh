@@ -3,13 +3,14 @@
 # One direct Python rank for an srun-native launch. Despite the historical file
 # name, this script is invoked once per GPU and never starts torchrun/mpirun.
 
-set -euo pipefail
+set -eo pipefail
 
 source /etc/profile.d/modules.sh
 module use /ari/progs/modulefiles
 module purge
 module load cuda/cuda-12.5-a100q
 module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
+set -u
 
 required_variables=(
     CODE_DIR NANOCHAT_BASE_DIR RUN_KIND FAMILY_ID RUN_ID MODEL_TAG DEPTH

@@ -149,6 +149,24 @@ def test_turkish_data_environment_setup_is_frozen_and_version_pinned() -> None:
     assert "a5ecf95e9d4aa45bf2273dcbb063f173b3a0f30208df7214c307c59d2bcb0a54" in source
 
 
+def test_uhem_module_initialization_precedes_bash_nounset() -> None:
+    launchers = sorted((ROOT / "runs").glob("uhem_d32_*")) + [
+        ROOT / "runs" / "uhem_turkish_prepare_data_env.sbatch"
+    ]
+    checked = 0
+    for path in launchers:
+        if not path.is_file():
+            continue
+        source = path.read_text(encoding="utf-8")
+        marker = "source /etc/profile.d/modules.sh"
+        if marker not in source:
+            continue
+        checked += 1
+        assert source.index(marker) < source.index("\nset -u\n"), path
+        assert source.index(marker) > source.index("set -eo pipefail"), path
+    assert checked >= 15
+
+
 def test_signal_path_targets_the_srun_step_on_slurm_20() -> None:
     production = (ROOT / "runs" / "uhem_d32_production.sbatch").read_text(
         encoding="utf-8"

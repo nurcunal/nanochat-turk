@@ -2,13 +2,14 @@
 
 # Recreate the exact pinned-upstream GPU environment before any A100 job.
 
-set -euo pipefail
+set -eo pipefail
 
 source /etc/profile.d/modules.sh
 module use /ari/progs/modulefiles
 module purge
 module load cuda/cuda-12.5-a100q
 module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
+set -u
 
 CODE_DIR="${CODE_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 cd "$CODE_DIR"

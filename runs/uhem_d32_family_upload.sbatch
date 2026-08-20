@@ -14,12 +14,13 @@
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
 
-set -euo pipefail
+set -eo pipefail
 
 source /etc/profile.d/modules.sh
 module use /ari/progs/modulefiles
 module purge
 module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
+set -u
 
 : "${HF_REPO_ID:?Set the destination Hugging Face model repository}"
 : "${FINAL_OPTIMIZER_POLICY:?Set FINAL_OPTIMIZER_POLICY to include or omit}"

@@ -18,13 +18,14 @@
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
 
-set -euo pipefail
+set -eo pipefail
 
 source /etc/profile.d/modules.sh
 module use /ari/progs/modulefiles
 module purge
 module load cuda/cuda-12.5-a100q
 module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
+set -u
 
 : "${STAGE:?Set STAGE to one frozen family stage ID}"
 export CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
