@@ -80,9 +80,13 @@ _SPACE_RE = re.compile(r"[\t\v\f\r ]+")
 _BLANK_RE = re.compile(r"\n{3,}")
 _URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 _CODE_LINE_RE = re.compile(
-    r"^\s*(?:#!\s*/|#include\b|(?:def|class|import|from|function|const|let|var)\s+|"
+    r"^\s*(?:```|~~~|#!\s*/|#include\b|"
+    r"(?:def|class|import|from|function|const|let|var|package|namespace|using)\s+|"
     r"(?:public|private|protected)\s+(?:static\s+)?|SELECT\s+.+\s+FROM\s+|"
-    r"(?:npm|pip|cargo)\s+(?:install|add)\b|</?[a-z][^>]*>)",
+    r"(?:INSERT\s+INTO|UPDATE\s+\S+\s+SET|DELETE\s+FROM)\b|"
+    r"(?:npm|pip|cargo)\s+(?:install|add)\b|</?[a-z][^>]*>|"
+    r"(?:print|sorted|len|range|console\.log|system\.out\.println)\s*\(|"
+    r"[^\W\d]\w*\s*=\s*(?:[\[{'\"(]|[-+]?\d|[^\W\d]\w*\s*\())",
     re.IGNORECASE,
 )
 _PROGRAMMING_RE = re.compile(

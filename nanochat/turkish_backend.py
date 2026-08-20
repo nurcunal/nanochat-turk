@@ -408,15 +408,25 @@ def resolve_source_plan(
 
 
 def select_resource_sample_ranks(plan: Mapping[str, Any]) -> list[int]:
-    """Choose the smallest immutable object from every source deterministically."""
+    """Choose every source plus every selected HPLT quality bin deterministically."""
 
     by_source: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
     for item in plan["objects"]:
         by_source[str(item["source_id"])].append(item)
-    return sorted(
+    selected = {
         min(items, key=lambda item: (item["size_bytes"], item["uri"]))["rank"]
         for items in by_source.values()
-    )
+    }
+    hplt_objects = by_source.get("hplt3_tr", [])
+    hplt_bins = {item.get("wds_bin") for item in hplt_objects}
+    if any(not isinstance(value, int) or isinstance(value, bool) for value in hplt_bins):
+        raise TurkishCorpusError("HPLT resource-sample objects require integer WDS bins")
+    for wds_bin in sorted(hplt_bins):
+        in_bin = [item for item in hplt_objects if item.get("wds_bin") == wds_bin]
+        selected.add(
+            min(in_bin, key=lambda item: (item["size_bytes"], item["uri"]))["rank"]
+        )
+    return sorted(selected)
 
 
 def _verify_datatrove_runtime() -> dict[str, Any]:
