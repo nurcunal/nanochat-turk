@@ -44,19 +44,26 @@ if [ "$(sha256sum "$PROJECT_DIR/uv.lock" | awk '{print $1}')" != a5fa81e681f3269
 fi
 
 module_python="$(command -v python3)"
-"$UV_BIN" sync --project "$PROJECT_DIR" --locked --python "$module_python"
+"$UV_BIN" sync --project "$PROJECT_DIR" --locked --python "$module_python" \
+    --reinstall-package fasttext-numpy2-wheel
 "$UV_BIN" run --project "$PROJECT_DIR" --locked python -c '
 import importlib.metadata as metadata
+import inspect
 import platform
+import fasttext
 
 assert platform.python_version() == "3.12.4"
 assert metadata.version("datatrove") == "0.10.0"
 assert metadata.version("fasttext-numpy2-wheel") == "0.9.2"
 assert metadata.version("pyarrow") == "23.0.1"
+predict_source = inspect.getsource(fasttext.FastText._FastText.predict)
+assert "np.asarray(probs)" in predict_source
+assert "copy=False" not in predict_source
 print({
     "python": platform.python_version(),
     "datatrove": metadata.version("datatrove"),
     "fasttext-numpy2-wheel": metadata.version("fasttext-numpy2-wheel"),
+    "fasttext_numpy2_predict": True,
     "pyarrow": metadata.version("pyarrow"),
 })'
 
