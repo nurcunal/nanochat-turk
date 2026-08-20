@@ -10,6 +10,13 @@ from nanochat.turkish_corpus import audit_document, load_corpus_policy
 POLICY = load_corpus_policy(
     Path("configs/pretrain/tr_d32_turkish_general_v2.json")
 )["content_policy"]
+STRICT_ENCODING_POLICY = {
+    **POLICY,
+    "max_unicode_replacement_characters": 0,
+    "max_mojibake_sequence_hits": 0,
+    "max_c1_control_characters": 0,
+    "max_unicode_surrogate_characters": 0,
+}
 
 BASE = (
     "Bugün mahallede arkadaşlarımla buluştuk ve uzun zamandır konuşmadığımız "
@@ -29,6 +36,37 @@ def _decision(extra: str = "", *, url: str = "https://ornek.test/haber/gunluk-ya
         source_lid_ok=True,
         content_policy=POLICY,
     )
+
+
+@pytest.mark.parametrize(
+    ("corruption", "metric"),
+    [
+        (" bozuk\ufffdmetin", "unicode_replacement_characters"),
+        (" gÃ¼zel görünen ama bozuk metin", "mojibake_sequence_hits"),
+        (" görünmez\x85denetim işareti", "c1_control_characters"),
+        (" eşlenmemiş\ud800kod noktası", "unicode_surrogate_characters"),
+    ],
+)
+def test_strict_encoding_gate_rejects_corrupt_native_text(
+    corruption: str, metric: str
+) -> None:
+    decision = audit_document(
+        BASE + corruption,
+        source_lid_ok=True,
+        content_policy=STRICT_ENCODING_POLICY,
+    )
+    assert decision.reason == "text_encoding_corruption"
+    assert decision.metrics[metric] >= 1
+
+
+def test_strict_encoding_gate_keeps_valid_turkish_circumflexes() -> None:
+    decision = audit_document(
+        BASE + " Kâğıt üzerindeki resmî açıklama, millî kültür ve sükûnetten söz ediyor.",
+        source_lid_ok=True,
+        content_policy=STRICT_ENCODING_POLICY,
+    )
+    assert decision.accepted
+    assert decision.metrics["mojibake_sequence_hits"] == 0
 
 
 def test_foreign_script_gate_requires_both_absolute_and_fractional_thresholds():
@@ -106,4 +144,3 @@ def test_cookie_legal_taxonomy_and_seo_templates_are_narrowly_rejected():
         source_lid_ok=True,
         content_policy=POLICY,
     ).reason == "seo_definition_template"
-

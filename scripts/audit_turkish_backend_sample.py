@@ -20,7 +20,7 @@ import shutil
 import tempfile
 import urllib.parse
 from collections import Counter, defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -30,7 +30,6 @@ import nanochat.turkish_backend as backend
 from nanochat.experiment_manifest import (
     canonical_json,
     file_sha256,
-    load_json_strict,
     seal_manifest,
     verify_manifest_hash,
     write_json_atomic,
@@ -39,7 +38,6 @@ from nanochat.turkish_corpus import (
     TurkishCorpusError,
     _qa_document_metrics,
     dominant_register,
-    load_corpus_policy,
     select_mixture_bucket,
 )
 
@@ -104,13 +102,13 @@ class _ExampleSampler:
         self.capacity = capacity
         self.max_characters = max_characters
         self._heaps: dict[
-            tuple[str, str, str, str, str],
+            tuple[str, str, str, str, str, str],
             list[tuple[int, str, str]],
         ] = defaultdict(list)
 
     def add(
         self,
-        stratum: tuple[str, str, str, str],
+        stratum: tuple[str, str, str, str, str],
         decision: str,
         row: Mapping[str, Any],
         *,
@@ -118,35 +116,17 @@ class _ExampleSampler:
         quality_flags: Sequence[str],
         metrics: Mapping[str, Any],
     ) -> None:
-        document_id = str(row["document_id"])
         key = (*stratum, decision)
-        identity = hashlib.sha256(
-            "\0".join((*key, document_id)).encode("utf-8")
-        ).hexdigest()
-        text = str(row["text"])
-        payload = {
-            "sample_sha256": identity,
-            "source_id": stratum[0],
-            "mixture_id": stratum[1],
-            "wds_bin": stratum[2],
-            "register": stratum[3],
-            "decision": decision,
-            "rejection_reason": rejection_reason,
-            "quality_filter_flags": list(quality_flags),
-            "document_id": document_id,
-            "dedup_cluster_id": str(row["dedup_cluster_id"]),
-            "url": str(row.get("url") or ""),
-            "metrics": dict(sorted(metrics.items())),
-            "text": text[: self.max_characters],
-            "text_truncated": len(text) > self.max_characters,
-        }
-        # Include the complete payload in the rank so a malformed upstream that
-        # repeats a document ID cannot make heap ordering depend on input order.
-        payload_json = canonical_json(payload).removesuffix("\n")
-        rank_sha256 = hashlib.sha256(
-            f"{identity}\0{payload_json}".encode("utf-8")
-        ).hexdigest()
-        item = (-int(rank_sha256[:16], 16), rank_sha256, payload_json)
+        payload = backend.sample_quality_example_payload(
+            stratum,
+            decision,
+            row,
+            rejection_reason=rejection_reason,
+            quality_flags=quality_flags,
+            metrics=metrics,
+            max_characters=self.max_characters,
+        )
+        item = backend.sample_quality_example_heap_item(payload)
         heap = self._heaps[key]
         if len(heap) < self.capacity:
             heapq.heappush(heap, item)
@@ -163,6 +143,7 @@ class _ExampleSampler:
         return sorted(
             rows,
             key=lambda row: (
+                row["source_rank"],
                 row["source_id"],
                 row["mixture_id"],
                 row["wds_bin"],
@@ -206,6 +187,94 @@ def _strict_flags(raw: Any) -> list[str]:
     ):
         raise SampleAuditError("quality_filter_flags must encode non-empty strings")
     return value
+
+
+def _iter_verified_cluster_batches(
+    run_root: Path,
+    record: Mapping[str, Any],
+    *,
+    label: str,
+    required_columns: set[str],
+) -> Iterator[list[dict[str, Any]]]:
+    rows_expected = record.get("rows")
+    if (
+        isinstance(rows_expected, bool)
+        or not isinstance(rows_expected, int)
+        or rows_expected <= 0
+    ):
+        raise SampleAuditError("cluster output row-count contract drift")
+    try:
+        with backend._open_verified_run_artifact(
+            run_root,
+            record,
+            label=label,
+            max_bytes=backend._MAX_CLUSTER_PARQUET_BYTES,
+        ) as (_path, handle):
+            parquet = pq.ParquetFile(handle)
+            columns = set(parquet.schema_arrow.names)
+            if not required_columns <= columns:
+                missing = sorted(required_columns - columns)
+                raise SampleAuditError(
+                    f"cluster output lacks backend columns: {missing}"
+                )
+            if parquet.metadata.num_rows != rows_expected:
+                raise SampleAuditError("cluster output row-count drift")
+            rows_seen = 0
+            for batch in parquet.iter_batches(batch_size=2_048):
+                rows = batch.to_pylist()
+                rows_seen += len(rows)
+                yield rows
+            if rows_seen != rows_expected:
+                raise SampleAuditError("cluster output row scan drift")
+    except TurkishCorpusError as exc:
+        raise SampleAuditError(f"cluster output drift: {exc}") from exc
+
+
+def _verified_provenance_snapshot(
+    run_root: Path,
+    record: Mapping[str, Any],
+    *,
+    label: str,
+) -> bytes:
+    path = _safe_run_path(run_root, record.get("path"), label)
+    size = record.get("size_bytes")
+    digest = str(record.get("sha256") or "")
+    if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+        raise SampleAuditError(f"{label} size contract drift")
+    try:
+        raw = backend._read_bounded_regular_file_snapshot(
+            path,
+            label=label,
+            max_bytes=backend._MAX_RECEIPT_EVIDENCE_BYTES,
+        )
+        manifest = backend._load_json_snapshot(raw, label)
+        canonical_sha256 = verify_manifest_hash(manifest)
+    except (TurkishCorpusError, TypeError, ValueError) as exc:
+        raise SampleAuditError(f"{label} drift: {exc}") from exc
+    if (
+        len(raw) != size
+        or hashlib.sha256(raw).hexdigest() != digest
+        or canonical_sha256 != record.get("canonical_sha256")
+    ):
+        raise SampleAuditError(f"{label} content drift")
+    return raw
+
+
+def _strict_json_input_snapshot(
+    path: Path, *, label: str
+) -> tuple[dict[str, Any], bytes]:
+    try:
+        raw = backend._read_bounded_regular_file_snapshot(
+            path,
+            label=label,
+            max_bytes=backend._MAX_RECEIPT_EVIDENCE_BYTES,
+        )
+        value = backend._load_json_snapshot(raw, label)
+    except (TurkishCorpusError, TypeError, ValueError) as exc:
+        raise SampleAuditError(f"{label} is missing, unsafe, or invalid") from exc
+    if not isinstance(value, dict):
+        raise SampleAuditError(f"{label} must contain a JSON object")
+    return value, raw
 
 
 def _merge_stage_counts(target: dict[str, Counter[str]], raw: Any) -> None:
@@ -258,6 +327,7 @@ def _source_input_summary(
                 "rank": rank,
                 "source_id": source_id,
                 "wds_bin": plan_object.get("wds_bin"),
+                "quality_score_semantics": receipt.get("quality_score_semantics"),
                 "receipt_sha256": receipt["canonical_sha256"],
                 "source_uri_sha256": hashlib.sha256(
                     str(receipt["source_uri"]).encode("utf-8")
@@ -319,21 +389,7 @@ def _write_examples(
             # this remains valid JSONL if that helper's rendering ever changes.
             handle.write(canonical_json(row).rstrip("\n") + "\n")
     with plaintext.open("w", encoding="utf-8", newline="\n") as handle:
-        for index, row in enumerate(rows, 1):
-            handle.write(
-                f"[{index}] {row['decision']} / {row['source_id']} / "
-                f"{row['mixture_id']} / WDS={row['wds_bin']} / "
-                f"register={row['register']}\n"
-            )
-            handle.write(f"sample_sha256: {row['sample_sha256']}\n")
-            handle.write(f"reason: {row['rejection_reason']}\n")
-            handle.write(
-                "quality_filter_flags: "
-                + json.dumps(row["quality_filter_flags"], ensure_ascii=False)
-                + "\n"
-            )
-            handle.write(f"url: {row['url']}\n")
-            handle.write(str(row["text"]) + "\n\n")
+        handle.write(backend.render_sample_quality_plaintext(rows))
     return {
         "rows": len(rows),
         "jsonl": {
@@ -371,7 +427,10 @@ def build_sample_quality_audit(
         destination.rmdir()
     destination.parent.mkdir(parents=True, exist_ok=True)
 
-    policy = load_corpus_policy(policy_file)
+    policy, policy_raw = _strict_json_input_snapshot(
+        policy_file, label="corpus policy"
+    )
+    backend.validate_corpus_policy(policy)
     qa_policy = policy["quality_assurance"]
     minimum_examples = int(qa_policy["examples_per_stratum_and_decision"])
     minimum_characters = int(qa_policy["max_example_characters"])
@@ -396,24 +455,46 @@ def build_sample_quality_audit(
     if quantile_sample_size < minimum_quantile_sample:
         raise SampleAuditError("quantile_sample_size weakens the frozen QA policy")
     policy_sha256 = hashlib.sha256(canonical_json(policy).encode("utf-8")).hexdigest()
-    plan = load_json_strict(plan_file)
-    calibration = load_json_strict(calibration_file)
+    plan, plan_raw = _strict_json_input_snapshot(
+        plan_file, label="source plan"
+    )
+    calibration, calibration_raw = _strict_json_input_snapshot(
+        calibration_file, label="backend calibration"
+    )
     backend.validate_source_plan(plan, policy)
     backend.validate_backend_calibration(calibration, policy)
     plan_sha256 = verify_manifest_hash(plan)
     calibration_sha256 = verify_manifest_hash(calibration)
 
     cluster_path = run_root / "cluster_receipt.json"
-    if cluster_path.is_symlink() or not cluster_path.is_file():
-        raise SampleAuditError("bounded sample cluster receipt is missing or unsafe")
-    cluster = load_json_strict(cluster_path)
-    cluster_sha256 = verify_manifest_hash(cluster)
+    try:
+        cluster_raw = backend._read_bounded_regular_file_snapshot(
+            cluster_path,
+            label="bounded sample cluster receipt",
+            max_bytes=backend._MAX_RECEIPT_EVIDENCE_BYTES,
+        )
+        cluster = backend._load_json_snapshot(
+            cluster_raw, "bounded sample cluster receipt"
+        )
+        cluster_sha256 = verify_manifest_hash(cluster)
+    except (TurkishCorpusError, TypeError, ValueError) as exc:
+        raise SampleAuditError(
+            "bounded sample cluster receipt is missing, unsafe, or invalid"
+        ) from exc
+    expected_processing = backend.production_processing_binding(policy)
+    expected_code_identity = backend.validate_production_code_identity(
+        cluster.get("code_identity")
+    )
     if (
         cluster.get("schema_version") != "1.0"
         or cluster.get("kind") != backend.CLUSTER_RECEIPT_KIND
         or cluster.get("sample_mode") is not True
         or cluster.get("source_plan_sha256") != plan_sha256
         or cluster.get("calibration_sha256") != calibration_sha256
+        or cluster.get("processing") != expected_processing
+        or cluster.get("winner_policy") != backend.CLUSTER_WINNER_POLICY
+        or cluster.get("quality_score_semantics")
+        != backend.CLUSTER_QUALITY_SCORE_SEMANTICS
     ):
         raise SampleAuditError("cluster receipt is not the requested bounded sample")
 
@@ -421,29 +502,55 @@ def build_sample_quality_audit(
         run_root, plan, calibration, sample_mode=True
     )
     buckets = backend._load_bucket_receipts(
-        run_root, plan, calibration, sample_mode=True
+        run_root, plan, calibration, sample_mode=True, objects=objects
     )
     object_hashes = [item["canonical_sha256"] for item in objects]
     bucket_hashes = [item["canonical_sha256"] for item in buckets]
+    neutralized_ranks = sorted(
+        int(item["rank"])
+        for item in objects
+        if item.get("quality_score_semantics")
+        != backend.OBJECT_SOURCE_QUALITY_SEMANTICS
+    )
+    if cluster.get("legacy_quality_score_neutralized_ranks") != neutralized_ranks:
+        raise SampleAuditError("cluster legacy quality-score neutralization drift")
+    sample_launches = backend._sample_launch_bindings(
+        run_root,
+        plan=plan,
+        calibration=calibration,
+        objects=objects,
+        buckets=buckets,
+    )
     if cluster.get("object_receipt_sha256") != object_hashes:
         raise SampleAuditError("cluster/object receipt hash binding drift")
     if cluster.get("bucket_receipt_sha256") != bucket_hashes:
         raise SampleAuditError("cluster/bucket receipt hash binding drift")
+    if cluster.get("sample_launch_receipts") != sample_launches:
+        raise SampleAuditError("cluster packed sample-launch binding drift")
 
     source_summaries, object_records = _source_input_summary(objects, plan)
     quantiles = tuple(float(value) for value in policy["quality_assurance"]["quantiles"])
-    counts: dict[tuple[str, str, str, str], Counter[str]] = defaultdict(Counter)
-    flags_by_stratum: dict[tuple[str, str, str, str], Counter[str]] = defaultdict(Counter)
-    reasons_by_stratum: dict[tuple[str, str, str, str], Counter[str]] = defaultdict(Counter)
+    counts: dict[tuple[str, str, str, str, str], Counter[str]] = defaultdict(Counter)
+    flags_by_stratum: dict[
+        tuple[str, str, str, str, str], Counter[str]
+    ] = defaultdict(Counter)
+    reasons_by_stratum: dict[
+        tuple[str, str, str, str, str], Counter[str]
+    ] = defaultdict(Counter)
     metrics: dict[
-        tuple[str, str, str, str],
+        tuple[str, str, str, str, str],
         dict[str, dict[str, _NumericSketch]],
     ] = defaultdict(lambda: defaultdict(dict))
     source_cluster_counts: dict[str, Counter[str]] = defaultdict(Counter)
     examples = _ExampleSampler(examples_per_stratum, max_example_characters)
     output_records: list[dict[str, Any]] = []
     seen_output_paths: set[str] = set()
+    seen_output_ranks: set[int] = set()
     total_rows = 0
+
+    selected_ranks = backend.select_resource_sample_ranks(plan)
+    selected_rank_set = set(selected_ranks)
+    plan_by_rank = {int(item["rank"]): item for item in plan["objects"]}
 
     required_columns = set(backend.BACKEND_COLUMNS)
     output_files = cluster.get("output_files")
@@ -456,29 +563,47 @@ def build_sample_quality_audit(
         if relative_path in seen_output_paths:
             raise SampleAuditError("cluster output file is listed more than once")
         seen_output_paths.add(relative_path)
-        path = _safe_run_path(run_root, raw_file.get("path"), f"cluster output {index}")
-        if (
-            path.stat().st_size != raw_file.get("size_bytes")
-            or file_sha256(path) != raw_file.get("sha256")
-        ):
-            raise SampleAuditError(f"cluster output drift: {path.name}")
-        parquet = pq.ParquetFile(path)
-        if not required_columns <= set(parquet.schema_arrow.names):
-            missing = sorted(required_columns - set(parquet.schema_arrow.names))
-            raise SampleAuditError(f"cluster output lacks backend columns: {missing}")
-        if parquet.metadata.num_rows != raw_file.get("rows"):
-            raise SampleAuditError("cluster output row-count drift")
+        try:
+            path = backend._safe_run_artifact_path(
+                run_root, raw_file.get("path"), f"cluster output {index}"
+            )
+        except TurkishCorpusError as exc:
+            raise SampleAuditError(f"cluster output {index} is unsafe") from exc
+        raw_rank = raw_file.get("source_rank")
+        if raw_rank is None:
+            # Backward compatibility for the existing one-output-per-object
+            # cluster layout (backend_output/00149.parquet).
+            stem = Path(relative_path).stem
+            if not stem.isdigit():
+                raise SampleAuditError(
+                    "legacy cluster output path does not identify one sampled rank"
+                )
+            source_rank = int(stem)
+        elif isinstance(raw_rank, int) and not isinstance(raw_rank, bool):
+            source_rank = raw_rank
+        else:
+            raise SampleAuditError("cluster output source_rank must be an integer")
+        if source_rank not in selected_rank_set or source_rank in seen_output_ranks:
+            raise SampleAuditError("cluster output sampled-rank association drift")
+        seen_output_ranks.add(source_rank)
+        plan_object = plan_by_rank[source_rank]
         output_records.append(
             {
                 "path": str(raw_file["path"]),
                 "size_bytes": raw_file["size_bytes"],
                 "sha256": raw_file["sha256"],
                 "rows": raw_file["rows"],
+                "source_rank": source_rank,
             }
         )
 
-        for batch in parquet.iter_batches(batch_size=2_048):
-            for row in batch.to_pylist():
+        for batch in _iter_verified_cluster_batches(
+            run_root,
+            raw_file,
+            label=f"cluster output {index}",
+            required_columns=required_columns,
+        ):
+            for row in batch:
                 total_rows += 1
                 if not isinstance(row.get("dedup_keep"), bool):
                     raise SampleAuditError("dedup_keep must be boolean")
@@ -488,8 +613,8 @@ def build_sample_quality_audit(
                     raise SampleAuditError("backend row text/document_id schema drift")
                 quality_flags = _strict_flags(row.get("quality_filter_flags"))
                 source_id = str(row.get("source_id") or "")
-                if not source_id:
-                    raise SampleAuditError("backend row lacks source_id")
+                if not source_id or source_id != plan_object["source_id"]:
+                    raise SampleAuditError("backend row/source-rank association drift")
                 try:
                     routed = select_mixture_bucket(source_id, row, policy)
                     register = dominant_register(row)
@@ -503,7 +628,13 @@ def build_sample_quality_audit(
                     if row.get("wds_bin") is not None
                     else "not_applicable"
                 )
-                stratum = (source_id, mixture_id, wds_bin, register)
+                stratum = (
+                    str(source_rank),
+                    source_id,
+                    mixture_id,
+                    wds_bin,
+                    register,
+                )
                 text = row["text"]
                 utf8_bytes = len(text.encode("utf-8"))
                 row_counts = counts[stratum]
@@ -534,6 +665,16 @@ def build_sample_quality_audit(
 
                 accepted = bool(row["dedup_keep"] and not quality_flags and routed is not None)
                 if accepted:
+                    independent = backend.audit_document(
+                        text,
+                        url=str(row.get("url") or ""),
+                        source_lid_ok=True,
+                        content_policy=policy["content_policy"],
+                    )
+                    if not independent.accepted or independent.normalized_text != text:
+                        raise SampleAuditError(
+                            "row claimed accepted disagrees with independent audit_document"
+                        )
                     decision = "accepted"
                     rejection_reason = None
                     row_counts["accepted_documents"] += 1
@@ -642,10 +783,11 @@ def build_sample_quality_audit(
         }
         strata.append(
             {
-                "source_id": stratum[0],
-                "mixture_id": stratum[1],
-                "wds_bin": stratum[2],
-                "register": stratum[3],
+                "source_rank": int(stratum[0]),
+                "source_id": stratum[1],
+                "mixture_id": stratum[2],
+                "wds_bin": stratum[3],
+                "register": stratum[4],
                 "counts": dict(sorted(counts[stratum].items())),
                 "dedup_survival_rate": counts[stratum]["dedup_survived_documents"]
                 / max(1, counts[stratum]["total_documents"]),
@@ -663,6 +805,52 @@ def build_sample_quality_audit(
     rejected_examples = examples.rows("rejected")
     build = Path(tempfile.mkdtemp(prefix=f".{destination.name}.build-", dir=destination.parent))
     try:
+        try:
+            live_cluster_raw = backend._read_bounded_regular_file_snapshot(
+                cluster_path,
+                label="live bounded sample cluster receipt",
+                max_bytes=backend._MAX_RECEIPT_EVIDENCE_BYTES,
+            )
+        except TurkishCorpusError as exc:
+            raise SampleAuditError("live cluster receipt changed during audit") from exc
+        if live_cluster_raw != cluster_raw:
+            raise SampleAuditError("live cluster receipt changed during audit")
+        object_launch_raw = _verified_provenance_snapshot(
+            run_root,
+            sample_launches["object"],
+            label="packed object-sample launch receipt",
+        )
+        bucket_launch_raw = _verified_provenance_snapshot(
+            run_root,
+            sample_launches["bucket"],
+            label="packed bucket-sample launch receipt",
+        )
+        provenance_root = build / "provenance"
+        provenance_root.mkdir()
+        provenance_sources = {
+            "cluster_receipt": cluster_raw,
+            "object_launch_receipt": object_launch_raw,
+            "bucket_launch_receipt": bucket_launch_raw,
+        }
+        provenance_records: dict[str, dict[str, Any]] = {}
+        for label, raw in provenance_sources.items():
+            target = provenance_root / f"{label}.json"
+            target.write_bytes(raw)
+            try:
+                copied = backend._read_bounded_regular_file_snapshot(
+                    target,
+                    label=f"copied {label}",
+                    max_bytes=backend._MAX_RECEIPT_EVIDENCE_BYTES,
+                )
+            except TurkishCorpusError as exc:
+                raise SampleAuditError(f"cannot seal copied {label}") from exc
+            if copied != raw:
+                raise SampleAuditError(f"copied {label} content drift")
+            provenance_records[label] = {
+                "path": target.relative_to(build).as_posix(),
+                "size_bytes": len(raw),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+            }
         example_records = {
             "accepted": _write_examples(build, "accepted", accepted_examples),
             "rejected": _write_examples(build, "rejected", rejected_examples),
@@ -680,31 +868,135 @@ def build_sample_quality_audit(
             if item["mixture_id"] != "unrouted"
             and item["counts"].get("rejected_documents", 0) > 0
         }
+        ranks_with_accepted_rows = sorted(
+            {
+                int(item["source_rank"])
+                for item in strata
+                if item["counts"].get("accepted_documents", 0) > 0
+            }
+        )
+        ranks_with_accepted_examples = sorted(
+            {int(item["source_rank"]) for item in accepted_examples}
+        )
+        expected_hplt_wds_bins = sorted(
+            {
+                int(plan_by_rank[rank]["wds_bin"])
+                for rank in selected_ranks
+                if plan_by_rank[rank]["source_id"] == "hplt3_tr"
+                and plan_by_rank[rank].get("wds_bin") is not None
+            }
+        )
+        hplt_wds_bins_with_accepted_rows = sorted(
+            {
+                int(item["wds_bin"])
+                for item in strata
+                if item["source_id"] == "hplt3_tr"
+                and item["wds_bin"] != "not_applicable"
+                and item["counts"].get("accepted_documents", 0) > 0
+            }
+        )
+        hplt_wds_bins_with_accepted_examples = sorted(
+            {
+                int(item["wds_bin"])
+                for item in accepted_examples
+                if item["source_id"] == "hplt3_tr"
+                and item["wds_bin"] != "not_applicable"
+            }
+        )
+        example_counts = Counter(
+            (
+                int(row["source_rank"]),
+                row["source_id"],
+                row["mixture_id"],
+                row["wds_bin"],
+                row["register"],
+                row["decision"],
+            )
+            for row in (*accepted_examples, *rejected_examples)
+        )
+        insufficiencies: list[dict[str, Any]] = []
+        for item in strata:
+            for decision in ("accepted", "rejected"):
+                available = int(item["counts"].get(f"{decision}_documents", 0))
+                sampled = example_counts[
+                    (
+                        int(item["source_rank"]),
+                        item["source_id"],
+                        item["mixture_id"],
+                        item["wds_bin"],
+                        item["register"],
+                        decision,
+                    )
+                ]
+                if sampled < examples_per_stratum:
+                    insufficiencies.append(
+                        {
+                            "source_rank": int(item["source_rank"]),
+                            "source_id": item["source_id"],
+                            "mixture_id": item["mixture_id"],
+                            "wds_bin": item["wds_bin"],
+                            "register": item["register"],
+                            "decision": decision,
+                            "available_rows": available,
+                            "sampled_examples": sampled,
+                            "requested_examples": examples_per_stratum,
+                            "shortfall": examples_per_stratum - sampled,
+                        }
+                    )
         report = seal_manifest(
             {
-                "schema_version": "1.0",
+                "schema_version": "2.0",
                 "kind": AUDIT_KIND,
                 "integrity_checks_passed": True,
                 "policy_sha256": policy_sha256,
                 "source_plan_sha256": plan_sha256,
                 "calibration_sha256": calibration_sha256,
                 "cluster_receipt_sha256": cluster_sha256,
+                "sample_cluster_receipt_sha256": cluster_sha256,
+                "processing": expected_processing,
+                "code_identity": expected_code_identity,
                 "input_artifacts": {
                     "policy": {
                         "path": policy_file.name,
-                        "file_sha256": file_sha256(policy_file),
+                        "file_sha256": hashlib.sha256(policy_raw).hexdigest(),
                     },
                     "source_plan": {
                         "path": plan_file.name,
-                        "file_sha256": file_sha256(plan_file),
+                        "file_sha256": hashlib.sha256(plan_raw).hexdigest(),
                     },
                     "calibration": {
                         "path": calibration_file.name,
-                        "file_sha256": file_sha256(calibration_file),
+                        "file_sha256": hashlib.sha256(calibration_raw).hexdigest(),
                     },
                     "cluster_receipt": {
-                        "path": cluster_path.name,
-                        "file_sha256": file_sha256(cluster_path),
+                        **provenance_records["cluster_receipt"],
+                        "canonical_sha256": cluster_sha256,
+                    },
+                    "live_cluster_receipt": {
+                        "uri": cluster_path.as_uri(),
+                        "size_bytes": len(cluster_raw),
+                        "sha256": hashlib.sha256(cluster_raw).hexdigest(),
+                        "canonical_sha256": cluster_sha256,
+                    },
+                    "live_sample_run": {
+                        "uri": run_root.as_uri(),
+                        "filesystem_device": run_root.stat().st_dev,
+                        "cluster_output_bytes": sum(
+                            int(item["size_bytes"]) for item in output_records
+                        ),
+                        "maximum_validation_bytes": backend._MAX_CLUSTER_PARQUET_TOTAL_BYTES,
+                    },
+                    "object_launch_receipt": {
+                        **provenance_records["object_launch_receipt"],
+                        "canonical_sha256": sample_launches["object"][
+                            "canonical_sha256"
+                        ],
+                    },
+                    "bucket_launch_receipt": {
+                        **provenance_records["bucket_launch_receipt"],
+                        "canonical_sha256": sample_launches["bucket"][
+                            "canonical_sha256"
+                        ],
                     },
                     "object_receipt_sha256": object_hashes,
                     "bucket_receipt_sha256": bucket_hashes,
@@ -762,12 +1054,40 @@ def build_sample_quality_audit(
                     "mixtures_without_rejected_rows": sorted(
                         set(expected_mixtures) - observed_rejected
                     ),
+                    "expected_source_ranks": selected_ranks,
+                    "source_ranks_with_accepted_rows": ranks_with_accepted_rows,
+                    "source_ranks_with_accepted_examples": ranks_with_accepted_examples,
+                    "source_ranks_without_accepted_rows": sorted(
+                        selected_rank_set - set(ranks_with_accepted_rows)
+                    ),
+                    "source_ranks_without_accepted_examples": sorted(
+                        selected_rank_set - set(ranks_with_accepted_examples)
+                    ),
+                    "expected_hplt_wds_bins": expected_hplt_wds_bins,
+                    "hplt_wds_bins_with_accepted_rows": (
+                        hplt_wds_bins_with_accepted_rows
+                    ),
+                    "hplt_wds_bins_with_accepted_examples": (
+                        hplt_wds_bins_with_accepted_examples
+                    ),
+                    "hplt_wds_bins_without_accepted_rows": sorted(
+                        set(expected_hplt_wds_bins)
+                        - set(hplt_wds_bins_with_accepted_rows)
+                    ),
+                    "hplt_wds_bins_without_accepted_examples": sorted(
+                        set(expected_hplt_wds_bins)
+                        - set(hplt_wds_bins_with_accepted_examples)
+                    ),
                 },
                 "example_sampling": {
-                    "method": "smallest_sha256_per_source_mixture_wds_register_decision",
+                    "method": (
+                        "smallest_content_bound_sha256_per_rank_source_mixture_"
+                        "wds_register_decision_v2"
+                    ),
                     "examples_per_stratum_and_decision": examples_per_stratum,
                     "max_example_characters": max_example_characters,
                     "files": example_records,
+                    "insufficiencies": insufficiencies,
                 },
                 "manual_review_required": True,
                 "automatic_mixture_approval": False,

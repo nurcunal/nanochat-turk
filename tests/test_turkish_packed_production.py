@@ -10,13 +10,24 @@ from nanochat.turkish_corpus import TurkishCorpusError
 from scripts import turkish_packed_production as production
 
 
+STRICT_CONTENT_POLICY = dict(production.PRODUCTION_TEXT_INTEGRITY_LIMITS)
+
+
 def _sealed(**values):
     return seal_manifest({**values, "canonical_sha256": None})
 
 
 def _fixture(tmp_path: Path):
     hashes = {name: name[0] * 64 for name in ("recipe", "policy", "source", "calibration")}
-    hashes.update({"pack": "e" * 64, "resource": "f" * 64, "mixture": "a" * 64, "gate": "b" * 64})
+    hashes.update(
+        {
+            "pack": "e" * 64,
+            "resource": "f" * 64,
+            "mixture": "a" * 64,
+            "gate": "b" * 64,
+            "sample_cluster": "d" * 64,
+        }
+    )
     inputs = {
         "recipe": {"family_id": "tr_d32_fixture"},
         "recipe_sha": hashes["recipe"],
@@ -27,13 +38,14 @@ def _fixture(tmp_path: Path):
         "resource_approval_sha": hashes["resource"],
         "mixture_approval_sha": hashes["mixture"],
         "storage_gate_sha": hashes["gate"],
+        "sample_cluster_receipt_sha": hashes["sample_cluster"],
         "storage_gate": {
             "work_dir": str(tmp_path),
             "work_dir_filesystem_device": tmp_path.stat().st_dev,
         },
     }
     launch = _sealed(
-        schema_version="1.0",
+        schema_version="2.0",
         kind=production.CLUSTER_LAUNCH_KIND,
         **production._receipt_bindings(inputs),
         cluster_completed=True,
@@ -46,6 +58,7 @@ def _fixture(tmp_path: Path):
         "resource_approval_sha256": hashes["resource"],
         "mixture_quality_approval_sha256": hashes["mixture"],
         "data_prep_storage_gate_sha256": hashes["gate"],
+        "sample_cluster_receipt_sha256": hashes["sample_cluster"],
     }
     pool = tmp_path / "pool"
     (pool / "qa").mkdir(parents=True)
@@ -130,3 +143,130 @@ def test_gated_write_dir_rejects_path_outside_tree(tmp_path: Path) -> None:
     outside.mkdir()
     with pytest.raises(TurkishCorpusError, match="outside"):
         production.validate_gated_write_dir(inputs, outside)
+
+
+@pytest.mark.parametrize("source_id", ["finepdfs_edu_tr", "fineweb2_tr"])
+def test_production_source_gate_rejects_disqualified_sources_but_not_historical_inventory(
+    source_id: str,
+) -> None:
+    policy = {
+        "sources": [
+            {"id": "finepdfs_edu_tr"},
+            {"id": "fineweb2_tr"},
+            {"id": "fineweb2_hq_tr", "text_origin": "born_digital_text"},
+        ],
+        "mixture": [
+            {"id": "general", "source_id": source_id},
+        ],
+        "content_policy": STRICT_CONTENT_POLICY,
+    }
+    with pytest.raises(TurkishCorpusError, match="manually disqualified"):
+        production._validate_production_source_eligibility(policy)
+
+    # Merely preserving a disqualified source in an immutable audit policy is
+    # allowed; the production gate rejects it only if the mixture selects it.
+    policy["mixture"] = [
+        {"id": "general", "source_id": "fineweb2_hq_tr"},
+    ]
+    production._validate_production_source_eligibility(policy)
+
+
+@pytest.mark.parametrize(
+    "text_origin",
+    [
+        None,
+        "ocr",
+        "pdf_extraction",
+        "mixed",
+        "unknown",
+        "Born_Digital_Text",
+        ["born_digital_text"],
+        {"kind": "born_digital_text"},
+    ],
+)
+def test_production_source_gate_rejects_non_native_or_undeclared_text_origin(
+    text_origin: object,
+) -> None:
+    source = {"id": "candidate"}
+    if text_origin is not None:
+        source["text_origin"] = text_origin
+    policy = {
+        "sources": [source],
+        "mixture": [{"id": "general", "source_id": "candidate"}],
+        "content_policy": STRICT_CONTENT_POLICY,
+    }
+    with pytest.raises(TurkishCorpusError, match="PDF-extracted, OCR-derived"):
+        production._validate_production_source_eligibility(policy)
+
+
+@pytest.mark.parametrize("text_origin", ["born_digital_text", "structured_text"])
+def test_production_source_gate_accepts_explicit_native_text_origin(
+    text_origin: str,
+) -> None:
+    production._validate_production_source_eligibility(
+        {
+            "sources": [{"id": "candidate", "text_origin": text_origin}],
+            "mixture": [{"id": "general", "source_id": "candidate"}],
+            "content_policy": STRICT_CONTENT_POLICY,
+        }
+    )
+
+
+def test_production_source_gate_rejects_selected_source_absent_from_inventory() -> None:
+    with pytest.raises(TurkishCorpusError, match="absent from its inventory"):
+        production._validate_production_source_eligibility(
+            {
+                "sources": [
+                    {"id": "native", "text_origin": "born_digital_text"}
+                ],
+                "mixture": [{"id": "general", "source_id": "missing"}],
+                "content_policy": STRICT_CONTENT_POLICY,
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    "mixture",
+    [None, {}, "candidate", [], [{}], [{"source_id": ""}], [{"source_id": []}]],
+)
+def test_production_source_gate_rejects_malformed_mixture(mixture: object) -> None:
+    with pytest.raises(TurkishCorpusError, match="mixture"):
+        production._validate_production_source_eligibility(
+            {
+                "sources": [
+                    {"id": "candidate", "text_origin": "born_digital_text"}
+                ],
+                "mixture": mixture,
+                "content_policy": STRICT_CONTENT_POLICY,
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("max_unicode_replacement_characters", None),
+        ("max_unicode_replacement_characters", 1),
+        ("max_mojibake_sequence_hits", -1),
+        ("max_c1_control_characters", False),
+        ("max_unicode_surrogate_characters", "0"),
+    ],
+)
+def test_production_source_gate_requires_zero_text_integrity_limits(
+    key: str, value: object
+) -> None:
+    content_policy = dict(STRICT_CONTENT_POLICY)
+    if value is None:
+        content_policy.pop(key)
+    else:
+        content_policy[key] = value
+    with pytest.raises(TurkishCorpusError, match=key):
+        production._validate_production_source_eligibility(
+            {
+                "sources": [
+                    {"id": "candidate", "text_origin": "born_digital_text"}
+                ],
+                "mixture": [{"id": "general", "source_id": "candidate"}],
+                "content_policy": content_policy,
+            }
+        )

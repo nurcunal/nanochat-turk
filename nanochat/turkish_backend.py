@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import gzip
 import hashlib
+import heapq
 import importlib.metadata
 import json
 import math
@@ -26,13 +27,16 @@ import os
 import re
 import resource
 import shutil
+import stat
 import struct
+import subprocess
 import sys
 import tempfile
 import time
 import urllib.parse
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -62,10 +66,15 @@ from nanochat.turkish_corpus import (
     MACOCU_SOURCE_URL,
     SOURCE_RECEIPT_KIND,
     TurkishCorpusError,
+    VerifiedStagedArtifact,
+    _qa_document_metrics,
+    audit_policy_binding,
     audit_document,
     canonical_text_hash,
+    dominant_register,
     infer_wds_bin,
     iter_input_records,
+    load_corpus_policy,
     normalize_document,
     register_scores,
     select_mixture_bucket,
@@ -92,12 +101,26 @@ MIXTURE_QUALITY_APPROVAL_KIND = (
 )
 MACOCU_PREPARATION_KIND = "turkish_macocu_genre_preparation"
 
+OBJECT_SOURCE_QUALITY_SEMANTICS = (
+    "maximum_finite_source_quality_field_excluding_lid_confidence_v1"
+)
+CLUSTER_WINNER_POLICY = (
+    "minimum_source_priority_then_negative_attested_source_quality_else_zero_"
+    "then_stable_id_v2"
+)
+CLUSTER_QUALITY_SCORE_SEMANTICS = (
+    "source_quality_only_when_object_receipt_attests_else_zero_v2"
+)
+
 RESOURCE_BILLING_CONTRACT = {
     "scheduler_partition": "cpu2dq",
     "billable_cpus_per_job": 128,
     "accounting_basis": "projected_stage_wall_seconds_times_billable_cpus_per_job",
     "process_cpu_seconds_role": "efficiency_diagnostic_only",
 }
+RESOURCE_PEAK_DISK_MODEL = (
+    "raw_largest+candidates+signatures+dups+backend_output_v2"
+)
 
 DATATROVE_VERSION = "0.10.0"
 DATATROVE_REVISION = "a649de79c14a550dc90f48a15c025f2dd3fd3b57"
@@ -137,6 +160,7 @@ _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _SHA1_RE = re.compile(r"^[0-9a-f]{40}$")
 _MD5_RE = re.compile(r"^[0-9a-f]{32}$")
 _RFC3339_UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+_QUALITY_WORD_RE = re.compile(r"[^\W\d_]+", re.UNICODE)
 _PHONE_RE = re.compile(
     r"(?<!\d)(?:\+?90[ .()/-]*|0)?(?:5\d{2})[ .()/-]*\d{3}[ .()/-]*\d{2}[ .()/-]*\d{2}(?!\d)"
 )
@@ -150,6 +174,16 @@ _HARMFUL_SIGNAL_RE = re.compile(
     r"ırkçı(?:lık)?|intihar|kendine\s+zarar|bomba\s+yapımı|silahlı\s+saldırı)\b",
     re.IGNORECASE,
 )
+
+# Manual-review evidence is intentionally small.  These caps make every
+# hash/parse operation an immutable in-memory snapshot and fail closed if a
+# malformed receipt attempts to turn evidence validation into an unbounded
+# read.  Cluster Parquets use a separate stable-descriptor streaming path.
+_MAX_RECEIPT_EVIDENCE_BYTES = 32 * 1024 * 1024
+_MAX_AUDIT_REPORT_BYTES = 64 * 1024 * 1024
+_MAX_EXAMPLE_EVIDENCE_BYTES = 128 * 1024 * 1024
+_MAX_CLUSTER_PARQUET_BYTES = 64 * 1024**3
+_MAX_CLUSTER_PARQUET_TOTAL_BYTES = 128 * 1024**3
 
 
 def _policy_sha256(policy: Mapping[str, Any]) -> str:
@@ -179,16 +213,229 @@ def _nested_get(record: Mapping[str, Any], field: str | None, default: Any = "")
     return value
 
 
-def _file_record(path: Path, *, root: Path | None = None, rows: int | None = None) -> dict[str, Any]:
+def _stat_fingerprint(value: os.stat_result) -> tuple[int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
+
+
+def _descriptor_sha256(handle: Any) -> str:
+    handle.seek(0)
+    digest = hashlib.sha256()
+    for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
+        digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _safe_run_artifact_path(run_root: Path, raw: Any, label: str) -> Path:
+    relative_raw = str(raw or "")
+    relative = Path(relative_raw)
+    if (
+        not relative_raw
+        or urllib.parse.urlparse(relative_raw).scheme
+        or relative.is_absolute()
+        or ".." in relative.parts
+    ):
+        raise TurkishCorpusError(f"{label} path is unsafe")
+    root = run_root.resolve()
+    unresolved = root / relative
+    resolved = unresolved.resolve()
+    if root not in resolved.parents:
+        raise TurkishCorpusError(f"{label} path escapes the run directory")
+    current = unresolved
+    while current != root:
+        if current.is_symlink():
+            raise TurkishCorpusError(f"{label} path is symlinked")
+        current = current.parent
+    return resolved
+
+
+def _artifact_content_contract(
+    record: Mapping[str, Any],
+    label: str,
+    *,
+    max_bytes: int | None = None,
+) -> tuple[int, str]:
+    size = record.get("size_bytes")
+    digest = str(record.get("sha256") or "")
+    if (
+        isinstance(size, bool)
+        or not isinstance(size, int)
+        or size < 0
+        or (max_bytes is not None and size > max_bytes)
+        or not _SHA256_RE.fullmatch(digest)
+    ):
+        raise TurkishCorpusError(f"{label} content contract is invalid")
+    return size, digest
+
+
+def _assert_descriptor_path_binding(
+    path: Path, descriptor: int, label: str
+) -> None:
+    try:
+        current = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        raise TurkishCorpusError(f"{label} path changed during consumption") from exc
+    descriptor_stat = os.fstat(descriptor)
+    if (
+        not stat.S_ISREG(current.st_mode)
+        or (current.st_dev, current.st_ino)
+        != (descriptor_stat.st_dev, descriptor_stat.st_ino)
+    ):
+        raise TurkishCorpusError(f"{label} path changed during consumption")
+
+
+@contextmanager
+def _open_verified_regular_artifact(
+    path: Path,
+    *,
+    label: str,
+    expected_size: int,
+    expected_sha256: str,
+) -> Iterator[Any]:
+    """Verify and consume one path through a single stable descriptor.
+
+    The same ``O_NOFOLLOW`` descriptor supplies the pre-consumption digest,
+    the consumer's bytes, and the post-consumption digest.  The final inode
+    binding additionally rejects rename/path-substitution races.
+    """
+
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise TurkishCorpusError(f"{label} is missing or unsafe") from exc
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode) or before.st_size != expected_size:
+            raise TurkishCorpusError(f"{label} size drift")
+        _assert_descriptor_path_binding(path, descriptor, label)
+        with os.fdopen(descriptor, "rb", closefd=False) as handle:
+            if _descriptor_sha256(handle) != expected_sha256:
+                raise TurkishCorpusError(f"{label} hash drift")
+            _assert_descriptor_path_binding(path, descriptor, label)
+            if _stat_fingerprint(os.fstat(descriptor)) != _stat_fingerprint(before):
+                raise TurkishCorpusError(f"{label} changed during verification")
+            handle.seek(0)
+            try:
+                yield handle
+            finally:
+                if _descriptor_sha256(handle) != expected_sha256:
+                    raise TurkishCorpusError(f"{label} changed during consumption")
+                _assert_descriptor_path_binding(path, descriptor, label)
+                after = os.fstat(descriptor)
+                if _stat_fingerprint(after) != _stat_fingerprint(before):
+                    raise TurkishCorpusError(f"{label} changed during consumption")
+    finally:
+        os.close(descriptor)
+
+
+@contextmanager
+def _open_verified_run_artifact(
+    run_root: Path,
+    record: Mapping[str, Any],
+    *,
+    label: str,
+    max_bytes: int | None = None,
+) -> Iterator[tuple[Path, Any]]:
+    size, digest = _artifact_content_contract(record, label, max_bytes=max_bytes)
+    path = _safe_run_artifact_path(run_root, record.get("path"), label)
+    with _open_verified_regular_artifact(
+        path,
+        label=label,
+        expected_size=size,
+        expected_sha256=digest,
+    ) as handle:
+        yield path, handle
+
+
+def _descriptor_file_record(
+    path: Path, *, root: Path | None = None, rows: int | None = None
+) -> dict[str, Any]:
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise TurkishCorpusError(f"cannot record unsafe artifact: {path}") from exc
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            raise TurkishCorpusError(f"artifact is not a regular file: {path}")
+        _assert_descriptor_path_binding(path, descriptor, str(path))
+        with os.fdopen(descriptor, "rb", closefd=False) as handle:
+            digest = _descriptor_sha256(handle)
+            _assert_descriptor_path_binding(path, descriptor, str(path))
+        after = os.fstat(descriptor)
+        if _stat_fingerprint(after) != _stat_fingerprint(before):
+            raise TurkishCorpusError(f"artifact changed while recorded: {path}")
+        _assert_descriptor_path_binding(path, descriptor, str(path))
+    finally:
+        os.close(descriptor)
     relative = path.relative_to(root).as_posix() if root is not None else path.name
     result: dict[str, Any] = {
         "path": relative,
-        "size_bytes": path.stat().st_size,
-        "sha256": file_sha256(path),
+        "size_bytes": before.st_size,
+        "sha256": digest,
     }
     if rows is not None:
         result["rows"] = rows
     return result
+
+
+def _parquet_file_record(
+    path: Path,
+    *,
+    root: Path,
+    expected_rows: int,
+    expected_columns: set[str] | None = None,
+) -> dict[str, Any]:
+    """Record a newly written Parquet from the descriptor used for metadata."""
+
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise TurkishCorpusError(f"cannot record unsafe Parquet: {path}") from exc
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            raise TurkishCorpusError(f"Parquet is not a regular file: {path}")
+        _assert_descriptor_path_binding(path, descriptor, str(path))
+        with os.fdopen(descriptor, "rb", closefd=False) as handle:
+            digest = _descriptor_sha256(handle)
+            _assert_descriptor_path_binding(path, descriptor, str(path))
+            handle.seek(0)
+            parquet = pq.ParquetFile(handle)
+            if parquet.metadata.num_rows != expected_rows:
+                raise TurkishCorpusError(f"Parquet row-count drift: {path}")
+            if (
+                expected_columns is not None
+                and set(parquet.schema_arrow.names) != expected_columns
+            ):
+                raise TurkishCorpusError(f"Parquet schema drift: {path}")
+            if _descriptor_sha256(handle) != digest:
+                raise TurkishCorpusError(f"Parquet changed while recorded: {path}")
+            _assert_descriptor_path_binding(path, descriptor, str(path))
+        after = os.fstat(descriptor)
+        if _stat_fingerprint(after) != _stat_fingerprint(before):
+            raise TurkishCorpusError(f"Parquet changed while recorded: {path}")
+        _assert_descriptor_path_binding(path, descriptor, str(path))
+    finally:
+        os.close(descriptor)
+    return {
+        "path": path.relative_to(root).as_posix(),
+        "size_bytes": before.st_size,
+        "sha256": digest,
+        "rows": expected_rows,
+    }
+
+
+def _file_record(path: Path, *, root: Path | None = None, rows: int | None = None) -> dict[str, Any]:
+    return _descriptor_file_record(path, root=root, rows=rows)
 
 
 def _file_sha256_md5(path: Path) -> tuple[str, str]:
@@ -199,15 +446,6 @@ def _file_sha256_md5(path: Path) -> tuple[str, str]:
             sha256.update(chunk)
             md5.update(chunk)
     return sha256.hexdigest(), md5.hexdigest()
-
-
-def _uri_file_record(path: Path, *, rows: int) -> dict[str, Any]:
-    return {
-        "uri": path.resolve().as_uri(),
-        "checksum": {"algorithm": "sha256", "value": file_sha256(path)},
-        "size_bytes": path.stat().st_size,
-        "rows": rows,
-    }
 
 
 def _elapsed(start_wall: float, start_cpu: float) -> dict[str, float]:
@@ -504,7 +742,7 @@ def prepare_macocu_genre(
         upstream_dir.mkdir()
         shards_dir.mkdir()
         upstream_path = upstream_dir / "MaCoCu-Genre.tr.jsonl.gz"
-        staged = _stage_source_object(
+        staged, staged_artifact = _stage_source_object(
             {
                 "uri": MACOCU_SOURCE_URL,
                 "size_bytes": MACOCU_SIZE_BYTES,
@@ -549,7 +787,8 @@ def prepare_macocu_genre(
             shard_bytes = 0
             shard_genres = Counter()
 
-        with gzip.open(upstream_path, "rb") as source_stream:
+        staged_reader = staged_artifact.open()
+        with gzip.GzipFile(fileobj=staged_reader, mode="rb") as source_stream:
             for line_number, raw in enumerate(source_stream, 1):
                 if not raw.strip():
                     raise TurkishCorpusError(f"MaCoCu row {line_number} is blank")
@@ -580,6 +819,8 @@ def prepare_macocu_genre(
                 total_genres[genre] += 1
                 total_rows += 1
                 total_uncompressed += len(encoded)
+        staged_reader.close()
+        staged_artifact.close()
         close_shard()
         if total_rows != MACOCU_EXPECTED_ROWS:
             raise TurkishCorpusError(
@@ -1380,6 +1621,7 @@ def production_processing_binding(policy: Mapping[str, Any]) -> dict[str, Any]:
             "symbol_lines": {"symbols_to_remove": ["|"], "replace_char": "\n"},
         },
     }
+    local_audit = audit_policy_binding(policy["content_policy"])
     additions = {
         "independent_glotlid": {
             "required_top_label": "tur_Latn",
@@ -1408,8 +1650,37 @@ def production_processing_binding(policy: Mapping[str, Any]) -> dict[str, Any]:
             ).hexdigest(),
             "action": "measure_and_manual_qa_not_automatic_semantic_rewrite",
         },
-        "local_policy_audit": "nanochat.turkish_corpus.audit_document after safe formatting",
-        "no_code": True,
+        "local_policy_audit": local_audit,
+        "no_code": {
+            "enforced": True,
+            "code_line_pattern_sha256": local_audit["patterns"]["code_line"][
+                "sha256"
+            ],
+            "programming_term_pattern_sha256": local_audit["patterns"][
+                "programming_term"
+            ]["sha256"],
+            "scalar_assignment_line_pattern_sha256": local_audit["patterns"][
+                "scalar_assignment_line"
+            ]["sha256"],
+            "minimum_consecutive_scalar_assignment_lines": local_audit[
+                "structural_thresholds"
+            ]["minimum_consecutive_scalar_assignment_lines"],
+            "minimum_compact_scalar_assignments": local_audit[
+                "structural_thresholds"
+            ]["minimum_compact_scalar_assignments"],
+            "scalar_assignment_classifier": local_audit[
+                "structural_thresholds"
+            ]["scalar_assignment_classifier"],
+            "max_code_line_fraction": policy["content_policy"][
+                "max_code_line_fraction"
+            ],
+            "max_code_punctuation_fraction": policy["content_policy"][
+                "max_code_punctuation_fraction"
+            ],
+            "max_programming_term_hits": policy["content_policy"][
+                "max_programming_term_hits"
+            ],
+        },
     }
     body = {
         "implementation": configured["implementation"],
@@ -1418,6 +1689,151 @@ def production_processing_binding(policy: Mapping[str, Any]) -> dict[str, Any]:
     }
     return body | {
         "binding_sha256": hashlib.sha256(canonical_json(body).encode("utf-8")).hexdigest()
+    }
+
+
+def production_code_identity() -> dict[str, Any]:
+    """Return the exact executable-file identity used by the cluster stage."""
+
+    root = Path(__file__).resolve().parents[1]
+    critical = (
+        "nanochat/turkish_backend.py",
+        "nanochat/turkish_corpus.py",
+    )
+    files = [
+        {
+            "path": relative,
+            "size_bytes": (root / relative).stat().st_size,
+            "sha256": file_sha256(root / relative),
+        }
+        for relative in critical
+    ]
+    try:
+        commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise TurkishCorpusError("cannot resolve production code commit") from exc
+    if not _SHA1_RE.fullmatch(commit):
+        raise TurkishCorpusError("production code commit is not a full SHA-1")
+    body = {
+        "identity_kind": "git_commit_plus_critical_file_sha256_v1",
+        "git_commit": commit,
+        "critical_files": files,
+    }
+    return body | {
+        "binding_sha256": hashlib.sha256(
+            canonical_json(body).encode("utf-8")
+        ).hexdigest()
+    }
+
+
+def validate_production_code_identity(identity: Any) -> dict[str, Any]:
+    """Validate a recorded commit while matching the current critical bytes."""
+
+    if not isinstance(identity, Mapping):
+        raise TurkishCorpusError("production code identity is missing")
+    current = production_code_identity()
+    body = {key: value for key, value in identity.items() if key != "binding_sha256"}
+    if (
+        identity.get("identity_kind")
+        != "git_commit_plus_critical_file_sha256_v1"
+        or not _SHA1_RE.fullmatch(str(identity.get("git_commit", "")))
+        or identity.get("critical_files") != current["critical_files"]
+        or identity.get("binding_sha256")
+        != hashlib.sha256(canonical_json(body).encode("utf-8")).hexdigest()
+    ):
+        raise TurkishCorpusError("production code identity drift")
+    return dict(identity)
+
+
+def _sample_launch_bindings(
+    run_root: Path,
+    *,
+    plan: Mapping[str, Any],
+    calibration: Mapping[str, Any],
+    objects: Sequence[Mapping[str, Any]],
+    buckets: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Validate and bind the one packed object and bucket sample launch."""
+
+    def one(pattern: str, label: str) -> Path:
+        paths = sorted(run_root.glob(pattern))
+        if len(paths) != 1 or paths[0].is_symlink() or not paths[0].is_file():
+            raise TurkishCorpusError(f"expected exactly one safe {label} receipt")
+        return paths[0]
+
+    def load(path: Path, label: str) -> tuple[dict[str, Any], str, dict[str, Any]]:
+        raw = _read_bounded_regular_file_snapshot(
+            path, label=label, max_bytes=_MAX_RECEIPT_EVIDENCE_BYTES
+        )
+        value = _load_json_snapshot(raw, label)
+        if not isinstance(value, dict):
+            raise TurkishCorpusError(f"{label} must contain a JSON object")
+        digest = verify_manifest_hash(value)
+        return value, digest, {
+            "path": path.relative_to(run_root).as_posix(),
+            "size_bytes": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+            "canonical_sha256": digest,
+        }
+
+    object_path = one(
+        "packed_sample_launches/job*/launch_receipt.json", "object-sample launch"
+    )
+    object_launch, object_sha, object_record = load(
+        object_path, "object-sample launch receipt"
+    )
+    expected_ranks = [int(item["rank"]) for item in objects]
+    object_records = object_launch.get("object_receipts")
+    if (
+        object_launch.get("schema_version") != "1.0"
+        or object_launch.get("kind")
+        != "turkish_packed_resource_sample_launch_receipt"
+        or object_launch.get("sample_mode") is not True
+        or object_launch.get("all_lanes_completed") is not True
+        or object_launch.get("policy_sha256") != plan["policy_sha256"]
+        or object_launch.get("source_plan_sha256") != plan["canonical_sha256"]
+        or object_launch.get("calibration_sha256")
+        != calibration["canonical_sha256"]
+        or not isinstance(object_records, list)
+        or [item.get("rank") for item in object_records] != expected_ranks
+        or [item.get("canonical_sha256") for item in object_records]
+        != [item["canonical_sha256"] for item in objects]
+    ):
+        raise TurkishCorpusError("packed object-sample launch binding drift")
+
+    bucket_path = one(
+        "packed_bucket_launches/job*/launch_receipt.json", "bucket-sample launch"
+    )
+    bucket_launch, bucket_sha, bucket_record = load(
+        bucket_path, "bucket-sample launch receipt"
+    )
+    bucket_records = bucket_launch.get("backend_bucket_receipts")
+    if (
+        bucket_launch.get("schema_version") != "1.0"
+        or bucket_launch.get("kind") != "turkish_packed_sample_bucket_launch_receipt"
+        or bucket_launch.get("sample_mode") is not True
+        or bucket_launch.get("all_buckets_completed") is not True
+        or bucket_launch.get("policy_sha256") != plan["policy_sha256"]
+        or bucket_launch.get("source_plan_sha256") != plan["canonical_sha256"]
+        or bucket_launch.get("calibration_sha256")
+        != calibration["canonical_sha256"]
+        or bucket_launch.get("object_sample_launch_receipt_sha256") != object_sha
+        or not isinstance(bucket_records, list)
+        or [item.get("bucket_rank") for item in bucket_records] != list(range(14))
+        or [item.get("canonical_sha256") for item in bucket_records]
+        != [item["canonical_sha256"] for item in buckets]
+    ):
+        raise TurkishCorpusError("packed bucket-sample launch binding drift")
+
+    return {
+        "object": object_record,
+        "bucket": bucket_record,
     }
 
 
@@ -1707,11 +2123,19 @@ def _document_lid_metrics(
     }
 
 
-def _quality_score(record: Mapping[str, Any], lid_probability: float) -> float:
-    candidates: list[float] = [lid_probability]
+def _source_quality_score(record: Mapping[str, Any]) -> float:
+    """Return source-provided quality without conflating it with Turkish LID.
+
+    GlotLID confidence answers a language-identification question.  It is not a
+    semantic-quality score and therefore must not decide same-priority MinHash
+    winners.  ``quality_score`` remains the on-disk compatibility field, but
+    its value is now strictly the best finite source-quality signal (or zero
+    when the source exposes none).
+    """
+
+    candidates: list[float] = [0.0]
     for field in (
         "quality_score",
-        "score",
         "educational_score",
         "fineweb2_hq_score",
     ):
@@ -1724,6 +2148,29 @@ def _quality_score(record: Mapping[str, Any], lid_probability: float) -> float:
     return max(candidates)
 
 
+def _attested_source_quality(
+    row: Mapping[str, Any], object_receipt: Mapping[str, Any]
+) -> float:
+    """Return source quality only when the producing receipt attests its semantics.
+
+    Object candidates produced before the source/LID separation used the same
+    compatibility column but sometimes populated it with GlotLID confidence.
+    Missing object-receipt semantics therefore fail closed to a neutral zero;
+    they never receive a deduplication advantage and are rewritten to zero in
+    the merged output.
+    """
+
+    if object_receipt.get("quality_score_semantics") != OBJECT_SOURCE_QUALITY_SEMANTICS:
+        return 0.0
+    try:
+        score = float(row["quality_score"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise TurkishCorpusError("attested candidate quality_score is invalid") from exc
+    if not math.isfinite(score) or score < 0.0:
+        raise TurkishCorpusError("attested candidate quality_score must be finite and non-negative")
+    return score
+
+
 def _redact_sample_text(text: str) -> str:
     text = _EMAIL_RE.sub("<email>", text)
     text = _IP_RE.sub("<ip>", text)
@@ -1732,7 +2179,7 @@ def _redact_sample_text(text: str) -> str:
 
 def _stage_source_object(
     item: Mapping[str, Any], destination: Path, *, request_get: Any = requests.get
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], VerifiedStagedArtifact]:
     uri = str(item["uri"])
     parsed = urllib.parse.urlparse(uri)
     sha256 = hashlib.sha256()
@@ -1750,56 +2197,108 @@ def _stage_source_object(
         stream = response.iter_content(chunk_size=8 * 1024 * 1024)
     else:
         raise TurkishCorpusError(f"unsupported source object scheme: {uri}")
+    flags = (
+        os.O_RDWR
+        | os.O_CREAT
+        | os.O_EXCL
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    descriptor = os.open(destination, flags, 0o600)
     try:
-        with destination.open("wb") as output:
-            iterable = iter(lambda: stream.read(8 * 1024 * 1024), b"") if response is None else stream
-            for chunk in iterable:
-                if not chunk:
-                    continue
-                sha256.update(chunk)
-                md5.update(chunk)
-                output.write(chunk)
-                size += len(chunk)
-            output.flush()
-            os.fsync(output.fileno())
-    finally:
-        if response is None:
-            stream.close()
-        else:
-            response.close()
-    if size != item["size_bytes"]:
-        raise TurkishCorpusError(
-            f"source size drift for {uri}: expected {item['size_bytes']}, got {size}"
-        )
-    observed = {"sha256": sha256.hexdigest(), "md5": md5.hexdigest()}
-    for expected in item["expected_checksums"]:
-        if observed[expected["algorithm"]] != expected["value"]:
+        try:
+            with os.fdopen(os.dup(descriptor), "wb") as output:
+                iterable = (
+                    iter(lambda: stream.read(8 * 1024 * 1024), b"")
+                    if response is None
+                    else stream
+                )
+                for chunk in iterable:
+                    if not chunk:
+                        continue
+                    sha256.update(chunk)
+                    md5.update(chunk)
+                    output.write(chunk)
+                    size += len(chunk)
+                output.flush()
+                os.fsync(output.fileno())
+        finally:
+            if response is None:
+                stream.close()
+            else:
+                response.close()
+        if size != item["size_bytes"]:
             raise TurkishCorpusError(
-                f"source checksum drift for {uri} ({expected['algorithm']})"
+                f"source size drift for {uri}: expected {item['size_bytes']}, got {size}"
             )
-    return {
-        "uri": uri,
-        "size_bytes": size,
-        "sha256": observed["sha256"],
-        "upstream_checksums_verified": list(item["expected_checksums"]),
-    }
+        observed = {"sha256": sha256.hexdigest(), "md5": md5.hexdigest()}
+        for expected in item["expected_checksums"]:
+            if observed[expected["algorithm"]] != expected["value"]:
+                raise TurkishCorpusError(
+                    f"source checksum drift for {uri} ({expected['algorithm']})"
+                )
+        record = {
+            "uri": uri,
+            "size_bytes": size,
+            "sha256": observed["sha256"],
+            "upstream_checksums_verified": list(item["expected_checksums"]),
+        }
+        artifact = VerifiedStagedArtifact(
+            destination,
+            descriptor,
+            expected_size=size,
+            expected_sha256=observed["sha256"],
+        )
+        return record, artifact
+    except Exception:
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+        destination.unlink(missing_ok=True)
+        raise
 
 
 def _signature_files(root: Path, rank: int) -> list[Path]:
     return [root / f"bucket_{bucket:03d}" / f"{rank:05d}.minhash.sig" for bucket in range(14)]
 
 
-def _iter_candidate_documents(path: Path) -> Iterator[Any]:
+def _iter_candidate_documents(
+    run_root: Path, record: Mapping[str, Any], *, label: str
+) -> Iterator[Any]:
     try:
         from datatrove.data import Document
     except ImportError as exc:  # pragma: no cover
         raise TurkishCorpusError("DataTrove Document type is unavailable") from exc
-    parquet = pq.ParquetFile(path)
-    index = 0
-    for batch in parquet.iter_batches(batch_size=2048, columns=["text", "document_id"]):
-        for row in batch.to_pylist():
-            yield Document(text=row["text"], id=row["document_id"])
-            index += 1
+    with _open_verified_run_artifact(
+        run_root,
+        record,
+        label=label,
+        max_bytes=_MAX_CLUSTER_PARQUET_BYTES,
+    ) as (_path, handle):
+        parquet = pq.ParquetFile(handle)
+        rows_expected = record.get("rows")
+        if (
+            isinstance(rows_expected, bool)
+            or not isinstance(rows_expected, int)
+            or rows_expected < 0
+            or parquet.metadata.num_rows != rows_expected
+            or not {"text", "document_id"} <= set(parquet.schema_arrow.names)
+        ):
+            raise TurkishCorpusError(f"{label} Parquet metadata drift")
+        rows_seen = 0
+        for batch in parquet.iter_batches(
+            batch_size=2048, columns=["text", "document_id"]
+        ):
+            for row in batch.to_pylist():
+                rows_seen += 1
+                if not isinstance(row.get("text"), str) or not isinstance(
+                    row.get("document_id"), str
+                ):
+                    raise TurkishCorpusError(f"{label} row schema drift")
+                yield Document(text=row["text"], id=row["document_id"])
+        if rows_seen != rows_expected:
+            raise TurkishCorpusError(f"{label} Parquet row scan drift")
 
 
 def _validate_object_receipt(
@@ -1819,28 +2318,85 @@ def _validate_object_receipt(
         raise TurkishCorpusError("object receipt calibration binding drift")
     if receipt.get("sample_mode") is not sample_mode:
         raise TurkishCorpusError("object receipt sample/full mode drift")
+    if (
+        "quality_score_semantics" in receipt
+        and receipt.get("quality_score_semantics") != OBJECT_SOURCE_QUALITY_SEMANTICS
+    ):
+        raise TurkishCorpusError("object receipt quality-score semantics drift")
     rank = receipt.get("rank")
     if not isinstance(rank, int) or rank < 0 or rank >= len(plan["objects"]):
         raise TurkishCorpusError("object receipt rank is invalid")
     expected = plan["objects"][rank]
     if receipt.get("source_id") != expected["source_id"] or receipt.get("source_uri") != expected["uri"]:
         raise TurkishCorpusError("object receipt source identity drift")
-    output = _require_mapping(receipt.get("candidate_file"), "candidate_file")
-    path = run_root / output["path"]
+    raw_object = _require_mapping(receipt.get("raw_object"), "raw_object")
+    if set(raw_object) != {
+        "uri",
+        "size_bytes",
+        "sha256",
+        "upstream_checksums_verified",
+    }:
+        raise TurkishCorpusError("object receipt raw-object shape drift")
     if (
-        path.is_symlink()
-        or path.stat().st_size != output["size_bytes"]
-        or file_sha256(path) != output["sha256"]
-        or pq.ParquetFile(path).metadata.num_rows != output["rows"]
+        raw_object.get("uri") != expected["uri"]
+        or raw_object.get("size_bytes") != expected["size_bytes"]
+        or not _SHA256_RE.fullmatch(str(raw_object.get("sha256", "")))
+        or raw_object.get("upstream_checksums_verified")
+        != expected["expected_checksums"]
     ):
-        raise TurkishCorpusError("object candidate file drift")
+        raise TurkishCorpusError("object receipt raw-object provenance drift")
+    expected_sha256 = next(
+        (
+            item["value"]
+            for item in expected["expected_checksums"]
+            if item["algorithm"] == "sha256"
+        ),
+        None,
+    )
+    if expected_sha256 is not None and raw_object["sha256"] != expected_sha256:
+        raise TurkishCorpusError("object receipt raw-object SHA-256 drift")
+    output = _require_mapping(receipt.get("candidate_file"), "candidate_file")
+    rows_expected = output.get("rows")
+    if (
+        isinstance(rows_expected, bool)
+        or not isinstance(rows_expected, int)
+        or rows_expected < 0
+    ):
+        raise TurkishCorpusError("object candidate row contract drift")
+    with _open_verified_run_artifact(
+        run_root,
+        output,
+        label="object candidate file",
+        max_bytes=_MAX_CLUSTER_PARQUET_BYTES,
+    ) as (_path, handle):
+        parquet = pq.ParquetFile(handle)
+        if (
+            parquet.metadata.num_rows != rows_expected
+            or set(parquet.schema_arrow.names) != set(_INTERNAL_SCHEMA.names)
+        ):
+            raise TurkishCorpusError("object candidate file drift")
     signatures = receipt.get("signature_files")
     if not isinstance(signatures, list) or len(signatures) != 14:
         raise TurkishCorpusError("object receipt must contain fourteen signatures")
-    for record in signatures:
-        sig_path = run_root / record["path"]
-        if sig_path.stat().st_size != record["size_bytes"] or file_sha256(sig_path) != record["sha256"]:
-            raise TurkishCorpusError("object MinHash signature drift")
+    expected_paths = {
+        path.relative_to(run_root).as_posix()
+        for path in _signature_files(run_root / "signatures", rank)
+    }
+    observed_paths = {
+        str(record.get("path") or "")
+        for record in signatures
+        if isinstance(record, Mapping)
+    }
+    if observed_paths != expected_paths:
+        raise TurkishCorpusError("object MinHash signature path drift")
+    for index, raw_record in enumerate(signatures):
+        record = _require_mapping(raw_record, "signature file")
+        with _open_verified_run_artifact(
+            run_root,
+            record,
+            label=f"object MinHash signature {index}",
+        ):
+            pass
 
 
 def process_source_object(
@@ -1873,6 +2429,7 @@ def process_source_object(
             plan=plan,
             policy=policy,
             calibration=calibration,
+            approval_path=resource_approval_path,
         )
     run_root = Path(run_dir)
     object_dir = run_root / "objects" / f"{rank:05d}"
@@ -1909,7 +2466,9 @@ def process_source_object(
     with tempfile.TemporaryDirectory(prefix=f"turkish-{rank:05d}-", dir=scratch_parent) as temporary:
         staged = Path(temporary) / f"source{suffixes}"
         download_wall, download_cpu = time.monotonic(), time.process_time()
-        source_file = _stage_source_object(item, staged, request_get=request_get)
+        source_file, staged_artifact = _stage_source_object(
+            item, staged, request_get=request_get
+        )
         download_telemetry = _elapsed(download_wall, download_cpu)
         model = _load_glotlid_model(Path(model_path), policy)
         candidate_path = object_dir / "candidates.parquet"
@@ -1918,7 +2477,7 @@ def process_source_object(
         characters_seen = 0
         bytes_seen = 0
         candidate_chars = 0
-        for row_index, record in enumerate(iter_input_records(staged)):
+        for row_index, record in enumerate(iter_input_records(staged_artifact)):
             counts["documents_seen"] += 1
             raw_text = _nested_get(record, adapter.get("text_field"), "")
             if not isinstance(raw_text, str):
@@ -2004,7 +2563,7 @@ def process_source_object(
             if item["source_id"] != "hplt3_tr":
                 scores = register_scores(record)
             web_register = canonical_json(scores) if scores else "{}"
-            score = _quality_score(record, lid["lid_probability"])
+            score = _source_quality_score(record)
             writer.add(
                 {
                     "text": text,
@@ -2037,7 +2596,14 @@ def process_source_object(
             )
             candidate_chars += len(text)
             counts["candidates"] += 1
+        staged_artifact.close()
         writer.close()
+        candidate_record = _parquet_file_record(
+            candidate_path,
+            root=run_root,
+            expected_rows=writer.count,
+            expected_columns=set(_INTERNAL_SCHEMA.names),
+        )
         score_telemetry = _elapsed(score_wall, score_cpu)
         removal_sample_record = _write_jsonl_atomic(
             object_dir / "removal_samples.jsonl", samples.rows()
@@ -2055,18 +2621,23 @@ def process_source_object(
             language=Languages.turkish__latn,
             skip_existing_sigs=False,
         )
-        signature_stage.run(
-            _iter_candidate_documents(candidate_path),
-            rank=rank,
-            world_size=len(plan["objects"]),
+        candidate_documents = _iter_candidate_documents(
+            run_root,
+            candidate_record,
+            label=f"object {rank} candidate signature input",
         )
+        try:
+            signature_stage.run(
+                candidate_documents,
+                rank=rank,
+                world_size=len(plan["objects"]),
+            )
+        finally:
+            candidate_documents.close()
         signature_telemetry = _elapsed(signature_wall, signature_cpu)
     signature_records = [
         _file_record(path, root=run_root) for path in _signature_files(signatures_root, rank)
     ]
-    candidate_record = _file_record(
-        candidate_path, root=run_root, rows=pq.ParquetFile(candidate_path).metadata.num_rows
-    )
     receipt = seal_manifest(
         {
             "schema_version": "1.0",
@@ -2077,6 +2648,7 @@ def process_source_object(
             "source_uri": item["uri"],
             "source_plan_sha256": plan["canonical_sha256"],
             "calibration_sha256": calibration["canonical_sha256"],
+            "quality_score_semantics": OBJECT_SOURCE_QUALITY_SEMANTICS,
             "raw_object": source_file,
             "candidate_file": candidate_record,
             "signature_files": signature_records,
@@ -2162,6 +2734,7 @@ def _validate_bucket_receipt(
     calibration: Mapping[str, Any],
     run_root: Path,
     sample_mode: bool,
+    objects: Sequence[Mapping[str, Any]],
 ) -> None:
     verify_manifest_hash(receipt)
     if receipt.get("kind") != BUCKET_RECEIPT_KIND or receipt.get("schema_version") != "1.0":
@@ -2170,17 +2743,173 @@ def _validate_bucket_receipt(
         receipt.get("source_plan_sha256") != plan["canonical_sha256"]
         or receipt.get("calibration_sha256") != calibration["canonical_sha256"]
         or receipt.get("sample_mode") is not sample_mode
+        or receipt.get("object_receipt_sha256")
+        != [item["canonical_sha256"] for item in objects]
     ):
         raise TurkishCorpusError("bucket receipt binding drift")
     rank = receipt.get("rank")
     if not isinstance(rank, int) or not 0 <= rank < 14:
         raise TurkishCorpusError("bucket rank must be in [0,14)")
     output = _require_mapping(receipt.get("output"), "bucket output")
-    path = run_root / output["path"]
-    if path.stat().st_size != output["size_bytes"] or file_sha256(path) != output["sha256"]:
-        raise TurkishCorpusError("DataTrove bucket output drift")
-    if output.get("duplicate_edges") != output["size_bytes"] // 16 or output["size_bytes"] % 16:
+    if output.get("path") != f"bucket_matches/{rank:05d}_00.dups":
+        raise TurkishCorpusError("DataTrove bucket output path drift")
+    size, _digest = _artifact_content_contract(output, "DataTrove bucket output")
+    if output.get("duplicate_edges") != size // 16 or size % 16:
         raise TurkishCorpusError("DataTrove .dups structural size drift")
+    with _open_verified_run_artifact(
+        run_root, output, label="DataTrove bucket output"
+    ):
+        pass
+
+
+class _DescriptorBinaryReader:
+    """Small seekable binary reader backed only by an already-open inode."""
+
+    def __init__(self, descriptor: int, path: str) -> None:
+        self._descriptor = os.dup(descriptor)
+        self._position = 0
+        self.path = path
+        self.size = os.fstat(self._descriptor).st_size
+        self.closed = False
+
+    def read(self, size: int = -1) -> bytes:
+        if self.closed:
+            raise ValueError("I/O operation on closed descriptor reader")
+        remaining = self.size - self._position
+        wanted = remaining if size is None or size < 0 else min(size, remaining)
+        if wanted <= 0:
+            return b""
+        data = os.pread(self._descriptor, wanted, self._position)
+        self._position += len(data)
+        return data
+
+    def readinto(self, buffer: Any) -> int:
+        data = self.read(len(buffer))
+        buffer[: len(data)] = data
+        return len(data)
+
+    def seek(self, offset: int, whence: int = os.SEEK_SET) -> int:
+        if self.closed:
+            raise ValueError("I/O operation on closed descriptor reader")
+        if whence == os.SEEK_SET:
+            position = offset
+        elif whence == os.SEEK_CUR:
+            position = self._position + offset
+        elif whence == os.SEEK_END:
+            position = self.size + offset
+        else:
+            raise ValueError("invalid whence")
+        if position < 0:
+            raise ValueError("negative seek position")
+        self._position = position
+        return position
+
+    def tell(self) -> int:
+        return self._position
+
+    def close(self) -> None:
+        if not self.closed:
+            os.close(self._descriptor)
+            self.closed = True
+
+    def __enter__(self) -> _DescriptorBinaryReader:
+        return self
+
+    def __exit__(self, _type: Any, _value: Any, _traceback: Any) -> None:
+        self.close()
+
+
+@contextmanager
+def _verified_signature_data_folder(
+    run_root: Path,
+    objects: Sequence[Mapping[str, Any]],
+    *,
+    bucket_rank: int,
+    data_folder_class: type,
+) -> Iterator[Any]:
+    """Give DataTrove a sealed inventory whose readers duplicate held FDs.
+
+    DataTrove's stock local folder reopens pathnames.  This adapter is still a
+    ``DataFolder`` instance (as required by ``get_datafolder``), but its
+    ``list_files`` comes only from the receipt and ``open`` returns a pread
+    reader over ``os.dup`` of the descriptor that was hashed.  No signature
+    pathname is consulted at the actual consumption point.
+    """
+
+    with ExitStack() as stack:
+        handles: dict[str, Any] = {}
+        expected_prefix = f"signatures/bucket_{bucket_rank:03d}/"
+        for object_receipt in objects:
+            expected_path = (
+                f"{expected_prefix}{int(object_receipt['rank']):05d}.minhash.sig"
+            )
+            logical_path = expected_path.removeprefix("signatures/")
+            matches = [
+                item
+                for item in object_receipt["signature_files"]
+                if isinstance(item, Mapping)
+                and str(item.get("path") or "") == expected_path
+            ]
+            if len(matches) != 1:
+                raise TurkishCorpusError(
+                    "object receipt does not identify exactly one bucket signature"
+                )
+            record = _require_mapping(matches[0], "bucket signature")
+            label = (
+                f"object {int(object_receipt['rank'])} MinHash bucket "
+                f"{bucket_rank} signature"
+            )
+            source_path, handle = stack.enter_context(
+                _open_verified_run_artifact(run_root, record, label=label)
+            )
+            if source_path.name != Path(expected_path).name:
+                raise TurkishCorpusError("verified signature filename drift")
+            handles[logical_path] = handle
+
+        class _DescriptorSignatureDataFolder(data_folder_class):
+            def __init__(self) -> None:
+                # DataTrove only uses list_files/open/open_files for this input.
+                # Deliberately do not initialize a path-backed filesystem.
+                self.path = f"descriptor://bucket_{bucket_rank:03d}"
+                self.auto_mkdir = False
+
+            def list_files(
+                self,
+                subdirectory: str = "",
+                recursive: bool = True,
+                glob_pattern: str | None = None,
+                include_directories: bool = False,
+            ) -> list[str]:
+                if (
+                    subdirectory != f"bucket_{bucket_rank:03d}"
+                    or recursive is not True
+                    or glob_pattern is not None
+                    or include_directories is not False
+                ):
+                    raise TurkishCorpusError(
+                        "DataTrove requested an unsealed signature inventory"
+                    )
+                return sorted(handles)
+
+            def open(
+                self,
+                path: str,
+                mode: str = "rb",
+                *args: Any,
+                **kwargs: Any,
+            ) -> Any:
+                if args or mode != "rb" or set(kwargs) - {"block_size"}:
+                    raise TurkishCorpusError(
+                        "DataTrove requested unsupported signature access"
+                    )
+                handle = handles.get(str(path))
+                if handle is None or handle.closed:
+                    raise TurkishCorpusError(
+                        "DataTrove requested an unattested signature path"
+                    )
+                return _DescriptorBinaryReader(handle.fileno(), str(path))
+
+        yield _DescriptorSignatureDataFolder()
 
 
 def run_datatrove_bucket(
@@ -2208,6 +2937,7 @@ def run_datatrove_bucket(
             plan=plan,
             policy=policy,
             calibration=calibration,
+            approval_path=resource_approval_path,
         )
     run_root = Path(run_dir)
     objects = _load_object_receipts(
@@ -2222,25 +2952,33 @@ def run_datatrove_bucket(
             calibration=calibration,
             run_root=run_root,
             sample_mode=sample_mode,
+            objects=objects,
         )
         return receipt
     output_root = run_root / "bucket_matches"
     output_root.mkdir(parents=True, exist_ok=True)
     receipt_path.parent.mkdir(parents=True, exist_ok=True)
     try:
+        from datatrove.io import DataFolder
         from datatrove.pipeline.dedup.minhash import MinhashDedupBuckets
     except ImportError as exc:  # pragma: no cover
         raise TurkishCorpusError("pinned DataTrove MinHash buckets are unavailable") from exc
     config = _minhash_config()
-    stage = MinhashDedupBuckets(
-        input_folder=str(run_root / "signatures"),
-        output_folder=str(output_root),
-        config=config,
-        only_dedup_in_index=False,
-        lines_to_buffer=256,
-    )
     start_wall, start_cpu = time.monotonic(), time.process_time()
-    stage.run(None, rank=rank, world_size=14)
+    with _verified_signature_data_folder(
+        run_root,
+        objects,
+        bucket_rank=rank,
+        data_folder_class=DataFolder,
+    ) as verified_signatures:
+        stage = MinhashDedupBuckets(
+            input_folder=verified_signatures,
+            output_folder=str(output_root),
+            config=config,
+            only_dedup_in_index=False,
+            lines_to_buffer=256,
+        )
+        stage.run(None, rank=rank, world_size=14)
     telemetry = _elapsed(start_wall, start_cpu)
     output_path = output_root / f"{rank:05d}_00.dups"
     output = _file_record(output_path, root=run_root)
@@ -2281,6 +3019,7 @@ def run_datatrove_bucket(
         calibration=calibration,
         run_root=run_root,
         sample_mode=sample_mode,
+        objects=objects,
     )
     return receipt
 
@@ -2321,10 +3060,49 @@ class _UnionFind:
         del self.size[root_right]
 
 
-def _iter_candidate_rows(path: Path) -> Iterator[dict[str, Any]]:
-    parquet = pq.ParquetFile(path)
-    for batch in parquet.iter_batches(batch_size=2048):
-        yield from batch.to_pylist()
+def _iter_candidate_rows(
+    run_root: Path, record: Mapping[str, Any], *, label: str
+) -> Iterator[dict[str, Any]]:
+    with _open_verified_run_artifact(
+        run_root,
+        record,
+        label=label,
+        max_bytes=_MAX_CLUSTER_PARQUET_BYTES,
+    ) as (_path, handle):
+        parquet = pq.ParquetFile(handle)
+        rows_expected = record.get("rows")
+        if (
+            isinstance(rows_expected, bool)
+            or not isinstance(rows_expected, int)
+            or rows_expected < 0
+            or parquet.metadata.num_rows != rows_expected
+            or set(parquet.schema_arrow.names) != set(_INTERNAL_SCHEMA.names)
+        ):
+            raise TurkishCorpusError(f"{label} Parquet metadata drift")
+        rows_seen = 0
+        for batch in parquet.iter_batches(batch_size=2048):
+            rows = batch.to_pylist()
+            rows_seen += len(rows)
+            yield from rows
+        if rows_seen != rows_expected:
+            raise TurkishCorpusError(f"{label} Parquet row scan drift")
+
+
+def _iter_duplicate_edges(
+    run_root: Path, record: Mapping[str, Any], *, label: str
+) -> Iterator[tuple[int, int, int, int]]:
+    size, _digest = _artifact_content_contract(record, label)
+    if size % 16 or record.get("duplicate_edges") != size // 16:
+        raise TurkishCorpusError("DataTrove .dups structural size drift")
+    seen = 0
+    with _open_verified_run_artifact(run_root, record, label=label) as (_path, handle):
+        while chunk := handle.read(16):
+            if len(chunk) != 16:
+                raise TurkishCorpusError("truncated DataTrove duplicate edge")
+            seen += 1
+            yield struct.unpack("<4I", chunk)
+    if seen != record["duplicate_edges"]:
+        raise TurkishCorpusError("DataTrove duplicate-edge count drift")
 
 
 def _load_bucket_receipts(
@@ -2333,6 +3111,7 @@ def _load_bucket_receipts(
     calibration: Mapping[str, Any],
     *,
     sample_mode: bool,
+    objects: Sequence[Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
     receipts: list[dict[str, Any]] = []
     for rank in range(14):
@@ -2346,6 +3125,7 @@ def _load_bucket_receipts(
             calibration=calibration,
             run_root=run_root,
             sample_mode=sample_mode,
+            objects=objects,
         )
         receipts.append(receipt)
     return receipts
@@ -2379,6 +3159,8 @@ def run_priority_cluster_merge(
     validate_corpus_policy(policy)
     validate_source_plan(plan, policy)
     validate_backend_calibration(calibration, policy)
+    expected_processing = production_processing_binding(policy)
+    expected_code_identity = production_code_identity()
     if not sample_mode:
         if resource_approval_path is None:
             raise TurkishCorpusError("full priority clustering requires resource approval")
@@ -2387,28 +3169,71 @@ def run_priority_cluster_merge(
             plan=plan,
             policy=policy,
             calibration=calibration,
+            approval_path=resource_approval_path,
         )
     run_root = Path(run_dir)
     objects = _load_object_receipts(
         run_root, plan, calibration, sample_mode=sample_mode
     )
     buckets = _load_bucket_receipts(
-        run_root, plan, calibration, sample_mode=sample_mode
+        run_root, plan, calibration, sample_mode=sample_mode, objects=objects
+    )
+    object_receipt_hashes = [item["canonical_sha256"] for item in objects]
+    bucket_receipt_hashes = [item["canonical_sha256"] for item in buckets]
+    legacy_quality_score_neutralized_ranks = sorted(
+        int(item["rank"])
+        for item in objects
+        if item.get("quality_score_semantics") != OBJECT_SOURCE_QUALITY_SEMANTICS
+    )
+    sample_launches = (
+        _sample_launch_bindings(
+            run_root,
+            plan=plan,
+            calibration=calibration,
+            objects=objects,
+            buckets=buckets,
+        )
+        if sample_mode
+        else None
     )
     receipt_path = run_root / "cluster_receipt.json"
     if receipt_path.exists():
         receipt = load_json_strict(receipt_path)
         verify_manifest_hash(receipt)
+        validate_production_code_identity(receipt.get("code_identity"))
         if (
             receipt.get("kind") != CLUSTER_RECEIPT_KIND
             or receipt.get("source_plan_sha256") != plan["canonical_sha256"]
+            or receipt.get("calibration_sha256") != calibration["canonical_sha256"]
             or receipt.get("sample_mode") is not sample_mode
+            or receipt.get("processing") != expected_processing
+            or receipt.get("sample_launch_receipts") != sample_launches
+            or receipt.get("object_receipt_sha256") != object_receipt_hashes
+            or receipt.get("bucket_receipt_sha256") != bucket_receipt_hashes
+            or receipt.get("winner_policy") != CLUSTER_WINNER_POLICY
+            or receipt.get("quality_score_semantics")
+            != CLUSTER_QUALITY_SCORE_SEMANTICS
+            or receipt.get("legacy_quality_score_neutralized_ranks")
+            != legacy_quality_score_neutralized_ranks
         ):
             raise TurkishCorpusError("cluster receipt binding drift")
-        for item in receipt["output_files"]:
-            path = run_root / item["path"]
-            if path.stat().st_size != item["size_bytes"] or file_sha256(path) != item["sha256"]:
-                raise TurkishCorpusError("cluster output drift")
+        for index, raw_item in enumerate(receipt["output_files"]):
+            item = _require_mapping(raw_item, "cluster output")
+            rows = item.get("rows")
+            if isinstance(rows, bool) or not isinstance(rows, int) or rows <= 0:
+                raise TurkishCorpusError("cluster output row contract drift")
+            with _open_verified_run_artifact(
+                run_root,
+                item,
+                label=f"cluster output {index}",
+                max_bytes=_MAX_CLUSTER_PARQUET_BYTES,
+            ) as (_path, handle):
+                parquet = pq.ParquetFile(handle)
+                if (
+                    parquet.metadata.num_rows != rows
+                    or set(parquet.schema_arrow.names) != set(_BACKEND_SCHEMA.names)
+                ):
+                    raise TurkishCorpusError("cluster output drift")
         return receipt
     output_root = run_root / "backend_output"
     if output_root.exists() and any(output_root.iterdir()):
@@ -2418,16 +3243,15 @@ def run_priority_cluster_merge(
     union = _UnionFind()
     edge_count = 0
     for bucket in buckets:
-        path = run_root / bucket["output"]["path"]
-        with path.open("rb") as handle:
-            while chunk := handle.read(16):
-                if len(chunk) != 16:
-                    raise TurkishCorpusError("truncated DataTrove duplicate edge")
-                f1, d1, f2, d2 = struct.unpack("<4I", chunk)
-                if f1 == (1 << 32) - 1 or f2 == (1 << 32) - 1:
-                    raise TurkishCorpusError("unexpected external-index sentinel in global dedup")
-                union.union((f1, d1), (f2, d2))
-                edge_count += 1
+        for f1, d1, f2, d2 in _iter_duplicate_edges(
+            run_root,
+            _require_mapping(bucket.get("output"), "bucket output"),
+            label=f"DataTrove bucket {int(bucket['rank'])} duplicate edges",
+        ):
+            if f1 == (1 << 32) - 1 or f2 == (1 << 32) - 1:
+                raise TurkishCorpusError("unexpected external-index sentinel in global dedup")
+            union.union((f1, d1), (f2, d2))
+            edge_count += 1
     priority = {
         source_id: index
         for index, source_id in enumerate(policy["deduplication"]["source_priority"])
@@ -2437,17 +3261,24 @@ def run_priority_cluster_merge(
     winners: dict[tuple[int, int], tuple[tuple[Any, ...], tuple[int, int], str]] = {}
     seen_edge_nodes: set[tuple[int, int]] = set()
     for object_receipt in objects:
-        path = run_root / object_receipt["candidate_file"]["path"]
-        for row in _iter_candidate_rows(path):
+        candidate = _require_mapping(
+            object_receipt.get("candidate_file"), "object candidate file"
+        )
+        for row in _iter_candidate_rows(
+            run_root,
+            candidate,
+            label=f"object {int(object_receipt['rank'])} winner candidate input",
+        ):
             node = (int(row["candidate_rank"]), int(row["candidate_doc_index"]))
             if node[0] != object_receipt["rank"]:
                 raise TurkishCorpusError("candidate rank/file identity drift")
             if node not in union.parent:
                 continue
             root = union.find(node)
+            source_quality = _attested_source_quality(row, object_receipt)
             key = (
                 priority[row["source_id"]],
-                -float(row["quality_score"]),
+                -source_quality,
                 str(row["document_id"]),
                 node,
             )
@@ -2461,6 +3292,8 @@ def run_priority_cluster_merge(
             f"DataTrove duplicate edges reference {len(missing_edge_nodes)} absent candidate rows"
         )
     processors = _ProductionProcessors(policy)
+    if processors.binding != expected_processing:
+        raise TurkishCorpusError("production processor construction binding drift")
     samples = _DeterministicRemovalSamples(
         capacity=int(policy["quality_assurance"]["examples_per_stratum_and_decision"]),
         max_chars=int(policy["quality_assurance"]["max_example_characters"]),
@@ -2477,10 +3310,17 @@ def run_priority_cluster_merge(
     output_files: list[dict[str, Any]] = []
     total_output_rows = 0
     for object_receipt in objects:
-        input_path = run_root / object_receipt["candidate_file"]["path"]
+        candidate = _require_mapping(
+            object_receipt.get("candidate_file"), "object candidate file"
+        )
         output_path = output_root / f"{object_receipt['rank']:05d}.parquet"
         writer = _ParquetBatchWriter(output_path, _BACKEND_SCHEMA)
-        for row in _iter_candidate_rows(input_path):
+        for row in _iter_candidate_rows(
+            run_root,
+            candidate,
+            label=f"object {int(object_receipt['rank'])} cluster candidate input",
+        ):
+            row["quality_score"] = _attested_source_quality(row, object_receipt)
             node = (int(row.pop("candidate_rank")), int(row.pop("candidate_doc_index")))
             if node in union.parent:
                 winner = winners[union.find(node)]
@@ -2571,9 +3411,17 @@ def run_priority_cluster_merge(
             counters["output_rows"] += 1
             writer.add({name: row[name] for name in BACKEND_COLUMNS})
         writer.close()
-        rows = pq.ParquetFile(output_path).metadata.num_rows
+        rows = writer.count
         if rows:
-            output_files.append(_file_record(output_path, root=run_root, rows=rows))
+            output_files.append(
+                _parquet_file_record(
+                    output_path,
+                    root=run_root,
+                    expected_rows=rows,
+                    expected_columns=set(_BACKEND_SCHEMA.names),
+                )
+                | {"source_rank": int(object_receipt["rank"])}
+            )
             total_output_rows += rows
         else:
             output_path.unlink()
@@ -2598,10 +3446,16 @@ def run_priority_cluster_merge(
             "sample_mode": sample_mode,
             "source_plan_sha256": plan["canonical_sha256"],
             "calibration_sha256": calibration["canonical_sha256"],
-            "object_receipt_sha256": [item["canonical_sha256"] for item in objects],
-            "bucket_receipt_sha256": [item["canonical_sha256"] for item in buckets],
-            "winner_policy": "minimum_source_priority_then_negative_quality_then_stable_id",
+            "object_receipt_sha256": object_receipt_hashes,
+            "bucket_receipt_sha256": bucket_receipt_hashes,
+            "winner_policy": CLUSTER_WINNER_POLICY,
+            "quality_score_semantics": CLUSTER_QUALITY_SCORE_SEMANTICS,
+            "legacy_quality_score_neutralized_ranks": (
+                legacy_quality_score_neutralized_ranks
+            ),
             "processing": processors.binding,
+            "code_identity": expected_code_identity,
+            "sample_launch_receipts": sample_launches,
             "duplicate_edges": edge_count,
             "counts": dict(sorted(counters.items())),
             "filter_stage_counts": {
@@ -2626,20 +3480,34 @@ def _validate_production_cluster_launch(
     plan: Mapping[str, Any],
     calibration: Mapping[str, Any],
     run_root: Path,
-) -> tuple[dict[str, Any], str]:
-    launch = load_json_strict(path)
+) -> tuple[dict[str, Any], str, dict[str, Any]]:
+    launch_raw = _read_bounded_regular_file_snapshot(
+        Path(path),
+        label="production cluster launch receipt",
+        max_bytes=_MAX_RECEIPT_EVIDENCE_BYTES,
+    )
+    launch = _load_json_snapshot(launch_raw, "production cluster launch receipt")
     digest = verify_manifest_hash(launch)
-    cluster = load_json_strict(run_root / "cluster_receipt.json")
+    cluster_raw = _read_bounded_regular_file_snapshot(
+        run_root / "cluster_receipt.json",
+        label="production cluster receipt",
+        max_bytes=_MAX_RECEIPT_EVIDENCE_BYTES,
+    )
+    cluster = _load_json_snapshot(cluster_raw, "production cluster receipt")
     cluster_sha = verify_manifest_hash(cluster)
     if (
-        launch.get("schema_version") != "1.0"
+        launch.get("schema_version") != "2.0"
         or launch.get("kind") != PRODUCTION_CLUSTER_LAUNCH_KIND
         or launch.get("cluster_completed") is not True
         or launch.get("policy_sha256") != _policy_sha256(policy)
         or launch.get("source_plan_sha256") != plan["canonical_sha256"]
         or launch.get("calibration_sha256") != calibration["canonical_sha256"]
         or launch.get("cluster_receipt_sha256") != cluster_sha
+        or cluster.get("schema_version") != "1.0"
+        or cluster.get("kind") != CLUSTER_RECEIPT_KIND
         or cluster.get("sample_mode") is not False
+        or cluster.get("source_plan_sha256") != plan["canonical_sha256"]
+        or cluster.get("calibration_sha256") != calibration["canonical_sha256"]
     ):
         raise TurkishCorpusError("production cluster launch receipt binding drift")
     for field in (
@@ -2648,6 +3516,7 @@ def _validate_production_cluster_launch(
         "resource_approval_sha256",
         "mixture_quality_approval_sha256",
         "data_prep_storage_gate_sha256",
+        "sample_cluster_receipt_sha256",
         "cluster_input_receipt_sha256",
     ):
         if not _SHA256_RE.fullmatch(str(launch.get(field, ""))):
@@ -2666,7 +3535,7 @@ def _validate_production_cluster_launch(
         or not allocation.get("node_list")
     ):
         raise TurkishCorpusError("production cluster launch allocation drift")
-    return launch, digest
+    return launch, digest, cluster
 
 
 def seal_source_receipt_from_objects(
@@ -2686,7 +3555,7 @@ def seal_source_receipt_from_objects(
     if destination.exists():
         raise FileExistsError(f"refusing to overwrite source receipt: {destination}")
     run_root = Path(run_dir)
-    cluster_launch, cluster_launch_sha = _validate_production_cluster_launch(
+    cluster_launch, cluster_launch_sha, cluster = _validate_production_cluster_launch(
         cluster_launch_receipt_path,
         policy=policy,
         plan=plan,
@@ -2696,6 +3565,9 @@ def seal_source_receipt_from_objects(
     objects = _load_object_receipts(
         run_root, plan, calibration, sample_mode=False
     )
+    object_receipt_hashes = [item["canonical_sha256"] for item in objects]
+    if cluster.get("object_receipt_sha256") != object_receipt_hashes:
+        raise TurkishCorpusError("source receipt object/cluster binding drift")
     by_source: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for receipt in objects:
         by_source[receipt["source_id"]].append(
@@ -2729,7 +3601,7 @@ def seal_source_receipt_from_objects(
             "policy_sha256": _policy_sha256(policy),
             "source_plan_sha256": plan["canonical_sha256"],
             "derived_sources": plan.get("derived_sources", {}),
-            "object_receipt_sha256": [item["canonical_sha256"] for item in objects],
+            "object_receipt_sha256": object_receipt_hashes,
             "production_chain": {
                 "cluster_launch_receipt_sha256": cluster_launch_sha,
                 "production_pack_plan_sha256": cluster_launch[
@@ -2743,6 +3615,9 @@ def seal_source_receipt_from_objects(
                 ],
                 "data_prep_storage_gate_sha256": cluster_launch[
                     "data_prep_storage_gate_sha256"
+                ],
+                "sample_cluster_receipt_sha256": cluster_launch[
+                    "sample_cluster_receipt_sha256"
                 ],
             },
             "sources": sources,
@@ -2771,7 +3646,7 @@ def seal_backend_receipt_from_cluster(
     if destination.exists():
         raise FileExistsError(f"refusing to overwrite backend receipt: {destination}")
     run_root = Path(run_dir)
-    cluster_launch, cluster_launch_sha = _validate_production_cluster_launch(
+    cluster_launch, cluster_launch_sha, cluster = _validate_production_cluster_launch(
         cluster_launch_receipt_path,
         policy=policy,
         plan=plan,
@@ -2790,25 +3665,83 @@ def seal_backend_receipt_from_cluster(
         "data_prep_storage_gate_sha256": cluster_launch[
             "data_prep_storage_gate_sha256"
         ],
+        "sample_cluster_receipt_sha256": cluster_launch[
+            "sample_cluster_receipt_sha256"
+        ],
     }
     if source_receipt.get("production_chain") != expected_chain:
         raise TurkishCorpusError("source receipt production-chain binding drift")
-    cluster = load_json_strict(run_root / "cluster_receipt.json")
-    verify_manifest_hash(cluster)
     if cluster.get("kind") != CLUSTER_RECEIPT_KIND or cluster.get("sample_mode") is not False:
         raise TurkishCorpusError("production cluster receipt is missing/invalid")
     if cluster.get("source_plan_sha256") != plan["canonical_sha256"]:
         raise TurkishCorpusError("cluster/source-plan binding drift")
+    if (
+        cluster.get("processing") != production_processing_binding(policy)
+    ):
+        raise TurkishCorpusError("cluster frozen processing/code binding drift")
+    validate_production_code_identity(cluster.get("code_identity"))
+    objects = _load_object_receipts(
+        run_root, plan, calibration, sample_mode=False
+    )
+    object_receipt_hashes = [item["canonical_sha256"] for item in objects]
+    if (
+        cluster.get("object_receipt_sha256") != object_receipt_hashes
+        or source_receipt.get("object_receipt_sha256") != object_receipt_hashes
+    ):
+        raise TurkishCorpusError("source/object/cluster receipt binding drift")
+    buckets = _load_bucket_receipts(
+        run_root, plan, calibration, sample_mode=False, objects=objects
+    )
+    neutralized_ranks = sorted(
+        int(item["rank"])
+        for item in objects
+        if item.get("quality_score_semantics") != OBJECT_SOURCE_QUALITY_SEMANTICS
+    )
+    if (
+        cluster.get("bucket_receipt_sha256")
+        != [item["canonical_sha256"] for item in buckets]
+        or cluster.get("winner_policy") != CLUSTER_WINNER_POLICY
+        or cluster.get("quality_score_semantics")
+        != CLUSTER_QUALITY_SCORE_SEMANTICS
+        or cluster.get("legacy_quality_score_neutralized_ranks")
+        != neutralized_ranks
+    ):
+        raise TurkishCorpusError("cluster quality/dedup provenance drift")
     file_records: list[dict[str, Any]] = []
-    for item in cluster["output_files"]:
-        path = run_root / item["path"]
-        if (
-            path.stat().st_size != item["size_bytes"]
-            or file_sha256(path) != item["sha256"]
-            or pq.ParquetFile(path).metadata.num_rows != item["rows"]
-        ):
-            raise TurkishCorpusError("cluster output file drift before backend seal")
-        file_records.append(_uri_file_record(path, rows=item["rows"]))
+    for index, raw_item in enumerate(cluster["output_files"]):
+        item = _require_mapping(raw_item, "cluster output")
+        source_rank = item.get("source_rank")
+        if isinstance(source_rank, bool) or not isinstance(source_rank, int):
+            raise TurkishCorpusError("cluster backend file lacks exact source rank")
+        rows = item.get("rows")
+        if isinstance(rows, bool) or not isinstance(rows, int) or rows <= 0:
+            raise TurkishCorpusError("cluster backend file row contract drift")
+        with _open_verified_run_artifact(
+            run_root,
+            item,
+            label=f"production cluster output {index}",
+            max_bytes=_MAX_CLUSTER_PARQUET_BYTES,
+        ) as (path, handle):
+            parquet = pq.ParquetFile(handle)
+            if (
+                parquet.metadata.num_rows != rows
+                or set(parquet.schema_arrow.names) != set(_BACKEND_SCHEMA.names)
+            ):
+                raise TurkishCorpusError(
+                    "cluster output file drift before backend seal"
+                )
+            file_records.append(
+                {
+                    "uri": path.as_uri(),
+                    "checksum": {
+                        "algorithm": "sha256",
+                        "value": item["sha256"],
+                    },
+                    "size_bytes": item["size_bytes"],
+                    "rows": rows,
+                    "source_rank": source_rank,
+                }
+            )
     if not file_records:
         raise TurkishCorpusError("production cluster emitted no backend files")
     inventory = source_object_inventory(source_receipt)
@@ -3002,9 +3935,14 @@ def validate_resource_projection(report: Mapping[str, Any]) -> str:
     """Validate the sealed wall-time billing arithmetic used for manual approval."""
 
     report_hash = verify_manifest_hash(report)
-    if report.get("schema_version") != "1.0" or report.get("kind") != RESOURCE_REPORT_KIND:
+    if report.get("schema_version") != "2.0" or report.get("kind") != RESOURCE_REPORT_KIND:
         raise TurkishCorpusError("unexpected resource projection kind/version")
-    for key in ("policy_sha256", "source_plan_sha256", "calibration_sha256"):
+    for key in (
+        "policy_sha256",
+        "source_plan_sha256",
+        "calibration_sha256",
+        "sample_cluster_receipt_sha256",
+    ):
         if not _SHA256_RE.fullmatch(str(report.get(key, ""))):
             raise TurkishCorpusError(f"resource projection {key} is missing")
     contract = _require_mapping(report.get("billing_contract"), "billing_contract")
@@ -3035,6 +3973,47 @@ def validate_resource_projection(report: Mapping[str, Any]) -> str:
             or not math.isclose(float(actual), wanted, rel_tol=1e-12, abs_tol=1e-9)
         ):
             raise TurkishCorpusError(f"resource projection {label} arithmetic drift")
+
+    component_names = {
+        "raw_largest_object_bytes",
+        "candidate_bytes",
+        "signature_bytes",
+        "duplicate_edge_bytes",
+        "backend_output_bytes",
+    }
+    components = _require_mapping(
+        projection.get("peak_disk_components_before_safety_factor"),
+        "projection.peak_disk_components_before_safety_factor",
+    )
+    if set(components) != component_names:
+        raise TurkishCorpusError("resource projection peak-disk components drift")
+    numeric_components: dict[str, float] = {}
+    for name in sorted(component_names):
+        raw_value = components.get(name)
+        if (
+            isinstance(raw_value, bool)
+            or not isinstance(raw_value, (int, float))
+            or not math.isfinite(float(raw_value))
+            or float(raw_value) < 0
+        ):
+            raise TurkishCorpusError(
+                f"resource projection peak-disk component {name} drift"
+            )
+        numeric_components[name] = float(raw_value)
+        require_close(projection.get(name), numeric_components[name], name)
+    peak_before_safety = sum(numeric_components.values())
+    require_close(
+        projection.get("peak_disk_bytes_before_safety_factor"),
+        peak_before_safety,
+        "peak disk before safety factor",
+    )
+    require_close(
+        projection.get("peak_disk_bytes_with_safety_factor"),
+        peak_before_safety * float(projection["safety_factor"]),
+        "peak disk with safety factor",
+    )
+    if projection.get("peak_disk_model") != RESOURCE_PEAK_DISK_MODEL:
+        raise TurkishCorpusError("resource projection peak-disk model drift")
 
     for key in (
         "wall_seconds_with_safety_factor",
@@ -3165,7 +4144,9 @@ def build_resource_projection(
         raise FileExistsError(f"refusing to overwrite resource projection: {destination}")
     root = Path(sample_run_dir)
     objects = _load_object_receipts(root, plan, calibration, sample_mode=True)
-    buckets = _load_bucket_receipts(root, plan, calibration, sample_mode=True)
+    buckets = _load_bucket_receipts(
+        root, plan, calibration, sample_mode=True, objects=objects
+    )
     cluster = load_json_strict(root / "cluster_receipt.json")
     verify_manifest_hash(cluster)
     if cluster.get("sample_mode") is not True:
@@ -3293,13 +4274,15 @@ def build_resource_projection(
         else 0.0
     )
     raw_largest = max(item["size_bytes"] for item in plan["objects"])
-    projected_peak = (
-        raw_largest
-        + projected_candidate_bytes
-        + projected_signature_bytes
-        + projected_dups_bytes
-        + projected_backend_bytes
-    ) * safety_factor
+    peak_disk_components = {
+        "raw_largest_object_bytes": raw_largest,
+        "candidate_bytes": projected_candidate_bytes,
+        "signature_bytes": projected_signature_bytes,
+        "duplicate_edge_bytes": projected_dups_bytes,
+        "backend_output_bytes": projected_backend_bytes,
+    }
+    projected_peak_before_safety = sum(peak_disk_components.values())
+    projected_peak = projected_peak_before_safety * safety_factor
     stage_wall = {
         "download": projected_download_wall,
         "score_lid": projected_score_wall,
@@ -3332,7 +4315,7 @@ def build_resource_projection(
     )
     report = seal_manifest(
         {
-            "schema_version": "1.0",
+            "schema_version": "2.0",
             "kind": RESOURCE_REPORT_KIND,
             "policy_sha256": _policy_sha256(policy),
             "source_plan_sha256": plan["canonical_sha256"],
@@ -3393,13 +4376,20 @@ def build_resource_projection(
                 "safety_factor": safety_factor,
                 "candidate_documents": projected_candidates,
                 "candidate_bytes": projected_candidate_bytes,
+                "raw_largest_object_bytes": raw_largest,
                 "signature_bytes": projected_signature_bytes,
                 "duplicate_edges": projected_edges,
                 "duplicate_edge_bytes": projected_dups_bytes,
                 "backend_output_bytes": projected_backend_bytes,
                 **accounting,
+                "peak_disk_components_before_safety_factor": (
+                    peak_disk_components
+                ),
+                "peak_disk_bytes_before_safety_factor": (
+                    projected_peak_before_safety
+                ),
                 "peak_disk_bytes_with_safety_factor": projected_peak,
-                "peak_disk_model": "raw_largest+candidates+signatures+dups+backend_output; conservative until streaming cleanup is proven",
+                "peak_disk_model": RESOURCE_PEAK_DISK_MODEL,
                 "cluster_scaling": {
                     "sample_candidate_documents": sample_candidates,
                     "projected_candidate_scale": candidate_scale,
@@ -3440,20 +4430,56 @@ def seal_resource_approval(
     mixture_quality_approval_path: str | Path,
     output_path: str | Path,
     *,
+    policy_path: str | Path,
+    source_plan_path: str | Path,
+    calibration_path: str | Path,
     reviewer: str,
     reviewed_at_utc: str,
     decision: str,
     notes: str = "",
 ) -> dict[str, Any]:
-    report = load_json_strict(report_path)
+    report_source = Path(report_path).expanduser().resolve()
+    report_raw = _read_bounded_regular_file_snapshot(
+        report_source,
+        label="resource report",
+        max_bytes=_MAX_AUDIT_REPORT_BYTES,
+    )
+    report = _load_json_snapshot(report_raw, "resource report")
     report_hash = validate_resource_projection(report)
-    mixture_quality_approval = load_json_strict(mixture_quality_approval_path)
+    policy = load_corpus_policy(policy_path)
+    plan = load_json_strict(source_plan_path)
+    calibration = load_json_strict(calibration_path)
+    validate_source_plan(plan, policy)
+    validate_backend_calibration(calibration, policy)
+    if (
+        report.get("policy_sha256") != _policy_sha256(policy)
+        or report.get("source_plan_sha256") != plan["canonical_sha256"]
+        or report.get("calibration_sha256") != calibration["canonical_sha256"]
+    ):
+        raise TurkishCorpusError("resource report provenance binding drift")
+    mixture_source = Path(mixture_quality_approval_path).expanduser().resolve()
+    mixture_raw = _read_bounded_regular_file_snapshot(
+        mixture_source,
+        label="mixture-quality approval",
+        max_bytes=_MAX_RECEIPT_EVIDENCE_BYTES,
+    )
+    mixture_quality_approval = _load_json_snapshot(
+        mixture_raw, "mixture-quality approval"
+    )
     mixture_quality_approval_hash = validate_mixture_quality_approval(
         mixture_quality_approval,
-        policy_sha256=report["policy_sha256"],
-        source_plan_sha256=report["source_plan_sha256"],
-        calibration_sha256=report["calibration_sha256"],
+        policy=policy,
+        plan=plan,
+        calibration=calibration,
+        approval_path=mixture_quality_approval_path,
     )
+    if (
+        mixture_quality_approval.get("sample_cluster_receipt_sha256")
+        != report.get("sample_cluster_receipt_sha256")
+    ):
+        raise TurkishCorpusError(
+            "resource report/quality approval sample-cluster lineage drift"
+        )
     if report.get("automated_gate_passed") is not True and decision == "accepted":
         raise TurkishCorpusError("cannot accept a resource projection that exceeds the hard peak limit")
     if not reviewer.strip() or not _RFC3339_UTC_RE.fullmatch(reviewed_at_utc):
@@ -3463,15 +4489,45 @@ def seal_resource_approval(
     destination = Path(output_path)
     if destination.exists():
         raise FileExistsError(f"refusing to overwrite resource approval: {destination}")
+    evidence_root = destination.expanduser().resolve().parent
+
+    def evidence_record(
+        path_value: str | Path, label: str, snapshot: bytes
+    ) -> dict[str, Any]:
+        path = Path(path_value).expanduser().resolve()
+        if evidence_root != path.parent and evidence_root not in path.parents:
+            raise TurkishCorpusError(
+                f"{label} must remain inside the resource-approval directory tree"
+            )
+        return {
+            "path": path.relative_to(evidence_root).as_posix(),
+            "size_bytes": len(snapshot),
+            "sha256": hashlib.sha256(snapshot).hexdigest(),
+        }
+
     approval = seal_manifest(
         {
-            "schema_version": "2.0",
+            "schema_version": "4.0",
             "kind": RESOURCE_APPROVAL_KIND,
             "resource_report_sha256": report_hash,
             "policy_sha256": report["policy_sha256"],
             "source_plan_sha256": report["source_plan_sha256"],
             "calibration_sha256": report["calibration_sha256"],
             "mixture_quality_approval_sha256": mixture_quality_approval_hash,
+            "sample_cluster_receipt_sha256": report[
+                "sample_cluster_receipt_sha256"
+            ],
+            "evidence_bundle": {
+                "schema_version": "1.0",
+                "resource_report": evidence_record(
+                    report_path, "resource report evidence", report_raw
+                ),
+                "mixture_quality_approval": evidence_record(
+                    mixture_quality_approval_path,
+                    "mixture-quality approval evidence",
+                    mixture_raw,
+                ),
+            },
             "approved_projection": {
                 "billing_contract": report["billing_contract"],
                 "billed_cpu_saat_with_safety_factor": report["projection"][
@@ -3495,10 +4551,11 @@ def validate_resource_approval(
     plan: Mapping[str, Any],
     policy: Mapping[str, Any],
     calibration: Mapping[str, Any],
+    approval_path: str | Path,
 ) -> None:
     verify_manifest_hash(approval)
     if (
-        approval.get("schema_version") != "2.0"
+        approval.get("schema_version") != "4.0"
         or approval.get("kind") != RESOURCE_APPROVAL_KIND
         or approval.get("decision") != "accepted"
         or not isinstance(approval.get("reviewer"), str)
@@ -3511,12 +4568,56 @@ def validate_resource_approval(
         or approval.get("policy_sha256") != _policy_sha256(policy)
         or approval.get("calibration_sha256")
         != calibration["canonical_sha256"]
-        or not _SHA256_RE.fullmatch(str(approval.get("resource_report_sha256", "")))
-        or not _SHA256_RE.fullmatch(
-            str(approval.get("mixture_quality_approval_sha256", ""))
-        )
     ):
         raise TurkishCorpusError("resource approval binding drift")
+    sample_cluster_sha = str(approval.get("sample_cluster_receipt_sha256") or "")
+    if not _SHA256_RE.fullmatch(sample_cluster_sha):
+        raise TurkishCorpusError("resource approval sample-cluster binding drift")
+    approval_source = Path(approval_path).expanduser()
+    if approval_source.is_symlink() or not approval_source.is_file():
+        raise TurkishCorpusError("resource approval path is unsafe or missing")
+    evidence_root = approval_source.resolve().parent
+    bundle = _require_mapping(
+        approval.get("evidence_bundle"), "resource approval evidence_bundle"
+    )
+    if bundle.get("schema_version") != "1.0":
+        raise TurkishCorpusError("resource approval evidence bundle version drift")
+    _report_path, report_raw = _quality_evidence_snapshot(
+        evidence_root,
+        bundle.get("resource_report"),
+        "resource report",
+        max_bytes=_MAX_AUDIT_REPORT_BYTES,
+    )
+    report = _load_json_snapshot(report_raw, "resource report")
+    report_sha = validate_resource_projection(report)
+    if (
+        report_sha != approval.get("resource_report_sha256")
+        or report.get("automated_gate_passed") is not True
+        or report.get("policy_sha256") != _policy_sha256(policy)
+        or report.get("source_plan_sha256") != plan["canonical_sha256"]
+        or report.get("calibration_sha256") != calibration["canonical_sha256"]
+        or report.get("sample_cluster_receipt_sha256") != sample_cluster_sha
+    ):
+        raise TurkishCorpusError("resource approval report evidence drift")
+    mixture_path, mixture_raw = _quality_evidence_snapshot(
+        evidence_root,
+        bundle.get("mixture_quality_approval"),
+        "mixture-quality approval",
+        max_bytes=_MAX_RECEIPT_EVIDENCE_BYTES,
+    )
+    mixture = _load_json_snapshot(mixture_raw, "mixture-quality approval")
+    mixture_sha = validate_mixture_quality_approval(
+        mixture,
+        policy=policy,
+        plan=plan,
+        calibration=calibration,
+        approval_path=mixture_path,
+    )
+    if (
+        mixture_sha != approval.get("mixture_quality_approval_sha256")
+        or mixture.get("sample_cluster_receipt_sha256") != sample_cluster_sha
+    ):
+        raise TurkishCorpusError("resource approval mixture evidence drift")
     projection = _require_mapping(
         approval.get("approved_projection"), "resource approval approved_projection"
     )
@@ -3534,20 +4635,1327 @@ def validate_resource_approval(
         or float(billed_cpu_saat) <= 0
     ):
         raise TurkishCorpusError("resource approval lacks billed CPU-saat")
+    if projection != {
+        "billing_contract": report["billing_contract"],
+        "billed_cpu_saat_with_safety_factor": report["projection"][
+            "billed_cpu_saat_with_safety_factor"
+        ],
+    }:
+        raise TurkishCorpusError("resource approval projection/report drift")
+
+
+def _read_bounded_regular_file_snapshot(
+    path: Path, *, label: str, max_bytes: int
+) -> bytes:
+    """Read one regular file once and return the immutable bytes inspected.
+
+    ``O_NOFOLLOW`` plus a single descriptor prevents a path replacement from
+    changing the bytes between hashing and parsing.  The pre/post ``fstat``
+    check also rejects in-place mutation during the bounded read.
+    """
+
+    if max_bytes <= 0:
+        raise TurkishCorpusError(f"{label} evidence cap is invalid")
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise TurkishCorpusError(f"{label} evidence file is missing or unsafe") from exc
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            raise TurkishCorpusError(f"{label} evidence is not a regular file")
+        if before.st_size < 0 or before.st_size > max_bytes:
+            raise TurkishCorpusError(
+                f"{label} evidence exceeds the {max_bytes}-byte safety cap"
+            )
+        chunks: list[bytes] = []
+        remaining = before.st_size
+        while remaining:
+            chunk = os.read(descriptor, min(1024 * 1024, remaining))
+            if not chunk:
+                raise TurkishCorpusError(f"{label} evidence was truncated while read")
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        if os.read(descriptor, 1):
+            raise TurkishCorpusError(f"{label} evidence grew while read")
+        after = os.fstat(descriptor)
+        if (
+            before.st_dev,
+            before.st_ino,
+            before.st_size,
+            before.st_mtime_ns,
+            before.st_ctime_ns,
+        ) != (
+            after.st_dev,
+            after.st_ino,
+            after.st_size,
+            after.st_mtime_ns,
+            after.st_ctime_ns,
+        ):
+            raise TurkishCorpusError(f"{label} evidence changed while read")
+        return b"".join(chunks)
+    finally:
+        os.close(descriptor)
+
+
+def _load_json_snapshot(raw: bytes, label: str) -> Any:
+    def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise TurkishCorpusError(f"{label} has duplicate JSON key {key!r}")
+            result[key] = value
+        return result
+
+    def reject_non_finite(token: str) -> None:
+        raise TurkishCorpusError(f"{label} has non-finite JSON number {token!r}")
+
+    try:
+        return json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=reject_duplicate_keys,
+            parse_constant=reject_non_finite,
+        )
+    except TurkishCorpusError:
+        raise
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise TurkishCorpusError(f"{label} is not strict UTF-8 JSON") from exc
+
+
+def sample_quality_example_payload(
+    stratum: tuple[str, str, str, str, str],
+    decision: str,
+    row: Mapping[str, Any],
+    *,
+    rejection_reason: str | None,
+    quality_flags: Sequence[str],
+    metrics: Mapping[str, Any],
+    max_characters: int,
+) -> dict[str, Any]:
+    """Build the content-bound representation used for manual QA sampling."""
+
+    text = str(row["text"])
+    cluster_row = {
+        "source_rank": int(stratum[0]),
+        **{column: row.get(column) for column in BACKEND_COLUMNS},
+    }
+    cluster_row_sha256 = hashlib.sha256(
+        canonical_json(cluster_row).encode("utf-8")
+    ).hexdigest()
+    selection_identity = hashlib.sha256(
+        "\0".join(
+            (
+                *stratum,
+                decision,
+                str(row["document_id"]),
+                cluster_row_sha256,
+            )
+        ).encode("utf-8")
+    ).hexdigest()
+    return {
+        "sample_sha256": selection_identity,
+        "cluster_row_sha256": cluster_row_sha256,
+        "full_text_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        "full_text_characters": len(text),
+        "full_text_utf8_bytes": len(text.encode("utf-8")),
+        "source_rank": int(stratum[0]),
+        "source_id": stratum[1],
+        "mixture_id": stratum[2],
+        "wds_bin": stratum[3],
+        "register": stratum[4],
+        "decision": decision,
+        "rejection_reason": rejection_reason,
+        "quality_filter_flags": list(quality_flags),
+        "document_id": str(row["document_id"]),
+        "dedup_cluster_id": str(row["dedup_cluster_id"]),
+        "url": str(row.get("url") or ""),
+        "metrics": dict(sorted(metrics.items())),
+        "text": text[:max_characters],
+        "text_truncated": len(text) > max_characters,
+    }
+
+
+def sample_quality_example_heap_item(
+    payload: Mapping[str, Any],
+) -> tuple[int, str, str]:
+    """Return the stable heap item for smallest content-bound SHA selection."""
+
+    payload_json = canonical_json(payload).removesuffix("\n")
+    identity = str(payload["sample_sha256"])
+    return (-int(identity[:16], 16), identity, payload_json)
+
+
+def _absolute_file_uri_path(raw: Any, label: str) -> Path:
+    parsed = urllib.parse.urlparse(str(raw or ""))
+    if (
+        parsed.scheme != "file"
+        or parsed.netloc not in {"", "localhost"}
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise TurkishCorpusError(f"{label} must be a local file URI")
+    path = Path(urllib.parse.unquote(parsed.path))
+    if not path.is_absolute() or path != path.resolve() or path.is_symlink():
+        raise TurkishCorpusError(f"{label} path is unsafe")
+    return path
+
+
+def _live_sample_evidence(
+    input_artifacts: Mapping[str, Any],
+    *,
+    copied_cluster: Mapping[str, Any],
+    copied_cluster_sha: str,
+    cluster_outputs: Sequence[Mapping[str, Any]],
+) -> Path:
+    """Reopen the exact live sample lineage that owns the audited Parquets."""
+
+    root_record = _require_mapping(
+        input_artifacts.get("live_sample_run"), "sample audit live_sample_run"
+    )
+    root = _absolute_file_uri_path(root_record.get("uri"), "live sample run")
+    if not root.is_dir():
+        raise TurkishCorpusError("live sample run directory is missing")
+    root_stat = root.stat()
+    expected_total = sum(int(item.get("size_bytes", -1)) for item in cluster_outputs)
+    if (
+        isinstance(root_record.get("filesystem_device"), bool)
+        or root_record.get("filesystem_device") != root_stat.st_dev
+        or root_record.get("cluster_output_bytes") != expected_total
+        or root_record.get("maximum_validation_bytes")
+        != _MAX_CLUSTER_PARQUET_TOTAL_BYTES
+        or expected_total < 0
+        or expected_total > _MAX_CLUSTER_PARQUET_TOTAL_BYTES
+    ):
+        raise TurkishCorpusError("live sample run bounded-I/O contract drift")
+
+    live_record = _require_mapping(
+        input_artifacts.get("live_cluster_receipt"),
+        "sample audit live_cluster_receipt",
+    )
+    live_path = _absolute_file_uri_path(
+        live_record.get("uri"), "live cluster receipt"
+    )
+    if live_path != root / "cluster_receipt.json":
+        raise TurkishCorpusError("live cluster receipt does not belong to sample run")
+    raw = _read_bounded_regular_file_snapshot(
+        live_path,
+        label="live cluster receipt",
+        max_bytes=_MAX_RECEIPT_EVIDENCE_BYTES,
+    )
+    if (
+        live_record.get("size_bytes") != len(raw)
+        or live_record.get("sha256") != hashlib.sha256(raw).hexdigest()
+        or live_record.get("canonical_sha256") != copied_cluster_sha
+    ):
+        raise TurkishCorpusError("live cluster receipt content drift")
+    live_cluster = _load_json_snapshot(raw, "live cluster receipt")
+    if live_cluster != copied_cluster or verify_manifest_hash(live_cluster) != copied_cluster_sha:
+        raise TurkishCorpusError("copied/live cluster receipt mismatch")
+    return root
+
+
+def _strict_quality_flags(raw: Any) -> list[str]:
+    if not isinstance(raw, str):
+        raise TurkishCorpusError("cluster quality_filter_flags must be JSON text")
+    value = _load_json_snapshot(raw.encode("utf-8"), "cluster quality_filter_flags")
+    if not isinstance(value, list) or any(
+        not isinstance(item, str) or not item for item in value
+    ):
+        raise TurkishCorpusError("cluster quality_filter_flags schema drift")
+    return value
+
+
+class _QualityNumericSketch:
+    def __init__(self, capacity: int) -> None:
+        self.capacity = capacity
+        self.seen = 0
+        self.heap: list[tuple[int, float]] = []
+
+    def add(self, identity: str, raw_value: Any) -> None:
+        if isinstance(raw_value, bool):
+            value = float(int(raw_value))
+        else:
+            try:
+                value = float(raw_value)
+            except (TypeError, ValueError):
+                return
+        if not math.isfinite(value):
+            return
+        self.seen += 1
+        rank = int.from_bytes(
+            hashlib.sha256(identity.encode("utf-8")).digest()[:8], "big"
+        )
+        item = (-rank, value)
+        if len(self.heap) < self.capacity:
+            heapq.heappush(self.heap, item)
+        elif item > self.heap[0]:
+            heapq.heapreplace(self.heap, item)
+
+    def summary(self, quantiles: Sequence[float]) -> dict[str, Any]:
+        values = sorted(value for _rank, value in self.heap)
+        result: dict[str, Any] = {
+            "observations": self.seen,
+            "deterministic_sample_size": len(values),
+        }
+        if values:
+            result.update(
+                {
+                    "minimum": values[0],
+                    "maximum": values[-1],
+                    "mean_of_sample": sum(values) / len(values),
+                }
+            )
+            for quantile in quantiles:
+                index = round(float(quantile) * (len(values) - 1))
+                result[f"q{float(quantile):.4f}"] = values[index]
+        return result
+
+
+def _recompute_cluster_quality_evidence(
+    run_root: Path,
+    output_records: Sequence[Mapping[str, Any]],
+    *,
+    plan: Mapping[str, Any],
+    policy: Mapping[str, Any],
+    examples_per_stratum: int,
+    max_example_characters: int,
+    quantile_sample_size: int,
+    quantiles: Sequence[float],
+) -> dict[str, Any]:
+    """Recompute exact counts and deterministic examples from live Parquets.
+
+    Each Parquet is opened once by descriptor.  Hashing, parsing, and the
+    post-parse hash all use that descriptor, so replacing its path cannot
+    switch the audited bytes after verification.
+    """
+
+    heaps: dict[tuple[str, str, str, str, str, str], list[tuple[int, str, str]]] = (
+        defaultdict(list)
+    )
+    counts: dict[tuple[str, str, str, str, str], Counter[str]] = defaultdict(Counter)
+    flags: dict[tuple[str, str, str, str, str], Counter[str]] = defaultdict(Counter)
+    reasons: dict[tuple[str, str, str, str, str], Counter[str]] = defaultdict(Counter)
+    numeric: dict[
+        tuple[str, str, str, str, str],
+        dict[str, dict[str, _QualityNumericSketch]],
+    ] = defaultdict(lambda: defaultdict(dict))
+    total_bytes = 0
+    total_rows = 0
+    seen_paths: set[str] = set()
+    seen_ranks: set[int] = set()
+    required_columns = set(BACKEND_COLUMNS)
+
+    for record in output_records:
+        relative_raw = str(record.get("path") or "")
+        relative = Path(relative_raw)
+        rank = record.get("source_rank")
+        size = record.get("size_bytes")
+        digest = str(record.get("sha256") or "")
+        rows_expected = record.get("rows")
+        if (
+            not relative_raw
+            or relative.is_absolute()
+            or ".." in relative.parts
+            or relative_raw in seen_paths
+            or isinstance(rank, bool)
+            or not isinstance(rank, int)
+            or rank in seen_ranks
+            or rank < 0
+            or rank >= len(plan["objects"])
+            or isinstance(size, bool)
+            or not isinstance(size, int)
+            or size <= 0
+            or size > _MAX_CLUSTER_PARQUET_BYTES
+            or not _SHA256_RE.fullmatch(digest)
+            or isinstance(rows_expected, bool)
+            or not isinstance(rows_expected, int)
+            or rows_expected <= 0
+        ):
+            raise TurkishCorpusError("cluster output bounded evidence record drift")
+        seen_paths.add(relative_raw)
+        seen_ranks.add(rank)
+        total_bytes += size
+        if total_bytes > _MAX_CLUSTER_PARQUET_TOTAL_BYTES:
+            raise TurkishCorpusError("cluster output evidence exceeds aggregate I/O cap")
+        unresolved = run_root / relative
+        path = unresolved.resolve()
+        if run_root not in path.parents or unresolved.is_symlink():
+            raise TurkishCorpusError("cluster output evidence path is unsafe")
+        current = unresolved.parent
+        while current != run_root:
+            if current.is_symlink():
+                raise TurkishCorpusError("cluster output evidence path is symlinked")
+            current = current.parent
+        flags_open = (
+            os.O_RDONLY
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0)
+        )
+        try:
+            descriptor = os.open(path, flags_open)
+        except OSError as exc:
+            raise TurkishCorpusError("cluster output evidence is missing or unsafe") from exc
+        try:
+            before = os.fstat(descriptor)
+            if not stat.S_ISREG(before.st_mode) or before.st_size != size:
+                raise TurkishCorpusError("cluster output evidence size drift")
+            _assert_descriptor_path_binding(
+                path, descriptor, "cluster output evidence"
+            )
+            with os.fdopen(descriptor, "rb", closefd=False) as handle:
+                if _descriptor_sha256(handle) != digest:
+                    raise TurkishCorpusError("cluster output evidence hash drift")
+                _assert_descriptor_path_binding(
+                    path, descriptor, "cluster output evidence"
+                )
+                handle.seek(0)
+                parquet = pq.ParquetFile(handle)
+                if not required_columns <= set(parquet.schema_arrow.names):
+                    raise TurkishCorpusError("cluster output evidence schema drift")
+                if parquet.metadata.num_rows != rows_expected:
+                    raise TurkishCorpusError("cluster output evidence row-count drift")
+                file_rows = 0
+                plan_object = plan["objects"][rank]
+                for batch in parquet.iter_batches(batch_size=2_048):
+                    for row in batch.to_pylist():
+                        file_rows += 1
+                        total_rows += 1
+                        if (
+                            not isinstance(row.get("dedup_keep"), bool)
+                            or not isinstance(row.get("text"), str)
+                            or not isinstance(row.get("document_id"), str)
+                            or not row["document_id"]
+                            or row.get("source_id") != plan_object["source_id"]
+                        ):
+                            raise TurkishCorpusError("cluster output row schema drift")
+                        quality_flags = _strict_quality_flags(
+                            row.get("quality_filter_flags")
+                        )
+                        source_id = str(row["source_id"])
+                        try:
+                            routed = select_mixture_bucket(source_id, row, policy)
+                            register = dominant_register(row)
+                        except (KeyError, TypeError, ValueError) as exc:
+                            raise TurkishCorpusError(
+                                "cluster output routing schema drift"
+                            ) from exc
+                        mixture_id = routed[0] if routed is not None else "unrouted"
+                        wds_bin = (
+                            str(row["wds_bin"])
+                            if row.get("wds_bin") is not None
+                            else "not_applicable"
+                        )
+                        stratum = (
+                            str(rank),
+                            source_id,
+                            mixture_id,
+                            wds_bin,
+                            register,
+                        )
+                        text = row["text"]
+                        utf8_bytes = len(text.encode("utf-8"))
+                        row_counts = counts[stratum]
+                        row_counts["total_documents"] += 1
+                        row_counts["total_utf8_bytes"] += utf8_bytes
+                        if routed is None:
+                            row_counts["selector_unrouted_documents"] += 1
+                        else:
+                            row_counts["selector_routed_documents"] += 1
+                        if row["dedup_keep"]:
+                            row_counts["dedup_survived_documents"] += 1
+                        else:
+                            row_counts["dedup_removed_documents"] += 1
+                        if row["dedup_keep"] and quality_flags:
+                            row_counts["quality_rejected_documents"] += 1
+                        elif row["dedup_keep"]:
+                            row_counts["quality_passed_documents"] += 1
+                        for flag in quality_flags:
+                            flags[stratum][flag] += 1
+
+                        accepted = bool(
+                            row["dedup_keep"]
+                            and not quality_flags
+                            and routed is not None
+                        )
+                        if accepted:
+                            independent = audit_document(
+                                text,
+                                url=str(row.get("url") or ""),
+                                source_lid_ok=True,
+                                content_policy=policy["content_policy"],
+                            )
+                            if (
+                                not independent.accepted
+                                or independent.normalized_text != text
+                            ):
+                                raise TurkishCorpusError(
+                                    "accepted live cluster row fails full content audit"
+                                )
+                            decision = "accepted"
+                            rejection_reason = None
+                            row_counts["accepted_documents"] += 1
+                            row_counts["accepted_utf8_bytes"] += utf8_bytes
+                        else:
+                            decision = "rejected"
+                            if row["dedup_keep"] is not True:
+                                rejection_reason = "dedup_removed"
+                            elif routed is None:
+                                rejection_reason = "selector_unrouted"
+                            else:
+                                rejection_reason = "quality_filter"
+                            row_counts["rejected_documents"] += 1
+                            row_counts["rejected_utf8_bytes"] += utf8_bytes
+                            reasons[stratum][rejection_reason] += 1
+
+                        _normalized, qa_metrics = _qa_document_metrics(row)
+                        qa_metrics = dict(qa_metrics)
+                        qa_metrics.update(
+                            {
+                                "source_lid_probability": row.get(
+                                    "source_lid_probability"
+                                ),
+                                "text_characters": len(text),
+                                "text_utf8_bytes": utf8_bytes,
+                                "text_words": len(_QUALITY_WORD_RE.findall(text)),
+                            }
+                        )
+                        numeric_metrics = {
+                            key: value
+                            for key, value in qa_metrics.items()
+                            if isinstance(value, (int, float))
+                            and not isinstance(value, bool)
+                        }
+                        for population in ("all", decision):
+                            for metric_name, value in numeric_metrics.items():
+                                sketch = numeric[stratum][population].setdefault(
+                                    metric_name,
+                                    _QualityNumericSketch(quantile_sample_size),
+                                )
+                                sketch.add(
+                                    f"{row['document_id']}\0{population}\0{metric_name}",
+                                    value,
+                                )
+                        payload = sample_quality_example_payload(
+                            stratum,
+                            decision,
+                            row,
+                            rejection_reason=rejection_reason,
+                            quality_flags=quality_flags,
+                            metrics=qa_metrics,
+                            max_characters=max_example_characters,
+                        )
+                        item = sample_quality_example_heap_item(payload)
+                        heap = heaps[(*stratum, decision)]
+                        if len(heap) < examples_per_stratum:
+                            heapq.heappush(heap, item)
+                        elif item > heap[0]:
+                            heapq.heapreplace(heap, item)
+                if file_rows != rows_expected:
+                    raise TurkishCorpusError("cluster output evidence row scan drift")
+                if _descriptor_sha256(handle) != digest:
+                    raise TurkishCorpusError("cluster output changed during validation")
+                _assert_descriptor_path_binding(
+                    path, descriptor, "cluster output evidence"
+                )
+            after = os.fstat(descriptor)
+            if (
+                before.st_dev,
+                before.st_ino,
+                before.st_size,
+                before.st_mtime_ns,
+                before.st_ctime_ns,
+            ) != (
+                after.st_dev,
+                after.st_ino,
+                after.st_size,
+                after.st_mtime_ns,
+                after.st_ctime_ns,
+            ):
+                raise TurkishCorpusError("cluster output changed during validation")
+        finally:
+            os.close(descriptor)
+
+    examples: dict[str, list[dict[str, Any]]] = {}
+    for decision in ("accepted", "rejected"):
+        selected = [
+            json.loads(payload_json)
+            for key, heap in heaps.items()
+            if key[-1] == decision
+            for _rank_value, _identity, payload_json in heap
+        ]
+        examples[decision] = sorted(
+            selected,
+            key=lambda row: (
+                row["source_rank"],
+                row["source_id"],
+                row["mixture_id"],
+                row["wds_bin"],
+                row["register"],
+                row["sample_sha256"],
+            ),
+        )
+    return {
+        "examples": examples,
+        "counts": counts,
+        "flags": flags,
+        "reasons": reasons,
+        "numeric_distributions": {
+            stratum: {
+                population: {
+                    metric_name: sketch.summary(quantiles)
+                    for metric_name, sketch in sorted(metric_sketches.items())
+                }
+                for population, metric_sketches in sorted(populations.items())
+            }
+            for stratum, populations in numeric.items()
+        },
+        "total_rows": total_rows,
+    }
+
+
+def _quality_evidence_snapshot(
+    root: Path,
+    record: Any,
+    label: str,
+    *,
+    max_bytes: int,
+) -> tuple[Path, bytes]:
+    if not isinstance(record, Mapping):
+        raise TurkishCorpusError(f"{label} evidence record is missing")
+    raw = str(record.get("path") or "")
+    relative = Path(raw)
+    if (
+        not raw
+        or urllib.parse.urlparse(raw).scheme
+        or relative.is_absolute()
+        or ".." in relative.parts
+    ):
+        raise TurkishCorpusError(f"{label} evidence path is unsafe")
+    resolved_root = root.resolve()
+    unresolved = resolved_root / relative
+    path = unresolved.resolve()
+    if resolved_root not in path.parents:
+        raise TurkishCorpusError(f"{label} evidence file is missing")
+    current = unresolved
+    while current != resolved_root:
+        if current.is_symlink():
+            raise TurkishCorpusError(f"{label} evidence path is symlinked")
+        current = current.parent
+    size = record.get("size_bytes")
+    digest = str(record.get("sha256", ""))
+    if (
+        isinstance(size, bool)
+        or not isinstance(size, int)
+        or size < 0
+        or size > max_bytes
+        or not _SHA256_RE.fullmatch(digest)
+    ):
+        raise TurkishCorpusError(f"{label} evidence content drift")
+    raw_bytes = _read_bounded_regular_file_snapshot(
+        path, label=label, max_bytes=max_bytes
+    )
+    if len(raw_bytes) != size or hashlib.sha256(raw_bytes).hexdigest() != digest:
+        raise TurkishCorpusError(f"{label} evidence content drift")
+    return path, raw_bytes
+
+
+def _read_quality_example_rows(
+    raw: bytes, *, decision: str, expected_rows: int
+) -> list[dict[str, Any]]:
+    if raw and not raw.endswith(b"\n"):
+        raise TurkishCorpusError(f"{decision} example JSONL lacks terminal newline")
+    rows: list[dict[str, Any]] = []
+    required = {
+        "sample_sha256",
+        "cluster_row_sha256",
+        "full_text_sha256",
+        "full_text_characters",
+        "full_text_utf8_bytes",
+        "source_rank",
+        "source_id",
+        "mixture_id",
+        "wds_bin",
+        "register",
+        "decision",
+        "rejection_reason",
+        "quality_filter_flags",
+        "document_id",
+        "dedup_cluster_id",
+        "url",
+        "metrics",
+        "text",
+        "text_truncated",
+    }
+    for line_number, line in enumerate(raw.decode("utf-8").splitlines(), 1):
+        try:
+            row = _load_json_snapshot(line.encode("utf-8"), f"{decision} example")
+        except TurkishCorpusError as exc:
+            raise TurkishCorpusError(
+                f"{decision} example JSONL line {line_number} is malformed"
+            ) from exc
+        if not isinstance(row, Mapping) or set(row) != required:
+            raise TurkishCorpusError(f"{decision} example row structure drift")
+        if (
+            row.get("decision") != decision
+            or isinstance(row.get("source_rank"), bool)
+            or not isinstance(row.get("source_rank"), int)
+            or row["source_rank"] < 0
+            or not isinstance(row.get("source_id"), str)
+            or not row["source_id"]
+            or not isinstance(row.get("mixture_id"), str)
+            or not row["mixture_id"]
+            or not isinstance(row.get("wds_bin"), str)
+            or not row["wds_bin"]
+            or not isinstance(row.get("register"), str)
+            or not row["register"]
+            or not isinstance(row.get("document_id"), str)
+            or not row["document_id"]
+            or not isinstance(row.get("url"), str)
+            or not isinstance(row.get("text"), str)
+            or not row["text"]
+            or not isinstance(row.get("text_truncated"), bool)
+            or not isinstance(row.get("metrics"), Mapping)
+            or not isinstance(row.get("quality_filter_flags"), list)
+            or any(
+                not isinstance(flag, str) or not flag
+                for flag in row["quality_filter_flags"]
+            )
+            or not _SHA256_RE.fullmatch(str(row.get("sample_sha256", "")))
+            or not _SHA256_RE.fullmatch(str(row.get("cluster_row_sha256", "")))
+            or not _SHA256_RE.fullmatch(str(row.get("full_text_sha256", "")))
+            or not _SHA256_RE.fullmatch(str(row.get("dedup_cluster_id", "")))
+            or isinstance(row.get("full_text_characters"), bool)
+            or not isinstance(row.get("full_text_characters"), int)
+            or row["full_text_characters"] < len(row["text"])
+            or isinstance(row.get("full_text_utf8_bytes"), bool)
+            or not isinstance(row.get("full_text_utf8_bytes"), int)
+            or row["full_text_utf8_bytes"] < len(row["text"].encode("utf-8"))
+        ):
+            raise TurkishCorpusError(f"{decision} example row content drift")
+        if row["text_truncated"] is not (
+            row["full_text_characters"] > len(row["text"])
+        ):
+            raise TurkishCorpusError(f"{decision} example truncation evidence drift")
+        if not row["text_truncated"] and (
+            row["full_text_sha256"]
+            != hashlib.sha256(row["text"].encode("utf-8")).hexdigest()
+            or row["full_text_characters"] != len(row["text"])
+            or row["full_text_utf8_bytes"] != len(row["text"].encode("utf-8"))
+        ):
+            raise TurkishCorpusError(f"{decision} example full-text evidence drift")
+        if decision == "accepted" and (
+            row.get("rejection_reason") is not None
+            or row["quality_filter_flags"] != []
+        ):
+            raise TurkishCorpusError("accepted example carries rejection evidence")
+        if decision == "rejected":
+            reason = row.get("rejection_reason")
+            if reason not in {"dedup_removed", "selector_unrouted", "quality_filter"}:
+                raise TurkishCorpusError("rejected example lacks a valid rejection reason")
+            if reason != "dedup_removed" and not row["quality_filter_flags"]:
+                raise TurkishCorpusError("rejected example lacks quality/selector evidence")
+        rows.append(dict(row))
+    if len(rows) != expected_rows:
+        raise TurkishCorpusError(f"{decision} example row-count drift")
+    return rows
+
+
+def validate_sample_quality_audit_bundle(
+    bundle_root: str | Path,
+    report_record: Mapping[str, Any],
+    *,
+    policy: Mapping[str, Any],
+    plan: Mapping[str, Any],
+    calibration: Mapping[str, Any],
+    require_complete_accepted_coverage: bool = True,
+    report_snapshot: bytes | None = None,
+) -> tuple[dict[str, Any], str]:
+    """Validate the actual bounded report, examples, and launch provenance."""
+
+    validate_corpus_policy(policy)
+    validate_source_plan(plan, policy)
+    validate_backend_calibration(calibration, policy)
+    root = Path(bundle_root)
+    if root.is_symlink() or not root.is_dir():
+        raise TurkishCorpusError("sample-quality evidence root is unsafe or missing")
+    if report_snapshot is None:
+        _report_path, report_raw = _quality_evidence_snapshot(
+            root,
+            report_record,
+            "sample audit report",
+            max_bytes=_MAX_AUDIT_REPORT_BYTES,
+        )
+    else:
+        report_raw = bytes(report_snapshot)
+        relative = Path(str(report_record.get("path") or ""))
+        resolved_root = root.resolve()
+        resolved_report = (resolved_root / relative).resolve()
+        if (
+            not relative.parts
+            or relative.is_absolute()
+            or ".." in relative.parts
+            or resolved_root not in resolved_report.parents
+            or len(report_raw) > _MAX_AUDIT_REPORT_BYTES
+            or report_record.get("size_bytes") != len(report_raw)
+            or report_record.get("sha256")
+            != hashlib.sha256(report_raw).hexdigest()
+        ):
+            raise TurkishCorpusError("sample audit report snapshot/record drift")
+    report = _load_json_snapshot(report_raw, "sample audit report")
+    report_sha = verify_manifest_hash(report)
+    policy_sha = _policy_sha256(policy)
+    expected_processing = production_processing_binding(policy)
+    if (
+        report.get("schema_version") != "2.0"
+        or report.get("kind") != "turkish_bounded_backend_sample_quality_audit"
+        or report.get("integrity_checks_passed") is not True
+        or report.get("manual_review_required") is not True
+        or report.get("automatic_mixture_approval") is not False
+        or report.get("review_status") != "pending"
+        or report.get("policy_sha256") != policy_sha
+        or report.get("source_plan_sha256") != plan["canonical_sha256"]
+        or report.get("calibration_sha256") != calibration["canonical_sha256"]
+        or report.get("processing") != expected_processing
+    ):
+        raise TurkishCorpusError("sample-quality audit report binding drift")
+
+    qa_policy = _require_mapping(
+        policy.get("quality_assurance"), "quality_assurance"
+    )
+    sample_contract = _require_mapping(
+        report.get("sample_contract"), "sample audit sample_contract"
+    )
+    if (
+        sample_contract.get("sample_mode") is not True
+        or sample_contract.get("expected_object_ranks")
+        != select_resource_sample_ranks(plan)
+        or sample_contract.get("quantiles") != qa_policy["quantiles"]
+        or sample_contract.get("quantile_sampling")
+        != "smallest_sha256_per_document_population_metric"
+        or isinstance(sample_contract.get("quantile_sample_size"), bool)
+        or not isinstance(sample_contract.get("quantile_sample_size"), int)
+        or sample_contract["quantile_sample_size"]
+        < int(qa_policy["quantile_sample_size"])
+    ):
+        raise TurkishCorpusError("sample-quality audit sampling contract drift")
+
+    input_artifacts = _require_mapping(
+        report.get("input_artifacts"), "sample audit input_artifacts"
+    )
+    provenance: dict[str, tuple[dict[str, Any], str]] = {}
+    for name in (
+        "cluster_receipt",
+        "object_launch_receipt",
+        "bucket_launch_receipt",
+    ):
+        record = _require_mapping(input_artifacts.get(name), f"sample audit {name}")
+        _path, receipt_raw = _quality_evidence_snapshot(
+            root,
+            record,
+            f"sample audit {name}",
+            max_bytes=_MAX_RECEIPT_EVIDENCE_BYTES,
+        )
+        receipt = _load_json_snapshot(receipt_raw, f"sample audit {name}")
+        digest = verify_manifest_hash(receipt)
+        if record.get("canonical_sha256") != digest:
+            raise TurkishCorpusError(f"sample audit {name} canonical hash drift")
+        provenance[name] = (receipt, digest)
+    cluster, cluster_sha = provenance["cluster_receipt"]
+    object_launch, object_launch_sha = provenance["object_launch_receipt"]
+    bucket_launch, bucket_launch_sha = provenance["bucket_launch_receipt"]
+    expected_ranks = select_resource_sample_ranks(plan)
+    expected_objects = report.get("sampled_objects")
+    cluster_code_identity = validate_production_code_identity(
+        cluster.get("code_identity")
+    )
+    if (
+        cluster.get("schema_version") != "1.0"
+        or cluster.get("kind") != CLUSTER_RECEIPT_KIND
+        or cluster.get("sample_mode") is not True
+        or cluster.get("source_plan_sha256") != plan["canonical_sha256"]
+        or cluster.get("calibration_sha256") != calibration["canonical_sha256"]
+        or cluster.get("processing") != expected_processing
+        or cluster.get("winner_policy") != CLUSTER_WINNER_POLICY
+        or cluster.get("quality_score_semantics")
+        != CLUSTER_QUALITY_SCORE_SEMANTICS
+        or report.get("cluster_receipt_sha256") != cluster_sha
+        or report.get("sample_cluster_receipt_sha256") != cluster_sha
+        or report.get("code_identity") != cluster_code_identity
+        or not isinstance(expected_objects, list)
+        or [item.get("rank") for item in expected_objects] != expected_ranks
+    ):
+        raise TurkishCorpusError("sample-quality cluster/rank provenance drift")
+    neutralized_ranks: list[int] = []
+    for item in expected_objects:
+        rank = int(item["rank"])
+        planned = plan["objects"][rank]
+        quality_semantics = item.get("quality_score_semantics")
+        if (
+            item.get("source_id") != planned["source_id"]
+            or item.get("wds_bin") != planned.get("wds_bin")
+            or (
+                quality_semantics is not None
+                and quality_semantics != OBJECT_SOURCE_QUALITY_SEMANTICS
+            )
+        ):
+            raise TurkishCorpusError("sample-quality sampled-object identity drift")
+        if quality_semantics != OBJECT_SOURCE_QUALITY_SEMANTICS:
+            neutralized_ranks.append(rank)
+    if cluster.get("legacy_quality_score_neutralized_ranks") != neutralized_ranks:
+        raise TurkishCorpusError("sample-quality legacy quality neutralization drift")
+    object_hashes = cluster.get("object_receipt_sha256")
+    bucket_hashes = cluster.get("bucket_receipt_sha256")
+    if [item.get("receipt_sha256") for item in expected_objects] != object_hashes:
+        raise TurkishCorpusError("sample audit object receipt inventory drift")
+    cluster_outputs = cluster.get("output_files")
+    report_outputs = input_artifacts.get("cluster_output_files")
+    if not isinstance(cluster_outputs, list) or not isinstance(report_outputs, list):
+        raise TurkishCorpusError("sample audit cluster output inventory is missing")
+    normalized_outputs: list[dict[str, Any]] = []
+    for raw in cluster_outputs:
+        item = _require_mapping(raw, "cluster output file")
+        source_rank = item.get("source_rank")
+        if source_rank is None:
+            stem = Path(str(item.get("path") or "")).stem
+            if not stem.isdigit():
+                raise TurkishCorpusError("legacy cluster output rank is ambiguous")
+            source_rank = int(stem)
+        normalized_outputs.append(
+            {
+                "path": item.get("path"),
+                "size_bytes": item.get("size_bytes"),
+                "sha256": item.get("sha256"),
+                "rows": item.get("rows"),
+                "source_rank": source_rank,
+            }
+        )
+    if report_outputs != normalized_outputs:
+        raise TurkishCorpusError("sample audit cluster output/rank inventory drift")
+    live_run_root = _live_sample_evidence(
+        input_artifacts,
+        copied_cluster=cluster,
+        copied_cluster_sha=cluster_sha,
+        cluster_outputs=normalized_outputs,
+    )
+    object_records = object_launch.get("object_receipts")
+    bucket_records = bucket_launch.get("backend_bucket_receipts")
+    if (
+        object_launch.get("kind")
+        != "turkish_packed_resource_sample_launch_receipt"
+        or object_launch.get("all_lanes_completed") is not True
+        or object_launch.get("source_plan_sha256") != plan["canonical_sha256"]
+        or object_launch.get("calibration_sha256")
+        != calibration["canonical_sha256"]
+        or not isinstance(object_records, list)
+        or [item.get("rank") for item in object_records] != expected_ranks
+        or [item.get("canonical_sha256") for item in object_records] != object_hashes
+        or bucket_launch.get("kind")
+        != "turkish_packed_sample_bucket_launch_receipt"
+        or bucket_launch.get("all_buckets_completed") is not True
+        or bucket_launch.get("source_plan_sha256") != plan["canonical_sha256"]
+        or bucket_launch.get("calibration_sha256")
+        != calibration["canonical_sha256"]
+        or bucket_launch.get("object_sample_launch_receipt_sha256")
+        != object_launch_sha
+        or not isinstance(bucket_records, list)
+        or [item.get("bucket_rank") for item in bucket_records] != list(range(14))
+        or [item.get("canonical_sha256") for item in bucket_records] != bucket_hashes
+    ):
+        raise TurkishCorpusError("sample-quality packed launch provenance drift")
+    launch_bindings = _require_mapping(
+        cluster.get("sample_launch_receipts"), "cluster sample launch receipts"
+    )
+    if (
+        _require_mapping(launch_bindings.get("object"), "cluster object launch").get(
+            "canonical_sha256"
+        )
+        != object_launch_sha
+        or _require_mapping(
+            launch_bindings.get("bucket"), "cluster bucket launch"
+        ).get("canonical_sha256")
+        != bucket_launch_sha
+    ):
+        raise TurkishCorpusError("cluster sample-launch hash binding drift")
+
+    example_sampling = _require_mapping(
+        report.get("example_sampling"), "sample audit example_sampling"
+    )
+    requested = example_sampling.get("examples_per_stratum_and_decision")
+    max_example_characters = example_sampling.get("max_example_characters")
+    if (
+        example_sampling.get("method")
+        != (
+            "smallest_content_bound_sha256_per_rank_source_mixture_"
+            "wds_register_decision_v2"
+        )
+        or isinstance(requested, bool)
+        or not isinstance(requested, int)
+        or requested < int(qa_policy["examples_per_stratum_and_decision"])
+        or isinstance(max_example_characters, bool)
+        or not isinstance(max_example_characters, int)
+        or max_example_characters < int(qa_policy["max_example_characters"])
+    ):
+        raise TurkishCorpusError("sample audit example request count drift")
+    files = _require_mapping(example_sampling.get("files"), "sample audit example files")
+    example_rows: dict[str, list[dict[str, Any]]] = {}
+    for decision in ("accepted", "rejected"):
+        record = _require_mapping(files.get(decision), f"{decision} examples")
+        rows = record.get("rows")
+        if isinstance(rows, bool) or not isinstance(rows, int) or rows < 0:
+            raise TurkishCorpusError(f"{decision} example count drift")
+        _jsonl_path, jsonl_raw = _quality_evidence_snapshot(
+            root,
+            record.get("jsonl"),
+            f"{decision} JSONL",
+            max_bytes=_MAX_EXAMPLE_EVIDENCE_BYTES,
+        )
+        _plaintext_path, plaintext_raw = _quality_evidence_snapshot(
+            root,
+            record.get("plaintext"),
+            f"{decision} plaintext",
+            max_bytes=_MAX_EXAMPLE_EVIDENCE_BYTES,
+        )
+        parsed = _read_quality_example_rows(
+            jsonl_raw, decision=decision, expected_rows=rows
+        )
+        try:
+            plaintext_text = plaintext_raw.decode("utf-8")
+        except UnicodeError as exc:
+            raise TurkishCorpusError(
+                f"{decision} plaintext is not UTF-8"
+            ) from exc
+        if plaintext_text != render_sample_quality_plaintext(parsed):
+            raise TurkishCorpusError(f"{decision} plaintext/example content drift")
+        example_rows[decision] = parsed
+    live_evidence = _recompute_cluster_quality_evidence(
+        live_run_root,
+        normalized_outputs,
+        plan=plan,
+        policy=policy,
+        examples_per_stratum=requested,
+        max_example_characters=max_example_characters,
+        quantile_sample_size=sample_contract["quantile_sample_size"],
+        quantiles=sample_contract["quantiles"],
+    )
+    if example_rows != live_evidence["examples"]:
+        raise TurkishCorpusError(
+            "sample audit examples differ from deterministic live cluster rows"
+        )
+    live_source_counts: dict[str, Counter[str]] = defaultdict(Counter)
+    for live_key, live_counts in live_evidence["counts"].items():
+        live_source_counts[live_key[1]].update(live_counts)
+    expected_source_counts = [
+        {
+            "source_id": source_id,
+            **dict(sorted(live_source_counts[source_id].items())),
+        }
+        for source_id in sorted(live_source_counts)
+    ]
+    if report.get("cluster_source_counts") != expected_source_counts:
+        raise TurkishCorpusError("sample audit live source-count drift")
+
+    strata = report.get("strata")
+    if not isinstance(strata, list) or not strata:
+        raise TurkishCorpusError("sample audit strata are missing")
+    strata_keys: set[tuple[Any, ...]] = set()
+    ranks_with_rows: set[int] = set()
+    ranks_with_accepted_rows: set[int] = set()
+    hplt_bins_with_accepted_rows: set[int] = set()
+    mixtures_with_accepted_rows: set[str] = set()
+    mixtures_with_rejected_rows: set[str] = set()
+    recomputed_insufficiencies: list[dict[str, Any]] = []
+    aggregate_counts: Counter[str] = Counter()
+    sampled_counts = Counter(
+        (
+            row["source_rank"],
+            row["source_id"],
+            row["mixture_id"],
+            row["wds_bin"],
+            row["register"],
+            row["decision"],
+        )
+        for rows in example_rows.values()
+        for row in rows
+    )
+    for raw in strata:
+        item = _require_mapping(raw, "sample audit stratum")
+        rank = item.get("source_rank")
+        if isinstance(rank, bool) or not isinstance(rank, int) or rank not in expected_ranks:
+            raise TurkishCorpusError("sample audit stratum rank drift")
+        planned = plan["objects"][rank]
+        if item.get("source_id") != planned["source_id"]:
+            raise TurkishCorpusError("sample audit stratum source/rank drift")
+        expected_wds = (
+            str(planned["wds_bin"])
+            if planned.get("wds_bin") is not None
+            else "not_applicable"
+        )
+        if item.get("wds_bin") != expected_wds:
+            raise TurkishCorpusError("sample audit stratum WDS/rank drift")
+        key = (
+            rank,
+            item.get("source_id"),
+            item.get("mixture_id"),
+            item.get("wds_bin"),
+            item.get("register"),
+        )
+        if key in strata_keys:
+            raise TurkishCorpusError("sample audit contains a duplicate stratum")
+        strata_keys.add(key)
+        live_key = (
+            str(rank),
+            str(item.get("source_id")),
+            str(item.get("mixture_id")),
+            str(item.get("wds_bin")),
+            str(item.get("register")),
+        )
+        live_counts = live_evidence["counts"].get(live_key)
+        if live_counts is None:
+            raise TurkishCorpusError("sample audit stratum is absent from live cluster")
+        counts = _require_mapping(item.get("counts"), "sample audit stratum counts")
+        if dict(counts) != dict(sorted(live_counts.items())):
+            raise TurkishCorpusError("sample audit stratum/live count drift")
+        count_fields = (
+            "total_documents",
+            "total_utf8_bytes",
+            "accepted_documents",
+            "accepted_utf8_bytes",
+            "rejected_documents",
+            "rejected_utf8_bytes",
+            "selector_routed_documents",
+            "selector_unrouted_documents",
+            "dedup_survived_documents",
+            "dedup_removed_documents",
+            "quality_passed_documents",
+            "quality_rejected_documents",
+        )
+        exact_counts: dict[str, int] = {}
+        for name in count_fields:
+            value = counts.get(name, 0)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise TurkishCorpusError("sample audit stratum count type drift")
+            exact_counts[name] = value
+        total = exact_counts["total_documents"]
+        if total <= 0:
+            raise TurkishCorpusError("sample audit stratum total drift")
+        if (
+            exact_counts["accepted_documents"]
+            + exact_counts["rejected_documents"]
+            != total
+            or exact_counts["accepted_utf8_bytes"]
+            + exact_counts["rejected_utf8_bytes"]
+            != exact_counts["total_utf8_bytes"]
+            or exact_counts["selector_routed_documents"]
+            + exact_counts["selector_unrouted_documents"]
+            != total
+            or exact_counts["dedup_survived_documents"]
+            + exact_counts["dedup_removed_documents"]
+            != total
+            or exact_counts["quality_passed_documents"]
+            + exact_counts["quality_rejected_documents"]
+            != exact_counts["dedup_survived_documents"]
+            or exact_counts["accepted_documents"]
+            != exact_counts["quality_passed_documents"]
+        ):
+            raise TurkishCorpusError("sample audit stratum accounting drift")
+        if item.get("dedup_survival_rate") != (
+            exact_counts["dedup_survived_documents"] / total
+        ) or item.get("accepted_document_rate") != (
+            exact_counts["accepted_documents"] / total
+        ):
+            raise TurkishCorpusError("sample audit stratum rate drift")
+        aggregate_counts.update(exact_counts)
+        reasons = _require_mapping(
+            item.get("rejection_reasons"), "sample audit rejection reasons"
+        )
+        if dict(reasons) != dict(sorted(live_evidence["reasons"][live_key].items())):
+            raise TurkishCorpusError("sample audit live rejection-reason drift")
+        quality_rejections = _require_mapping(
+            item.get("quality_filter_flag_rejections"),
+            "sample audit quality-filter flag rejections",
+        )
+        if dict(quality_rejections) != dict(
+            sorted(live_evidence["flags"][live_key].items())
+        ):
+            raise TurkishCorpusError("sample audit live quality-flag drift")
+        if item.get("numeric_distributions") != live_evidence[
+            "numeric_distributions"
+        ][live_key]:
+            raise TurkishCorpusError("sample audit live numeric-distribution drift")
+        if any(
+            reason not in {"dedup_removed", "selector_unrouted", "quality_filter"}
+            or isinstance(value, bool)
+            or not isinstance(value, int)
+            or value <= 0
+            for reason, value in reasons.items()
+        ) or sum(reasons.values()) != exact_counts["rejected_documents"]:
+            raise TurkishCorpusError("sample audit rejection-reason accounting drift")
+        ranks_with_rows.add(rank)
+        accepted = exact_counts["accepted_documents"]
+        if accepted > 0:
+            ranks_with_accepted_rows.add(rank)
+            if item.get("mixture_id") != "unrouted":
+                mixtures_with_accepted_rows.add(str(item["mixture_id"]))
+            if planned["source_id"] == "hplt3_tr":
+                hplt_bins_with_accepted_rows.add(int(planned["wds_bin"]))
+        if exact_counts["rejected_documents"] > 0 and item.get(
+            "mixture_id"
+        ) != "unrouted":
+            mixtures_with_rejected_rows.add(str(item["mixture_id"]))
+        for decision in ("accepted", "rejected"):
+            available = exact_counts[f"{decision}_documents"]
+            sampled = sampled_counts[(*key, decision)]
+            if sampled != min(available, requested):
+                raise TurkishCorpusError("sample audit example sampling count drift")
+            if sampled < requested:
+                recomputed_insufficiencies.append(
+                    {
+                        "source_rank": rank,
+                        "source_id": item["source_id"],
+                        "mixture_id": item["mixture_id"],
+                        "wds_bin": item["wds_bin"],
+                        "register": item["register"],
+                        "decision": decision,
+                        "available_rows": available,
+                        "sampled_examples": sampled,
+                        "requested_examples": requested,
+                        "shortfall": requested - sampled,
+                    }
+                )
+    for rows in example_rows.values():
+        for row in rows:
+            example_key = (
+                row["source_rank"],
+                row["source_id"],
+                row["mixture_id"],
+                row["wds_bin"],
+                row["register"],
+            )
+            if example_key not in strata_keys:
+                raise TurkishCorpusError("sample audit example has no matching stratum")
+    live_strata_keys = {
+        (int(key[0]), key[1], key[2], key[3], key[4])
+        for key in live_evidence["counts"]
+    }
+    if strata_keys != live_strata_keys:
+        raise TurkishCorpusError("sample audit/live cluster stratum inventory drift")
+    if live_evidence["total_rows"] != sum(
+        int(item["rows"]) for item in normalized_outputs
+    ):
+        raise TurkishCorpusError("sample audit/live cluster row-total drift")
+    exact_cluster_totals = {
+        "documents": aggregate_counts["total_documents"],
+        "accepted_documents": aggregate_counts["accepted_documents"],
+        "rejected_documents": aggregate_counts["rejected_documents"],
+        "accepted_utf8_bytes": aggregate_counts["accepted_utf8_bytes"],
+        "rejected_utf8_bytes": aggregate_counts["rejected_utf8_bytes"],
+    }
+    if report.get("cluster_totals") != exact_cluster_totals:
+        raise TurkishCorpusError("sample audit cluster totals drift")
+    receipt_counts = _require_mapping(cluster.get("counts"), "cluster counts")
+    exact_audited_counts = {
+        "output_rows": aggregate_counts["total_documents"],
+        "dedup_kept": aggregate_counts["dedup_survived_documents"],
+        "dedup_removed": aggregate_counts["dedup_removed_documents"],
+        "quality_kept": aggregate_counts["quality_passed_documents"],
+        "quality_removed": aggregate_counts["quality_rejected_documents"],
+    }
+    for field, value in exact_audited_counts.items():
+        if receipt_counts.get(field) != value:
+            raise TurkishCorpusError("sample audit cluster receipt count drift")
+    processing_summary = _require_mapping(
+        report.get("cluster_receipt_processing_summary"),
+        "sample audit cluster processing summary",
+    )
+    if (
+        processing_summary.get("receipt_counts")
+        != dict(sorted(receipt_counts.items()))
+        or processing_summary.get("audited_counts") != exact_audited_counts
+        or processing_summary.get("filter_stage_counts")
+        != cluster.get("filter_stage_counts")
+        or processing_summary.get("formatting_and_safety_incidence")
+        != cluster.get("formatting_and_safety_incidence")
+    ):
+        raise TurkishCorpusError("sample audit cluster processing summary drift")
+    if example_sampling.get("insufficiencies") != recomputed_insufficiencies:
+        raise TurkishCorpusError("sample audit insufficiency inventory drift")
+
+    accepted_examples = example_rows["accepted"]
+    ranks_with_accepted_examples = {row["source_rank"] for row in accepted_examples}
+    expected_hplt_bins = {
+        int(plan["objects"][rank]["wds_bin"])
+        for rank in expected_ranks
+        if plan["objects"][rank]["source_id"] == "hplt3_tr"
+    }
+    hplt_bins_with_accepted_examples = {
+        int(row["wds_bin"])
+        for row in accepted_examples
+        if row["source_id"] == "hplt3_tr"
+    }
+    coverage = _require_mapping(report.get("coverage"), "sample audit coverage")
+    expected_mixtures = sorted(str(item["id"]) for item in policy["mixture"])
+    exact_coverage = {
+        "expected_mixtures": expected_mixtures,
+        "mixtures_with_accepted_rows": sorted(mixtures_with_accepted_rows),
+        "mixtures_with_rejected_rows": sorted(mixtures_with_rejected_rows),
+        "mixtures_without_accepted_rows": sorted(
+            set(expected_mixtures) - mixtures_with_accepted_rows
+        ),
+        "mixtures_without_rejected_rows": sorted(
+            set(expected_mixtures) - mixtures_with_rejected_rows
+        ),
+        "expected_source_ranks": expected_ranks,
+        "source_ranks_with_accepted_rows": sorted(ranks_with_accepted_rows),
+        "source_ranks_with_accepted_examples": sorted(ranks_with_accepted_examples),
+        "source_ranks_without_accepted_rows": sorted(
+            set(expected_ranks) - ranks_with_accepted_rows
+        ),
+        "source_ranks_without_accepted_examples": sorted(
+            set(expected_ranks) - ranks_with_accepted_examples
+        ),
+        "expected_hplt_wds_bins": sorted(expected_hplt_bins),
+        "hplt_wds_bins_with_accepted_rows": sorted(hplt_bins_with_accepted_rows),
+        "hplt_wds_bins_with_accepted_examples": sorted(
+            hplt_bins_with_accepted_examples
+        ),
+        "hplt_wds_bins_without_accepted_rows": sorted(
+            expected_hplt_bins - hplt_bins_with_accepted_rows
+        ),
+        "hplt_wds_bins_without_accepted_examples": sorted(
+            expected_hplt_bins - hplt_bins_with_accepted_examples
+        ),
+    }
+    for field, expected in exact_coverage.items():
+        if coverage.get(field) != expected:
+            raise TurkishCorpusError(f"sample audit coverage {field} drift")
+    if ranks_with_rows != set(expected_ranks):
+        raise TurkishCorpusError("sample audit does not contain every sampled rank")
+    if require_complete_accepted_coverage and (
+        ranks_with_accepted_rows != set(expected_ranks)
+        or ranks_with_accepted_examples != set(expected_ranks)
+        or hplt_bins_with_accepted_rows != expected_hplt_bins
+        or hplt_bins_with_accepted_examples != expected_hplt_bins
+    ):
+        raise TurkishCorpusError(
+            "sample audit lacks accepted row/example coverage for every rank/WDS bin"
+        )
+    return report, report_sha
 
 
 def validate_mixture_quality_approval(
     approval: Mapping[str, Any],
     *,
-    policy_sha256: str,
-    source_plan_sha256: str,
-    calibration_sha256: str,
+    policy: Mapping[str, Any],
+    plan: Mapping[str, Any],
+    calibration: Mapping[str, Any],
+    approval_path: str | Path,
 ) -> str:
-    """Validate a human decision over the bounded quality-audit evidence."""
+    """Validate a human decision and its actual bounded evidence bundle."""
 
     digest = verify_manifest_hash(approval)
     if (
-        approval.get("schema_version") != "1.0"
+        approval.get("schema_version") != "3.0"
         or approval.get("kind") != MIXTURE_QUALITY_APPROVAL_KIND
         or approval.get("decision") != "accepted"
         or approval.get("automatic_decision") is not False
@@ -3562,39 +5970,80 @@ def validate_mixture_quality_approval(
             "full backend requires an accepted manual mixture-quality approval"
         )
     bindings = {
-        "policy_sha256": policy_sha256,
-        "source_plan_sha256": source_plan_sha256,
-        "calibration_sha256": calibration_sha256,
+        "policy_sha256": _policy_sha256(policy),
+        "source_plan_sha256": plan["canonical_sha256"],
+        "calibration_sha256": calibration["canonical_sha256"],
     }
     for field, expected in bindings.items():
         if approval.get(field) != expected:
             raise TurkishCorpusError("mixture-quality approval binding drift")
-    for field in (
-        "sample_quality_audit_sha256",
-        "cluster_receipt_sha256",
+    sample_cluster_sha = str(approval.get("sample_cluster_receipt_sha256") or "")
+    if not _SHA256_RE.fullmatch(sample_cluster_sha):
+        raise TurkishCorpusError("mixture-quality sample-cluster binding drift")
+    bundle = _require_mapping(
+        approval.get("evidence_bundle"), "mixture-quality evidence_bundle"
+    )
+    if bundle.get("schema_version") != "1.0":
+        raise TurkishCorpusError("mixture-quality evidence bundle version drift")
+    root_raw = str(bundle.get("root") or "")
+    root_relative = Path(root_raw)
+    approval_source = Path(approval_path).expanduser()
+    if approval_source.is_symlink() or not approval_source.is_file():
+        raise TurkishCorpusError("mixture-quality approval path is unsafe or missing")
+    approval_file = approval_source.resolve()
+    if (
+        not root_raw
+        or root_relative.is_absolute()
+        or ".." in root_relative.parts
     ):
-        if not _SHA256_RE.fullmatch(str(approval.get(field, ""))):
-            raise TurkishCorpusError("mixture-quality approval evidence drift")
-    example_files = approval.get("reviewed_example_files")
-    if not isinstance(example_files, Mapping) or set(example_files) != {
-        "accepted",
-        "rejected",
-    }:
-        raise TurkishCorpusError("mixture-quality approval example inventory drift")
-    for decision in ("accepted", "rejected"):
-        record = example_files[decision]
-        if (
-            not isinstance(record, Mapping)
-            or not isinstance(record.get("rows"), int)
-            or isinstance(record.get("rows"), bool)
-            or record["rows"] < 0
-            or not _SHA256_RE.fullmatch(str(record.get("jsonl_sha256", "")))
-            or not _SHA256_RE.fullmatch(str(record.get("plaintext_sha256", "")))
-        ):
-            raise TurkishCorpusError(
-                "mixture-quality approval example evidence drift"
-            )
+        raise TurkishCorpusError("mixture-quality evidence root is unsafe")
+    root = (approval_file.parent / root_relative).resolve()
+    if root != approval_file.parent and approval_file.parent not in root.parents:
+        raise TurkishCorpusError("mixture-quality evidence root escapes approval tree")
+    report, report_sha = validate_sample_quality_audit_bundle(
+        root,
+        _require_mapping(bundle.get("report"), "mixture-quality audit report"),
+        policy=policy,
+        plan=plan,
+        calibration=calibration,
+    )
+    coverage = _require_mapping(report.get("coverage"), "sample audit coverage")
+    if (
+        approval.get("sample_quality_audit_sha256") != report_sha
+        or approval.get("cluster_receipt_sha256")
+        != report["cluster_receipt_sha256"]
+        or sample_cluster_sha != report["sample_cluster_receipt_sha256"]
+        or approval.get("cluster_receipt_sha256") != sample_cluster_sha
+        or approval.get("reviewed_example_files")
+        != report["example_sampling"]["files"]
+        or coverage.get("mixtures_without_accepted_rows") != []
+    ):
+        raise TurkishCorpusError("mixture-quality approval evidence drift")
     return digest
+
+
+def render_sample_quality_plaintext(rows: Sequence[Mapping[str, Any]]) -> str:
+    """Render the exact human-readable companion to sample-audit JSONL."""
+
+    chunks: list[str] = []
+    for index, row in enumerate(rows, 1):
+        chunks.extend(
+            [
+                (
+                    f"[{index}] {row['decision']} / rank={row['source_rank']} / "
+                    f"{row['source_id']} / {row['mixture_id']} / "
+                    f"WDS={row['wds_bin']} / register={row['register']}\n"
+                ),
+                f"sample_sha256: {row['sample_sha256']}\n",
+                f"reason: {row['rejection_reason']}\n",
+                "quality_filter_flags: "
+                + json.dumps(row["quality_filter_flags"], ensure_ascii=False)
+                + "\n",
+                f"url: {row['url']}\n",
+                str(row["text"]) + "\n\n",
+            ]
+        )
+    return "".join(chunks)
 
 
 __all__ = [
@@ -3606,6 +6055,9 @@ __all__ = [
     "process_source_object",
     "prepare_macocu_genre",
     "production_processing_binding",
+    "production_code_identity",
+    "validate_production_code_identity",
+    "render_sample_quality_plaintext",
     "resolve_source_plan",
     "run_backend_calibration",
     "run_datatrove_bucket",
@@ -3617,6 +6069,7 @@ __all__ = [
     "validate_backend_calibration",
     "validate_resource_approval",
     "validate_mixture_quality_approval",
+    "validate_sample_quality_audit_bundle",
     "validate_resource_projection",
     "validate_source_plan",
     "validate_macocu_preparation_manifest",

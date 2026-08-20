@@ -111,6 +111,9 @@ def build_parser() -> argparse.ArgumentParser:
     approve = sub.add_parser("approve-resources", help="seal manual resource decision")
     approve.add_argument("--report", type=Path, required=True)
     approve.add_argument("--mixture-quality-approval", type=Path, required=True)
+    approve.add_argument("--policy", type=Path, default=DEFAULT_POLICY)
+    approve.add_argument("--source-plan", type=Path, required=True)
+    approve.add_argument("--calibration", type=Path, required=True)
     approve.add_argument("--output", type=Path, required=True)
     approve.add_argument("--reviewer", required=True)
     approve.add_argument("--reviewed-at-utc", required=True)
@@ -138,6 +141,9 @@ def main(argv: list[str] | None = None) -> int:
                 args.report,
                 args.mixture_quality_approval,
                 args.output,
+                policy_path=args.policy,
+                source_plan_path=args.source_plan,
+                calibration_path=args.calibration,
                 reviewer=args.reviewer,
                 reviewed_at_utc=args.reviewed_at_utc,
                 decision=args.decision,

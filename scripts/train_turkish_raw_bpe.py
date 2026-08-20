@@ -101,6 +101,7 @@ def _validate_training_sample(sample_dir: Path, policy: dict) -> tuple[dict, dic
         "resource_approval_sha256",
         "mixture_quality_approval_sha256",
         "data_prep_storage_gate_sha256",
+        "sample_cluster_receipt_sha256",
     }
     if (
         sample.get("policy_sha256") != policy_sha

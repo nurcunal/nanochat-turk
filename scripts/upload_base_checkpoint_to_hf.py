@@ -644,6 +644,8 @@ def main_family(args):
         != preflight["data_preparation_storage_gate_sha256"]
         or expected_chain.get("cluster_launch_receipt_sha256")
         != cluster_launch_sha
+        or expected_chain.get("sample_cluster_receipt_sha256")
+        != cluster_launch.get("sample_cluster_receipt_sha256")
     ):
         raise ValueError("production preflight has malformed data lineage")
     corpus_manifest, corpus_manifest_sha = _load_receipt(

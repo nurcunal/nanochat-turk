@@ -5,10 +5,13 @@ import gzip
 import hashlib
 import io
 import json
+import os
+import struct
 from pathlib import Path
 
 import pytest
 import pyarrow as pa
+import pyarrow.parquet as pq
 
 import nanochat.turkish_backend as backend
 import nanochat.turkish_corpus as corpus
@@ -29,6 +32,7 @@ from nanochat.turkish_backend import (
     select_resource_sample_ranks,
     validate_resource_approval,
     validate_resource_projection,
+    validate_mixture_quality_approval,
 )
 from nanochat.turkish_corpus import (
     TurkishCorpusError,
@@ -74,18 +78,33 @@ def _sealed_resource_report(policy: dict, plan_sha256: str) -> dict:
     accounting = _resource_accounting()
     return seal_manifest(
         {
-            "schema_version": "1.0",
+            "schema_version": "2.0",
             "kind": RESOURCE_REPORT_KIND,
             "policy_sha256": hashlib.sha256(
                 canonical_json(policy).encode("utf-8")
             ).hexdigest(),
             "source_plan_sha256": plan_sha256,
             "calibration_sha256": "c" * 64,
+            "sample_cluster_receipt_sha256": "e" * 64,
             "billing_contract": dict(RESOURCE_BILLING_CONTRACT),
             "projection": {
                 "safety_factor": 1.5,
                 "candidate_documents": 200.0,
-                "peak_disk_bytes_with_safety_factor": 1_000.0,
+                "raw_largest_object_bytes": 100.0,
+                "candidate_bytes": 100.0,
+                "signature_bytes": 100.0,
+                "duplicate_edge_bytes": 100.0,
+                "backend_output_bytes": 100.0,
+                "peak_disk_components_before_safety_factor": {
+                    "raw_largest_object_bytes": 100.0,
+                    "candidate_bytes": 100.0,
+                    "signature_bytes": 100.0,
+                    "duplicate_edge_bytes": 100.0,
+                    "backend_output_bytes": 100.0,
+                },
+                "peak_disk_bytes_before_safety_factor": 500.0,
+                "peak_disk_bytes_with_safety_factor": 750.0,
+                "peak_disk_model": backend.RESOURCE_PEAK_DISK_MODEL,
                 "cluster_scaling": {
                     "sample_candidate_documents": 100,
                     "projected_candidate_scale": 2.0,
@@ -297,6 +316,45 @@ def test_local_source_checksum_drift_fails_closed(tmp_path: Path):
         _stage_source_object(item, destination)
 
 
+def test_backend_raw_stage_consumes_held_descriptor_during_parent_swap(
+    tmp_path: Path,
+):
+    payload = b'{"value":"original-1"}\n{"value":"original-2"}\n'
+    source = tmp_path / "source.jsonl"
+    source.write_bytes(payload)
+    build = tmp_path / "build"
+    build.mkdir()
+    record, staged = _stage_source_object(
+        {
+            "uri": source.as_uri(),
+            "size_bytes": len(payload),
+            "expected_checksums": [
+                {
+                    "algorithm": "sha256",
+                    "value": hashlib.sha256(payload).hexdigest(),
+                }
+            ],
+        },
+        build / "source.jsonl",
+    )
+    assert record["sha256"] == hashlib.sha256(payload).hexdigest()
+
+    rows = iter_input_records(staged)
+    saved_build = tmp_path / "saved-build"
+    malicious_build = tmp_path / "malicious-build"
+    build.rename(saved_build)
+    build.mkdir()
+    (build / staged.name).write_text('{"value":"malicious"}\n')
+    try:
+        first = next(rows)
+    finally:
+        build.rename(malicious_build)
+        saved_build.rename(build)
+    assert first["value"] == "original-1"
+    assert [row["value"] for row in rows] == ["original-2"]
+    staged.close()
+
+
 def test_resource_sample_covers_every_source_and_hplt_quality_bin():
     plan = {
         "objects": [
@@ -486,6 +544,18 @@ def test_resource_projection_uses_stage_wall_not_process_cpu(
     assert report["projection"]["billed_cpu_saat_with_safety_factor"] == pytest.approx(
         sum(stage_wall.values()) * 1.5 * 128 / 3600
     )
+    projection = report["projection"]
+    assert projection["signature_bytes"] == 95_200.0
+    assert projection["peak_disk_components_before_safety_factor"] == {
+        "raw_largest_object_bytes": 1_000,
+        "candidate_bytes": 200.0,
+        "signature_bytes": 95_200.0,
+        "duplicate_edge_bytes": 320.0,
+        "backend_output_bytes": 300.0,
+    }
+    assert projection["peak_disk_bytes_before_safety_factor"] == 97_020.0
+    assert projection["peak_disk_bytes_with_safety_factor"] == 145_530.0
+    assert projection["peak_disk_model"] == backend.RESOURCE_PEAK_DISK_MODEL
     assert report["sample_selection"]["algorithm"] == (
         "non_hplt_uri_quartiles_plus_hplt_smallest_complete_shard_"
         "per_wds_bin_plus_macocu_genres_v5"
@@ -515,10 +585,22 @@ def test_resource_projection_uses_stage_wall_not_process_cpu(
     assert report["billing_contract"] == RESOURCE_BILLING_CONTRACT
 
 
-def test_resource_report_and_approval_bind_billed_cpu_contract(tmp_path: Path):
+def test_resource_report_and_approval_bind_billed_cpu_contract(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     policy = load_corpus_policy(POLICY)
-    plan_sha256 = "b" * 64
+    plan_path = tmp_path / "source-plan.json"
+    calibration_path = tmp_path / "calibration.json"
+    plan = seal_manifest({"fixture": "plan", "canonical_sha256": None})
+    calibration = seal_manifest(
+        {"fixture": "calibration", "canonical_sha256": None}
+    )
+    write_json_atomic(plan_path, plan)
+    write_json_atomic(calibration_path, calibration)
+    plan_sha256 = plan["canonical_sha256"]
     report = _sealed_resource_report(policy, plan_sha256)
+    report["calibration_sha256"] = calibration["canonical_sha256"]
+    report = seal_manifest(report)
     assert validate_resource_projection(report) == report["canonical_sha256"]
     report_path = tmp_path / "resource-report.json"
     quality_path = tmp_path / "mixture-quality-approval.json"
@@ -526,13 +608,14 @@ def test_resource_report_and_approval_bind_billed_cpu_contract(tmp_path: Path):
     write_json_atomic(report_path, report)
     quality = seal_manifest(
         {
-            "schema_version": "1.0",
+            "schema_version": "3.0",
             "kind": MIXTURE_QUALITY_APPROVAL_KIND,
             "sample_quality_audit_sha256": "d" * 64,
             "policy_sha256": report["policy_sha256"],
             "source_plan_sha256": plan_sha256,
-            "calibration_sha256": "c" * 64,
+            "calibration_sha256": calibration["canonical_sha256"],
             "cluster_receipt_sha256": "e" * 64,
+            "sample_cluster_receipt_sha256": "e" * 64,
             "reviewed_example_files": {
                 decision: {
                     "rows": 1,
@@ -554,11 +637,42 @@ def test_resource_report_and_approval_bind_billed_cpu_contract(tmp_path: Path):
         }
     )
     write_json_atomic(quality_path, quality)
+    monkeypatch.setattr(backend, "validate_source_plan", lambda *_args: None)
+    monkeypatch.setattr(
+        backend, "validate_backend_calibration", lambda *_args: None
+    )
+    monkeypatch.setattr(
+        backend,
+        "validate_mixture_quality_approval",
+        lambda approval, **_kwargs: approval["canonical_sha256"],
+    )
+
+    cross_quality = copy.deepcopy(quality)
+    cross_quality["cluster_receipt_sha256"] = "9" * 64
+    cross_quality["sample_cluster_receipt_sha256"] = "9" * 64
+    cross_quality = seal_manifest(cross_quality)
+    cross_quality_path = tmp_path / "cross-cluster-quality.json"
+    write_json_atomic(cross_quality_path, cross_quality)
+    with pytest.raises(TurkishCorpusError, match="sample-cluster lineage drift"):
+        seal_resource_approval(
+            report_path,
+            cross_quality_path,
+            tmp_path / "cross-cluster-resource.json",
+            policy_path=POLICY,
+            source_plan_path=plan_path,
+            calibration_path=calibration_path,
+            reviewer="resource-reviewer",
+            reviewed_at_utc="2026-08-20T18:00:00Z",
+            decision="accepted",
+        )
 
     approval = seal_resource_approval(
         report_path,
         quality_path,
         approval_path,
+        policy_path=POLICY,
+        source_plan_path=plan_path,
+        calibration_path=calibration_path,
         reviewer="resource-reviewer",
         reviewed_at_utc="2026-08-20T18:00:00Z",
         decision="accepted",
@@ -571,9 +685,10 @@ def test_resource_report_and_approval_bind_billed_cpu_contract(tmp_path: Path):
     }
     validate_resource_approval(
         approval,
-        plan={"canonical_sha256": plan_sha256},
+        plan=plan,
         policy=policy,
-        calibration={"canonical_sha256": "c" * 64},
+        calibration=calibration,
+        approval_path=approval_path,
     )
 
     bad_report = copy.deepcopy(report)
@@ -581,6 +696,18 @@ def test_resource_report_and_approval_bind_billed_cpu_contract(tmp_path: Path):
     bad_report = seal_manifest(bad_report)
     with pytest.raises(TurkishCorpusError, match="billed_cpu_saat.*arithmetic drift"):
         validate_resource_projection(bad_report)
+
+    bad_peak = copy.deepcopy(report)
+    bad_peak["projection"]["peak_disk_bytes_with_safety_factor"] = 0.0
+    bad_peak = seal_manifest(bad_peak)
+    with pytest.raises(TurkishCorpusError, match="peak disk with safety factor"):
+        validate_resource_projection(bad_peak)
+
+    bad_component = copy.deepcopy(report)
+    bad_component["projection"]["candidate_bytes"] = 0.0
+    bad_component = seal_manifest(bad_component)
+    with pytest.raises(TurkishCorpusError, match="candidate_bytes arithmetic drift"):
+        validate_resource_projection(bad_component)
 
     bad_approval = copy.deepcopy(approval)
     bad_approval["approved_projection"]["billing_contract"][
@@ -590,9 +717,10 @@ def test_resource_report_and_approval_bind_billed_cpu_contract(tmp_path: Path):
     with pytest.raises(TurkishCorpusError, match="billing contract drift"):
         validate_resource_approval(
             bad_approval,
-            plan={"canonical_sha256": plan_sha256},
+            plan=plan,
             policy=policy,
-            calibration={"canonical_sha256": "c" * 64},
+            calibration=calibration,
+            approval_path=approval_path,
         )
 
 
@@ -609,6 +737,102 @@ def test_resource_report_cli_requires_explicit_billable_cpu_count():
         build_parser().parse_args(required)
     parsed = build_parser().parse_args([*required, "--billable-cpus-per-job=128"])
     assert parsed.billable_cpus_per_job == 128
+
+
+def test_fabricated_sha_only_mixture_approval_is_rejected(tmp_path: Path):
+    policy = load_corpus_policy(POLICY)
+    plan = seal_manifest({"objects": [], "canonical_sha256": None})
+    calibration = seal_manifest({"canonical_sha256": None})
+    approval = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": MIXTURE_QUALITY_APPROVAL_KIND,
+            "sample_quality_audit_sha256": "a" * 64,
+            "policy_sha256": backend._policy_sha256(policy),
+            "source_plan_sha256": plan["canonical_sha256"],
+            "calibration_sha256": calibration["canonical_sha256"],
+            "cluster_receipt_sha256": "b" * 64,
+            "reviewed_example_files": {
+                decision: {
+                    "rows": 1,
+                    "jsonl_sha256": "c" * 64,
+                    "plaintext_sha256": "d" * 64,
+                }
+                for decision in ("accepted", "rejected")
+            },
+            "coverage_complete": True,
+            "automatic_decision": False,
+            "review_confirmation": (
+                "bounded_strata_and_accepted_rejected_examples_reviewed"
+            ),
+            "reviewer": "fabricator",
+            "reviewed_at_utc": "2026-08-20T17:00:00Z",
+            "decision": "accepted",
+            "canonical_sha256": None,
+        }
+    )
+    path = tmp_path / "fabricated.json"
+    write_json_atomic(path, approval)
+
+    with pytest.raises(TurkishCorpusError, match="actual|evidence|accepted manual"):
+        validate_mixture_quality_approval(
+            approval,
+            policy=policy,
+            plan=plan,
+            calibration=calibration,
+            approval_path=path,
+        )
+
+
+def test_fabricated_sha_only_resource_approval_is_rejected(tmp_path: Path):
+    policy = load_corpus_policy(POLICY)
+    plan = {"canonical_sha256": "1" * 64}
+    calibration = {"canonical_sha256": "2" * 64}
+    approval = seal_manifest(
+        {
+            "schema_version": "4.0",
+            "kind": RESOURCE_APPROVAL_KIND,
+            "resource_report_sha256": "3" * 64,
+            "policy_sha256": backend._policy_sha256(policy),
+            "source_plan_sha256": plan["canonical_sha256"],
+            "calibration_sha256": calibration["canonical_sha256"],
+            "mixture_quality_approval_sha256": "4" * 64,
+            "sample_cluster_receipt_sha256": "5" * 64,
+            "evidence_bundle": {
+                "schema_version": "1.0",
+                "resource_report": {
+                    "path": "missing-report.json",
+                    "size_bytes": 1,
+                    "sha256": "3" * 64,
+                },
+                "mixture_quality_approval": {
+                    "path": "missing-quality.json",
+                    "size_bytes": 1,
+                    "sha256": "4" * 64,
+                },
+            },
+            "approved_projection": {
+                "billing_contract": RESOURCE_BILLING_CONTRACT,
+                "billed_cpu_saat_with_safety_factor": 1.0,
+            },
+            "reviewer": "fabricator",
+            "reviewed_at_utc": "2026-08-20T17:00:00Z",
+            "decision": "accepted",
+            "notes": "hash-shaped strings only",
+            "canonical_sha256": None,
+        }
+    )
+    path = tmp_path / "fabricated-resource.json"
+    write_json_atomic(path, approval)
+
+    with pytest.raises(TurkishCorpusError, match="evidence file is missing"):
+        validate_resource_approval(
+            approval,
+            plan=plan,
+            policy=policy,
+            calibration=calibration,
+            approval_path=path,
+        )
 
 
 def test_no_code_gate_rejects_assignment_and_builtin_call_snippet():
@@ -648,3 +872,681 @@ def test_no_code_gate_keeps_ordinary_turkish_conversation():
 
     assert decision.accepted is True
     assert decision.reason == "accepted"
+
+
+def test_no_code_gate_rejects_ruby_times_do_and_puts():
+    content_policy = load_corpus_policy(POLICY)["content_policy"]
+    text = """Bir eğitim yazısı, aynı cümleyi birkaç kez göstermeyi anlatıyor ve uzun bir Türkçe açıklamayla örneğin amacını, beklenen sonucu ve günlük kullanımını ayrıntılı biçimde tartışıyor.
+10.times do
+  puts "Merhaba"
+end
+Yazının geri kalanında okuyucunun adımları nasıl izleyeceği ve sonucu nasıl değerlendireceği doğal bir dille açıklanıyor."""
+
+    decision = audit_document(text, source_lid_ok=True, content_policy=content_policy)
+
+    assert decision.accepted is False
+    assert decision.reason == "code_content"
+    assert decision.metrics["code_line_fraction"] >= 0.4
+
+
+def test_no_code_gate_keeps_four_line_turkish_physics_numeric_equality():
+    content_policy = load_corpus_policy(POLICY)["content_policy"]
+    text = """Enerji = 5 kilovat saattir.
+Bu değer, evde kullanılan küçük bir aygıtın belirli bir süre boyunca tükettiği toplam enerjiyi açık ve anlaşılır biçimde göstermektedir.
+Fizik dersinde öğretmen, güç ile zaman arasındaki ilişkiyi gündelik yaşamdan örneklerle anlatarak öğrencilerin kavramı daha kolay öğrenmesini sağlamaktadır.
+Sonuç olarak verilen eşitlik bir programlama komutu değil, ölçülen fiziksel büyüklüğün Türkçe bir cümle içinde sade biçimde ifade edilmesidir."""
+
+    decision = audit_document(text, source_lid_ok=True, content_policy=content_policy)
+
+    assert decision.accepted is True
+    assert decision.reason == "accepted"
+    assert decision.metrics["code_line_fraction"] == 0.0
+
+
+def test_no_code_gate_rejects_consecutive_scalar_assignment_structure():
+    content_policy = load_corpus_policy(POLICY)["content_policy"]
+    text = """Bu uzun Türkçe açıklama, basit bir hesabın gündelik bir örnek üzerinden nasıl yapıldığını anlatıyor ve okuyucuya sonucu değerlendirmesi için yeterli bağlam sağlıyor.
+x = 5
+y = 10
+z = x + y
+Son bölüm, sayıların anlamını doğal bir Türkçe anlatımla açıklıyor; buna rağmen ortadaki ardışık atama satırları çalıştırılabilir kod yapısıdır."""
+
+    decision = audit_document(text, source_lid_ok=True, content_policy=content_policy)
+
+    assert decision.accepted is False
+    assert decision.reason == "code_content"
+    assert decision.metrics["consecutive_scalar_assignment_lines"] == 3
+
+
+def test_no_code_gate_rejects_compact_semicolon_assignment_sequence():
+    content_policy = load_corpus_policy(POLICY)["content_policy"]
+    text = """Bu Türkçe açıklama, küçük bir hesabın gündelik bir örnek içinde nasıl kurulduğunu ve sayıların sonuç üzerinde ne anlama geldiğini ayrıntılı biçimde anlatmaktadır.
+x = 5; y = 10; z = x + y
+Son bölümde okuyucunun sonucu nasıl değerlendireceği doğal bir dille açıklanır; ortadaki tek satır ise üç ayrı çalıştırılabilir atama ifadesi içerir."""
+
+    decision = audit_document(text, source_lid_ok=True, content_policy=content_policy)
+
+    assert decision.accepted is False
+    assert decision.reason == "code_content"
+    assert decision.metrics["compact_scalar_assignments"] == 3
+
+
+def test_no_code_gate_rejects_typed_assignment_control_flow_and_augmented_update():
+    content_policy = load_corpus_policy(POLICY)["content_policy"]
+    text = """Bu uzun Türkçe metin, bir değerin hangi koşul altında değiştirildiğini gündelik bir örnek üzerinden tanıtıyor ve okuyucuya bağlam hakkında yeterli açıklama sunuyor.
+x: int = 5
+if x > 3:
+    x += 1
+Metnin sonunda değişimin anlamı yeniden doğal Türkçe cümlelerle ele alınıyor; buna rağmen ortadaki satırlar doğrudan çalıştırılabilir Python yapısıdır."""
+
+    decision = audit_document(text, source_lid_ok=True, content_policy=content_policy)
+
+    assert decision.accepted is False
+    assert decision.reason == "code_content"
+    assert decision.metrics["code_line_fraction"] >= 0.6
+
+
+def test_no_code_gate_keeps_turkish_formula_explanation():
+    content_policy = load_corpus_policy(POLICY)["content_policy"]
+    text = """Bir veri grubundaki ortalamayı bulmak için iki değerin toplamı öğe sayısına bölünür.
+Ortalama = (ilk değer + ikinci değer) / 2 olarak hesaplanır.
+Bu eşitlik bir programlama komutu değildir; ders anlatımında kullanılan matematiksel ilişkinin Türkçe açıklamasıdır.
+Öğretmen daha sonra aynı yöntemi farklı sayılarla göstererek öğrencilerin kavramı gündelik örneklerle pekiştirmesini sağlar."""
+
+    decision = audit_document(text, source_lid_ok=True, content_policy=content_policy)
+
+    assert decision.accepted is True
+    assert decision.reason == "accepted"
+    assert decision.metrics["code_line_fraction"] == 0.0
+
+
+def test_no_code_gate_keeps_title_cased_units_glossary():
+    content_policy = load_corpus_policy(POLICY)["content_policy"]
+    text = """Aşağıdaki kısa sözlük, temel ölçü türlerinin günlük yaşamda kullanılan birimlerini sade biçimde tanıtır.
+Uzunluk = metre
+Ağırlık = kilogram
+Zaman = saniye
+Bu satırlar çalıştırılabilir komutlar değildir; fen dersindeki kavramları karşılıklarıyla gösteren doğal bir Türkçe başvuru listesidir.
+Öğrenciler listeyi okuduktan sonra her birimin kullanıldığı durumları kendi örnekleriyle açıklar."""
+
+    decision = audit_document(text, source_lid_ok=True, content_policy=content_policy)
+
+    assert decision.accepted is True
+    assert decision.reason == "accepted"
+    assert decision.metrics["consecutive_scalar_assignment_lines"] == 0
+
+
+def test_dedup_decision_retains_complete_frozen_shape():
+    decision = corpus.DedupDecision(
+        accepted=False,
+        cluster_id="a" * 64,
+        duplicate_kind="near_duplicate",
+    )
+
+    assert decision.accepted is False
+    assert decision.cluster_id == "a" * 64
+    assert decision.duplicate_kind == "near_duplicate"
+
+
+def test_bounded_evidence_snapshot_is_stable_across_path_swap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    target = tmp_path / "evidence.json"
+    replacement = tmp_path / "replacement.json"
+    original = b'{"lineage":"original"}\n'
+    swapped = b'{"lineage":"replacement"}\n'
+    target.write_bytes(original)
+    replacement.write_bytes(swapped)
+    real_read = os.read
+    did_swap = False
+
+    def swap_then_read(descriptor: int, size: int) -> bytes:
+        nonlocal did_swap
+        if not did_swap:
+            did_swap = True
+            os.replace(replacement, target)
+        return real_read(descriptor, size)
+
+    monkeypatch.setattr(backend.os, "read", swap_then_read)
+    with pytest.raises(TurkishCorpusError, match="changed while read"):
+        backend._read_bounded_regular_file_snapshot(
+            target, label="racing evidence", max_bytes=1024
+        )
+
+    assert target.read_bytes() == swapped
+
+
+def test_verified_artifact_rejects_same_content_path_replacement(
+    tmp_path: Path,
+):
+    target = tmp_path / "artifact.bin"
+    replacement = tmp_path / "replacement.bin"
+    content = b"same attested bytes\n"
+    target.write_bytes(content)
+    replacement.write_bytes(content)
+
+    with pytest.raises(TurkishCorpusError, match="path changed during consumption"):
+        with backend._open_verified_regular_artifact(
+            target,
+            label="test artifact",
+            expected_size=len(content),
+            expected_sha256=hashlib.sha256(content).hexdigest(),
+        ) as handle:
+            assert handle.read() == content
+            os.replace(replacement, target)
+
+
+def test_verified_artifact_rejects_in_place_mutation(
+    tmp_path: Path,
+):
+    target = tmp_path / "artifact.bin"
+    original = b"attested-content"
+    mutated = b"tampered-content"
+    assert len(original) == len(mutated)
+    target.write_bytes(original)
+
+    with pytest.raises(TurkishCorpusError, match="changed during consumption"):
+        with backend._open_verified_regular_artifact(
+            target,
+            label="test artifact",
+            expected_size=len(original),
+            expected_sha256=hashlib.sha256(original).hexdigest(),
+        ) as handle:
+            assert handle.read() == original
+            with target.open("r+b") as mutator:
+                mutator.write(mutated)
+                mutator.flush()
+                os.fsync(mutator.fileno())
+
+
+def test_duplicate_edge_consumer_rejects_path_replacement(
+    tmp_path: Path,
+):
+    target = tmp_path / "bucket_matches" / "00000_00.dups"
+    target.parent.mkdir()
+    payload = struct.pack("<4I", 0, 1, 2, 3) + struct.pack("<4I", 4, 5, 6, 7)
+    target.write_bytes(payload)
+    replacement = tmp_path / "replacement.dups"
+    replacement.write_bytes(payload)
+    record = {
+        "path": target.relative_to(tmp_path).as_posix(),
+        "size_bytes": len(payload),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "duplicate_edges": 2,
+    }
+
+    edges = backend._iter_duplicate_edges(
+        tmp_path, record, label="test duplicate edges"
+    )
+    assert next(edges) == (0, 1, 2, 3)
+    os.replace(replacement, target)
+    with pytest.raises(TurkishCorpusError, match="path changed during consumption"):
+        list(edges)
+
+
+def test_candidate_parquet_consumer_rejects_path_replacement(
+    tmp_path: Path,
+):
+    row = {
+        "text": "Bu, güvenilir ve yeterince uzun bir Türkçe aday metindir.",
+        "source_id": "fineweb2_hq_tr",
+        "document_id": "candidate-1",
+        "url": "https://ornek.test/1",
+        "source_lid_label": "tur_Latn",
+        "source_lid_probability": 0.99,
+        "lid_label": "tur_Latn",
+        "lid_probability": 0.98,
+        "lid_margin": 0.75,
+        "paragraph_min_probability": 0.98,
+        "paragraph_min_margin": 0.75,
+        "failed_long_paragraph_fraction": 0.0,
+        "dedup_cluster_id": "a" * 64,
+        "dedup_keep": True,
+        "quality_score": 0.8,
+        "wds_bin": None,
+        "web-register": "{}",
+        "genre": "",
+        "pii_replacements": 0,
+        "harmful_signal_hits": 0,
+        "quality_filter_flags": "[]",
+        "formatting_changes": "{}",
+        "candidate_rank": 0,
+        "candidate_doc_index": 0,
+    }
+    second = dict(row, document_id="candidate-2", candidate_doc_index=1)
+    target = tmp_path / "objects" / "00000" / "candidates.parquet"
+    target.parent.mkdir(parents=True)
+    pq.write_table(
+        pa.Table.from_pylist([row, second], schema=backend._INTERNAL_SCHEMA),
+        target,
+        compression="zstd",
+    )
+    replacement = tmp_path / "replacement-candidates.parquet"
+    replacement.write_bytes(target.read_bytes())
+    payload = target.read_bytes()
+    record = {
+        "path": target.relative_to(tmp_path).as_posix(),
+        "size_bytes": len(payload),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "rows": 2,
+    }
+
+    rows = backend._iter_candidate_rows(
+        tmp_path, record, label="test candidate input"
+    )
+    assert next(rows)["document_id"] == "candidate-1"
+    os.replace(replacement, target)
+    with pytest.raises(TurkishCorpusError, match="path changed during consumption"):
+        list(rows)
+
+
+def test_staged_parquet_consumes_held_descriptor_during_parent_swap(tmp_path: Path):
+    source = tmp_path / "source.parquet"
+    pq.write_table(
+        pa.Table.from_pylist([{"value": "original-1"}, {"value": "original-2"}]),
+        source,
+    )
+    payload = source.read_bytes()
+    build = tmp_path / "build"
+    build.mkdir()
+    staged = corpus.stage_receipt_file(
+        {
+            "uri": source.as_uri(),
+            "checksum": {
+                "algorithm": "sha256",
+                "value": hashlib.sha256(payload).hexdigest(),
+            },
+            "size_bytes": len(payload),
+        },
+        build,
+    )
+    rows = iter_input_records(staged)
+    saved_build = tmp_path / "saved-build"
+    malicious_build = tmp_path / "malicious-build"
+    build.rename(saved_build)
+    build.mkdir()
+    pq.write_table(
+        pa.Table.from_pylist([{"value": "malicious"}]),
+        build / staged.name,
+    )
+    try:
+        first = next(rows)
+    finally:
+        build.rename(malicious_build)
+        saved_build.rename(build)
+    assert first["value"] == "original-1"
+    assert [row["value"] for row in rows] == ["original-2"]
+    staged.unlink()
+
+
+def test_staged_parquet_rejects_in_place_mutation_during_consumption(
+    tmp_path: Path,
+):
+    source = tmp_path / "source.parquet"
+    pq.write_table(
+        pa.Table.from_pylist([{"value": "original-1"}, {"value": "original-2"}]),
+        source,
+    )
+    payload = source.read_bytes()
+    build = tmp_path / "build"
+    build.mkdir()
+    staged = corpus.stage_receipt_file(
+        {
+            "uri": source.as_uri(),
+            "checksum": {
+                "algorithm": "sha256",
+                "value": hashlib.sha256(payload).hexdigest(),
+            },
+            "size_bytes": len(payload),
+        },
+        build,
+    )
+    rows = iter_input_records(staged)
+    assert next(rows)["value"] == "original-1"
+    staged.path.write_bytes(b"mutated in place")
+    with pytest.raises(TurkishCorpusError, match="changed during consumption"):
+        list(rows)
+
+
+def test_bucket_signature_stage_consumes_held_descriptor_during_directory_swap(
+    tmp_path: Path,
+):
+    signature = tmp_path / "signatures" / "bucket_003" / "00000.minhash.sig"
+    signature.parent.mkdir(parents=True)
+    original = b"verified signature bytes"
+    signature.write_bytes(original)
+    record = {
+        "path": signature.relative_to(tmp_path).as_posix(),
+        "size_bytes": len(original),
+        "sha256": hashlib.sha256(original).hexdigest(),
+    }
+    objects = [{"rank": 0, "signature_files": [record]}]
+
+    class FakeDataFolder:
+        def open_files(self, paths, mode="rb", **kwargs):
+            return [self.open(path, mode=mode, **kwargs) for path in paths]
+
+    with backend._verified_signature_data_folder(
+        tmp_path,
+        objects,
+        bucket_rank=3,
+        data_folder_class=FakeDataFolder,
+    ) as verified:
+        paths = verified.list_files(subdirectory="bucket_003")
+        assert paths == ["bucket_003/00000.minhash.sig"]
+
+        original_bucket = signature.parent
+        saved_bucket = tmp_path / "saved_bucket_003"
+        malicious_bucket = tmp_path / "malicious_bucket_003"
+        original_bucket.rename(saved_bucket)
+        original_bucket.mkdir()
+        (original_bucket / signature.name).write_bytes(b"malicious signature data")
+        try:
+            reader = verified.open_files(paths, mode="rb", block_size=4096)[0]
+            with reader:
+                assert reader.path == paths[0]
+                assert reader.size == len(original)
+                assert reader.read() == original
+        finally:
+            original_bucket.rename(malicious_bucket)
+            saved_bucket.rename(original_bucket)
+
+
+def test_object_receipt_raw_object_is_exactly_bound_to_source_plan(tmp_path: Path):
+    candidate_path = tmp_path / "objects" / "00000" / "candidates.parquet"
+    candidate_path.parent.mkdir(parents=True)
+    pq.write_table(
+        pa.Table.from_pylist([], schema=backend._INTERNAL_SCHEMA),
+        candidate_path,
+        compression="zstd",
+    )
+    candidate = backend._file_record(candidate_path, root=tmp_path, rows=0)
+    signatures = []
+    for bucket in range(14):
+        path = (
+            tmp_path
+            / "signatures"
+            / f"bucket_{bucket:03d}"
+            / "00000.minhash.sig"
+        )
+        path.parent.mkdir(parents=True)
+        path.write_bytes(b"")
+        signatures.append(backend._file_record(path, root=tmp_path))
+
+    observed_sha256 = hashlib.sha256(b"planned raw object").hexdigest()
+    checksums = [{"algorithm": "sha256", "value": observed_sha256}]
+    plan = {
+        "canonical_sha256": "a" * 64,
+        "objects": [
+            {
+                "rank": 0,
+                "source_id": "source-a",
+                "uri": "https://example.test/object.parquet",
+                "size_bytes": 18,
+                "expected_checksums": checksums,
+            }
+        ],
+    }
+    calibration = {"canonical_sha256": "b" * 64}
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": backend.OBJECT_RECEIPT_KIND,
+            "sample_mode": False,
+            "rank": 0,
+            "source_id": "source-a",
+            "source_uri": "https://example.test/object.parquet",
+            "source_plan_sha256": plan["canonical_sha256"],
+            "calibration_sha256": calibration["canonical_sha256"],
+            "raw_object": {
+                "uri": "https://example.test/object.parquet",
+                "size_bytes": 18,
+                "sha256": observed_sha256,
+                "upstream_checksums_verified": checksums,
+            },
+            "candidate_file": candidate,
+            "signature_files": signatures,
+            "canonical_sha256": None,
+        }
+    )
+    backend._validate_object_receipt(
+        receipt,
+        plan=plan,
+        calibration=calibration,
+        run_root=tmp_path,
+        sample_mode=False,
+    )
+
+    tampered = copy.deepcopy(receipt)
+    tampered["raw_object"]["sha256"] = "f" * 64
+    tampered = seal_manifest(tampered)
+    with pytest.raises(TurkishCorpusError, match="raw-object SHA-256 drift"):
+        backend._validate_object_receipt(
+            tampered,
+            plan=plan,
+            calibration=calibration,
+            run_root=tmp_path,
+            sample_mode=False,
+        )
+
+
+def _production_chain_fixture(launch_sha256: str) -> tuple[dict, dict]:
+    launch = {
+        "production_pack_plan_sha256": "1" * 64,
+        "resource_approval_sha256": "2" * 64,
+        "mixture_quality_approval_sha256": "3" * 64,
+        "data_prep_storage_gate_sha256": "4" * 64,
+        "sample_cluster_receipt_sha256": "5" * 64,
+    }
+    chain = {
+        "cluster_launch_receipt_sha256": launch_sha256,
+        **launch,
+    }
+    return launch, chain
+
+
+def test_source_seal_rejects_objects_not_bound_by_launch_cluster(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    launch_sha256 = "6" * 64
+    launch, _chain = _production_chain_fixture(launch_sha256)
+    cluster = {"object_receipt_sha256": ["7" * 64]}
+    objects = [
+        {
+            "canonical_sha256": "8" * 64,
+            "source_id": "source-a",
+            "source_uri": "https://example.test/object.parquet",
+            "raw_object": {"sha256": "9" * 64, "size_bytes": 123},
+        }
+    ]
+    policy = {
+        "sources": [
+            {
+                "id": "source-a",
+                "repo_id": "repo",
+                "resolved_revision": "revision",
+                "license_id": "license",
+            }
+        ]
+    }
+    plan = {"canonical_sha256": "a" * 64, "derived_sources": {}}
+    calibration = {"canonical_sha256": "b" * 64}
+    monkeypatch.setattr(backend, "validate_corpus_policy", lambda _value: None)
+    monkeypatch.setattr(
+        backend, "validate_source_plan", lambda _plan, _policy: None
+    )
+    monkeypatch.setattr(
+        backend, "validate_backend_calibration", lambda _value, _policy: None
+    )
+    monkeypatch.setattr(
+        backend,
+        "_validate_production_cluster_launch",
+        lambda *args, **kwargs: (launch, launch_sha256, cluster),
+    )
+    monkeypatch.setattr(
+        backend, "_load_object_receipts", lambda *args, **kwargs: objects
+    )
+
+    with pytest.raises(TurkishCorpusError, match="object/cluster binding drift"):
+        backend.seal_source_receipt_from_objects(
+            policy,
+            plan,
+            calibration,
+            tmp_path,
+            tmp_path / "launch.json",
+            tmp_path / "source.json",
+        )
+
+
+@pytest.mark.parametrize("mismatch", ["source_objects", "cluster_buckets"])
+def test_backend_seal_rejects_cross_receipt_lineage_mismatch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mismatch: str,
+):
+    launch_sha256 = "6" * 64
+    launch, chain = _production_chain_fixture(launch_sha256)
+    object_sha256 = "7" * 64
+    bucket_sha256 = "8" * 64
+    objects = [
+        {
+            "canonical_sha256": object_sha256,
+            "rank": 0,
+            "quality_score_semantics": backend.OBJECT_SOURCE_QUALITY_SEMANTICS,
+        }
+    ]
+    buckets = [{"canonical_sha256": bucket_sha256}]
+    cluster = {
+        "kind": backend.CLUSTER_RECEIPT_KIND,
+        "sample_mode": False,
+        "source_plan_sha256": "a" * 64,
+        "processing": {},
+        "code_identity": {},
+        "object_receipt_sha256": [object_sha256],
+        "bucket_receipt_sha256": [bucket_sha256],
+        "winner_policy": backend.CLUSTER_WINNER_POLICY,
+        "quality_score_semantics": backend.CLUSTER_QUALITY_SCORE_SEMANTICS,
+        "legacy_quality_score_neutralized_ranks": [],
+        "output_files": [],
+    }
+    source_receipt = {
+        "canonical_sha256": "9" * 64,
+        "production_chain": chain,
+        "object_receipt_sha256": [object_sha256],
+    }
+    if mismatch == "source_objects":
+        source_receipt["object_receipt_sha256"] = ["f" * 64]
+        expected_error = "source/object/cluster receipt binding drift"
+    else:
+        cluster["bucket_receipt_sha256"] = ["f" * 64]
+        expected_error = "cluster quality/dedup provenance drift"
+
+    policy = {}
+    plan = {"canonical_sha256": "a" * 64}
+    calibration = {"canonical_sha256": "b" * 64}
+    monkeypatch.setattr(backend, "validate_corpus_policy", lambda _value: None)
+    monkeypatch.setattr(
+        backend, "validate_source_plan", lambda _plan, _policy: None
+    )
+    monkeypatch.setattr(
+        backend, "validate_source_receipt", lambda _receipt, _policy: None
+    )
+    monkeypatch.setattr(
+        backend, "validate_backend_calibration", lambda _value, _policy: None
+    )
+    monkeypatch.setattr(
+        backend,
+        "_validate_production_cluster_launch",
+        lambda *args, **kwargs: (launch, launch_sha256, cluster),
+    )
+    monkeypatch.setattr(
+        backend, "production_processing_binding", lambda _policy: {}
+    )
+    monkeypatch.setattr(
+        backend, "validate_production_code_identity", lambda _value: None
+    )
+    monkeypatch.setattr(
+        backend, "_load_object_receipts", lambda *args, **kwargs: objects
+    )
+    monkeypatch.setattr(
+        backend, "_load_bucket_receipts", lambda *args, **kwargs: buckets
+    )
+
+    with pytest.raises(TurkishCorpusError, match=expected_error):
+        backend.seal_backend_receipt_from_cluster(
+            policy,
+            plan,
+            source_receipt,
+            calibration,
+            tmp_path,
+            tmp_path / "launch.json",
+            tmp_path / "backend.json",
+        )
+
+
+def test_source_quality_score_never_uses_lid_confidence():
+    assert backend._source_quality_score({"quality_score": 0.31}) == pytest.approx(0.31)
+    assert backend._source_quality_score({"fineweb2_hq_score": 0.44}) == pytest.approx(
+        0.44
+    )
+    assert backend._source_quality_score({"lid_probability": 0.999}) == 0.0
+    assert backend._source_quality_score({"score": 0.999}) == 0.0
+
+
+def test_qa_metrics_include_exact_encoding_corruption_counts():
+    _text, metrics = corpus._qa_document_metrics(
+        {"text": "bozuk\ufffd Ã¼ ve Ã¼ \x81 \ud800"}
+    )
+
+    assert metrics["unicode_replacement_characters"] == 1
+    assert metrics["mojibake_sequence_hits"] == 2
+    assert metrics["c1_control_characters"] == 1
+    assert metrics["unicode_surrogate_characters"] == 1
+
+
+def test_legacy_candidate_quality_is_neutral_until_object_receipt_attests_it():
+    row = {"quality_score": 0.999, "lid_probability": 0.999}
+
+    assert backend._attested_source_quality(row, {}) == 0.0
+    assert backend._attested_source_quality(
+        row,
+        {"quality_score_semantics": backend.OBJECT_SOURCE_QUALITY_SEMANTICS},
+    ) == pytest.approx(0.999)
+
+
+def test_attested_candidate_quality_must_be_finite_and_non_negative():
+    receipt = {"quality_score_semantics": backend.OBJECT_SOURCE_QUALITY_SEMANTICS}
+
+    with pytest.raises(TurkishCorpusError, match="finite and non-negative"):
+        backend._attested_source_quality({"quality_score": float("nan")}, receipt)
+    with pytest.raises(TurkishCorpusError, match="finite and non-negative"):
+        backend._attested_source_quality({"quality_score": -0.1}, receipt)
+
+
+def test_processing_binding_seals_executable_no_code_patterns_and_thresholds():
+    policy = load_corpus_policy(POLICY)
+    binding = backend.production_processing_binding(policy)
+    local = binding["project_additions"]["local_policy_audit"]
+    no_code = binding["project_additions"]["no_code"]
+
+    assert local["patterns"]["code_line"]["sha256"] == no_code[
+        "code_line_pattern_sha256"
+    ]
+    assert local["scalar_thresholds"]["max_code_line_fraction"] == no_code[
+        "max_code_line_fraction"
+    ]
+    assert local["patterns"]["scalar_assignment_line"]["sha256"] == no_code[
+        "scalar_assignment_line_pattern_sha256"
+    ]
+    assert no_code["minimum_consecutive_scalar_assignment_lines"] == 3
+    assert no_code["minimum_compact_scalar_assignments"] == 3
+    assert no_code["scalar_assignment_classifier"] == (
+        "code_shape_with_prose_equality_exception_v2"
+    )
+    changed = copy.deepcopy(policy)
+    changed["content_policy"]["max_code_line_fraction"] = 0.03
+    assert (
+        backend.production_processing_binding(changed)["binding_sha256"]
+        != binding["binding_sha256"]
+    )

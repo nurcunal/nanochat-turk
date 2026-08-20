@@ -277,7 +277,7 @@ def _data_prep_measurement(recipe: dict, recipe_sha: str) -> dict:
     )
     return seal_manifest(
         {
-            "schema_version": "2.0",
+            "schema_version": "3.0",
             "kind": workflow.DATA_PREP_STORAGE_SAMPLE_KIND,
             "family_id": recipe["family_id"],
             "recipe_sha256": recipe_sha,
@@ -288,6 +288,7 @@ def _data_prep_measurement(recipe: dict, recipe_sha: str) -> dict:
             "resource_approval_sha256": "a" * 64,
             "mixture_quality_approval_sha256": "b" * 64,
             "sample_quality_audit_sha256": "c" * 64,
+            "sample_cluster_receipt_sha256": "d" * 64,
             "sample_lane_plan_sha256": "5" * 64,
             "production_pack_plan_sha256": "6" * 64,
             "writer_probe_sha256": "7" * 64,
@@ -390,10 +391,14 @@ def test_data_prep_gate_applies_safety_once_to_explicit_future_only(
         "_live_uhem_cpu_saat",
         lambda *_args, **_kwargs: (100_000.0, "c" * 64, {"fixture": True}),
     )
+    monkeypatch.setattr(
+        workflow, "_validate_storage_approval_evidence", lambda *_args, **_kwargs: None
+    )
 
     workflow.command_data_prep_storage_gate(
         argparse.Namespace(
             recipe=RECIPE_V2,
+            policy=ROOT / "configs" / "pretrain" / "tr_d32_turkish_general_v2.json",
             sample_measurement=measurement_path,
             work_dir=tmp_path,
             output=output_path,
@@ -414,6 +419,37 @@ def test_data_prep_gate_applies_safety_once_to_explicit_future_only(
     assert gate["historical_one_time_preparations"][0][
         "future_projected_cpu_saat"
     ] == 0
+
+
+def test_storage_gate_reopens_actual_approval_evidence(tmp_path: Path) -> None:
+    recipe, recipe_sha = workflow.load_recipe(RECIPE_V2)
+    measurement = _data_prep_measurement(recipe, recipe_sha)
+    missing = {
+        "path": "missing.json",
+        "size_bytes": 1,
+        "sha256": "a" * 64,
+    }
+    measurement["approval_evidence"] = {
+        "schema_version": "1.0",
+        "source_plan": missing,
+        "calibration": missing,
+        "backend_resource_report": missing,
+        "resource_approval": missing,
+        "mixture_quality_approval": missing,
+    }
+    measurement = seal_manifest(measurement)
+    path = tmp_path / "measurement.json"
+    write_json_atomic(path, measurement)
+
+    with pytest.raises(workflow.FamilyWorkflowError, match="missing|escapes"):
+        workflow._validate_storage_approval_evidence(
+            measurement,
+            measurement_path=path,
+            policy_path=ROOT
+            / "configs"
+            / "pretrain"
+            / "tr_d32_turkish_general_v2.json",
+        )
 
 
 def test_data_prep_sample_rejects_duplicate_allocations_and_double_safety() -> None:

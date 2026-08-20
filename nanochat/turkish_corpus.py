@@ -21,6 +21,7 @@ import os
 import re
 import shutil
 import sqlite3
+import stat
 import tempfile
 import unicodedata
 import urllib.parse
@@ -145,6 +146,7 @@ PRODUCTION_CHAIN_FIELDS = (
     "resource_approval_sha256",
     "mixture_quality_approval_sha256",
     "data_prep_storage_gate_sha256",
+    "sample_cluster_receipt_sha256",
 )
 
 MACOCU_SOURCE_ID = "macocu_genre_tr"
@@ -187,16 +189,63 @@ _WORD_RE = re.compile(r"[^\W\d_]+", re.UNICODE)
 _SPACE_RE = re.compile(r"[\t\v\f\r ]+")
 _BLANK_RE = re.compile(r"\n{3,}")
 _URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
+# High-confidence UTF-8-as-Windows-1252/Latin-1 corruption sequences for the
+# Turkish alphabet and common web punctuation. Do not use broad single-letter
+# markers such as ``Â``: circumflexed letters are valid Turkish orthography.
+_MOJIBAKE_SEQUENCES = (
+    "Ã§",
+    "Ã‡",
+    "ÄŸ",
+    "Äž",
+    "Ä±",
+    "Ä°",
+    "Ã¶",
+    "Ã–",
+    "ÅŸ",
+    "Åž",
+    "Ã¼",
+    "Ãœ",
+    "â€™",
+    "â€œ",
+    "â€\x9d",
+    "â€“",
+    "â€”",
+    "â€¦",
+    "Â\xa0",
+)
 _CODE_LINE_RE = re.compile(
     r"^\s*(?:```|~~~|#!\s*/|#include\b|"
     r"(?:def|class|import|from|function|const|let|var|package|namespace|using)\s+|"
     r"(?:public|private|protected)\s+(?:static\s+)?|SELECT\s+.+\s+FROM\s+|"
     r"(?:INSERT\s+INTO|UPDATE\s+\S+\s+SET|DELETE\s+FROM)\b|"
     r"(?:npm|pip|cargo)\s+(?:install|add)\b|</?[a-z][^>]*>|"
+    r"(?:if|elif|for|while|with|except|match)\s+.+:\s*$|"
+    r"(?:else|try|finally)\s*:\s*$|"
+    r"(?:return|yield|break|continue|pass|raise)\b|"
+    r"(?:\d+|[A-Za-z_]\w*)\.times\s+do(?:\s*\|[^|]+\|)?\s*$|"
+    r"puts(?:\s+|\s*\()|"
     r"(?:print|sorted|len|range|console\.log|system\.out\.println)\s*\(|"
-    r"[^\W\d]\w*\s*=\s*(?:[\[{'\"(]|[-+]?\d|[^\W\d]\w*\s*\())",
+    r"[A-Za-z_]\w*\s*:\s*(?:int|float|str|bool|bytes|list|dict|set|tuple)"
+    r"(?:\s*\[[^\]\n]+\])?\s*=|"
+    r"[A-Za-z_]\w*\s*(?:\+=|-=|\*=|/=|//=|%=|\*\*=)\s*\S|"
+    r"[^\W\d]\w*\s*=\s*(?:[\[{'\"]|[^\W\d]\w*\s*\())",
     re.IGNORECASE,
 )
+# A lone ``Enerji = 5 kilovat saattir.``-style equality is ordinary prose and
+# must not be treated as code.  Consecutive bare scalar assignments, however,
+# are a strong language-agnostic code structure even when the right-hand side
+# is numeric and therefore does not match ``_CODE_LINE_RE``.  Requiring three
+# consecutive lines avoids rejecting isolated equations or two-row tables.
+_SCALAR_ASSIGNMENT_LINE_RE = re.compile(
+    r"^\s*(?P<lhs>[^\W\d]\w*)\s*=\s*"
+    r"(?P<rhs>(?:[-+]?(?:\d+(?:\.\d+)?|[^\W\d]\w*)"
+    r"(?:\s*[+\-*/%]\s*[-+]?(?:\d+(?:\.\d+)?|[^\W\d]\w*))*"
+    r"|true|false|null|nil))"
+    r"\s*;?\s*(?:(?:#|//).*)?$",
+    re.IGNORECASE,
+)
+_MIN_CONSECUTIVE_SCALAR_ASSIGNMENTS = 3
+_MIN_COMPACT_SCALAR_ASSIGNMENTS = 3
 _PROGRAMMING_RE = re.compile(
     r"\b(?:github|gitlab|stackoverflow|javascript|typescript|python|java|golang|"
     r"rustlang|dockerfile|kubernetes|react\.js|node\.js|api\s+endpoint|source\s+code|"
@@ -301,6 +350,80 @@ _SEO_DEFINITION_TEMPLATE_RE = re.compile(
 )
 
 
+def audit_policy_binding(content_policy: Mapping[str, Any]) -> dict[str, Any]:
+    """Seal the executable local audit patterns and scalar thresholds.
+
+    This is intentionally data-only so receipts can prove the exact no-code
+    and web-quality implementation that produced them.  A boolean ``no_code``
+    assertion by itself is not sufficient provenance.
+    """
+
+    patterns = {
+        "word": (_WORD_RE.pattern, _WORD_RE.flags),
+        "turkish_suffix": (_TR_SUFFIX_RE.pattern, _TR_SUFFIX_RE.flags),
+        "code_line": (_CODE_LINE_RE.pattern, _CODE_LINE_RE.flags),
+        "scalar_assignment_line": (
+            _SCALAR_ASSIGNMENT_LINE_RE.pattern,
+            _SCALAR_ASSIGNMENT_LINE_RE.flags,
+        ),
+        "programming_term": (_PROGRAMMING_RE.pattern, _PROGRAMMING_RE.flags),
+        "boilerplate": (_BOILERPLATE_RE.pattern, _BOILERPLATE_RE.flags),
+        "software_download": (_SOFTWARE_DOWNLOAD_RE.pattern, _SOFTWARE_DOWNLOAD_RE.flags),
+        "software_download_url": (_DOWNLOAD_URL_RE.pattern, _DOWNLOAD_URL_RE.flags),
+        "commerce": (_COMMERCE_RE.pattern, _COMMERCE_RE.flags),
+        "commerce_url": (_COMMERCE_URL_RE.pattern, _COMMERCE_URL_RE.flags),
+        "cookie_ui": (_COOKIE_UI_RE.pattern, _COOKIE_UI_RE.flags),
+        "legal_policy_url": (_LEGAL_POLICY_URL_RE.pattern, _LEGAL_POLICY_URL_RE.flags),
+        "legal_policy_heading": (
+            _LEGAL_POLICY_HEADING_RE.pattern,
+            _LEGAL_POLICY_HEADING_RE.flags,
+        ),
+        "taxonomy_url": (_TAXONOMY_URL_RE.pattern, _TAXONOMY_URL_RE.flags),
+        "seo_definition_template": (
+            _SEO_DEFINITION_TEMPLATE_RE.pattern,
+            _SEO_DEFINITION_TEMPLATE_RE.flags,
+        ),
+    }
+    pattern_bindings = {
+        name: {
+            "sha256": hashlib.sha256(pattern.encode("utf-8")).hexdigest(),
+            "flags": flags,
+        }
+        for name, (pattern, flags) in sorted(patterns.items())
+    }
+    scalar_thresholds = {
+        str(key): value
+        for key, value in sorted(content_policy.items())
+        if key != "production_processing"
+        and isinstance(value, (str, int, float, bool))
+    }
+    body = {
+        "implementation": "nanochat.turkish_corpus.audit_document_v3",
+        "normalization": "unicode_nfc_whitespace_v1",
+        "patterns": pattern_bindings,
+        "host_lists": {
+            "code": list(_CODE_HOSTS),
+            "software_download": list(_DOWNLOAD_HOSTS),
+        },
+        "literal_sequences": {
+            "high_confidence_mojibake": list(_MOJIBAKE_SEQUENCES),
+        },
+        "scalar_thresholds": scalar_thresholds,
+        "structural_thresholds": {
+            "minimum_consecutive_scalar_assignment_lines": (
+                _MIN_CONSECUTIVE_SCALAR_ASSIGNMENTS
+            ),
+            "minimum_compact_scalar_assignments": _MIN_COMPACT_SCALAR_ASSIGNMENTS,
+            "scalar_assignment_classifier": "code_shape_with_prose_equality_exception_v2",
+        },
+    }
+    return body | {
+        "binding_sha256": hashlib.sha256(
+            canonical_json(body).encode("utf-8")
+        ).hexdigest()
+    }
+
+
 class TurkishCorpusError(ValueError):
     """Raised when a corpus contract or document fails closed."""
 
@@ -318,6 +441,72 @@ class DedupDecision:
     accepted: bool
     cluster_id: str
     duplicate_kind: str | None
+
+
+def _is_codeish_scalar_assignment(line: str) -> bool:
+    """Distinguish bare executable assignments from prose equalities/glossaries.
+
+    The regex deliberately accepts a narrow scalar-expression grammar.  This
+    second structural check keeps title-cased natural-language labels such as
+    ``Uzunluk = metre`` while still counting conventional variables, numeric
+    expressions, snake/camel-case identifiers, and programming literals.
+    """
+
+    match = _SCALAR_ASSIGNMENT_LINE_RE.fullmatch(line)
+    if match is None:
+        return False
+    lhs = match.group("lhs")
+    rhs = match.group("rhs")
+    lhs_ascii = lhs.isascii()
+    lhs_code_shape = (
+        (lhs_ascii and len(lhs) == 1)
+        or "_" in lhs
+        or any(char.isdigit() for char in lhs)
+        or any(char.isupper() for char in lhs[1:])
+        or (lhs_ascii and lhs.isupper() and len(lhs) > 1)
+    )
+    # A title-cased Turkish label is much more likely to be an equation or a
+    # glossary entry than an executable variable.  Explicit code-shaped names
+    # (MAX_VALUE, camelCase, x) remain detectable.
+    if lhs[0].isupper() and not lhs_code_shape:
+        return False
+    rhs_folded = rhs.casefold()
+    rhs_code_shape = (
+        any(char.isdigit() for char in rhs)
+        or any(operator in rhs for operator in ("+", "-", "*", "/", "%"))
+        or rhs_folded in {"true", "false", "null", "nil"}
+    )
+    return lhs_code_shape or rhs_code_shape
+
+
+def _maximum_consecutive_scalar_assignments(lines: Sequence[str]) -> int:
+    longest = 0
+    current = 0
+    for line in lines:
+        if _is_codeish_scalar_assignment(line):
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 0
+    return longest
+
+
+def _maximum_compact_scalar_assignments(lines: Sequence[str]) -> int:
+    """Return the largest number of code-shaped assignments on one line."""
+
+    longest = 0
+    for line in lines:
+        statements = [statement.strip() for statement in line.split(";")]
+        if statements and not statements[-1]:
+            statements.pop()
+        current = 0
+        for statement in statements:
+            if _is_codeish_scalar_assignment(statement):
+                current += 1
+                longest = max(longest, current)
+            else:
+                current = 0
+    return longest
 
 
 def _require_mapping(value: Any, label: str) -> Mapping[str, Any]:
@@ -1052,6 +1241,7 @@ def validate_backend_receipt(
         accepted_column_contracts.add(frozenset(required_columns - {"genre"}))
     if frozenset(observed_columns) not in accepted_column_contracts:
         raise TurkishCorpusError("production backend output column contract drift")
+    source_ranks: set[int] = set()
     for item in files:
         item = _require_mapping(item, "backend file")
         if urllib.parse.urlparse(str(item.get("uri", ""))).scheme not in {"file", "https"}:
@@ -1068,6 +1258,19 @@ def validate_backend_receipt(
                 or item[key] <= 0
             ):
                 raise TurkishCorpusError(f"backend files require positive {key}")
+        source_rank = item.get("source_rank")
+        if source_rank is None and policy["name"] == CORPUS_NAME:
+            # Legacy v1 backend receipts predate explicit source-rank output
+            # provenance.  The active v2 lane always requires it.
+            continue
+        if (
+            isinstance(source_rank, bool)
+            or not isinstance(source_rank, int)
+            or source_rank < 0
+            or source_rank in source_ranks
+        ):
+            raise TurkishCorpusError("backend files require unique non-negative source_rank")
+        source_ranks.add(source_rank)
     expected_output_totals = {
         "files": len(files),
         "rows": sum(item["rows"] for item in files),
@@ -1147,13 +1350,19 @@ class _DeterministicExampleSample:
     def __init__(self, capacity: int, max_characters: int) -> None:
         self.capacity = capacity
         self.max_characters = max_characters
-        self.heaps: dict[tuple[str, str, str], list[tuple[int, str, str]]] = defaultdict(list)
+        self.heaps: dict[
+            tuple[str, str, str, str, str, str],
+            list[tuple[int, str, str]],
+        ] = defaultdict(list)
 
     def add(
         self,
         *,
         source_id: str,
         mixture_id: str,
+        source_rank: int | None,
+        wds_bin: str,
+        register: str,
         decision: str,
         reason: str,
         document_id: str,
@@ -1162,15 +1371,19 @@ class _DeterministicExampleSample:
         metrics: Mapping[str, Any],
     ) -> None:
         identity = hashlib.sha256(
-            f"{source_id}\0{mixture_id}\0{decision}\0{reason}\0{document_id}".encode(
-                "utf-8"
-            )
+            (
+                f"{source_rank}\0{source_id}\0{mixture_id}\0{wds_bin}\0"
+                f"{register}\0{decision}\0{reason}\0{document_id}"
+            ).encode("utf-8")
         ).hexdigest()
         rank = int(identity[:16], 16)
         payload = {
             "sample_sha256": identity,
             "source_id": source_id,
             "mixture_id": mixture_id,
+            "source_rank": source_rank,
+            "wds_bin": wds_bin,
+            "register": register,
             "decision": decision,
             "reason": reason,
             "document_id": document_id,
@@ -1179,7 +1392,14 @@ class _DeterministicExampleSample:
             "text_truncated": len(text) > self.max_characters,
             "metrics": dict(sorted(metrics.items())),
         }
-        key = (source_id, mixture_id, decision)
+        key = (
+            str(source_rank) if source_rank is not None else "not_available",
+            source_id,
+            mixture_id,
+            wds_bin,
+            register,
+            decision,
+        )
         item = (-rank, identity, canonical_json(payload))
         heap = self.heaps[key]
         if len(heap) < self.capacity:
@@ -1196,8 +1416,11 @@ class _DeterministicExampleSample:
         return sorted(
             rows,
             key=lambda row: (
+                str(row["source_rank"]),
                 row["source_id"],
                 row["mixture_id"],
+                row["wds_bin"],
+                row["register"],
                 row["decision"],
                 row["sample_sha256"],
             ),
@@ -1209,14 +1432,30 @@ def _qa_document_metrics(record: Mapping[str, Any]) -> tuple[str, dict[str, floa
     words = [word.casefold() for word in _WORD_RE.findall(text)]
     lines = [line for line in text.split("\n") if line.strip()]
     code_lines = sum(bool(_CODE_LINE_RE.search(line)) for line in lines)
+    consecutive_scalar_assignments = _maximum_consecutive_scalar_assignments(lines)
+    compact_scalar_assignments = _maximum_compact_scalar_assignments(lines)
     alphabetic, foreign_script = _script_metrics(text)
     web_noise = _web_noise_metrics(text, str(record.get("url") or ""))
+    replacement_characters = text.count("\ufffd")
+    mojibake_sequence_hits = sum(
+        text.count(sequence) for sequence in _MOJIBAKE_SEQUENCES
+    )
+    c1_control_characters = sum("\x80" <= char <= "\x9f" for char in text)
+    unicode_surrogate_characters = sum(
+        "\ud800" <= char <= "\udfff" for char in text
+    )
     metrics: dict[str, float | int | str] = {
         "characters": len(text),
         "words": len(words),
         "foreign_script_characters": foreign_script,
         "foreign_script_fraction": foreign_script / max(1, alphabetic),
+        "unicode_replacement_characters": replacement_characters,
+        "mojibake_sequence_hits": mojibake_sequence_hits,
+        "c1_control_characters": c1_control_characters,
+        "unicode_surrogate_characters": unicode_surrogate_characters,
         "code_line_fraction": code_lines / max(1, len(lines)),
+        "consecutive_scalar_assignment_lines": consecutive_scalar_assignments,
+        "compact_scalar_assignments": compact_scalar_assignments,
         "code_punctuation_fraction": sum(text.count(char) for char in "{};`")
         / max(1, len(text)),
         "programming_term_hits": len(_PROGRAMMING_RE.findall(text)),
@@ -1264,7 +1503,13 @@ class ProductionQAAuditor:
         "quality_score",
         "foreign_script_characters",
         "foreign_script_fraction",
+        "unicode_replacement_characters",
+        "mojibake_sequence_hits",
+        "c1_control_characters",
+        "unicode_surrogate_characters",
         "code_line_fraction",
+        "consecutive_scalar_assignment_lines",
+        "compact_scalar_assignments",
         "code_punctuation_fraction",
         "programming_term_hits",
         "software_download_hits",
@@ -1317,6 +1562,13 @@ class ProductionQAAuditor:
         if reason == "backend_duplicate":
             self.counts[stratum]["duplicates"] += 1
         register = str(metrics.get("register_bucket", "not_applicable"))
+        wds_bin = str(metrics.get("wds_bin", "not_applicable"))
+        raw_source_rank = record.get("_source_rank")
+        source_rank = (
+            int(raw_source_rank)
+            if isinstance(raw_source_rank, int) and not isinstance(raw_source_rank, bool)
+            else None
+        )
         self.registers[stratum][register] += 1
         if "wds_bin" in metrics:
             self.wds_bins[stratum][str(metrics["wds_bin"])] += 1
@@ -1330,6 +1582,9 @@ class ProductionQAAuditor:
         self.examples.add(
             source_id=source_id,
             mixture_id=mixture_id,
+            source_rank=source_rank,
+            wds_bin=wds_bin,
+            register=register,
             decision=decision,
             reason=reason,
             document_id=document_id,
@@ -1357,8 +1612,10 @@ class ProductionQAAuditor:
         with text_path.open("w", encoding="utf-8", newline="\n") as handle:
             for index, row in enumerate(rows, 1):
                 handle.write(
-                    f"[{index}] {row['source_id']} / {row['mixture_id']} / "
-                    f"{row['decision']} / {row['reason']}\n"
+                    f"[{index}] rank={row['source_rank']} / {row['source_id']} / "
+                    f"{row['mixture_id']} / WDS={row['wds_bin']} / "
+                    f"register={row['register']} / {row['decision']} / "
+                    f"{row['reason']}\n"
                 )
                 handle.write(f"sample_sha256: {row['sample_sha256']}\n")
                 handle.write(f"url: {row['url']}\n")
@@ -1405,7 +1662,9 @@ class ProductionQAAuditor:
                 "missing_accepted_mixture_samples": missing,
                 "mixtures_with_fewer_than_requested_rejected_examples": sparse_rejected,
                 "sampling": {
-                    "method": "smallest_sha256_per_stratum_decision",
+                    "method": (
+                        "smallest_sha256_per_rank_source_mixture_wds_register_decision"
+                    ),
                     "examples_per_stratum_and_decision": self.examples.capacity,
                     "max_example_characters": self.examples.max_characters,
                     "quantile_method": "nearest_over_smallest_sha256_sample",
@@ -1653,7 +1912,7 @@ def materialize_production_pool(
     validate_backend_receipt(backend_receipt, policy, source_receipt)
     cluster_launch_sha = verify_manifest_hash(cluster_launch_receipt)
     if (
-        cluster_launch_receipt.get("schema_version") != "1.0"
+        cluster_launch_receipt.get("schema_version") != "2.0"
         or cluster_launch_receipt.get("kind") != PRODUCTION_CLUSTER_LAUNCH_KIND
         or cluster_launch_receipt.get("cluster_completed") is not True
         or cluster_launch_receipt.get("policy_sha256")
@@ -1662,6 +1921,9 @@ def materialize_production_pool(
         != backend_receipt.get("source_plan_sha256")
         or cluster_launch_receipt.get("cluster_receipt_sha256")
         != backend_receipt.get("cluster_receipt_sha256")
+        or not _SHA256_RE.fullmatch(
+            str(cluster_launch_receipt.get("sample_cluster_receipt_sha256", ""))
+        )
     ):
         raise TurkishCorpusError("production pool cluster-launch binding drift")
     expected_production_chain = {
@@ -1677,6 +1939,9 @@ def materialize_production_pool(
         ),
         "data_prep_storage_gate_sha256": cluster_launch_receipt.get(
             "data_prep_storage_gate_sha256"
+        ),
+        "sample_cluster_receipt_sha256": cluster_launch_receipt.get(
+            "sample_cluster_receipt_sha256"
         ),
     }
     if (
@@ -1710,10 +1975,16 @@ def materialize_production_pool(
     qa_auditor = ProductionQAAuditor(policy)
     try:
         for item in backend_receipt["files"]:
+            source_rank = item.get("source_rank")
+            if isinstance(source_rank, bool) or not isinstance(source_rank, int):
+                raise TurkishCorpusError(
+                    "production backend file lacks source_rank for stratified QA"
+                )
             staged = stage_receipt_file(item, build_dir, request_get=request_get)
             input_rows = 0
             try:
                 for record in iter_input_records(staged, columns=required_columns):
+                    record["_source_rank"] = source_rank
                     input_rows += 1
                     counts["seen"] += 1
                     source_id = str(record.get("source_id") or "unknown")
@@ -2104,11 +2375,46 @@ def audit_document(
         return AuditDecision(False, "too_short", normalized, {"char_count": char_count})
     if char_count > int(content_policy["max_chars"]):
         return AuditDecision(False, "too_long", normalized, {"char_count": char_count})
+
+    replacement_characters = normalized.count("\ufffd")
+    mojibake_sequence_hits = sum(
+        normalized.count(sequence) for sequence in _MOJIBAKE_SEQUENCES
+    )
+    c1_control_characters = sum("\x80" <= char <= "\x9f" for char in normalized)
+    unicode_surrogate_characters = sum(
+        "\ud800" <= char <= "\udfff" for char in normalized
+    )
+    encoding_metrics = {
+        "unicode_replacement_characters": replacement_characters,
+        "mojibake_sequence_hits": mojibake_sequence_hits,
+        "c1_control_characters": c1_control_characters,
+        "unicode_surrogate_characters": unicode_surrogate_characters,
+    }
+    if (
+        replacement_characters
+        > int(content_policy.get("max_unicode_replacement_characters", 10**18))
+        or mojibake_sequence_hits
+        > int(content_policy.get("max_mojibake_sequence_hits", 10**18))
+        or c1_control_characters
+        > int(content_policy.get("max_c1_control_characters", 10**18))
+        or unicode_surrogate_characters
+        > int(content_policy.get("max_unicode_surrogate_characters", 10**18))
+    ):
+        return AuditDecision(
+            False,
+            "text_encoding_corruption",
+            normalized,
+            {"char_count": char_count, **encoding_metrics},
+        )
     if not source_lid_ok:
         return AuditDecision(False, "source_lid", normalized, {"char_count": char_count})
 
     confidence, language_metrics = turkish_text_confidence(normalized)
-    metrics: dict[str, float | int | str] = {"char_count": char_count, **language_metrics}
+    metrics: dict[str, float | int | str] = {
+        "char_count": char_count,
+        **encoding_metrics,
+        **language_metrics,
+    }
     metrics["turkish_confidence"] = confidence
     if confidence < float(content_policy["min_turkish_confidence"]):
         return AuditDecision(False, "independent_lid", normalized, metrics)
@@ -2138,12 +2444,16 @@ def audit_document(
 
     lines = [line for line in normalized.split("\n") if line.strip()]
     code_lines = sum(bool(_CODE_LINE_RE.search(line)) for line in lines)
+    consecutive_scalar_assignments = _maximum_consecutive_scalar_assignments(lines)
+    compact_scalar_assignments = _maximum_compact_scalar_assignments(lines)
     brace_semicolon = sum(normalized.count(char) for char in "{};`") / max(1, char_count)
     programming_hits = len(_PROGRAMMING_RE.findall(normalized))
     code_line_fraction = code_lines / max(1, len(lines))
     metrics.update(
         {
             "code_line_fraction": code_line_fraction,
+            "consecutive_scalar_assignment_lines": consecutive_scalar_assignments,
+            "compact_scalar_assignments": compact_scalar_assignments,
             "code_punctuation_fraction": brace_semicolon,
             "programming_term_hits": programming_hits,
         }
@@ -2153,6 +2463,9 @@ def audit_document(
         return AuditDecision(False, "code_domain", normalized, metrics)
     if (
         code_line_fraction > float(content_policy["max_code_line_fraction"])
+        or consecutive_scalar_assignments
+        >= _MIN_CONSECUTIVE_SCALAR_ASSIGNMENTS
+        or compact_scalar_assignments >= _MIN_COMPACT_SCALAR_ASSIGNMENTS
         or brace_semicolon > float(content_policy["max_code_punctuation_fraction"])
         or programming_hits > int(content_policy["max_programming_term_hits"])
     ):
@@ -2534,51 +2847,251 @@ def iter_jsonl(stream: BinaryIO, *, input_path: str) -> Iterator[dict[str, Any]]
         wrapper.detach()
 
 
-def iter_input_records(
-    path: str | Path, *, columns: Sequence[str] | None = None
-) -> Iterator[dict[str, Any]]:
-    source = Path(path)
-    name = source.name
-    if name.endswith(".parquet"):
-        parquet = pq.ParquetFile(source)
-        projected = None
-        if columns is not None:
-            projected = sorted(set(columns))
-            missing = sorted(set(projected) - set(parquet.schema_arrow.names))
-            if missing:
-                raise TurkishCorpusError(
-                    f"{source}: pinned adapter schema drift; missing columns {missing}"
-                )
-        for batch in parquet.iter_batches(batch_size=2_048, columns=projected):
-            for row in batch.to_pylist():
-                row["_input_path"] = name
-                yield row
-        return
-    if name.endswith(".jsonl"):
-        with source.open("rb") as handle:
-            yield from iter_jsonl(handle, input_path=name)
-        return
-    if name.endswith(".jsonl.zst"):
-        # Be explicit: pyarrow.input_stream detects .zst by default. Wrapping
-        # that decoded stream in CompressedInputStream would decompress twice.
-        compressed = pa.input_stream(str(source), compression="zstd")
-        try:
-            yield from iter_jsonl(compressed, input_path=name)
-        finally:
-            compressed.close()
-        return
-    raise TurkishCorpusError(f"unsupported input format: {source}")
+def _staged_descriptor_fingerprint(descriptor: int) -> tuple[int, int, int, int, int]:
+    value = os.fstat(descriptor)
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
 
 
-def _copy_and_hash_response(response: requests.Response, destination: Path) -> str:
+def _staged_descriptor_sha256(descriptor: int) -> str:
+    size = os.fstat(descriptor).st_size
+    offset = 0
     digest = hashlib.sha256()
-    with destination.open("wb") as handle:
-        for chunk in response.iter_content(chunk_size=8 * 1024 * 1024):
-            if chunk:
-                digest.update(chunk)
-                handle.write(chunk)
-        handle.flush()
-        os.fsync(handle.fileno())
+    while offset < size:
+        chunk = os.pread(descriptor, min(8 * 1024 * 1024, size - offset), offset)
+        if not chunk:
+            raise TurkishCorpusError("verified staged artifact was truncated")
+        digest.update(chunk)
+        offset += len(chunk)
+    return digest.hexdigest()
+
+
+class _StagedDescriptorReader(io.RawIOBase):
+    """Independent-position reader over one already verified staged inode."""
+
+    def __init__(self, descriptor: int, path: Path) -> None:
+        super().__init__()
+        self._descriptor = os.dup(descriptor)
+        self._position = 0
+        self._size = os.fstat(self._descriptor).st_size
+        self.name = str(path)
+
+    def readable(self) -> bool:
+        return True
+
+    def seekable(self) -> bool:
+        return True
+
+    def fileno(self) -> int:
+        if self.closed:
+            raise ValueError("I/O operation on closed staged reader")
+        return self._descriptor
+
+    def read(self, size: int = -1) -> bytes:
+        if self.closed:
+            raise ValueError("I/O operation on closed staged reader")
+        remaining = self._size - self._position
+        wanted = remaining if size is None or size < 0 else min(size, remaining)
+        if wanted <= 0:
+            return b""
+        data = os.pread(self._descriptor, wanted, self._position)
+        self._position += len(data)
+        return data
+
+    def readinto(self, buffer: Any) -> int:
+        data = self.read(len(buffer))
+        buffer[: len(data)] = data
+        return len(data)
+
+    def seek(self, offset: int, whence: int = os.SEEK_SET) -> int:
+        if self.closed:
+            raise ValueError("I/O operation on closed staged reader")
+        if whence == os.SEEK_SET:
+            position = offset
+        elif whence == os.SEEK_CUR:
+            position = self._position + offset
+        elif whence == os.SEEK_END:
+            position = self._size + offset
+        else:
+            raise ValueError("invalid whence")
+        if position < 0:
+            raise ValueError("negative seek position")
+        self._position = position
+        return position
+
+    def tell(self) -> int:
+        return self._position
+
+    def close(self) -> None:
+        if not self.closed:
+            os.close(self._descriptor)
+        super().close()
+
+
+class VerifiedStagedArtifact:
+    """Receipt-bound staged file whose consumers duplicate one held inode."""
+
+    def __init__(
+        self,
+        path: Path,
+        descriptor: int,
+        *,
+        expected_size: int,
+        expected_sha256: str,
+    ) -> None:
+        self.path = path
+        self._descriptor = descriptor
+        self._expected_size = expected_size
+        self._expected_sha256 = expected_sha256
+        self._closed = False
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode) or before.st_size != expected_size:
+            raise TurkishCorpusError("verified staged artifact size/type drift")
+        self._fingerprint = _staged_descriptor_fingerprint(descriptor)
+        self._assert_path_binding()
+        if _staged_descriptor_sha256(descriptor) != expected_sha256:
+            raise TurkishCorpusError("verified staged artifact hash drift")
+        if _staged_descriptor_fingerprint(descriptor) != self._fingerprint:
+            raise TurkishCorpusError("verified staged artifact changed during sealing")
+        self._assert_path_binding()
+
+    @property
+    def name(self) -> str:
+        return self.path.name
+
+    def _assert_path_binding(self) -> None:
+        try:
+            current = os.stat(self.path, follow_symlinks=False)
+        except OSError as exc:
+            raise TurkishCorpusError(
+                "verified staged artifact path changed during consumption"
+            ) from exc
+        held = os.fstat(self._descriptor)
+        if (
+            not stat.S_ISREG(current.st_mode)
+            or (current.st_dev, current.st_ino) != (held.st_dev, held.st_ino)
+        ):
+            raise TurkishCorpusError(
+                "verified staged artifact path changed during consumption"
+            )
+
+    def _verify_descriptor_unchanged(self) -> None:
+        if self._closed:
+            raise TurkishCorpusError("verified staged artifact is already closed")
+        if _staged_descriptor_fingerprint(self._descriptor) != self._fingerprint:
+            raise TurkishCorpusError(
+                "verified staged artifact changed during consumption"
+            )
+        if _staged_descriptor_sha256(self._descriptor) != self._expected_sha256:
+            raise TurkishCorpusError(
+                "verified staged artifact changed during consumption"
+            )
+        if _staged_descriptor_fingerprint(self._descriptor) != self._fingerprint:
+            raise TurkishCorpusError(
+                "verified staged artifact changed during consumption"
+            )
+
+    def verify_unchanged(self) -> None:
+        self._verify_descriptor_unchanged()
+        self._assert_path_binding()
+
+    def open(self) -> BinaryIO:
+        # The pathname may be transiently replaced after staging. Actual
+        # consumption remains bound to this already verified descriptor; the
+        # public path is checked again after consumption/at close.
+        self._verify_descriptor_unchanged()
+        return io.BufferedReader(_StagedDescriptorReader(self._descriptor, self.path))
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        try:
+            self.verify_unchanged()
+        finally:
+            os.close(self._descriptor)
+            self._closed = True
+
+    def unlink(self, missing_ok: bool = False) -> None:
+        self.close()
+        self.path.unlink(missing_ok=missing_ok)
+
+    def __enter__(self) -> VerifiedStagedArtifact:
+        return self
+
+    def __exit__(self, _type: Any, _value: Any, _traceback: Any) -> None:
+        self.close()
+
+    def __del__(self) -> None:
+        if not getattr(self, "_closed", True):
+            try:
+                os.close(self._descriptor)
+            except OSError:
+                pass
+            self._closed = True
+
+
+def iter_input_records(
+    path: str | Path | VerifiedStagedArtifact,
+    *,
+    columns: Sequence[str] | None = None,
+) -> Iterator[dict[str, Any]]:
+    staged = path if isinstance(path, VerifiedStagedArtifact) else None
+    source = staged.path if staged is not None else Path(path)
+    name = source.name
+    try:
+        if name.endswith(".parquet"):
+            parquet_source: Any = staged.open() if staged is not None else source
+            try:
+                parquet = pq.ParquetFile(parquet_source)
+                projected = None
+                if columns is not None:
+                    projected = sorted(set(columns))
+                    missing = sorted(set(projected) - set(parquet.schema_arrow.names))
+                    if missing:
+                        raise TurkishCorpusError(
+                            f"{source}: pinned adapter schema drift; missing columns {missing}"
+                        )
+                for batch in parquet.iter_batches(batch_size=2_048, columns=projected):
+                    for row in batch.to_pylist():
+                        row["_input_path"] = name
+                        yield row
+            finally:
+                if staged is not None:
+                    parquet_source.close()
+            return
+        if name.endswith(".jsonl"):
+            handle = staged.open() if staged is not None else source.open("rb")
+            with handle:
+                yield from iter_jsonl(handle, input_path=name)
+            return
+        if name.endswith(".jsonl.zst"):
+            # Be explicit: wrapping a decoded stream would decompress twice.
+            raw_source: Any = staged.open() if staged is not None else str(source)
+            compressed = pa.input_stream(raw_source, compression="zstd")
+            try:
+                yield from iter_jsonl(compressed, input_path=name)
+            finally:
+                compressed.close()
+                if staged is not None:
+                    raw_source.close()
+            return
+        raise TurkishCorpusError(f"unsupported input format: {source}")
+    finally:
+        if staged is not None:
+            staged.verify_unchanged()
+
+
+def _copy_and_hash_response(response: requests.Response, destination: BinaryIO) -> str:
+    digest = hashlib.sha256()
+    for chunk in response.iter_content(chunk_size=8 * 1024 * 1024):
+        if chunk:
+            digest.update(chunk)
+            destination.write(chunk)
     return digest.hexdigest()
 
 
@@ -2587,7 +3100,7 @@ def stage_receipt_file(
     temporary_dir: str | Path,
     *,
     request_get: Any = requests.get,
-) -> Path:
+) -> VerifiedStagedArtifact:
     """Stage exactly one receipt object and verify SHA-256 before parsing it."""
 
     uri = str(item["uri"])
@@ -2595,37 +3108,48 @@ def stage_receipt_file(
     expected = str(item["checksum"]["value"])
     suffixes = "".join(Path(parsed.path).suffixes[-2:]) or ".input"
     fd, name = tempfile.mkstemp(prefix="source-", suffix=suffixes, dir=temporary_dir)
-    os.close(fd)
     destination = Path(name)
     try:
-        if parsed.scheme == "file":
-            source = Path(urllib.parse.unquote(parsed.path))
-            digest = hashlib.sha256()
-            with source.open("rb") as read_handle, destination.open("wb") as write_handle:
-                for chunk in iter(lambda: read_handle.read(8 * 1024 * 1024), b""):
-                    digest.update(chunk)
-                    write_handle.write(chunk)
-                write_handle.flush()
-                os.fsync(write_handle.fileno())
-            actual = digest.hexdigest()
-        else:
-            response = request_get(uri, stream=True, timeout=(30, 300))
-            try:
-                response.raise_for_status()
-                actual = _copy_and_hash_response(response, destination)
-            finally:
-                response.close()
+        with os.fdopen(os.dup(fd), "wb") as write_handle:
+            if parsed.scheme == "file":
+                source = Path(urllib.parse.unquote(parsed.path))
+                digest = hashlib.sha256()
+                with source.open("rb") as read_handle:
+                    for chunk in iter(
+                        lambda: read_handle.read(8 * 1024 * 1024), b""
+                    ):
+                        digest.update(chunk)
+                        write_handle.write(chunk)
+                actual = digest.hexdigest()
+            else:
+                response = request_get(uri, stream=True, timeout=(30, 300))
+                try:
+                    response.raise_for_status()
+                    actual = _copy_and_hash_response(response, write_handle)
+                finally:
+                    response.close()
+            write_handle.flush()
+            os.fsync(write_handle.fileno())
         if actual != expected:
             raise TurkishCorpusError(f"SHA-256 mismatch for {uri}: expected {expected}, got {actual}")
         expected_size = item.get("size_bytes")
+        actual_size = os.fstat(fd).st_size
         if isinstance(expected_size, int) and not isinstance(expected_size, bool):
-            actual_size = destination.stat().st_size
             if actual_size != expected_size:
                 raise TurkishCorpusError(
                     f"size mismatch for {uri}: expected {expected_size}, got {actual_size}"
                 )
-        return destination
+        return VerifiedStagedArtifact(
+            destination,
+            fd,
+            expected_size=actual_size,
+            expected_sha256=expected,
+        )
     except Exception:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
         destination.unlink(missing_ok=True)
         raise
 

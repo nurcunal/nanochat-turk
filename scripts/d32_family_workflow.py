@@ -1864,7 +1864,11 @@ def command_seal_mixture_quality_approval(args: argparse.Namespace) -> None:
         _fail(f"refusing to overwrite mixture-quality approval: {args.output}")
     try:
         from nanochat.turkish_backend import (
+            _MAX_AUDIT_REPORT_BYTES,
+            _read_bounded_regular_file_snapshot,
+            select_resource_sample_ranks,
             validate_backend_calibration,
+            validate_sample_quality_audit_bundle,
             validate_source_plan,
         )
         from nanochat.turkish_corpus import load_corpus_policy
@@ -1883,34 +1887,60 @@ def command_seal_mixture_quality_approval(args: argparse.Namespace) -> None:
     calibration_sha = _sha256(
         calibration.get("canonical_sha256"), "calibration SHA-256"
     )
-    audit, audit_sha = _verify_sealed(
-        args.audit_report, "bounded sample quality audit"
+    output_parent = args.output.expanduser().resolve().parent
+    audit_root = args.audit_report.expanduser().resolve().parent
+    if audit_root != output_parent and output_parent not in audit_root.parents:
+        _fail("quality-audit evidence must remain inside the approval directory tree")
+    report_snapshot = _read_bounded_regular_file_snapshot(
+        args.audit_report.expanduser().resolve(),
+        label="bounded sample quality audit",
+        max_bytes=_MAX_AUDIT_REPORT_BYTES,
     )
-    if (
-        audit.get("schema_version") != "1.0"
-        or audit.get("kind") != "turkish_bounded_backend_sample_quality_audit"
-        or audit.get("integrity_checks_passed") is not True
-        or audit.get("manual_review_required") is not True
-        or audit.get("automatic_mixture_approval") is not False
-        or audit.get("review_status") != "pending"
-    ):
-        _fail("bounded sample quality audit is not pending valid manual review")
-    for field, expected in {
-        "policy_sha256": policy_sha,
-        "source_plan_sha256": source_plan_sha,
-        "calibration_sha256": calibration_sha,
-    }.items():
-        if audit.get(field) != expected:
-            _fail(f"bounded sample quality audit {field} binding mismatch")
+    report_record = {
+        "path": args.audit_report.expanduser().resolve().relative_to(audit_root).as_posix(),
+        "size_bytes": len(report_snapshot),
+        "sha256": hashlib.sha256(report_snapshot).hexdigest(),
+    }
+    try:
+        verified_audit, verified_audit_sha = validate_sample_quality_audit_bundle(
+            audit_root,
+            report_record,
+            policy=policy,
+            plan=source_plan,
+            calibration=calibration,
+            require_complete_accepted_coverage=args.decision == "accepted",
+            report_snapshot=report_snapshot,
+        )
+    except ValueError as exc:
+        raise FamilyWorkflowError(f"invalid sample-quality evidence bundle: {exc}") from exc
+    audit = verified_audit
+    audit_sha = verified_audit_sha
     cluster_sha = _sha256(
-        audit.get("cluster_receipt_sha256"), "quality-audit cluster SHA-256"
+        audit.get("sample_cluster_receipt_sha256"),
+        "quality-audit sample-cluster SHA-256",
     )
+    if audit.get("cluster_receipt_sha256") != cluster_sha:
+        _fail("quality-audit cluster aliases disagree")
     coverage = _mapping(audit.get("coverage"), "quality-audit coverage")
     expected_mixtures = sorted(str(item["id"]) for item in policy["mixture"])
+    expected_ranks = select_resource_sample_ranks(source_plan)
+    expected_hplt_bins = sorted(
+        {
+            int(source_plan["objects"][rank]["wds_bin"])
+            for rank in expected_ranks
+            if source_plan["objects"][rank]["source_id"] == "hplt3_tr"
+        }
+    )
     coverage_complete = (
         coverage.get("expected_mixtures") == expected_mixtures
         and coverage.get("mixtures_without_accepted_rows") == []
         and coverage.get("mixtures_with_accepted_rows") == expected_mixtures
+        and coverage.get("expected_source_ranks") == expected_ranks
+        and coverage.get("source_ranks_without_accepted_rows") == []
+        and coverage.get("source_ranks_without_accepted_examples") == []
+        and coverage.get("expected_hplt_wds_bins") == expected_hplt_bins
+        and coverage.get("hplt_wds_bins_without_accepted_rows") == []
+        and coverage.get("hplt_wds_bins_without_accepted_examples") == []
     )
     if args.decision == "accepted" and not coverage_complete:
         _fail("cannot accept a quality audit without accepted-row mixture coverage")
@@ -1924,38 +1954,39 @@ def command_seal_mixture_quality_approval(args: argparse.Namespace) -> None:
     )
     files = _mapping(example_sampling.get("files"), "quality-audit example files")
     reviewed_files: dict[str, dict[str, Any]] = {}
-    audit_root = args.audit_report.expanduser().resolve().parent
     for decision in ("accepted", "rejected"):
         record = _mapping(files.get(decision), f"quality-audit {decision} examples")
         rows = _nonnegative_int(record.get("rows"), f"{decision} example rows")
-        reviewed_files[decision] = {"rows": rows}
-        for representation in ("jsonl", "plaintext"):
-            artifact = _mapping(
-                record.get(representation),
-                f"quality-audit {decision} {representation}",
-            )
-            relative = Path(str(artifact.get("path") or ""))
-            path = (audit_root / relative).resolve()
-            if (
-                not relative.parts
-                or relative.is_absolute()
-                or audit_root not in path.parents
-                or path.is_symlink()
-                or not path.is_file()
-                or path.stat().st_size != artifact.get("size_bytes")
-                or file_sha256(path) != artifact.get("sha256")
-            ):
-                _fail(f"quality-audit {decision} {representation} evidence drift")
-            reviewed_files[decision][f"{representation}_sha256"] = artifact["sha256"]
+        reviewed_files[decision] = {
+            "rows": rows,
+            "jsonl": dict(
+                _mapping(
+                    record.get("jsonl"),
+                    f"quality-audit {decision} JSONL",
+                )
+            ),
+            "plaintext": dict(
+                _mapping(
+                    record.get("plaintext"),
+                    f"quality-audit {decision} plaintext",
+                )
+            ),
+        }
     receipt = seal_manifest(
         {
-            "schema_version": "1.0",
+            "schema_version": "3.0",
             "kind": MIXTURE_QUALITY_APPROVAL_KIND,
             "sample_quality_audit_sha256": audit_sha,
             "policy_sha256": policy_sha,
             "source_plan_sha256": source_plan_sha,
             "calibration_sha256": calibration_sha,
             "cluster_receipt_sha256": cluster_sha,
+            "sample_cluster_receipt_sha256": cluster_sha,
+            "evidence_bundle": {
+                "schema_version": "1.0",
+                "root": audit_root.relative_to(output_parent).as_posix(),
+                "report": report_record,
+            },
             "reviewed_example_files": reviewed_files,
             "coverage_complete": coverage_complete,
             "automatic_decision": False,
@@ -2709,7 +2740,7 @@ def _validate_data_prep_storage_sample(
 ) -> str:
     digest = verify_manifest_hash(measurement)
     if (
-        measurement.get("schema_version") != "2.0"
+        measurement.get("schema_version") != "3.0"
         or measurement.get("kind") != DATA_PREP_STORAGE_SAMPLE_KIND
     ):
         _fail("data-preparation storage sample has the wrong kind/version")
@@ -2727,6 +2758,7 @@ def _validate_data_prep_storage_sample(
         "resource_approval_sha256",
         "mixture_quality_approval_sha256",
         "sample_quality_audit_sha256",
+        "sample_cluster_receipt_sha256",
         "sample_lane_plan_sha256",
         "production_pack_plan_sha256",
         "writer_probe_sha256",
@@ -3020,6 +3052,165 @@ def _validate_data_prep_storage_sample(
     return digest
 
 
+def _evidence_record_under(root: Path, path_value: Path, label: str) -> dict[str, Any]:
+    source = path_value.expanduser()
+    if source.is_symlink() or not source.is_file():
+        _fail(f"{label} evidence is unsafe or missing")
+    root = root.resolve()
+    path = source.resolve()
+    if path.parent != root and root not in path.parents:
+        _fail(f"{label} evidence must remain inside the receipt directory tree")
+    return {
+        "path": path.relative_to(root).as_posix(),
+        "size_bytes": path.stat().st_size,
+        "sha256": file_sha256(path),
+    }
+
+
+def _load_evidence_under(
+    root: Path, raw: Any, label: str
+) -> tuple[Path, dict[str, Any], bytes]:
+    from nanochat.turkish_backend import (
+        _MAX_AUDIT_REPORT_BYTES,
+        _read_bounded_regular_file_snapshot,
+    )
+
+    record = dict(_mapping(raw, f"{label} evidence record"))
+    relative = Path(str(record.get("path") or ""))
+    if not relative.parts or relative.is_absolute() or ".." in relative.parts:
+        _fail(f"{label} evidence path is unsafe")
+    unresolved = root.resolve() / relative
+    path = unresolved.resolve()
+    if root.resolve() not in path.parents:
+        _fail(f"{label} evidence is missing or escapes its receipt tree")
+    current = unresolved
+    while current != root.resolve():
+        if current.is_symlink():
+            _fail(f"{label} evidence path is symlinked")
+        current = current.parent
+    if (
+        isinstance(record.get("size_bytes"), bool)
+        or not isinstance(record.get("size_bytes"), int)
+        or record["size_bytes"] < 0
+        or record["size_bytes"] > _MAX_AUDIT_REPORT_BYTES
+    ):
+        _fail(f"{label} evidence content drift")
+    try:
+        snapshot = _read_bounded_regular_file_snapshot(
+            path, label=label, max_bytes=_MAX_AUDIT_REPORT_BYTES
+        )
+    except ValueError as exc:
+        raise FamilyWorkflowError(str(exc)) from exc
+    if (
+        len(snapshot) != record["size_bytes"]
+        or hashlib.sha256(snapshot).hexdigest()
+        != _sha256(record.get("sha256"), f"{label} SHA-256")
+    ):
+        _fail(f"{label} evidence content drift")
+    return path, record, snapshot
+
+
+def _validate_storage_approval_evidence(
+    measurement: Mapping[str, Any],
+    *,
+    measurement_path: Path,
+    policy_path: Path,
+) -> None:
+    """Re-open the real approvals/audit bundle before sealing the storage gate."""
+
+    try:
+        from nanochat.turkish_backend import (
+            _load_json_snapshot,
+            validate_backend_calibration,
+            validate_mixture_quality_approval,
+            validate_resource_approval,
+            validate_resource_projection,
+            validate_source_plan,
+        )
+        from nanochat.turkish_corpus import load_corpus_policy
+    except ImportError as exc:
+        raise FamilyWorkflowError("Turkish data environment is unavailable") from exc
+    policy = load_corpus_policy(policy_path)
+    root = measurement_path.expanduser().resolve().parent
+    bundle = _mapping(
+        measurement.get("approval_evidence"), "storage sample approval_evidence"
+    )
+    if bundle.get("schema_version") != "1.0":
+        _fail("storage sample approval evidence version drift")
+    required = {
+        "schema_version",
+        "source_plan",
+        "calibration",
+        "backend_resource_report",
+        "resource_approval",
+        "mixture_quality_approval",
+    }
+    if set(bundle) != required:
+        _fail("storage sample approval evidence inventory drift")
+    source_plan_path, _, source_plan_raw = _load_evidence_under(
+        root, bundle["source_plan"], "source plan"
+    )
+    calibration_path, _, calibration_raw = _load_evidence_under(
+        root, bundle["calibration"], "calibration"
+    )
+    report_path, _, report_raw = _load_evidence_under(
+        root, bundle["backend_resource_report"], "backend resource report"
+    )
+    resource_path, _, resource_raw = _load_evidence_under(
+        root, bundle["resource_approval"], "resource approval"
+    )
+    mixture_path, _, mixture_raw = _load_evidence_under(
+        root, bundle["mixture_quality_approval"], "mixture-quality approval"
+    )
+    source_plan = _load_json_snapshot(source_plan_raw, "storage evidence source plan")
+    calibration = _load_json_snapshot(
+        calibration_raw, "storage evidence calibration"
+    )
+    if not isinstance(source_plan, Mapping) or not isinstance(calibration, Mapping):
+        _fail("storage source-plan/calibration evidence must be JSON objects")
+    validate_source_plan(source_plan, policy)
+    validate_backend_calibration(calibration, policy)
+    report = _load_json_snapshot(report_raw, "storage evidence backend report")
+    report_sha = validate_resource_projection(report)
+    mixture = _load_json_snapshot(mixture_raw, "storage evidence mixture approval")
+    mixture_sha = validate_mixture_quality_approval(
+        mixture,
+        policy=policy,
+        plan=source_plan,
+        calibration=calibration,
+        approval_path=mixture_path,
+    )
+    resource = _load_json_snapshot(resource_raw, "storage evidence resource approval")
+    validate_resource_approval(
+        resource,
+        plan=source_plan,
+        policy=policy,
+        calibration=calibration,
+        approval_path=resource_path,
+    )
+    exact = {
+        "policy_sha256": _data_prep_policy_sha256(policy),
+        "source_plan_sha256": source_plan["canonical_sha256"],
+        "calibration_sha256": calibration["canonical_sha256"],
+        "backend_resource_report_sha256": report_sha,
+        "resource_approval_sha256": resource["canonical_sha256"],
+        "mixture_quality_approval_sha256": mixture_sha,
+        "sample_quality_audit_sha256": mixture["sample_quality_audit_sha256"],
+        "sample_cluster_receipt_sha256": mixture[
+            "sample_cluster_receipt_sha256"
+        ],
+    }
+    sample_cluster_sha = exact["sample_cluster_receipt_sha256"]
+    if (
+        report.get("sample_cluster_receipt_sha256") != sample_cluster_sha
+        or resource.get("sample_cluster_receipt_sha256") != sample_cluster_sha
+    ):
+        _fail("storage sample approval chain crosses sample-cluster lineages")
+    for field, expected in exact.items():
+        if measurement.get(field) != expected:
+            _fail(f"storage sample actual evidence {field} binding mismatch")
+
+
 def command_seal_data_prep_storage_sample(args: argparse.Namespace) -> None:
     if args.output.exists():
         _fail(f"refusing to overwrite data-preparation storage sample: {args.output}")
@@ -3081,9 +3272,10 @@ def command_seal_data_prep_storage_sample(args: argparse.Namespace) -> None:
     try:
         validate_mixture_quality_approval(
             mixture_quality_approval,
-            policy_sha256=policy_sha,
-            source_plan_sha256=source_plan_sha,
-            calibration_sha256=calibration_sha,
+            policy=policy,
+            plan=source_plan,
+            calibration=calibration,
+            approval_path=args.mixture_quality_approval,
         )
     except ValueError as exc:
         raise FamilyWorkflowError(f"invalid mixture-quality approval: {exc}") from exc
@@ -3096,6 +3288,7 @@ def command_seal_data_prep_storage_sample(args: argparse.Namespace) -> None:
             plan=source_plan,
             policy=policy,
             calibration=calibration,
+            approval_path=args.resource_approval,
         )
     except ValueError as exc:
         raise FamilyWorkflowError(f"invalid backend resource approval: {exc}") from exc
@@ -3103,6 +3296,10 @@ def command_seal_data_prep_storage_sample(args: argparse.Namespace) -> None:
         resource_approval.get("resource_report_sha256") != backend_report_sha
         or resource_approval.get("mixture_quality_approval_sha256")
         != mixture_quality_approval_sha
+        or resource_approval.get("sample_cluster_receipt_sha256")
+        != backend_report.get("sample_cluster_receipt_sha256")
+        or mixture_quality_approval.get("sample_cluster_receipt_sha256")
+        != backend_report.get("sample_cluster_receipt_sha256")
     ):
         _fail("resource approval does not bind the supplied report/quality approval")
 
@@ -3476,7 +3673,7 @@ def command_seal_data_prep_storage_sample(args: argparse.Namespace) -> None:
     total_sample_billed = sum(float(item["billed_cpu_saat"]) for item in allocations)
     receipt = seal_manifest(
         {
-            "schema_version": "2.0",
+            "schema_version": "3.0",
             "kind": DATA_PREP_STORAGE_SAMPLE_KIND,
             "family_id": recipe["family_id"],
             "recipe_sha256": recipe_sha,
@@ -3489,6 +3686,35 @@ def command_seal_data_prep_storage_sample(args: argparse.Namespace) -> None:
             "sample_quality_audit_sha256": mixture_quality_approval[
                 "sample_quality_audit_sha256"
             ],
+            "sample_cluster_receipt_sha256": cluster["canonical_sha256"],
+            "approval_evidence": {
+                "schema_version": "1.0",
+                "source_plan": _evidence_record_under(
+                    args.output.expanduser().resolve().parent,
+                    args.source_plan,
+                    "source plan",
+                ),
+                "calibration": _evidence_record_under(
+                    args.output.expanduser().resolve().parent,
+                    args.calibration,
+                    "calibration",
+                ),
+                "backend_resource_report": _evidence_record_under(
+                    args.output.expanduser().resolve().parent,
+                    args.backend_resource_report,
+                    "backend resource report",
+                ),
+                "resource_approval": _evidence_record_under(
+                    args.output.expanduser().resolve().parent,
+                    args.resource_approval,
+                    "resource approval",
+                ),
+                "mixture_quality_approval": _evidence_record_under(
+                    args.output.expanduser().resolve().parent,
+                    args.mixture_quality_approval,
+                    "mixture-quality approval",
+                ),
+            },
             "sample_lane_plan_sha256": lane_plan_sha,
             "production_pack_plan_sha256": pack_plan_sha,
             "writer_probe_sha256": writer_probe_sha,
@@ -3558,6 +3784,11 @@ def command_data_prep_storage_gate(args: argparse.Namespace) -> None:
     )
     _validate_data_prep_storage_sample(
         measurement, recipe=recipe, recipe_sha=recipe_sha
+    )
+    _validate_storage_approval_evidence(
+        measurement,
+        measurement_path=args.sample_measurement,
+        policy_path=args.policy,
     )
     policy = recipe["storage"]["data_preparation_peak_gate"]
     sample_documents = _positive_int(
@@ -3631,7 +3862,7 @@ def command_data_prep_storage_gate(args: argparse.Namespace) -> None:
         )
     receipt = seal_manifest(
         {
-            "schema_version": "2.0",
+            "schema_version": "3.0",
             "kind": "d32_data_prep_storage_gate",
             "family_id": recipe["family_id"],
             "recipe_sha256": recipe_sha,
@@ -3650,6 +3881,9 @@ def command_data_prep_storage_gate(args: argparse.Namespace) -> None:
             ],
             "sample_quality_audit_sha256": measurement[
                 "sample_quality_audit_sha256"
+            ],
+            "sample_cluster_receipt_sha256": measurement[
+                "sample_cluster_receipt_sha256"
             ],
             "production_pack_plan_sha256": measurement[
                 "production_pack_plan_sha256"
@@ -3699,7 +3933,7 @@ def _validate_data_prep_storage_gate_receipt(
 
     verify_manifest_hash(gate)
     if (
-        gate.get("schema_version") != "2.0"
+        gate.get("schema_version") != "3.0"
         or gate.get("kind") != "d32_data_prep_storage_gate"
         or gate.get("family_id") != recipe["family_id"]
         or gate.get("recipe_sha256") != recipe_sha
@@ -3715,6 +3949,7 @@ def _validate_data_prep_storage_gate_receipt(
         "resource_approval_sha256",
         "mixture_quality_approval_sha256",
         "sample_quality_audit_sha256",
+        "sample_cluster_receipt_sha256",
         "production_pack_plan_sha256",
         "writer_probe_sha256",
     ):
@@ -3938,9 +4173,10 @@ def command_preflight(args: argparse.Namespace) -> None:
     try:
         validate_mixture_quality_approval(
             mixture_quality_approval,
-            policy_sha256=policy_sha,
-            source_plan_sha256=source_plan_sha,
-            calibration_sha256=calibration_sha,
+            policy=policy,
+            plan=source_plan,
+            calibration=calibration,
+            approval_path=args.mixture_quality_approval,
         )
     except ValueError as exc:
         raise FamilyWorkflowError(f"invalid mixture-quality approval: {exc}") from exc
@@ -3953,6 +4189,7 @@ def command_preflight(args: argparse.Namespace) -> None:
             plan=source_plan,
             policy=policy,
             calibration=calibration,
+            approval_path=args.resource_approval,
         )
     except ValueError as exc:
         raise FamilyWorkflowError(f"invalid backend resource approval: {exc}") from exc
@@ -3969,7 +4206,7 @@ def command_preflight(args: argparse.Namespace) -> None:
     )
     if data_prep_gate.get("recipe_sha256") != recipe_sha:
         _fail("data-preparation storage gate was created for a different recipe")
-    if data_prep_gate.get("schema_version") != "2.0":
+    if data_prep_gate.get("schema_version") != "3.0":
         _fail("data-preparation storage gate schema is stale")
     expected_data_bindings = {
         "policy_sha256": policy_sha,
@@ -3979,6 +4216,9 @@ def command_preflight(args: argparse.Namespace) -> None:
         "mixture_quality_approval_sha256": mixture_quality_approval_sha,
         "sample_quality_audit_sha256": mixture_quality_approval[
             "sample_quality_audit_sha256"
+        ],
+        "sample_cluster_receipt_sha256": mixture_quality_approval[
+            "sample_cluster_receipt_sha256"
         ],
         "backend_resource_report_sha256": resource_approval[
             "resource_report_sha256"
@@ -3991,7 +4231,7 @@ def command_preflight(args: argparse.Namespace) -> None:
         args.cluster_launch_receipt, "production cluster launch receipt"
     )
     expected_cluster_launch = {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "kind": "turkish_packed_production_cluster_launch_receipt",
         "family_id": recipe["family_id"],
         "recipe_sha256": recipe_sha,
@@ -4004,6 +4244,9 @@ def command_preflight(args: argparse.Namespace) -> None:
         "resource_approval_sha256": resource_approval_sha,
         "mixture_quality_approval_sha256": mixture_quality_approval_sha,
         "data_prep_storage_gate_sha256": data_prep_gate_sha,
+        "sample_cluster_receipt_sha256": data_prep_gate[
+            "sample_cluster_receipt_sha256"
+        ],
         "cluster_completed": True,
     }
     for field, expected in expected_cluster_launch.items():
@@ -4165,6 +4408,9 @@ def command_preflight(args: argparse.Namespace) -> None:
         "resource_approval_sha256": resource_approval_sha,
         "mixture_quality_approval_sha256": mixture_quality_approval_sha,
         "data_prep_storage_gate_sha256": data_prep_gate_sha,
+        "sample_cluster_receipt_sha256": data_prep_gate[
+            "sample_cluster_receipt_sha256"
+        ],
     }
     if (
         set(production_chain) != set(expected_chain_bindings)
@@ -7995,6 +8241,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     data_prep = subparsers.add_parser("data-prep-storage-gate")
     data_prep.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    data_prep.add_argument(
+        "--policy",
+        type=Path,
+        default=Path("configs/pretrain/tr_d32_turkish_general_v2.json"),
+    )
     data_prep.add_argument("--sample-measurement", type=Path, required=True)
     data_prep.add_argument("--work-dir", type=Path, required=True)
     data_prep.add_argument("--output", type=Path, required=True)

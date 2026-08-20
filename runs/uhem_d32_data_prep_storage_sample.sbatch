@@ -98,7 +98,8 @@ mkdir -p "$(dirname "$STORAGE_GATE")"
     --writer-probe-job-id "$WRITER_PROBE_JOB_ID" --output "$STORAGE_SAMPLE"
 
 "$PYTHON" scripts/d32_family_workflow.py data-prep-storage-gate \
-    --recipe "$RECIPE" --sample-measurement "$STORAGE_SAMPLE" \
+    --recipe "$RECIPE" --policy "$POLICY" \
+    --sample-measurement "$STORAGE_SAMPLE" \
     --work-dir "$WORK_DIR" --output "$STORAGE_GATE"
 
 echo "Accepted backend resource report/approval verified: $BACKEND_RESOURCE_REPORT"

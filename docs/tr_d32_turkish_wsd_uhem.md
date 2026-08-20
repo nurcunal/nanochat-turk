@@ -29,10 +29,33 @@ submitting each bounded production launcher.
   prose/lyrics, legal, other, and mixed genres are excluded. HPLT is not treated
   as a conversation source because the bounded register audit did not support
   that interpretation.
-- The v2 sampling mix is a candidate, not a final production approval: HPLT
-  general 35%, FineWeb2-HQ 30%, raw FineWeb2 12%, MaCoCu conversation/general
-  6%/4%, FinePDF 8%, and FineWiki 5%. Freeze or revise it only after the bounded
-  accepted-token-yield, dedup-overlap, language, quality, and genre audit.
+- The v2 sampling mix is an audit-only candidate, not a production approval:
+  HPLT general 35%, FineWeb2-HQ 30%, raw FineWeb2 12%, MaCoCu
+  conversation/general 6%/4%, FinePDF 8%, and FineWiki 5%. The bounded audit
+  disqualified FinePDF because manually reviewed Turkish rows contained OCR,
+  reading-order, and layout corruption. It also found that the raw-FineWeb
+  structural filters were too permissive for semantic junk. No production
+  corpus, tokenizer, or model may descend from this v2 mixture. The approved
+  mixture must use a fresh policy/source-plan lineage, set the FinePDF weight
+  and raw-FineWeb2 weights to zero by omitting both sources, and pass the same
+  accepted-token-yield, dedup-overlap, language, quality, and genre gates from
+  scratch. PDF- and OCR-derived text is out of scope for this family;
+  replacing FinePDF with a different OCR corpus is not an allowed fallback.
+  The production launcher additionally requires every selected source to
+  declare `text_origin` as exactly `born_digital_text` or `structured_text`;
+  missing, unknown, mixed, PDF-extracted, and OCR-derived origins fail closed.
+  It also requires zero-tolerance document gates for Unicode replacement
+  characters, high-confidence Turkish mojibake sequences, C1 controls, and
+  surrogate code points. These are corruption backstops for native text, not a
+  mechanism for admitting OCR.
+- Do not ingest the aggregate BellaTurca collection: its AkademikDerlem subset
+  is PDF/OCR-derived, while its OSCAR/mC4 subsets substantially overlap the web
+  families already being audited. OzenliDerlem and explicitly nontechnical
+  ForumSohbetleri subsets were separately audited as text-native candidates.
+  Neither aggregate is approved: only narrow Ozenli publisher files remain
+  candidates, and no ForumSohbetleri configuration is currently admitted.
+  `memurlar` may be reconsidered only through a bounded conversation selector
+  and a new manual audit. See `docs/tr_d32_native_text_candidate_audit.md`.
 - The project-local v2 audit rejects substantial mixed-script text only when it
   exceeds both 32 letters and 2% of alphabetic text. Contextual APK/download,
   commerce, cookie-interface, legal-policy, taxonomy/search, and strong SEO
@@ -123,15 +146,76 @@ exactly one serial lane. The post-cluster writer-probe job is the sole producer
 of the backend report and deliberately seals it with safety factor 1.0. Run
 `runs/uhem_turkish_sample_quality_audit.sbatch` against that same completed
 sample/cluster lineage, inspect its accepted and rejected JSONL/plaintext
-examples, and explicitly seal the manual mixture-quality approval. Seal the
-resource approval only after that approval exists, because the resource
-decision binds it. Then submit `runs/uhem_d32_data_prep_storage_sample.sbatch`
+examples, and explicitly seal the manual mixture-quality approval. The audit
+must contain an accepted row and an accepted review example for every selected
+source-object rank and every selected HPLT WDS bin; sparse accepted/rejected
+strata remain explicit insufficiency records. A clean source cannot mask a bad
+rank. The approval stores a relative evidence-bundle path and validators reopen
+the actual sealed report, both JSONL files, both plaintext files, the cluster
+receipt, and the packed object/bucket launch receipts. Keep that directory and
+the approval together; a hand-written receipt containing plausible 64-hex
+strings is intentionally rejected.
+
+Approval validation also reopens the live sample `cluster_receipt.json` and
+every listed cluster Parquet through stable file descriptors. It verifies each
+bounded file hash, repeats the full-text policy audit (including examples whose
+human-readable text is truncated), and reconstructs the smallest content-bound
+SHA-256 example selection from the actual rows. Example records bind the exact
+backend row, full text, URL, metrics, document ID, and dedup cluster ID. Small
+JSON/JSONL/plaintext evidence is read once into capped immutable byte snapshots;
+path replacement or in-place mutation fails closed. The resource report,
+mixture-quality approval, resource approval, storage sample/gate, and production
+cluster launch all carry the same `sample_cluster_receipt_sha256`; crossing two
+sample lineages is invalid even when every individual receipt is self-hashed.
+
+Source quality and language confidence are separate signals. New object
+receipts explicitly attest that `quality_score` contains only source-provided
+quality; GlotLID probabilities never choose a same-priority dedup winner. For
+compatibility with a bounded object sample produced before that attestation was
+added, the cluster stage treats its stored score as zero and rewrites the
+merged score to zero. The cluster receipt lists every such neutralized rank;
+the audit and production seal independently verify that list. This permits
+reuse of already-computed signatures without silently trusting legacy LID-based
+scores.
+
+Each packed bucket worker receives a descriptor-backed DataTrove input folder
+for its one disjoint signature bucket. Its sealed inventory duplicates the
+already verified file descriptors and reads them with independent `pread`
+positions; DataTrove never reopens a public signature pathname. This handoff
+creates no temporary signature copies, so the resource report retains its
+schema-v2 arithmetic over the five real peak components (largest raw object,
+candidates, signatures, duplicate edges, and backend output) and counts the
+on-disk signature corpus exactly once.
+
+Seal the decisions from the shared control directory (the report, approvals,
+source plan, calibration, and backend report must remain beneath that tree):
+
+```bash
+python scripts/d32_family_workflow.py seal-mixture-quality-approval \
+  --policy "$POLICY" --source-plan "$SOURCE_PLAN" \
+  --calibration "$CALIBRATION" \
+  --audit-report "$CONTROL_DIR/sample_quality_audit/sample_quality_audit_report.json" \
+  --reviewer "$REVIEWER" --reviewed-at-utc "$REVIEWED_AT_UTC" \
+  --decision accepted --output "$MIXTURE_QUALITY_APPROVAL"
+
+python scripts/turkish_data_backend.py approve-resources \
+  --policy "$POLICY" --source-plan "$SOURCE_PLAN" \
+  --calibration "$CALIBRATION" --report "$BACKEND_RESOURCE_REPORT" \
+  --mixture-quality-approval "$MIXTURE_QUALITY_APPROVAL" \
+  --reviewer "$REVIEWER" --reviewed-at-utc "$REVIEWED_AT_UTC" \
+  --decision accepted --output "$RESOURCE_APPROVAL"
+```
+
+Seal the resource approval only after the quality approval exists, because the
+resource decision binds and reopens it. Then submit
+`runs/uhem_d32_data_prep_storage_sample.sbatch`
 with an `afterok` dependency and the exact MaCoCu, bootstrap, object-sample,
 bucket-sample, cluster, quality-audit, and writer-probe allocation IDs. It also
 requires `RESOURCE_APPROVAL`, `MIXTURE_QUALITY_APPROVAL`, and an explicit
 `PRODUCTION_DATA_NODES`; it consumes the already sealed backend report and
 does not create or auto-approve either decision.
 The family gate then
+reopens the same actual approval evidence from the storage-sample receipt, then
 applies the recipe's 1.35 factor exactly once to seven explicit projected
 storage peaks and to future production CPU work. MaCoCu preparation, bootstrap,
 sample, and writer-probe allocations remain sealed historical evidence and are

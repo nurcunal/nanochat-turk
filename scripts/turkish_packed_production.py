@@ -62,6 +62,82 @@ THREAD_CAPS = (
     "BLIS_NUM_THREADS",
 )
 
+# These sources may remain in historical/sample policies so their audit evidence
+# stays reproducible, but they must never cross the production launch boundary.
+# FinePDF was disqualified after manual Turkish review found OCR/read-order/layout
+# corruption even in rows whose declared extractor was not the OCR extractor.
+# Raw FineWeb2 was disqualified after its structural gates retained 188/192
+# representative documents while manual review found 7/24 materially bad or
+# off-purpose rows; global deduplication cannot repair that semantic failure.
+PRODUCTION_DISQUALIFIED_SOURCE_IDS = frozenset(
+    {"finepdfs_edu_tr", "fineweb2_tr"}
+)
+PRODUCTION_ALLOWED_TEXT_ORIGINS = frozenset(
+    {"born_digital_text", "structured_text"}
+)
+PRODUCTION_TEXT_INTEGRITY_LIMITS = {
+    "max_unicode_replacement_characters": 0,
+    "max_mojibake_sequence_hits": 0,
+    "max_c1_control_characters": 0,
+    "max_unicode_surrogate_characters": 0,
+}
+
+
+def _validate_production_source_eligibility(policy: Mapping[str, Any]) -> None:
+    sources = policy.get("sources")
+    if not isinstance(sources, list):
+        raise TurkishCorpusError("production policy has no valid source inventory")
+    source_inventory = {
+        str(source.get("id", "")): source
+        for source in sources
+        if isinstance(source, Mapping) and str(source.get("id", ""))
+    }
+    mixture = policy.get("mixture")
+    if not isinstance(mixture, list) or not mixture:
+        raise TurkishCorpusError("production policy has no valid mixture")
+    if any(
+        not isinstance(bucket, Mapping)
+        or not isinstance(bucket.get("source_id"), str)
+        or not bucket["source_id"]
+        for bucket in mixture
+    ):
+        raise TurkishCorpusError("production mixture has an invalid source_id")
+    selected = {
+        str(bucket["source_id"])
+        for bucket in mixture
+    }
+    disqualified = sorted(selected & PRODUCTION_DISQUALIFIED_SOURCE_IDS)
+    if disqualified:
+        raise TurkishCorpusError(
+            "production policy selects manually disqualified sources: "
+            f"{disqualified}"
+        )
+    missing = sorted(selected - set(source_inventory))
+    if missing:
+        raise TurkishCorpusError(
+            f"production policy selects sources absent from its inventory: {missing}"
+        )
+    invalid_origins: dict[str, Any] = {}
+    for source_id in sorted(selected):
+        origin = source_inventory[source_id].get("text_origin")
+        if not isinstance(origin, str) or origin not in PRODUCTION_ALLOWED_TEXT_ORIGINS:
+            invalid_origins[source_id] = origin
+    if invalid_origins:
+        raise TurkishCorpusError(
+            "every production source must explicitly declare text_origin as "
+            "born_digital_text or structured_text; PDF-extracted, OCR-derived, "
+            f"mixed, missing, and unknown origins are forbidden: {invalid_origins}"
+        )
+    content_policy = policy.get("content_policy")
+    if not isinstance(content_policy, Mapping):
+        raise TurkishCorpusError("production policy has no valid content_policy")
+    for key, expected in PRODUCTION_TEXT_INTEGRITY_LIMITS.items():
+        value = content_policy.get(key)
+        if isinstance(value, bool) or not isinstance(value, int) or value != expected:
+            raise TurkishCorpusError(
+                f"production content_policy.{key} must be exactly {expected}"
+            )
+
 
 def _positive_env(env: Mapping[str, str], name: str) -> int:
     try:
@@ -85,6 +161,7 @@ def _load_inputs(
 ) -> dict[str, Any]:
     recipe, recipe_sha = load_recipe(recipe_path)
     policy = load_corpus_policy(policy_path)
+    _validate_production_source_eligibility(policy)
     source_plan = load_json_strict(source_plan_path)
     calibration = load_json_strict(calibration_path)
     validate_source_plan(source_plan, policy)
@@ -106,9 +183,10 @@ def _load_inputs(
     mixture_approval = load_json_strict(mixture_quality_approval_path)
     mixture_approval_sha = validate_mixture_quality_approval(
         mixture_approval,
-        policy_sha256=policy_sha,
-        source_plan_sha256=source_plan_sha,
-        calibration_sha256=calibration_sha,
+        policy=policy,
+        plan=source_plan,
+        calibration=calibration,
+        approval_path=mixture_quality_approval_path,
     )
     resource_approval = load_json_strict(resource_approval_path)
     resource_approval_sha = verify_manifest_hash(resource_approval)
@@ -117,6 +195,7 @@ def _load_inputs(
         plan=source_plan,
         policy=policy,
         calibration=calibration,
+        approval_path=resource_approval_path,
     )
     if resource_approval.get("mixture_quality_approval_sha256") != mixture_approval_sha:
         raise TurkishCorpusError(
@@ -129,7 +208,7 @@ def _load_inputs(
         gate, recipe=recipe, recipe_sha=recipe_sha
     )
     if (
-        gate.get("schema_version") != "2.0"
+        gate.get("schema_version") != "3.0"
         or gate.get("kind") != "d32_data_prep_storage_gate"
         or gate.get("family_id") != recipe["family_id"]
         or gate.get("recipe_sha256") != recipe_sha
@@ -141,6 +220,10 @@ def _load_inputs(
         or gate.get("mixture_quality_approval_sha256") != mixture_approval_sha
         or gate.get("backend_resource_report_sha256")
         != resource_approval.get("resource_report_sha256")
+        or gate.get("sample_cluster_receipt_sha256")
+        != mixture_approval.get("sample_cluster_receipt_sha256")
+        or gate.get("sample_cluster_receipt_sha256")
+        != resource_approval.get("sample_cluster_receipt_sha256")
         or gate.get("safety_factor") != 1.35
         or gate.get("safety_factor_application_count") != 1
         or gate.get("never_auto_delete_existing_artifacts") is not True
@@ -184,6 +267,9 @@ def _load_inputs(
         "mixture_approval_sha": mixture_approval_sha,
         "storage_gate_sha": gate_sha,
         "storage_gate": gate,
+        "sample_cluster_receipt_sha": gate[
+            "sample_cluster_receipt_sha256"
+        ],
     }
 
 
@@ -268,7 +354,7 @@ def validate_downstream_lineage(
     launch_sha = verify_manifest_hash(launch)
     expected_bindings = _receipt_bindings(inputs)
     if (
-        launch.get("schema_version") != "1.0"
+        launch.get("schema_version") != "2.0"
         or launch.get("kind") != CLUSTER_LAUNCH_KIND
         or launch.get("cluster_completed") is not True
         or any(launch.get(key) != value for key, value in expected_bindings.items())
@@ -280,6 +366,7 @@ def validate_downstream_lineage(
         "resource_approval_sha256": inputs["resource_approval_sha"],
         "mixture_quality_approval_sha256": inputs["mixture_approval_sha"],
         "data_prep_storage_gate_sha256": inputs["storage_gate_sha"],
+        "sample_cluster_receipt_sha256": inputs["sample_cluster_receipt_sha"],
     }
 
     def require(path: Path, label: str) -> dict[str, Any]:
@@ -880,7 +967,7 @@ def seal_cluster_launch(
         raise TurkishCorpusError("production cluster Slurm allocation drifted")
     result = seal_manifest(
         {
-            "schema_version": "1.0",
+            "schema_version": "2.0",
             "kind": CLUSTER_LAUNCH_KIND,
             **_receipt_bindings(inputs),
             "cluster_input_receipt_sha256": input_sha,
@@ -917,6 +1004,7 @@ def _receipt_bindings(inputs: Mapping[str, Any]) -> dict[str, Any]:
         "resource_approval_sha256": inputs["resource_approval_sha"],
         "mixture_quality_approval_sha256": inputs["mixture_approval_sha"],
         "data_prep_storage_gate_sha256": inputs["storage_gate_sha"],
+        "sample_cluster_receipt_sha256": inputs["sample_cluster_receipt_sha"],
     }
 
 
