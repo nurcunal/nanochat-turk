@@ -3,7 +3,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from scripts.build_turkish_pretrain_corpus import build_parser as build_corpus_parser
 from scripts.d32_wsd_train import build_parser
+from scripts.upload_base_checkpoint_to_hf import _family_model_card
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -149,6 +151,47 @@ def test_family_upload_includes_tokenizer_sample_and_quality_evidence() -> None:
     assert 'sample_root / "tokenizer_sample_manifest.json"' in source
     assert 'sample_root / "fineweb2_manifest.json"' in source
     assert 'training_receipt.get("sample_manifest_sha256") != sample_sha' in source
+
+
+def test_v2_exposure_index_requires_and_launches_with_family_identity() -> None:
+    parser = build_corpus_parser()
+    index_parser = next(
+        action
+        for action in parser._actions
+        if action.dest == "command"
+    ).choices["exposure-index"]
+    family_action = next(
+        action for action in index_parser._actions if action.dest == "family_id"
+    )
+    assert family_action.required is True
+
+    finalize = (ROOT / "runs" / "uhem_turkish_corpus_finalize.sbatch").read_text(
+        encoding="utf-8"
+    )
+    assert 'FAMILY_RECIPE="${FAMILY_RECIPE:-' in finalize
+    assert 'exposure-index \\' in finalize
+    assert '--family-id "$FAMILY_ID"' in finalize
+    assert '--study-manifest-sha256 "$FAMILY_RECIPE_SHA256"' in finalize
+
+
+def test_family_upload_binds_macocu_and_uses_recipe_tokenizer_name() -> None:
+    source = (ROOT / "scripts" / "upload_base_checkpoint_to_hf.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'source_receipt_sha != preflight["corpus"].get(' in source
+    assert 'source_macocu.get("manifest_sha256") != manifest_sha' in source
+    assert 'preflight_macocu.get("sha256") != manifest_sha' in source
+    assert "The tokenizer is `{recipe['artifacts']['tokenizer_name']}`" in source
+
+    card = _family_model_card(
+        {
+            "artifacts": {"tokenizer_name": "fixture_dynamic_tokenizer"},
+            "checkpoints": {"finals": []},
+        },
+        "omit",
+        {"family_recipe_sha256": "a" * 64, "code_revision": "b" * 40},
+    )
+    assert "`fixture_dynamic_tokenizer`" in card
 
 
 def test_turkish_data_environment_setup_is_frozen_and_version_pinned() -> None:

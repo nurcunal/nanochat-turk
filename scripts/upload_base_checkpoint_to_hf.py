@@ -299,7 +299,7 @@ checkpoint family, not a Transformers `from_pretrained` conversion.
 
 {final_lines}
 
-The tokenizer is `tr_general_raw_bpe_32k_v1`; training data and validation
+The tokenizer is `{recipe['artifacts']['tokenizer_name']}`; training data and validation
 provenance are Turkish-only and code-corpus-free. Stable fork checkpoints are
 always retained with full optimizer/loader/RNG state. Final optimizer policy:
 `{optimizer_policy}`. When omitted, the upload manifest explicitly binds the
@@ -519,6 +519,18 @@ def main_family(args):
             (path, repo_path("provenance", "tokenizer", "sample", path.name))
         )
     corpus_root = Path(preflight["corpus"]["root"])
+    source_receipt_path = require_file(
+        corpus_root / recipe["artifacts"]["source_receipt"],
+        "family source receipt",
+    )
+    source_receipt, source_receipt_sha = _load_receipt(
+        source_receipt_path, "turkish_pretrain_source_receipt"
+    )
+    if source_receipt_sha != preflight["corpus"].get("source_receipt_sha256"):
+        raise ValueError("family source receipt differs from production preflight")
+    derived_sources = source_receipt.get("derived_sources")
+    if not isinstance(derived_sources, dict):
+        raise ValueError("family source receipt has malformed derived-source provenance")
     provenance_names = {
         recipe["artifacts"]["corpus_manifest"],
         recipe["artifacts"]["nanochat_dataset_manifest"],
@@ -531,6 +543,36 @@ def main_family(args):
     for name in sorted(provenance_names):
         path = require_file(corpus_root / name, f"corpus provenance {name}")
         files.append((path, repo_path("provenance", "data", name)))
+    macocu_manifest = recipe["artifacts"].get("macocu_preparation_manifest")
+    if macocu_manifest:
+        path = require_file(base_dir / macocu_manifest, "MaCoCu preparation manifest")
+        manifest, manifest_sha = _load_receipt(
+            path, "turkish_macocu_genre_preparation"
+        )
+        source_macocu = derived_sources.get("macocu_genre_tr")
+        preflight_macocu = preflight["corpus"].get(
+            "macocu_preparation_manifest"
+        )
+        if (
+            not isinstance(source_macocu, dict)
+            or not isinstance(preflight_macocu, dict)
+            or source_macocu.get("manifest_sha256") != manifest_sha
+            or preflight_macocu.get("sha256") != manifest_sha
+            or Path(str(preflight_macocu.get("path", ""))).resolve()
+            != path.resolve()
+            or manifest.get("canonical_sha256") != manifest_sha
+        ):
+            raise ValueError(
+                "MaCoCu preparation manifest differs from source receipt/preflight"
+            )
+        files.append(
+            (
+                path,
+                repo_path("provenance", "data", "macocu_preparation_manifest.json"),
+            )
+        )
+    elif derived_sources:
+        raise ValueError("v1 family source receipt unexpectedly contains derived data")
     control_files = [
         recipe_path,
         Path(args.preflight_receipt),
@@ -600,6 +642,7 @@ def main_family(args):
             "runs/uhem_turkish_data_buckets.sbatch",
             "runs/uhem_turkish_data_cluster.sbatch",
             "runs/uhem_turkish_data_bootstrap.sbatch",
+            "runs/uhem_turkish_data_prepare_macocu.sbatch",
             "runs/uhem_turkish_prepare_data_env.sbatch",
             "runs/uhem_turkish_corpus_finalize.sbatch",
             "runs/uhem_turkish_packing_preflight.sbatch",

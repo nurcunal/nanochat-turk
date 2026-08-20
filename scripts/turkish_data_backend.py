@@ -12,6 +12,7 @@ from nanochat.experiment_manifest import load_json_strict
 from nanochat.turkish_backend import (
     build_resource_projection,
     fetch_glotlid_model,
+    prepare_macocu_genre,
     process_source_object,
     resolve_source_plan,
     run_backend_calibration,
@@ -25,7 +26,7 @@ from nanochat.turkish_backend import (
 from nanochat.turkish_corpus import load_corpus_policy
 
 
-DEFAULT_POLICY = Path("configs/pretrain/tr_d32_turkish_general_v1.json")
+DEFAULT_POLICY = Path("configs/pretrain/tr_d32_turkish_general_v2.json")
 DEFAULT_CALIBRATION_FIXTURE = Path("configs/pretrain/glotlid_calibration_tr_v1.jsonl")
 
 
@@ -58,6 +59,16 @@ def build_parser() -> argparse.ArgumentParser:
     resolve = sub.add_parser("resolve", help="resolve all immutable source objects")
     _common(resolve)
     resolve.add_argument("--output", type=Path, required=True)
+    resolve.add_argument("--macocu-manifest", type=Path)
+
+    macocu = sub.add_parser(
+        "prepare-macocu", help="verify the official gzip and create sealed zstd shards"
+    )
+    _common(macocu)
+    macocu.add_argument("--output-dir", type=Path, required=True)
+    macocu.add_argument(
+        "--target-uncompressed-bytes", type=int, default=512 * 1024 * 1024
+    )
 
     model = sub.add_parser("fetch-glotlid", help="fetch and verify the pinned model")
     _common(model)
@@ -130,8 +141,18 @@ def main(argv: list[str] | None = None) -> int:
             )
         else:
             policy = load_corpus_policy(args.policy)
-            if args.command == "resolve":
-                result = resolve_source_plan(policy, args.output)
+            if args.command == "prepare-macocu":
+                result = prepare_macocu_genre(
+                    policy,
+                    args.output_dir,
+                    target_uncompressed_bytes=args.target_uncompressed_bytes,
+                )
+            elif args.command == "resolve":
+                result = resolve_source_plan(
+                    policy,
+                    args.output,
+                    macocu_manifest_path=args.macocu_manifest,
+                )
             elif args.command == "fetch-glotlid":
                 result = fetch_glotlid_model(policy, args.output_dir)
             elif args.command == "calibrate":

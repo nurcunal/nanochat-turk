@@ -30,7 +30,7 @@ set -u
 
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
 UV_BIN="${UV_BIN:-$HOME/.local/bin/uv}"
-POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v1.json}"
+POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v2.json}"
 SAMPLE="${SAMPLE:-0}"
 cd "$CODE_DIR"
 export PYTHONPATH="$CODE_DIR${PYTHONPATH:+:$PYTHONPATH}"

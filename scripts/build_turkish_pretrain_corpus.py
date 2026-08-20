@@ -26,7 +26,7 @@ from nanochat.turkish_corpus import (
 )
 
 
-DEFAULT_POLICY = Path("configs/pretrain/tr_d32_turkish_general_v1.json")
+DEFAULT_POLICY = Path("configs/pretrain/tr_d32_turkish_general_v2.json")
 
 
 def _git_commit() -> str:
@@ -140,7 +140,7 @@ def build_parser() -> argparse.ArgumentParser:
         "exposure-index", help="write the complete frozen d32 exposure-plan matrix"
     )
     index.add_argument("--final-corpus-dir", type=Path, required=True)
-    index.add_argument("--family-id", default="tr_d32_general_bpe32k_v1")
+    index.add_argument("--family-id", required=True)
     index.add_argument("--study-manifest-sha256", required=True)
     index.add_argument("--tokenizer-artifact-sha256", required=True)
     index.add_argument("--validation-target-bytes", type=int, default=16_777_216)

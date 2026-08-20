@@ -24,8 +24,8 @@ module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
 set -u
 
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
-NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general}"
-RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v1.json}"
+NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v2}"
+RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v2.json}"
 cd "$CODE_DIR"
 
 if [ "${SLURM_NNODES:-0}" -ne 1 ] || [ "${SLURM_NTASKS:-0}" -ne 4 ]; then
@@ -36,7 +36,7 @@ mapfile -t SLURM_HOSTS < <(scontrol show hostnames "$SLURM_JOB_NODELIST")
 export MASTER_ADDR="${SLURM_HOSTS[0]}"
 export MASTER_PORT="${MASTER_PORT:-$((20000 + SLURM_JOB_ID % 40000))}"
 export NPROC_PER_NODE=4
-RUN_ID=tr_d32_general_bpe32k_v1_launcher_probe_ws4
+RUN_ID=tr_d32_general_bpe32k_v2_launcher_probe_ws4
 CONTROL_ROOT="$NANOCHAT_BASE_DIR/control/d32/launcher/job${SLURM_JOB_ID}"
 RANK_DIR="$CONTROL_ROOT/static_nccl_probe"
 RAW_RECEIPT="$CONTROL_ROOT/static_nccl_probe.json"

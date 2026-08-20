@@ -13,6 +13,7 @@ import torch
 
 import nanochat.strict_checkpoint as strict_checkpoints
 from nanochat.experiment_manifest import (
+    canonical_json,
     file_sha256,
     seal_manifest,
     write_json_atomic,
@@ -36,6 +37,7 @@ from nanochat.strict_dataloader import (
 from nanochat.strict_runtime import (
     StrictTrainingError,
     derive_seed_plan,
+    family_artifact_contract,
     validate_attention_probe_receipt,
     validate_bestfit_capacity_receipt,
     validate_family_recipe,
@@ -242,6 +244,20 @@ def test_preflight_artifact_binding_rejects_stale_and_corrupt_inputs(
     code_revision = "a" * 40
     validation_path = tmp_path / "validation.parquet"
     validation_path.write_bytes(b"fixed-validation")
+    mixture = {"name": "tr_general_clean_v1"}
+    mixture_path = tmp_path / "mixture.json"
+    write_json_atomic(mixture_path, mixture)
+    policy_sha = hashlib.sha256(canonical_json(mixture).encode("utf-8")).hexdigest()
+    source_receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "turkish_pretrain_source_receipt",
+            "policy_sha256": policy_sha,
+            "derived_sources": {},
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(tmp_path / "source_receipt.json", source_receipt)
     capacity = seal_manifest(
         {
             "kind": "turkish_bestfit_capacity_receipt",
@@ -253,8 +269,16 @@ def test_preflight_artifact_binding_rejects_stale_and_corrupt_inputs(
     write_json_atomic(capacity_path, capacity)
     corpus = seal_manifest(
         {
+            "schema_version": "1.0",
+            "kind": "turkish_pretrain_corpus",
+            "name": "tr_general_clean_v1",
+            "policy_sha256": policy_sha,
+            "source_receipt_sha256": source_receipt["canonical_sha256"],
             "nanochat_dataset_manifest_sha256": dataset_sha,
-            "tokenizer": {"package_sha256": tokenizer_sha},
+            "tokenizer": {
+                "name": "tr_general_raw_bpe_32k_v1",
+                "package_sha256": tokenizer_sha,
+            },
             "packing_capacity": {"sha256": capacity["canonical_sha256"]},
             "canonical_sha256": None,
         }
@@ -262,7 +286,9 @@ def test_preflight_artifact_binding_rejects_stale_and_corrupt_inputs(
     write_json_atomic(tmp_path / "corpus_manifest.json", corpus)
     exposure_index = seal_manifest(
         {
+            "schema_version": "1.0",
             "kind": "d32_exposure_plan_index",
+            "family_id": "tr_d32_general_bpe32k_v1",
             "study_manifest_sha256": recipe_sha,
             "source_dataset_manifest_sha256": dataset_sha,
             "tokenizer_artifact_sha256": tokenizer_sha,
@@ -277,7 +303,14 @@ def test_preflight_artifact_binding_rejects_stale_and_corrupt_inputs(
         {
             "kind": "d32_family_preflight_receipt",
             "family_id": "tr_d32_general_bpe32k_v1",
+            "base_dir": str(tmp_path.resolve()),
             "recipe": {"canonical_sha256": recipe_sha},
+            "mixture_config": {
+                "path": str(mixture_path.resolve()),
+                "sha256": file_sha256(mixture_path),
+                "policy_sha256": policy_sha,
+                "corpus_name": "tr_general_clean_v1",
+            },
             "code": {
                 "git_commit": code_revision,
                 "pyproject_sha256": "6" * 64,
@@ -289,8 +322,10 @@ def test_preflight_artifact_binding_rejects_stale_and_corrupt_inputs(
             "tokenizer": {"package_manifest_sha256": tokenizer_sha},
             "corpus": {
                 "root": str(tmp_path.resolve()),
+                "name": "tr_general_clean_v1",
                 "manifest_sha256": corpus["canonical_sha256"],
                 "dataset_manifest_sha256": dataset_sha,
+                "source_receipt_sha256": source_receipt["canonical_sha256"],
                 "validation_exposure_manifest_sha256": validation_sha,
                 "validation_payload_bytes": 16,
                 "validation_documents": 2,
@@ -315,6 +350,9 @@ def test_preflight_artifact_binding_rejects_stale_and_corrupt_inputs(
     kwargs = {
         "recipe": {
             "family_id": "tr_d32_general_bpe32k_v1",
+            "artifacts": family_artifact_contract(
+                "tr_d32_general_bpe32k_v1"
+            ),
             "code_provenance": {
                 "training_environment": {
                     "pyproject_sha256": "6" * 64,
@@ -329,7 +367,11 @@ def test_preflight_artifact_binding_rejects_stale_and_corrupt_inputs(
         "code_revision": code_revision,
         "data_dir": tmp_path,
         "tokenizer_sha256": tokenizer_sha,
-        "dataset_manifest": {"validation_file": "validation.parquet"},
+        "dataset_manifest": {
+            "dataset": {"repo_id": "local-composite/tr_general_clean_v1"},
+            "metadata": {"corpus_name": "tr_general_clean_v1"},
+            "validation_file": "validation.parquet",
+        },
         "dataset_sha256": dataset_sha,
         "validation_manifest": {
             "selection": {
@@ -581,7 +623,9 @@ def test_capacity_receipt_binds_explicit_path_and_40x_safe_horizon(
     write_json_atomic(tmp_path / "corpus_manifest.json", corpus)
     index = seal_manifest(
         {
+            "schema_version": "1.0",
             "kind": "d32_exposure_plan_index",
+            "family_id": "tr_d32_general_bpe32k_v1",
             "study_manifest_sha256": recipe_sha,
             "source_dataset_manifest_sha256": dataset_sha,
             "tokenizer_artifact_sha256": tokenizer_sha,
@@ -597,6 +641,7 @@ def test_capacity_receipt_binds_explicit_path_and_40x_safe_horizon(
         dataset_manifest={"metadata": {"validation_policy": no_crop}},
         dataset_sha256=dataset_sha,
         tokenizer_sha256=tokenizer_sha,
+        family_id="tr_d32_general_bpe32k_v1",
         recipe_sha256=recipe_sha,
         exposure_plan_sha256=exposure_sha,
         world_size=8,
@@ -607,6 +652,28 @@ def test_capacity_receipt_binds_explicit_path_and_40x_safe_horizon(
     )
     assert digest == receipt["canonical_sha256"]
     assert selected["safe_global_scheduled_positions"] == safe_positions
+    wrong_family_index = json.loads(json.dumps(index))
+    wrong_family_index["family_id"] = "tr_d32_general_bpe32k_v2"
+    wrong_family_index["canonical_sha256"] = None
+    write_json_atomic(
+        tmp_path / "exposure_plan_index.json", seal_manifest(wrong_family_index)
+    )
+    with pytest.raises(StrictTrainingError, match="does not bind"):
+        validate_bestfit_capacity_receipt(
+            capacity_path,
+            data_dir=tmp_path,
+            dataset_manifest={"metadata": {"validation_policy": no_crop}},
+            dataset_sha256=dataset_sha,
+            tokenizer_sha256=tokenizer_sha,
+            family_id="tr_d32_general_bpe32k_v1",
+            recipe_sha256=recipe_sha,
+            exposure_plan_sha256=exposure_sha,
+            world_size=8,
+            required_token_positions=32_000 * global_batch,
+            batch_sequences=4,
+            sequence_length=2048,
+            global_batch_tokens=global_batch,
+        )
     with pytest.raises(StrictTrainingError, match="must name"):
         validate_bestfit_capacity_receipt(
             tmp_path / "copy.json",
@@ -614,6 +681,7 @@ def test_capacity_receipt_binds_explicit_path_and_40x_safe_horizon(
             dataset_manifest={"metadata": {"validation_policy": no_crop}},
             dataset_sha256=dataset_sha,
             tokenizer_sha256=tokenizer_sha,
+            family_id="tr_d32_general_bpe32k_v1",
             recipe_sha256=recipe_sha,
             exposure_plan_sha256=exposure_sha,
             world_size=8,

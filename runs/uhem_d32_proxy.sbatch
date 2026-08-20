@@ -25,8 +25,8 @@ module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
 set -u
 
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
-NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general}"
-RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v1.json}"
+NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v2}"
+RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v2.json}"
 PREFLIGHT_RECEIPT="${PREFLIGHT_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/preflight.json}"
 ATTENTION_PROBE_RECEIPT="${ATTENTION_PROBE_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/attention_probe.json}"
 SCREENING_RECEIPT="${SCREENING_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/proxy_screening.json}"
@@ -100,7 +100,7 @@ if [ "$PROXY_PHASE" = screen ]; then
     for candidate in "${candidates[@]}"; do
         for seed in 42 314159; do
             arms+=("$candidate $seed")
-            run_id="tr_d32_general_bpe32k_v1_proxy_d12_${candidate}_seed${seed}"
+            run_id="tr_d32_general_bpe32k_v2_proxy_d12_${candidate}_seed${seed}"
             receipt_args+=(--run-receipt="$NANOCHAT_BASE_DIR/control/d32/proxy_runs/${run_id}.json")
         done
     done
@@ -125,7 +125,7 @@ else
     receipt_args=()
     for candidate in "${confirmation_candidates[@]}"; do
         arms+=("$candidate 42")
-        run_id="tr_d32_general_bpe32k_v1_proxy_d20_${candidate}_seed42"
+        run_id="tr_d32_general_bpe32k_v2_proxy_d20_${candidate}_seed42"
         receipt_args+=(--run-receipt="$NANOCHAT_BASE_DIR/control/d32/proxy_runs/${run_id}.json")
     done
     run_packed_arms 20 "${arms[@]}"

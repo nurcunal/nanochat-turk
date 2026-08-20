@@ -31,6 +31,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from nanochat.experiment_manifest import (
     ManifestValidationError,
+    canonical_json,
     file_sha256,
     load_json_strict,
     seal_manifest,
@@ -39,10 +40,11 @@ from nanochat.experiment_manifest import (
     verify_manifest_hash,
     write_json_atomic,
 )
+from nanochat.strict_runtime import FAMILY_ARTIFACT_CONTRACTS, family_artifact_contract
 from nanochat.training_log import read_training_log
 
 
-DEFAULT_RECIPE = Path("configs/pretrain/tr_d32_turkish_general_wsd_v1.json")
+DEFAULT_RECIPE = Path("configs/pretrain/tr_d32_turkish_general_wsd_v2.json")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 SAFE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
@@ -146,7 +148,8 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
 
     if recipe.get("schema_version") != "1.0":
         _fail("recipe schema_version must equal '1.0'")
-    if recipe.get("family_id") != "tr_d32_general_bpe32k_v1":
+    family_id = recipe.get("family_id")
+    if family_id not in FAMILY_ARTIFACT_CONTRACTS:
         _fail("unexpected family_id")
 
     code = _mapping(recipe.get("code_provenance"), "code_provenance")
@@ -202,12 +205,8 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
             _fail(f"language_policy.{forbidden} must be false")
 
     artifacts = _mapping(recipe.get("artifacts"), "artifacts")
-    if artifacts.get("tokenizer_name") != "tr_general_raw_bpe_32k_v1":
-        _fail("unexpected tokenizer name")
-    if artifacts.get("corpus_id") != "tr_general_clean_v1":
-        _fail("unexpected corpus id")
-    if artifacts.get("packing_capacity_receipt") != "packing_capacity_receipt.json":
-        _fail("unexpected best-fit packing-capacity receipt path")
+    if dict(artifacts) != family_artifact_contract(str(family_id)):
+        _fail("artifacts differ from the exact per-family contract")
 
     model = _mapping(recipe.get("model"), "model")
     _require_exact_keys(
@@ -368,7 +367,7 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
     checkpoints = _mapping(recipe.get("checkpoints"), "checkpoints")
     forks = _sequence(checkpoints.get("stable_forks"), "checkpoints.stable_forks")
     finals = _sequence(checkpoints.get("finals"), "checkpoints.finals")
-    if checkpoints.get("trunk_model_tag") != "tr_d32_general_bpe32k_v1_trunk":
+    if checkpoints.get("trunk_model_tag") != f"{family_id}_trunk":
         _fail("checkpoints.trunk_model_tag drifted")
     expected_forks = (
         {
@@ -393,7 +392,7 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
     expected_finals = (
         {
             "label": "s12",
-            "model_tag": "tr_d32_general_bpe32k_v1_s12",
+            "model_tag": f"{family_id}_s12",
             "parent_step": 8640,
             "cooldown_start_step": 8640,
             "final_step": 9600,
@@ -403,7 +402,7 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
         },
         {
             "label": "s20",
-            "model_tag": "tr_d32_general_bpe32k_v1_s20",
+            "model_tag": f"{family_id}_s20",
             "parent_step": 14400,
             "cooldown_start_step": 14400,
             "final_step": 16000,
@@ -413,7 +412,7 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
         },
         {
             "label": "s40",
-            "model_tag": "tr_d32_general_bpe32k_v1_s40",
+            "model_tag": f"{family_id}_s40",
             "parent_step": 28800,
             "cooldown_start_step": 28800,
             "final_step": 32000,
@@ -438,7 +437,7 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
         {
             "id": "trunk_to_s12_fork",
             "kind": "trunk",
-            "model_tag": "tr_d32_general_bpe32k_v1_trunk",
+            "model_tag": f"{family_id}_trunk",
             "exposure_plan_family": "trunk",
             "source_step": None,
             "target_step": 8640,
@@ -448,9 +447,9 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
         {
             "id": "s12_cooldown",
             "kind": "cooldown_fork",
-            "model_tag": "tr_d32_general_bpe32k_v1_s12",
+            "model_tag": f"{family_id}_s12",
             "exposure_plan_family": "s12",
-            "source_model_tag": "tr_d32_general_bpe32k_v1_trunk",
+            "source_model_tag": f"{family_id}_trunk",
             "source_step": 8640,
             "target_step": 9600,
             "num_iterations": 9600,
@@ -459,7 +458,7 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
         {
             "id": "trunk_to_s20_fork",
             "kind": "trunk",
-            "model_tag": "tr_d32_general_bpe32k_v1_trunk",
+            "model_tag": f"{family_id}_trunk",
             "exposure_plan_family": "trunk",
             "source_step": 8640,
             "target_step": 14400,
@@ -469,9 +468,9 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
         {
             "id": "s20_cooldown",
             "kind": "cooldown_fork",
-            "model_tag": "tr_d32_general_bpe32k_v1_s20",
+            "model_tag": f"{family_id}_s20",
             "exposure_plan_family": "s20",
-            "source_model_tag": "tr_d32_general_bpe32k_v1_trunk",
+            "source_model_tag": f"{family_id}_trunk",
             "source_step": 14400,
             "target_step": 16000,
             "num_iterations": 16000,
@@ -480,7 +479,7 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
         {
             "id": "trunk_to_s40_fork",
             "kind": "trunk",
-            "model_tag": "tr_d32_general_bpe32k_v1_trunk",
+            "model_tag": f"{family_id}_trunk",
             "exposure_plan_family": "trunk",
             "source_step": 14400,
             "target_step": 28800,
@@ -490,9 +489,9 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
         {
             "id": "s40_cooldown",
             "kind": "cooldown_fork",
-            "model_tag": "tr_d32_general_bpe32k_v1_s40",
+            "model_tag": f"{family_id}_s40",
             "exposure_plan_family": "s40",
-            "source_model_tag": "tr_d32_general_bpe32k_v1_trunk",
+            "source_model_tag": f"{family_id}_trunk",
             "source_step": 28800,
             "target_step": 32000,
             "num_iterations": 32000,
@@ -1246,6 +1245,10 @@ def _resolved_artifact_paths(recipe: Mapping[str, Any], base_dir: Path) -> dict[
         "tokenizer_root": tokenizer_root,
         "tokenizer_package": tokenizer_root / str(artifacts["tokenizer_package_manifest"]),
     }
+    if "macocu_preparation_manifest" in artifacts:
+        resolved["macocu_preparation"] = base_dir / str(
+            artifacts["macocu_preparation_manifest"]
+        )
     for key, relative in _mapping(
         artifacts["training_exposure_manifests"],
         "artifacts.training_exposure_manifests",
@@ -1544,6 +1547,23 @@ def command_preflight(args: argparse.Namespace) -> None:
     if not base_dir.is_dir():
         _fail(f"base directory does not exist: {base_dir}")
     paths = _resolved_artifact_paths(recipe, base_dir)
+    artifacts = recipe["artifacts"]
+
+    mixture_path = (args.repo_root / str(artifacts["mixture_config"])).resolve()
+    if not mixture_path.is_file() or mixture_path.is_symlink():
+        _fail(f"mixture config is missing or unsafe: {mixture_path}")
+    mixture = _load_object(mixture_path, "mixture config")
+    try:
+        from nanochat.turkish_corpus import validate_corpus_policy
+
+        validate_corpus_policy(mixture)
+    except Exception as exc:
+        raise FamilyWorkflowError(f"corpus policy verification failed: {exc}") from exc
+    corpus_id = str(artifacts["corpus_id"])
+    if mixture.get("name") != corpus_id:
+        _fail("mixture config names another family corpus")
+    mixture_sha = file_sha256(mixture_path)
+    policy_sha = hashlib.sha256(canonical_json(mixture).encode("utf-8")).hexdigest()
 
     corpus, corpus_sha = _verify_sealed(
         paths["corpus_manifest"], "corpus manifest", args.corpus_manifest_sha256
@@ -1559,6 +1579,11 @@ def command_preflight(args: argparse.Namespace) -> None:
         )
     except (ManifestValidationError, OSError, ValueError) as exc:
         raise FamilyWorkflowError(f"strict dataset manifest verification failed: {exc}") from exc
+    if (
+        dataset.get("dataset", {}).get("repo_id") != f"local-composite/{corpus_id}"
+        or dataset.get("metadata", {}).get("corpus_name") != corpus_id
+    ):
+        _fail("Nanochat dataset manifest names another family corpus")
     validation_relative = dataset.get("validation_file")
     if not isinstance(validation_relative, str) or not validation_relative:
         _fail("strict dataset manifest does not name a validation_file")
@@ -1569,7 +1594,27 @@ def command_preflight(args: argparse.Namespace) -> None:
     source_receipt, source_sha = _verify_sealed(
         paths["source_receipt"], "source receipt", args.source_receipt_sha256
     )
-    del source_receipt
+    try:
+        from nanochat.turkish_corpus import validate_source_receipt
+
+        validate_source_receipt(source_receipt, mixture)
+    except Exception as exc:
+        raise FamilyWorkflowError(f"source receipt verification failed: {exc}") from exc
+    expected_corpus_fields = {
+        "schema_version": "1.0",
+        "kind": "turkish_pretrain_corpus",
+        "name": corpus_id,
+        "stage": "final_interleaved",
+        "policy_sha256": policy_sha,
+        "source_receipt_sha256": source_sha,
+        "nanochat_dataset_manifest_sha256": dataset_sha,
+        "language": "tur_Latn",
+        "code_allowed": False,
+    }
+    for field, expected in expected_corpus_fields.items():
+        if corpus.get(field) != expected:
+            _fail(f"corpus manifest {field} differs from the family contract")
+    corpus_tokenizer = _mapping(corpus.get("tokenizer"), "corpus tokenizer")
 
     validation_exposure, validation_exposure_sha = _verify_sealed(
         paths["validation_exposure"],
@@ -1581,6 +1626,12 @@ def command_preflight(args: argparse.Namespace) -> None:
         "exposure plan index",
         args.exposure_plan_index_sha256,
     )
+    if (
+        exposure_index.get("schema_version") != "1.0"
+        or exposure_index.get("kind") != "d32_exposure_plan_index"
+        or exposure_index.get("family_id") != recipe["family_id"]
+    ):
+        _fail("exposure plan index family identity mismatch")
 
     package, package_sha = _verify_sealed(
         paths["tokenizer_package"], "tokenizer package", args.tokenizer_package_sha256
@@ -1598,6 +1649,46 @@ def command_preflight(args: argparse.Namespace) -> None:
         raise FamilyWorkflowError(f"tokenizer package verification failed: {exc}") from exc
     if verified_package.manifest != package:
         _fail("tokenizer package changed while it was being verified")
+    if (
+        corpus_tokenizer.get("name") != artifacts["tokenizer_name"]
+        or corpus_tokenizer.get("vocab_size") != recipe["model"]["vocab_size"]
+        or corpus_tokenizer.get("package_sha256") != package_sha
+    ):
+        _fail("corpus manifest tokenizer binding differs from the family contract")
+
+    macocu_record: dict[str, Any] | None = None
+    macocu_path = paths.get("macocu_preparation")
+    derived_sources = _mapping(
+        source_receipt.get("derived_sources"), "source receipt derived_sources"
+    )
+    if macocu_path is None:
+        if derived_sources:
+            _fail("v1 source receipt unexpectedly inventories derived data")
+    else:
+        macocu_manifest, macocu_sha = _verify_sealed(
+            macocu_path, "MaCoCu preparation manifest"
+        )
+        try:
+            from nanochat.turkish_backend import validate_macocu_preparation_manifest
+
+            validate_macocu_preparation_manifest(
+                macocu_manifest, mixture, macocu_path.parent
+            )
+        except Exception as exc:
+            raise FamilyWorkflowError(
+                f"MaCoCu preparation verification failed: {exc}"
+            ) from exc
+        source_macocu = _mapping(
+            derived_sources.get("macocu_genre_tr"),
+            "source receipt MaCoCu provenance",
+        )
+        if (
+            source_macocu.get("manifest_sha256") != macocu_sha
+            or source_macocu.get("manifest_uri") != macocu_path.resolve().as_uri()
+            or source_macocu.get("upstream") != macocu_manifest.get("upstream")
+        ):
+            _fail("source receipt is not bound to the exact MaCoCu preparation")
+        macocu_record = {"path": str(macocu_path.resolve()), "sha256": macocu_sha}
 
     packing_capacity, packing_capacity_sha = _verify_packing_capacity_receipt(
         paths["packing_capacity"],
@@ -1724,10 +1815,6 @@ def command_preflight(args: argparse.Namespace) -> None:
     if exposure_index.get("validation") != expected_validation_record:
         _fail("exposure plan index validation binding mismatch")
 
-    mixture_path = args.repo_root / str(recipe["artifacts"]["mixture_config"])
-    if not mixture_path.is_file():
-        _fail(f"mixture config is missing: {mixture_path}")
-    mixture = _load_object(mixture_path, "mixture config")
     expected_mix_weights = {
         str(item["id"]): float(item["weight"])
         for item in _sequence(mixture.get("mixture"), "mixture config weights")
@@ -1735,7 +1822,6 @@ def command_preflight(args: argparse.Namespace) -> None:
     }
     if packing_capacity.get("intended_mixture_weights") != expected_mix_weights:
         _fail("packing-capacity mix gate used different intended mixture weights")
-    mixture_sha = file_sha256(mixture_path)
     training_environment = _mapping(
         recipe["code_provenance"].get("training_environment"),
         "code_provenance.training_environment",
@@ -1875,12 +1961,18 @@ def command_preflight(args: argparse.Namespace) -> None:
             "created_at_utc": datetime.now(timezone.utc).isoformat(),
             "base_dir": str(base_dir),
             "recipe": {"path": str(args.recipe), "canonical_sha256": recipe_sha},
-            "mixture_config": {"path": str(mixture_path), "sha256": mixture_sha},
+            "mixture_config": {
+                "path": str(mixture_path),
+                "sha256": mixture_sha,
+                "policy_sha256": policy_sha,
+                "corpus_name": corpus_id,
+            },
             "data_preparation_storage_gate_sha256": data_prep_gate_sha,
             "data_preparation_cpu_saat_with_safety": data_prep_cpu,
             "total_project_operational_ceiling_cpu_saat": expected_total_ceiling,
             "corpus": {
                 "root": str(paths["corpus_root"]),
+                "name": corpus_id,
                 "manifest_sha256": corpus_sha,
                 "dataset_manifest_sha256": dataset_sha,
                 "source_receipt_sha256": source_sha,
@@ -1910,6 +2002,11 @@ def command_preflight(args: argparse.Namespace) -> None:
                 "validation_file_size_bytes": validation_path.stat().st_size,
                 "validation_file_sha256": file_sha256(validation_path),
                 "actual_bytes": corpus_bytes,
+                **(
+                    {"macocu_preparation_manifest": macocu_record}
+                    if macocu_record is not None
+                    else {}
+                ),
             },
             "tokenizer": {
                 "root": str(paths["tokenizer_root"]),

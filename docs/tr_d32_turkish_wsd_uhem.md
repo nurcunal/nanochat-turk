@@ -18,6 +18,25 @@ must review the sealed gates and topology decision first.
 - Global batch is fixed at 2,097,152 scheduled positions for ws8 and ws16.
 - Data is Turkish-only, code corpora are forbidden, and validation is a fixed,
   finite whole-document manifest.
+- The v2 policy replaces Cosmos with the official Turkish MaCoCu-Genre release
+  (CLARIN handle `11356/1969`). A one-time CPU job verifies its 14,448,949,031-
+  byte gzip and MD5 `abe376c21256798ded30e54770666aa0`, then streams it into
+  deterministic sealed zstd JSONL shards. Object-array ranks consume those
+  shards; they never redownload or independently decompress the full gzip.
+- MaCoCu conversation selects only `Forum` and `Opinion/Argumentation`; general
+  selects only `Information/Explanation`, `Instruction`, and `News`. Promotion,
+  prose/lyrics, legal, other, and mixed genres are excluded. HPLT is not treated
+  as a conversation source because the bounded register audit did not support
+  that interpretation.
+- The v2 sampling mix is a candidate, not a final production approval: HPLT
+  general 35%, FineWeb2-HQ 30%, raw FineWeb2 12%, MaCoCu conversation/general
+  6%/4%, FinePDF 8%, and FineWiki 5%. Freeze or revise it only after the bounded
+  accepted-token-yield, dedup-overlap, language, quality, and genre audit.
+- The project-local v2 audit rejects substantial mixed-script text only when it
+  exceeds both 32 letters and 2% of alphabetic text. Contextual APK/download,
+  commerce, cookie-interface, legal-policy, taxonomy/search, and strong SEO
+  template gates use narrowly calibrated phrases and URL context; generic words
+  such as “uygulama”, “ürün”, “fiyat”, “KVKK”, or “gizlilik” do not reject text.
 - The finite best-fit simulation must prove no epoch wrap through 40x plus a
   2% margin for both ws8 and ws16. It also checks the retained post-cropping
   mixture, rather than treating raw source-token totals as usable capacity.
@@ -87,8 +106,14 @@ checkpoint writes, queueing, and the prerequisite gates add elapsed time.
 Prepare the isolated CPU corpus environment with
 `sbatch runs/uhem_turkish_prepare_data_env.sbatch`; it accepts only uv 0.11.29
 and the reviewed Turkish-data project and lock hashes.
-Then run `sbatch runs/uhem_turkish_data_bootstrap.sbatch` to seal the immutable
-source plan, pinned GlotLID model/calibration, and deterministic sample ranks.
+Then run `sbatch runs/uhem_turkish_data_prepare_macocu.sbatch` once on the shared
+filesystem. It atomically writes the retained verified gzip, reasonably sized
+prepared shards, per-shard SHA-256/row/genre accounting, and `manifest.json`.
+Only after that succeeds, run `sbatch runs/uhem_turkish_data_bootstrap.sbatch`
+to bind the preparation manifest into the immutable v2 source plan and seal the
+pinned GlotLID model/calibration and deterministic sample ranks. The v1 policy
+and its existing audit artifacts remain separate; never reuse a v1 plan,
+calibration, approval, receipt, pool, tokenizer, or packing receipt with v2.
 
 Before creating the family preflight, run
 `bash runs/uhem_d32_prepare_training_env.sh`. It requires uv 0.11.29 and

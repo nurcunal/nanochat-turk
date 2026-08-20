@@ -45,6 +45,8 @@ from nanochat.experiment_manifest import (
 
 
 CORPUS_NAME = "tr_general_clean_v1"
+CORPUS_NAME_V2 = "tr_general_clean_v2"
+SUPPORTED_CORPUS_NAMES = frozenset({CORPUS_NAME, CORPUS_NAME_V2})
 TOKENIZER_NAME = "tr_general_raw_bpe_32k_v1"
 VOCAB_SIZE = 32_768
 D32_GLOBAL_BATCH_TOKENS = 2_097_152
@@ -59,8 +61,8 @@ D32_EXPOSURE_MATRIX_V1 = (
     ("s20_ws16_seed42", "s20", 16, 42, 16_000, D32_GLOBAL_BATCH_TOKENS),
     ("s40_ws8_seed42", "s40", 8, 42, 32_000, D32_GLOBAL_BATCH_TOKENS),
     ("s40_ws16_seed42", "s40", 16, 42, 32_000, D32_GLOBAL_BATCH_TOKENS),
-    ("smoke_ws8_seed42", "smoke", 8, 42, 100, D32_GLOBAL_BATCH_TOKENS),
-    ("smoke_ws16_seed42", "smoke", 16, 42, 100, D32_GLOBAL_BATCH_TOKENS),
+    ("smoke_ws8", "smoke", 8, 42, 100, D32_GLOBAL_BATCH_TOKENS),
+    ("smoke_ws16", "smoke", 16, 42, 100, D32_GLOBAL_BATCH_TOKENS),
     ("signal_smoke_ws4_seed42", "signal_smoke", 4, 42, 6, D32_GLOBAL_BATCH_TOKENS),
     ("proxy_d12_seed42_ws1", "wd_proxy", 1, 42, 4_200, 524_288),
     ("proxy_d12_seed314159_ws1", "wd_proxy", 1, 314_159, 4_200, 524_288),
@@ -72,8 +74,41 @@ CORPUS_MANIFEST_KIND = "turkish_pretrain_corpus"
 POOL_OWNERSHIP_KIND = "turkish_run_owned_filtered_pool"
 POOL_OWNERSHIP_FILE = "run_owned_pool.json"
 
+MACOCU_SOURCE_ID = "macocu_genre_tr"
+MACOCU_HANDLE = "https://hdl.handle.net/11356/1969"
+MACOCU_SOURCE_URL = (
+    "https://www.clarin.si/repository/xmlui/bitstream/handle/11356/1969/"
+    "MaCoCu-Genre.tr.jsonl.gz?isAllowed=y&sequence=15"
+)
+MACOCU_SIZE_BYTES = 14_448_949_031
+MACOCU_MD5 = "abe376c21256798ded30e54770666aa0"
+MACOCU_EXPECTED_ROWS = 10_453_221
+MACOCU_SCHEMA = ("id", "title", "text", "url", "domain", "tld", "genre")
+MACOCU_GENRES = frozenset(
+    {
+        "Information/Explanation",
+        "News",
+        "Instruction",
+        "Opinion/Argumentation",
+        "Forum",
+        "Prose/Lyrical",
+        "Legal",
+        "Promotion",
+        "Other",
+        "Mix",
+    }
+)
+MACOCU_CONVERSATION_GENRES = frozenset({"Forum", "Opinion/Argumentation"})
+MACOCU_GENERAL_GENRES = frozenset(
+    {"Information/Explanation", "Instruction", "News"}
+)
+MACOCU_EXCLUDED_GENRES = MACOCU_GENRES - (
+    MACOCU_CONVERSATION_GENRES | MACOCU_GENERAL_GENRES
+)
+
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _SHA1_RE = re.compile(r"^[0-9a-f]{40}$")
+_MD5_RE = re.compile(r"^[0-9a-f]{32}$")
 _RFC3339_UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 _WORD_RE = re.compile(r"[^\W\d_]+", re.UNICODE)
 _SPACE_RE = re.compile(r"[\t\v\f\r ]+")
@@ -131,6 +166,65 @@ _BOILERPLATE_RE = re.compile(
     r"(?:çerez(?:leri)?\s+kabul|gizlilik\s+politikası|tüm\s+hakları\s+saklıdır|"
     r"javascript(?:i|’i|'i)?\s+etkinleştir|reklamı\s+geç|üyelik\s+sözleşmesi)",
     re.IGNORECASE,
+)
+_SOFTWARE_DOWNLOAD_RE = re.compile(
+    r"(?:\b(?:mod(?:lu)?\s+)?apk\s+(?:indir|yükle|download|dosyası)\b|"
+    r"\b(?:apk|program|uygulama|oyun|pdf)\s+(?:indir|yükle|download|oku)\b|"
+    r"\b(?:indir|download)\s+(?:apk|program|uygulama|oyun|pdf)\b|"
+    r"\b(?:ücretsiz|bedava)\s+(?:indir|download)\b|"
+    r"\b(?:crack|keygen|serial\s+key|lisans\s+anahtarı)\b)",
+    re.IGNORECASE,
+)
+_DOWNLOAD_HOSTS = (
+    "tamindir.com",
+    "gezginler.net",
+    "softonic.com",
+    "uptodown.com",
+    "apkpure.com",
+    "apkcombo.com",
+)
+_DOWNLOAD_URL_RE = re.compile(
+    r"(?:^|[-_/])(?:mod-apk|apk-indir|program-indir)(?:$|[-_/])",
+    re.IGNORECASE,
+)
+_COMMERCE_RE = re.compile(
+    r"(?:\bsepete\s+ekle\b|\bhemen\s+satın\s+al\b|"
+    r"\b(?:\d+\s*)?saatte\s+kargoda\b|\bstokta(?:\s+yok)?\b|"
+    r"\btaksit\s+seçenekleri\b|\bücretsiz\s+kargo\b|\bkapıda\s+ödeme\b|"
+    r"\bürün\s+kodu\b|\bhavale\s*,?\s*eft\b|"
+    r"\bposta\s+çeki\s+ile\s+alışveriş\b)",
+    re.IGNORECASE,
+)
+_COMMERCE_URL_RE = re.compile(
+    r"(?:^|/)(?:urun|ürün|product|sepet|cart|magaza|mağaza|shop|kitap)(?:/|$|[-_])",
+    re.IGNORECASE,
+)
+_COOKIE_UI_RE = re.compile(
+    r"(?:\bçerez\s+politikası\b|\bçerez\s+ayarları\b|"
+    r"\btüm\s+çerezleri\s+kabul\s+et\b|"
+    r"\byalnızca\s+gerekli\s+çerezler\b|\btercihleri\s+kaydet\b|"
+    r"\bçerezleri\s+(?:reddet|yönet)\b)",
+    re.IGNORECASE,
+)
+_LEGAL_POLICY_URL_RE = re.compile(
+    r"(?:^|/)(?:gizlilik-politikasi|privacy-policy|kvkk|aydinlatma-metni|"
+    r"cerez-politikasi|cookie-policy|kullanim-kosullari|terms-of-use|"
+    r"mesafeli-satis)(?:/|$|[-_])",
+    re.IGNORECASE,
+)
+_LEGAL_POLICY_HEADING_RE = re.compile(
+    r"(?:gizlilik\s+politikası|privacy\s+policy|kvkk|aydınlatma\s+metni|"
+    r"çerez\s+politikası|cookie\s+policy|kullanım\s+koşulları|"
+    r"terms\s+of\s+use|mesafeli\s+satış)",
+    re.IGNORECASE,
+)
+_TAXONOMY_URL_RE = re.compile(
+    r"(?:^|/)(?:kategori|category|etiket|tag|arama|search)(?:/|$|[-_])",
+    re.IGNORECASE,
+)
+_SEO_DEFINITION_TEMPLATE_RE = re.compile(
+    r"\bbu\s+sayfada\b.{0,100}\bnedir\b.{0,100}\bne\s+demek\b",
+    re.IGNORECASE | re.DOTALL,
 )
 
 
@@ -198,8 +292,10 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
         raise TurkishCorpusError(f"policy fields must be exactly {sorted(required)}")
     if policy["schema_version"] != "2.0":
         raise TurkishCorpusError("schema_version must be '2.0'")
-    if policy["name"] != CORPUS_NAME:
-        raise TurkishCorpusError(f"policy name must be {CORPUS_NAME!r}")
+    if policy["name"] not in SUPPORTED_CORPUS_NAMES:
+        raise TurkishCorpusError(
+            f"policy name must be one of {sorted(SUPPORTED_CORPUS_NAMES)!r}"
+        )
 
     language = _require_mapping(policy["language_policy"], "language_policy")
     if language.get("allowed") != ["tur_Latn"]:
@@ -226,6 +322,25 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
     for key in ("min_chars", "min_words"):
         if not isinstance(content.get(key), int) or content[key] <= 0:
             raise TurkishCorpusError(f"content_policy.{key} must be positive")
+    if policy["name"] == CORPUS_NAME_V2:
+        exact_noise_policy = {
+            "max_foreign_script_fraction": 0.02,
+            "min_foreign_script_characters": 32,
+            "max_software_download_hits": 1,
+            "max_commerce_hits": 1,
+            "max_cookie_ui_hits": 1,
+            "reject_known_download_hosts": True,
+            "reject_software_download_urls": True,
+            "reject_commerce_url_with_hit": True,
+            "reject_legal_policy_pages": True,
+            "reject_taxonomy_urls": True,
+            "reject_seo_definition_templates": True,
+        }
+        for key, expected in exact_noise_policy.items():
+            if content.get(key) != expected:
+                raise TurkishCorpusError(
+                    f"content_policy.{key} must be frozen to {expected!r} for v2"
+                )
     processing = _require_mapping(
         content.get("production_processing"), "content_policy.production_processing"
     )
@@ -313,13 +428,42 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
             raise TurkishCorpusError(f"{source_id}: Hub revision must be a full commit")
         if revision_kind == "sha256" and not _SHA256_RE.fullmatch(revision):
             raise TurkishCorpusError(f"{source_id}: revision must be SHA-256")
-        if revision_kind not in {"hub_commit", "sha256"}:
+        if revision_kind == "md5" and not _MD5_RE.fullmatch(revision):
+            raise TurkishCorpusError(f"{source_id}: revision must be MD5")
+        if revision_kind not in {"hub_commit", "sha256", "md5"}:
             raise TurkishCorpusError(f"{source_id}: unsupported revision_kind")
         _require_nonempty(source.get("license_id"), f"{source_id}.license_id")
         _require_nonempty(source.get("license_url"), f"{source_id}.license_url")
         adapter = _require_mapping(source.get("adapter"), f"{source_id}.adapter")
         if adapter.get("text_field") != "text":
             raise TurkishCorpusError(f"{source_id}: adapter.text_field must be text")
+        if source_id == MACOCU_SOURCE_ID:
+            exact = {
+                "repo_id": "CLARIN.SI/11356/1969",
+                "resolved_revision": MACOCU_MD5,
+                "revision_kind": "md5",
+                "license_id": "CC0-1.0-packaging",
+                "source_url": MACOCU_SOURCE_URL,
+                "persistent_handle": MACOCU_HANDLE,
+                "expected_size_bytes": MACOCU_SIZE_BYTES,
+                "expected_md5": MACOCU_MD5,
+                "expected_rows": MACOCU_EXPECTED_ROWS,
+            }
+            for key, expected in exact.items():
+                if source.get(key) != expected:
+                    raise TurkishCorpusError(f"{source_id}: pinned {key} drift")
+            expected_adapter = {
+                "format": "jsonl.zst",
+                "text_field": "text",
+                "id_field": "id",
+                "url_field": "url",
+                "language_field": "$partition",
+                "partition_language": "tur_Latn",
+                "turkish_values": ["tur_Latn"],
+                "genre_field": "genre",
+            }
+            if dict(adapter) != expected_adapter:
+                raise TurkishCorpusError("MaCoCu adapter contract drift")
     priority = dedup.get("source_priority")
     if not isinstance(priority, list) or len(priority) != len(set(priority)):
         raise TurkishCorpusError("deduplication.source_priority must be a unique array")
@@ -332,6 +476,7 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
     weights = 0.0
     bucket_ids: set[str] = set()
     hplt_seen = False
+    macocu_genres_seen: set[str] = set()
     for index, raw in enumerate(mixture):
         bucket = _require_mapping(raw, f"mixture[{index}]")
         bucket_id = _require_nonempty(bucket.get("id"), f"mixture[{index}].id")
@@ -353,6 +498,16 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
         if not isinstance(fallback, list) or len(fallback) != len(set(fallback)):
             raise TurkishCorpusError(f"{bucket_id}: fallback must be a unique array")
         selector = _require_mapping(bucket.get("selector"), f"{bucket_id}.selector")
+        allowed_selector_keys = (
+            {"wds_bins", "register_any", "register_min_probability", "max_machine_translated_probability"}
+            if bucket.get("source_id") == "hplt3_tr"
+            else ({"genre_any"} if bucket.get("source_id") == MACOCU_SOURCE_ID else set())
+        )
+        unknown_selector_keys = set(selector) - allowed_selector_keys
+        if unknown_selector_keys:
+            raise TurkishCorpusError(
+                f"{bucket_id}: unknown selector keys {sorted(unknown_selector_keys)}"
+            )
         if bucket.get("source_id") == "hplt3_tr":
             hplt_seen = True
             source = next(
@@ -375,8 +530,26 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
                 raise TurkishCorpusError("HPLT3 selection requires explicit registers")
             if any(item in {"MT", "LY"} for item in registers):
                 raise TurkishCorpusError("machine-translated/lyrical HPLT registers are forbidden")
+        elif bucket.get("source_id") == MACOCU_SOURCE_ID:
+            genres = selector.get("genre_any")
+            if not isinstance(genres, list) or not genres or len(genres) != len(set(genres)):
+                raise TurkishCorpusError("MaCoCu selection requires unique explicit genres")
+            genre_set = set(genres)
+            if not genre_set <= MACOCU_GENRES:
+                raise TurkishCorpusError("MaCoCu selector contains an unknown genre")
+            if genre_set & MACOCU_EXCLUDED_GENRES:
+                raise TurkishCorpusError("MaCoCu selector contains an excluded genre")
+            if genre_set & macocu_genres_seen:
+                raise TurkishCorpusError("MaCoCu genre selectors must be disjoint")
+            macocu_genres_seen |= genre_set
+        elif selector:
+            raise TurkishCorpusError(f"{bucket_id}: this source requires an empty selector")
     if not hplt_seen:
         raise TurkishCorpusError("at least one audited HPLT3 candidate bucket is required")
+    if MACOCU_SOURCE_ID in source_ids and macocu_genres_seen != (
+        MACOCU_CONVERSATION_GENRES | MACOCU_GENERAL_GENRES
+    ):
+        raise TurkishCorpusError("MaCoCu buckets must select the frozen conversation/general genres")
     if not math.isclose(weights, 1.0, abs_tol=1e-12):
         raise TurkishCorpusError(f"mixture weights must sum to 1, got {weights}")
     for bucket in mixture:
@@ -476,6 +649,25 @@ def validate_source_receipt(receipt: Mapping[str, Any], policy: Mapping[str, Any
     ).hexdigest():
         raise TurkishCorpusError("source receipt is bound to a different corpus policy")
     policy_sources = {source["id"]: source for source in policy["sources"]}
+    derived_sources = receipt.get("derived_sources", {})
+    if not isinstance(derived_sources, Mapping):
+        raise TurkishCorpusError("source receipt derived_sources must be an object")
+    expected_derived = {MACOCU_SOURCE_ID} if MACOCU_SOURCE_ID in policy_sources else set()
+    if set(derived_sources) != expected_derived:
+        raise TurkishCorpusError("source receipt derived-source inventory drift")
+    if MACOCU_SOURCE_ID in derived_sources:
+        macocu = _require_mapping(
+            derived_sources[MACOCU_SOURCE_ID], "source receipt MaCoCu provenance"
+        )
+        if not _SHA256_RE.fullmatch(str(macocu.get("manifest_sha256", ""))):
+            raise TurkishCorpusError("source receipt lacks MaCoCu preparation hash")
+        upstream = _require_mapping(macocu.get("upstream"), "source receipt MaCoCu upstream")
+        if (
+            upstream.get("uri") != MACOCU_SOURCE_URL
+            or upstream.get("md5") != MACOCU_MD5
+            or upstream.get("size_bytes") != MACOCU_SIZE_BYTES
+        ):
+            raise TurkishCorpusError("source receipt MaCoCu upstream identity drift")
     seen: set[str] = set()
     sources = receipt.get("sources")
     if not isinstance(sources, list) or not sources:
@@ -511,6 +703,29 @@ def validate_source_receipt(receipt: Mapping[str, Any], policy: Mapping[str, Any
                 raise TurkishCorpusError("every materialization input requires size_bytes")
     if seen != set(policy_sources):
         raise TurkishCorpusError("receipt does not cover every configured source")
+
+
+def archive_source_receipt(
+    output_dir: str | Path,
+    receipt: Mapping[str, Any],
+    policy: Mapping[str, Any],
+    *,
+    expected_sha256: str,
+) -> dict[str, Any]:
+    """Archive and re-verify the exact sealed source identity used by a corpus stage."""
+
+    validate_source_receipt(receipt, policy)
+    if receipt["canonical_sha256"] != expected_sha256:
+        raise TurkishCorpusError("corpus/source receipt hash binding differs")
+    path = Path(output_dir) / "source_receipt.json"
+    if path.exists():
+        raise FileExistsError(f"refusing to overwrite source receipt archive: {path}")
+    write_json_atomic(path, dict(receipt))
+    archived = load_json_strict(path)
+    validate_source_receipt(archived, policy)
+    if archived["canonical_sha256"] != expected_sha256:
+        raise TurkishCorpusError("archived source receipt hash drift")
+    return archived
 
 
 def source_object_inventory(receipt: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -660,12 +875,19 @@ def validate_backend_receipt(
         "quality_score",
         "wds_bin",
         "web-register",
+        "genre",
         "pii_replacements",
         "harmful_signal_hits",
         "quality_filter_flags",
         "formatting_changes",
     }
-    if set(receipt.get("columns", [])) != required_columns:
+    observed_columns = set(receipt.get("columns", []))
+    accepted_column_contracts = {frozenset(required_columns)}
+    if policy["name"] == CORPUS_NAME:
+        # Pre-v2 receipts were sealed before the optional MaCoCu genre column
+        # existed. Preserve their auditability without weakening the v2 lane.
+        accepted_column_contracts.add(frozenset(required_columns - {"genre"}))
+    if frozenset(observed_columns) not in accepted_column_contracts:
         raise TurkishCorpusError("production backend output column contract drift")
     for item in files:
         item = _require_mapping(item, "backend file")
@@ -824,9 +1046,13 @@ def _qa_document_metrics(record: Mapping[str, Any]) -> tuple[str, dict[str, floa
     words = [word.casefold() for word in _WORD_RE.findall(text)]
     lines = [line for line in text.split("\n") if line.strip()]
     code_lines = sum(bool(_CODE_LINE_RE.search(line)) for line in lines)
+    alphabetic, foreign_script = _script_metrics(text)
+    web_noise = _web_noise_metrics(text, str(record.get("url") or ""))
     metrics: dict[str, float | int | str] = {
         "characters": len(text),
         "words": len(words),
+        "foreign_script_characters": foreign_script,
+        "foreign_script_fraction": foreign_script / max(1, alphabetic),
         "code_line_fraction": code_lines / max(1, len(lines)),
         "code_punctuation_fraction": sum(text.count(char) for char in "{};`")
         / max(1, len(text)),
@@ -837,6 +1063,8 @@ def _qa_document_metrics(record: Mapping[str, Any]) -> tuple[str, dict[str, floa
         ),
         "quality_filter_flags": str(record.get("quality_filter_flags") or "[]"),
         "formatting_changes": str(record.get("formatting_changes") or "{}"),
+        "genre": str(record.get("genre") or "not_applicable"),
+        **web_noise,
     }
     for key in (
         "lid_probability",
@@ -871,9 +1099,20 @@ class ProductionQAAuditor:
         "paragraph_min_margin",
         "failed_long_paragraph_fraction",
         "quality_score",
+        "foreign_script_characters",
+        "foreign_script_fraction",
         "code_line_fraction",
         "code_punctuation_fraction",
         "programming_term_hits",
+        "software_download_hits",
+        "known_download_host",
+        "software_download_url",
+        "commerce_hits",
+        "commerce_url",
+        "cookie_ui_hits",
+        "legal_policy_page",
+        "taxonomy_url",
+        "seo_definition_template",
         "boilerplate_hits",
         "duplicate_line_fraction",
         "pii_replacements",
@@ -1414,7 +1653,7 @@ def materialize_production_pool(
             {
                 "schema_version": "1.0",
                 "kind": CORPUS_MANIFEST_KIND,
-                "name": CORPUS_NAME,
+                "name": policy["name"],
                 "stage": "filtered_pool",
                 "backend_scope": "production_glotlid_datatrove",
                 "policy_sha256": policy_hash,
@@ -1452,6 +1691,12 @@ def materialize_production_pool(
                 "canonical_sha256": None,
             }
         )
+        archive_source_receipt(
+            destination,
+            source_receipt,
+            policy,
+            expected_sha256=backend_receipt["source_receipt_sha256"],
+        )
         write_json_atomic(destination / "corpus_manifest.json", manifest)
         write_pool_ownership_manifest(destination, manifest)
         return manifest
@@ -1480,6 +1725,42 @@ def _script_metrics(text: str) -> tuple[int, int]:
         if name and not any(tag in name for tag in ("LATIN", "COMBINING")):
             disallowed_script += 1
     return alphabetic, disallowed_script
+
+
+def _web_noise_metrics(text: str, url: str) -> dict[str, int]:
+    """Return narrow web-template signals calibrated on the bounded v1 sample."""
+
+    decoded = urllib.parse.unquote(str(url or "")).casefold()
+    try:
+        parsed = urllib.parse.urlsplit(decoded)
+        hostname = (parsed.hostname or "").rstrip(".")
+        path = parsed.path
+    except ValueError:
+        hostname = ""
+        path = decoded
+    known_download_host = any(
+        hostname == candidate or hostname.endswith(f".{candidate}")
+        for candidate in _DOWNLOAD_HOSTS
+    )
+    software_download_hits = len(_SOFTWARE_DOWNLOAD_RE.findall(text))
+    commerce_hits = len(_COMMERCE_RE.findall(text))
+    cookie_ui_hits = len(_COOKIE_UI_RE.findall(text))
+    return {
+        "software_download_hits": software_download_hits,
+        "known_download_host": int(known_download_host),
+        "software_download_url": int(bool(_DOWNLOAD_URL_RE.search(path))),
+        "commerce_hits": commerce_hits,
+        "commerce_url": int(bool(_COMMERCE_URL_RE.search(path))),
+        "cookie_ui_hits": cookie_ui_hits,
+        "legal_policy_page": int(
+            bool(_LEGAL_POLICY_URL_RE.search(path))
+            and bool(_LEGAL_POLICY_HEADING_RE.search(text[:512]))
+        ),
+        "taxonomy_url": int(bool(_TAXONOMY_URL_RE.search(path))),
+        "seo_definition_template": int(
+            bool(_SEO_DEFINITION_TEMPLATE_RE.search(text[:1000]))
+        ),
+    }
 
 
 def turkish_text_confidence(text: str) -> tuple[float, Mapping[str, float | int]]:
@@ -1626,11 +1907,25 @@ def audit_document(
     words = [word.casefold() for word in _WORD_RE.findall(normalized)]
     if len(words) < int(content_policy["min_words"]):
         return AuditDecision(False, "too_few_words", normalized, metrics)
-    alphabetic, _foreign_script = _script_metrics(normalized)
+    alphabetic, foreign_script = _script_metrics(normalized)
     alpha_fraction = alphabetic / max(1, char_count)
-    metrics["alphabetic_fraction"] = alpha_fraction
+    foreign_script_fraction = foreign_script / max(1, alphabetic)
+    metrics.update(
+        {
+            "alphabetic_fraction": alpha_fraction,
+            "foreign_script_characters": foreign_script,
+            "foreign_script_fraction": foreign_script_fraction,
+        }
+    )
     if alpha_fraction < float(content_policy["min_alphabetic_fraction"]):
         return AuditDecision(False, "low_alphabetic_fraction", normalized, metrics)
+    if (
+        foreign_script
+        >= int(content_policy.get("min_foreign_script_characters", 10**18))
+        and foreign_script_fraction
+        > float(content_policy.get("max_foreign_script_fraction", 1.0))
+    ):
+        return AuditDecision(False, "foreign_script", normalized, metrics)
 
     lines = [line for line in normalized.split("\n") if line.strip()]
     code_lines = sum(bool(_CODE_LINE_RE.search(line)) for line in lines)
@@ -1653,6 +1948,51 @@ def audit_document(
         or programming_hits > int(content_policy["max_programming_term_hits"])
     ):
         return AuditDecision(False, "code_content", normalized, metrics)
+
+    web_noise = _web_noise_metrics(normalized, url)
+    metrics.update(web_noise)
+    if (
+        web_noise["software_download_hits"]
+        > int(content_policy.get("max_software_download_hits", 10**9))
+        or (
+            content_policy.get("reject_known_download_hosts") is True
+            and web_noise["known_download_host"]
+        )
+        or (
+            content_policy.get("reject_software_download_urls") is True
+            and web_noise["software_download_url"]
+        )
+    ):
+        return AuditDecision(False, "software_download", normalized, metrics)
+    if (
+        web_noise["commerce_hits"]
+        > int(content_policy.get("max_commerce_hits", 10**9))
+        or (
+            content_policy.get("reject_commerce_url_with_hit") is True
+            and web_noise["commerce_hits"] >= 1
+            and web_noise["commerce_url"]
+        )
+    ):
+        return AuditDecision(False, "commerce", normalized, metrics)
+    if web_noise["cookie_ui_hits"] > int(
+        content_policy.get("max_cookie_ui_hits", 10**9)
+    ):
+        return AuditDecision(False, "cookie_ui", normalized, metrics)
+    if (
+        content_policy.get("reject_legal_policy_pages") is True
+        and web_noise["legal_policy_page"]
+    ):
+        return AuditDecision(False, "legal_policy", normalized, metrics)
+    if (
+        content_policy.get("reject_taxonomy_urls") is True
+        and web_noise["taxonomy_url"]
+    ):
+        return AuditDecision(False, "taxonomy_url", normalized, metrics)
+    if (
+        content_policy.get("reject_seo_definition_templates") is True
+        and web_noise["seo_definition_template"]
+    ):
+        return AuditDecision(False, "seo_definition_template", normalized, metrics)
 
     if len(lines) >= 4:
         duplicate_line_fraction = 1.0 - len(set(lines)) / len(lines)
@@ -1737,6 +2077,11 @@ def select_mixture_bucket(
         selector = bucket["selector"]
         if "wds_bins" in selector and infer_wds_bin(record) not in selector["wds_bins"]:
             continue
+        if "genre_any" in selector:
+            genre = strict_macocu_genre(record)
+            if genre not in selector["genre_any"]:
+                continue
+            return bucket["id"], float(record.get("quality_score", 0.0) or 0.0)
         registers = register_scores(record)
         if "register_any" in selector:
             desired = max(float(registers.get(label, 0.0) or 0.0) for label in selector["register_any"])
@@ -1750,6 +2095,17 @@ def select_mixture_bucket(
     return None
 
 
+def strict_macocu_genre(
+    record: Mapping[str, Any], *, field: str = "genre"
+) -> str:
+    """Return MaCoCu's exact genre label and fail closed on schema drift."""
+
+    value = record.get(field)
+    if not isinstance(value, str) or value not in MACOCU_GENRES:
+        raise TurkishCorpusError("MaCoCu record has a missing or unknown genre")
+    return value
+
+
 def dominant_register(record: Mapping[str, Any]) -> str:
     """Return one auditable HPLT register label, or an explicit sentinel.
 
@@ -1758,6 +2114,8 @@ def dominant_register(record: Mapping[str, Any]) -> str:
     accounting; non-HPLT sources are marked rather than guessed.
     """
 
+    if isinstance(record.get("genre"), str) and bool(record.get("genre")):
+        return f"genre:{strict_macocu_genre(record)}"
     registers = register_scores(record)
     if not registers:
         return "not_applicable"
@@ -2292,6 +2650,8 @@ def materialize_filtered_pool(
                         projected_columns.append(field.split(".")[0])
                 if source_id == "hplt3_tr":
                     projected_columns.append("web-register")
+                if source_id == MACOCU_SOURCE_ID:
+                    projected_columns.append("genre")
                 if source_id == "fineweb2_hq_tr":
                     projected_columns.append("quality_score")
                 for item in receipt_sources[source_id]["files"]:
@@ -2356,7 +2716,7 @@ def materialize_filtered_pool(
             {
                 "schema_version": "1.0",
                 "kind": CORPUS_MANIFEST_KIND,
-                "name": CORPUS_NAME,
+                "name": policy["name"],
                 "stage": "filtered_pool",
                 "backend_scope": "reference_smoke_only",
                 "policy_sha256": policy_hash,
@@ -2385,6 +2745,12 @@ def materialize_filtered_pool(
                 },
                 "canonical_sha256": None,
             }
+        )
+        archive_source_receipt(
+            destination,
+            receipt,
+            policy,
+            expected_sha256=receipt["canonical_sha256"],
         )
         write_json_atomic(destination / "corpus_manifest.json", manifest)
         write_pool_ownership_manifest(destination, manifest)
@@ -2567,7 +2933,7 @@ def write_tokenizer_sample(
             "manifest_type": "dataset",
             "profile": "strict",
             "dataset": {
-                "repo_id": f"local-composite/{CORPUS_NAME}",
+                "repo_id": f"local-composite/{policy['name']}",
                 "path": "tokenizer_sample",
                 "requested_revision": synthetic_revision,
                 "resolved_revision": synthetic_revision,
@@ -3437,6 +3803,10 @@ def materialize_final_corpus(
         canonical_json(policy).encode("utf-8")
     ).hexdigest():
         raise TurkishCorpusError("filtered pool and final policy differ")
+    source_receipt = load_json_strict(pool_root / "source_receipt.json")
+    validate_source_receipt(source_receipt, policy)
+    if source_receipt["canonical_sha256"] != pool_manifest["source_receipt_sha256"]:
+        raise TurkishCorpusError("final corpus/source receipt hash binding differs")
 
     from nanochat.tokenizer import RustBPETokenizer
     from nanochat.strict_tokenizer import verify_tokenizer_package
@@ -3692,6 +4062,12 @@ def materialize_final_corpus(
         test_no_crop,
     ) = _write_eval_split(pool_root, pool_manifest, policy, tokenizer, test_path, "test")
 
+    archive_source_receipt(
+        destination,
+        source_receipt,
+        policy,
+        expected_sha256=pool_manifest["source_receipt_sha256"],
+    )
     write_json_atomic(destination / "parent_pool_manifest.json", pool_manifest)
     write_json_atomic(destination / "parent_pool_ownership.json", ownership)
     qa_report = load_json_strict(pool_root / "qa" / "qa_report.json")
@@ -3739,7 +4115,7 @@ def materialize_final_corpus(
             "manifest_type": "dataset",
             "profile": "strict",
             "dataset": {
-                "repo_id": f"local-composite/{CORPUS_NAME}",
+                "repo_id": f"local-composite/{policy['name']}",
                 "path": "interleaved_final",
                 "requested_revision": synthetic_revision,
                 "resolved_revision": synthetic_revision,
@@ -3754,7 +4130,7 @@ def materialize_final_corpus(
             },
             "metadata": {
                 "revision_semantics": "sha1_of_pool_tokenizer_horizon_not_hub_commit",
-                "corpus_name": CORPUS_NAME,
+                "corpus_name": policy["name"],
                 "parent_pool_manifest_sha256": parent_hash,
                 "tokenizer_package_sha256": package["canonical_sha256"],
                 "scheduled_prefix_tokens": target_tokens,
@@ -3823,7 +4199,7 @@ def materialize_final_corpus(
         {
             "schema_version": "1.0",
             "kind": CORPUS_MANIFEST_KIND,
-            "name": CORPUS_NAME,
+            "name": policy["name"],
             "stage": "final_interleaved",
             "policy_sha256": pool_manifest["policy_sha256"],
             "parent_pool_manifest_sha256": parent_hash,
@@ -4357,11 +4733,13 @@ def write_d32_exposure_plan_index(
 __all__ = [
     "AuditDecision",
     "CORPUS_NAME",
+    "CORPUS_NAME_V2",
     "DedupDecision",
     "D32_EXPOSURE_MATRIX_V1",
     "D32_GLOBAL_BATCH_TOKENS",
     "SQLiteMinHashDeduper",
     "TOKENIZER_NAME",
+    "MACOCU_SOURCE_ID",
     "TurkishCorpusError",
     "VOCAB_SIZE",
     "assign_split",
@@ -4380,6 +4758,7 @@ __all__ = [
     "source_lid_result",
     "stable_shuffle_key",
     "strict_hplt_register_scores",
+    "strict_macocu_genre",
     "turkish_text_confidence",
     "validate_corpus_policy",
     "validate_packing_preflight_gate",

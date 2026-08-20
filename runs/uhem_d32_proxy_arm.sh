@@ -31,12 +31,12 @@ eval "$(.venv/bin/python scripts/d32_family_workflow.py attention-env \
     --attention-probe="$ATTENTION_PROBE_RECEIPT")"
 
 export RUN_KIND=proxy
-export FAMILY_ID=tr_d32_general_bpe32k_v1
+export FAMILY_ID=tr_d32_general_bpe32k_v2
 export NNODES=1
 export NPROC_PER_NODE=1
 export CUDA_VISIBLE_DEVICES="$gpu_slot"
 export STUDY_MANIFEST="$RECIPE"
-export DATA_DIR="$NANOCHAT_BASE_DIR/pretrain_data/tr_general_clean_v1"
+export DATA_DIR="$NANOCHAT_BASE_DIR/pretrain_data/tr_general_clean_v2"
 export TOKENIZER_MANIFEST="$NANOCHAT_BASE_DIR/tokenizers/tr_general_raw_bpe_32k_v1/package_manifest.json"
 export VALIDATION_MANIFEST="$DATA_DIR/validation_exposure_manifest.json"
 export EXPOSURE_PLAN="$DATA_DIR/training_exposure_${EXPOSURE_PLAN_KEY}.json"

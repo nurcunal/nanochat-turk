@@ -657,6 +657,7 @@ def main(argv: list[str] | None = None) -> int:
                 dataset_manifest=artifacts.dataset_manifest,
                 dataset_sha256=artifacts.dataset_sha256,
                 tokenizer_sha256=tokenizer_package.canonical_sha256,
+                family_id=artifacts.recipe["family_id"],
                 recipe_sha256=artifacts.recipe_sha256,
                 exposure_plan_sha256=artifacts.exposure_plan_sha256,
                 world_size=world_size,

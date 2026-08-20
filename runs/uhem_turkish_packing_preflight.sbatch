@@ -25,7 +25,7 @@ set -u
 : "${PACKING_CONTROL_DIR:?Set PACKING_CONTROL_DIR to a new control directory}"
 
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
-POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v1.json}"
+POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v2.json}"
 PYTHON_BIN="${PYTHON_BIN:-$CODE_DIR/.venv/bin/python}"
 mkdir -p "$PACKING_CONTROL_DIR"
 cd "$CODE_DIR"

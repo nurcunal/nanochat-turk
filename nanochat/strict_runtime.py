@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from nanochat.experiment_manifest import (
+    canonical_json,
     load_json_strict,
     validate_dataset_manifest,
     verify_manifest_hash,
@@ -25,7 +26,73 @@ from nanochat.wsd import validate_weight_decay_proxy_candidates
 
 
 PINNED_UPSTREAM_REVISION = "92d63d4e8bb4df75c3b71618f31ddde2378b2bcd"
-FAMILY_ID = "tr_d32_general_bpe32k_v1"
+FAMILY_ID = "tr_d32_general_bpe32k_v1"  # Backwards-compatible v1 alias.
+FAMILY_ID_V2 = "tr_d32_general_bpe32k_v2"
+
+_TRAINING_EXPOSURE_ARTIFACTS = {
+    "proxy_d12_seed42_ws1": "training_exposure_proxy_d12_seed42_ws1.json",
+    "proxy_d12_seed314159_ws1": (
+        "training_exposure_proxy_d12_seed314159_ws1.json"
+    ),
+    "proxy_d20_seed42_ws1": "training_exposure_proxy_d20_seed42_ws1.json",
+    "signal_smoke_ws4_seed42": "training_exposure_signal_smoke_ws4_seed42.json",
+    "smoke_ws8": "training_exposure_smoke_ws8.json",
+    "smoke_ws16": "training_exposure_smoke_ws16.json",
+    "trunk_ws8_seed42": "training_exposure_trunk_ws8_seed42.json",
+    "s12_ws8_seed42": "training_exposure_s12_ws8_seed42.json",
+    "s20_ws8_seed42": "training_exposure_s20_ws8_seed42.json",
+    "s40_ws8_seed42": "training_exposure_s40_ws8_seed42.json",
+    "trunk_ws16_seed42": "training_exposure_trunk_ws16_seed42.json",
+    "s12_ws16_seed42": "training_exposure_s12_ws16_seed42.json",
+    "s20_ws16_seed42": "training_exposure_s20_ws16_seed42.json",
+    "s40_ws16_seed42": "training_exposure_s40_ws16_seed42.json",
+}
+
+
+def _artifact_contract(*, version: str) -> dict[str, Any]:
+    corpus_id = f"tr_general_clean_{version}"
+    artifacts: dict[str, Any] = {
+        "mixture_config": f"configs/pretrain/tr_d32_turkish_general_{version}.json",
+        "corpus_id": corpus_id,
+        "corpus_root": f"pretrain_data/{corpus_id}",
+        "corpus_manifest": "corpus_manifest.json",
+        "nanochat_dataset_manifest": "fineweb2_manifest.json",
+        "source_receipt": "source_receipt.json",
+        "packing_capacity_receipt": "packing_capacity_receipt.json",
+        "validation_exposure_manifest": "validation_exposure_manifest.json",
+        "exposure_plan_index": "exposure_plan_index.json",
+        "training_exposure_manifests": dict(_TRAINING_EXPOSURE_ARTIFACTS),
+        "tokenizer_name": "tr_general_raw_bpe_32k_v1",
+        "tokenizer_root": "tokenizers/tr_general_raw_bpe_32k_v1",
+        "tokenizer_package_manifest": "package_manifest.json",
+    }
+    if version == "v2":
+        artifacts["macocu_preparation_manifest"] = (
+            "source_data/macocu_genre_tr_v1/manifest.json"
+        )
+    return artifacts
+
+
+FAMILY_ARTIFACT_CONTRACTS = {
+    FAMILY_ID: _artifact_contract(version="v1"),
+    FAMILY_ID_V2: _artifact_contract(version="v2"),
+}
+
+
+def family_artifact_contract(family_id: str) -> dict[str, Any]:
+    """Return the one exact artifact namespace permitted for a family."""
+
+    expected = FAMILY_ARTIFACT_CONTRACTS.get(family_id)
+    if expected is None:
+        raise StrictTrainingError("unexpected d32 family recipe identity")
+    return {
+        **expected,
+        "training_exposure_manifests": dict(
+            expected["training_exposure_manifests"]
+        ),
+    }
+
+
 PREEMPTION_EXIT_CODE = 75
 
 
@@ -180,8 +247,16 @@ def verify_code_provenance(
 def validate_family_recipe(recipe: Mapping[str, Any]) -> None:
     """Validate the safety-critical, family-wide recipe declarations."""
 
-    if recipe.get("schema_version") != "1.0" or recipe.get("family_id") != FAMILY_ID:
+    family_id = recipe.get("family_id")
+    if recipe.get("schema_version") != "1.0" or family_id not in FAMILY_ARTIFACT_CONTRACTS:
         raise StrictTrainingError("unexpected d32 family recipe identity")
+    artifacts = recipe.get("artifacts")
+    if not isinstance(artifacts, Mapping) or dict(artifacts) != family_artifact_contract(
+        str(family_id)
+    ):
+        raise StrictTrainingError(
+            "family recipe artifacts differ from the exact family identity"
+        )
     language = recipe.get("language_policy")
     if not isinstance(language, Mapping) or language.get("allowed_languages") != ["tr"]:
         raise StrictTrainingError("family recipe must be Turkish-only")
@@ -287,6 +362,12 @@ def load_artifact_bindings(
         raise StrictTrainingError("dataset manifest must contain an object")
     validate_dataset_manifest(dataset, profile="strict")
     dataset_sha = verify_manifest_hash(dataset)
+    corpus_id = recipe["artifacts"]["corpus_id"]
+    if (
+        dataset.get("dataset", {}).get("repo_id") != f"local-composite/{corpus_id}"
+        or dataset.get("metadata", {}).get("corpus_name") != corpus_id
+    ):
+        raise StrictTrainingError("dataset manifest uses another family corpus")
     exposure = load_json_strict(exposure_plan_path)
     if not isinstance(exposure, dict):
         raise StrictTrainingError("training exposure plan must contain an object")
@@ -374,9 +455,16 @@ def validate_preflight_artifact_bindings(
     code_record = preflight.get("code")
     tokenizer_record = preflight.get("tokenizer")
     corpus_record = preflight.get("corpus")
+    mixture_record = preflight.get("mixture_config")
     if not all(
         isinstance(record, Mapping)
-        for record in (recipe_record, code_record, tokenizer_record, corpus_record)
+        for record in (
+            recipe_record,
+            code_record,
+            tokenizer_record,
+            corpus_record,
+            mixture_record,
+        )
     ):
         raise StrictTrainingError("preflight artifact inventory is malformed")
     if recipe_record.get("canonical_sha256") != recipe_sha256:
@@ -401,9 +489,30 @@ def validate_preflight_artifact_bindings(
     if tokenizer_record.get("package_manifest_sha256") != tokenizer_sha256:
         raise StrictTrainingError("preflight uses another tokenizer package")
 
+    artifacts = family_artifact_contract(str(recipe["family_id"]))
+    if dict(recipe.get("artifacts", {})) != artifacts:
+        raise StrictTrainingError("runtime recipe artifact contract drifted")
+    corpus_id = artifacts["corpus_id"]
+    mixture_path = Path(str(mixture_record.get("path", ""))).resolve()
+    if not mixture_path.is_file() or mixture_path.is_symlink():
+        raise StrictTrainingError("preflight mixture config is missing or unsafe")
+    mixture = load_json_strict(mixture_path)
+    if not isinstance(mixture, dict):
+        raise StrictTrainingError("preflight mixture config must contain an object")
+    policy_sha = hashlib.sha256(canonical_json(mixture).encode("utf-8")).hexdigest()
+    if (
+        mixture.get("name") != corpus_id
+        or mixture_record.get("sha256") != file_sha256(mixture_path)
+        or mixture_record.get("policy_sha256") != policy_sha
+        or mixture_record.get("corpus_name") != corpus_id
+    ):
+        raise StrictTrainingError("preflight mixture/policy family binding drifted")
+
     root = Path(data_dir).resolve()
     if Path(str(corpus_record.get("root", ""))).resolve() != root:
         raise StrictTrainingError("preflight uses another corpus root")
+    if corpus_record.get("name") != corpus_id:
+        raise StrictTrainingError("preflight uses another corpus name")
     if corpus_record.get("dataset_manifest_sha256") != dataset_sha256:
         raise StrictTrainingError("preflight uses another dataset manifest")
     if corpus_record.get("validation_exposure_manifest_sha256") != validation_sha256:
@@ -429,11 +538,81 @@ def validate_preflight_artifact_bindings(
         raise StrictTrainingError(f"invalid final corpus manifest: {exc}") from exc
     if (
         corpus_record.get("manifest_sha256") != corpus_sha
+        or corpus_manifest.get("schema_version") != "1.0"
+        or corpus_manifest.get("kind") != "turkish_pretrain_corpus"
+        or corpus_manifest.get("name") != corpus_id
+        or corpus_manifest.get("policy_sha256") != policy_sha
+        or corpus_manifest.get("source_receipt_sha256")
+        != corpus_record.get("source_receipt_sha256")
         or corpus_manifest.get("nanochat_dataset_manifest_sha256") != dataset_sha256
+        or corpus_manifest.get("tokenizer", {}).get("name")
+        != artifacts["tokenizer_name"]
         or corpus_manifest.get("tokenizer", {}).get("package_sha256")
         != tokenizer_sha256
     ):
         raise StrictTrainingError("preflight final-corpus binding drifted")
+    if (
+        dataset_manifest.get("dataset", {}).get("repo_id")
+        != f"local-composite/{corpus_id}"
+        or dataset_manifest.get("metadata", {}).get("corpus_name") != corpus_id
+    ):
+        raise StrictTrainingError("runtime dataset/corpus family binding drifted")
+
+    source_path = (root / artifacts["source_receipt"]).resolve()
+    if not source_path.is_file() or source_path.is_symlink():
+        raise StrictTrainingError("source receipt is missing or unsafe")
+    source_receipt = load_json_strict(source_path)
+    if not isinstance(source_receipt, dict):
+        raise StrictTrainingError("source receipt must contain an object")
+    try:
+        source_sha = verify_manifest_hash(source_receipt)
+    except ValueError as exc:
+        raise StrictTrainingError(f"invalid source receipt: {exc}") from exc
+    if (
+        source_receipt.get("schema_version") != "1.0"
+        or source_receipt.get("kind") != "turkish_pretrain_source_receipt"
+        or source_sha != corpus_record.get("source_receipt_sha256")
+        or source_receipt.get("policy_sha256") != policy_sha
+    ):
+        raise StrictTrainingError("runtime source-receipt policy binding drifted")
+
+    derived_sources = source_receipt.get("derived_sources")
+    if not isinstance(derived_sources, Mapping):
+        raise StrictTrainingError("source receipt derived-source inventory is malformed")
+    macocu_relative = artifacts.get("macocu_preparation_manifest")
+    macocu_record = corpus_record.get("macocu_preparation_manifest")
+    if macocu_relative is None:
+        if derived_sources or macocu_record is not None:
+            raise StrictTrainingError("v1 family unexpectedly binds derived MaCoCu data")
+    else:
+        if not isinstance(macocu_record, Mapping):
+            raise StrictTrainingError("v2 preflight lacks its MaCoCu preparation manifest")
+        base_dir = Path(str(preflight.get("base_dir", ""))).resolve()
+        expected_macocu_path = (base_dir / macocu_relative).resolve()
+        actual_macocu_path = Path(str(macocu_record.get("path", ""))).resolve()
+        if actual_macocu_path != expected_macocu_path:
+            raise StrictTrainingError("preflight MaCoCu preparation path drifted")
+        if not actual_macocu_path.is_file() or actual_macocu_path.is_symlink():
+            raise StrictTrainingError("MaCoCu preparation manifest is missing or unsafe")
+        macocu_manifest = load_json_strict(actual_macocu_path)
+        if not isinstance(macocu_manifest, dict):
+            raise StrictTrainingError("MaCoCu preparation manifest must be an object")
+        try:
+            macocu_sha = verify_manifest_hash(macocu_manifest)
+        except ValueError as exc:
+            raise StrictTrainingError(
+                f"invalid MaCoCu preparation manifest: {exc}"
+            ) from exc
+        source_macocu = derived_sources.get("macocu_genre_tr")
+        if (
+            macocu_manifest.get("schema_version") != "1.0"
+            or macocu_manifest.get("kind") != "turkish_macocu_genre_preparation"
+            or not isinstance(source_macocu, Mapping)
+            or macocu_record.get("sha256") != macocu_sha
+            or source_macocu.get("manifest_sha256") != macocu_sha
+            or source_macocu.get("manifest_uri") != actual_macocu_path.as_uri()
+        ):
+            raise StrictTrainingError("MaCoCu preparation/source receipt binding drifted")
 
     capacity_path = (root / "packing_capacity_receipt.json").resolve()
     capacity = load_json_strict(capacity_path)
@@ -468,6 +647,8 @@ def validate_preflight_artifact_bindings(
     )
     if (
         corpus_record.get("exposure_plan_index_sha256") != exposure_index_sha
+        or exposure_index.get("schema_version") != "1.0"
+        or exposure_index.get("family_id") != recipe["family_id"]
         or exposure_index.get("study_manifest_sha256") != recipe_sha256
         or exposure_index.get("source_dataset_manifest_sha256") != dataset_sha256
         or exposure_index.get("tokenizer_artifact_sha256") != tokenizer_sha256
@@ -654,6 +835,7 @@ def validate_bestfit_capacity_receipt(
     dataset_manifest: Mapping[str, Any],
     dataset_sha256: str,
     tokenizer_sha256: str,
+    family_id: str,
     recipe_sha256: str,
     exposure_plan_sha256: str,
     world_size: int,
@@ -664,6 +846,7 @@ def validate_bestfit_capacity_receipt(
 ) -> tuple[dict[str, Any], str, dict[str, Any]]:
     """Verify exact no-wrap capacity for the selected production topology."""
 
+    family_artifact_contract(family_id)
     root = Path(data_dir).resolve()
     resolved_receipt_path = Path(receipt_path).resolve()
     expected_receipt_path = (root / "packing_capacity_receipt.json").resolve()
@@ -812,7 +995,9 @@ def validate_bestfit_capacity_receipt(
     except ValueError as exc:
         raise StrictTrainingError(f"invalid exposure plan index: {exc}") from exc
     if (
-        index.get("kind") != "d32_exposure_plan_index"
+        index.get("schema_version") != "1.0"
+        or index.get("kind") != "d32_exposure_plan_index"
+        or index.get("family_id") != family_id
         or index.get("study_manifest_sha256") != recipe_sha256
         or index.get("source_dataset_manifest_sha256") != dataset_sha256
         or index.get("tokenizer_artifact_sha256") != tokenizer_sha256
@@ -1282,13 +1467,16 @@ def validate_production_topology_gate(
 
 __all__ = [
     "ArtifactBindings",
+    "FAMILY_ARTIFACT_CONTRACTS",
     "FAMILY_ID",
+    "FAMILY_ID_V2",
     "PINNED_UPSTREAM_REVISION",
     "PREEMPTION_EXIT_CODE",
     "SeedPlan",
     "StrictTrainingError",
     "derive_seed_plan",
     "file_sha256",
+    "family_artifact_contract",
     "load_artifact_bindings",
     "nanochat_effective_weight_decay",
     "validate_attention_probe_receipt",

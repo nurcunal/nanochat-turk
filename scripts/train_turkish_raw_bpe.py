@@ -48,7 +48,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--policy",
         type=Path,
-        default=Path("configs/pretrain/tr_d32_turkish_general_v1.json"),
+        default=Path("configs/pretrain/tr_d32_turkish_general_v2.json"),
     )
     parser.add_argument("--sample-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)

@@ -7,11 +7,49 @@ from pathlib import Path
 import pytest
 
 from nanochat.experiment_manifest import seal_manifest, write_json_atomic
+from nanochat.strict_runtime import (
+    StrictTrainingError,
+    family_artifact_contract,
+    validate_family_recipe,
+)
+from nanochat.turkish_corpus import D32_EXPOSURE_MATRIX_V1
 from scripts import d32_family_workflow as workflow
 
 
 ROOT = Path(__file__).resolve().parents[1]
 RECIPE = ROOT / "configs" / "pretrain" / "tr_d32_turkish_general_wsd_v1.json"
+RECIPE_V2 = ROOT / "configs" / "pretrain" / "tr_d32_turkish_general_wsd_v2.json"
+
+
+@pytest.mark.parametrize("recipe_path", [RECIPE, RECIPE_V2])
+def test_v1_and_v2_are_exact_supported_runtime_families(recipe_path: Path) -> None:
+    recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
+    workflow.validate_recipe(recipe)
+    validate_family_recipe(recipe)
+
+
+def test_v2_cannot_reuse_v1_artifact_namespace() -> None:
+    recipe = json.loads(RECIPE_V2.read_text(encoding="utf-8"))
+    recipe["artifacts"]["corpus_id"] = "tr_general_clean_v1"
+    recipe["artifacts"]["corpus_root"] = "pretrain_data/tr_general_clean_v1"
+    recipe["artifacts"]["mixture_config"] = (
+        "configs/pretrain/tr_d32_turkish_general_v1.json"
+    )
+    recipe["artifacts"].pop("macocu_preparation_manifest")
+    with pytest.raises(workflow.FamilyWorkflowError, match="per-family"):
+        workflow.validate_recipe(recipe)
+    with pytest.raises(StrictTrainingError, match="exact family identity"):
+        validate_family_recipe(recipe)
+
+
+def test_d32_exposure_matrix_exactly_matches_family_artifact_contract() -> None:
+    matrix_keys = {item[0] for item in D32_EXPOSURE_MATRIX_V1}
+    contract = family_artifact_contract("tr_d32_general_bpe32k_v2")
+    exposure_artifacts = contract["training_exposure_manifests"]
+
+    assert matrix_keys == set(exposure_artifacts)
+    assert exposure_artifacts["smoke_ws8"] == "training_exposure_smoke_ws8.json"
+    assert exposure_artifacts["smoke_ws16"] == "training_exposure_smoke_ws16.json"
 
 
 def test_recipe_has_no_broad_core_patch_allowlist() -> None:

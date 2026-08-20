@@ -17,6 +17,7 @@ contracts and pure helpers remain testable in the regular Nanochat environment.
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import importlib.metadata
 import json
@@ -47,6 +48,16 @@ from nanochat.experiment_manifest import (
 )
 from nanochat.turkish_corpus import (
     BACKEND_RECEIPT_KIND,
+    MACOCU_CONVERSATION_GENRES,
+    MACOCU_EXPECTED_ROWS,
+    MACOCU_GENERAL_GENRES,
+    MACOCU_GENRES,
+    MACOCU_HANDLE,
+    MACOCU_MD5,
+    MACOCU_SCHEMA,
+    MACOCU_SIZE_BYTES,
+    MACOCU_SOURCE_ID,
+    MACOCU_SOURCE_URL,
     SOURCE_RECEIPT_KIND,
     TurkishCorpusError,
     audit_document,
@@ -58,6 +69,7 @@ from nanochat.turkish_corpus import (
     select_mixture_bucket,
     source_lid_result,
     source_object_inventory,
+    strict_macocu_genre,
     strict_hplt_register_scores,
     validate_backend_receipt,
     validate_corpus_policy,
@@ -72,6 +84,7 @@ BUCKET_RECEIPT_KIND = "turkish_datatrove_bucket_result"
 CLUSTER_RECEIPT_KIND = "turkish_priority_cluster_result"
 RESOURCE_REPORT_KIND = "turkish_backend_resource_projection"
 RESOURCE_APPROVAL_KIND = "turkish_backend_resource_approval"
+MACOCU_PREPARATION_KIND = "turkish_macocu_genre_preparation"
 
 RESOURCE_BILLING_CONTRACT = {
     "scheduler_partition": "cpu2dq",
@@ -107,6 +120,7 @@ BACKEND_COLUMNS = (
     "quality_score",
     "wds_bin",
     "web-register",
+    "genre",
     "pii_replacements",
     "harmful_signal_hits",
     "quality_filter_flags",
@@ -169,6 +183,16 @@ def _file_record(path: Path, *, root: Path | None = None, rows: int | None = Non
     if rows is not None:
         result["rows"] = rows
     return result
+
+
+def _file_sha256_md5(path: Path) -> tuple[str, str]:
+    sha256 = hashlib.sha256()
+    md5 = hashlib.md5()  # noqa: S324 - official upstream integrity checksum
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
+            sha256.update(chunk)
+            md5.update(chunk)
+    return sha256.hexdigest(), md5.hexdigest()
 
 
 def _uri_file_record(path: Path, *, rows: int) -> dict[str, Any]:
@@ -314,6 +338,323 @@ def _parse_hub_objects(source: Mapping[str, Any], *, api: Any | None = None) -> 
     return sorted(objects, key=lambda item: item["uri"])
 
 
+def _macocu_source(policy: Mapping[str, Any]) -> Mapping[str, Any]:
+    matches = [source for source in policy["sources"] if source["id"] == MACOCU_SOURCE_ID]
+    if len(matches) != 1:
+        raise TurkishCorpusError("policy must contain exactly one MaCoCu-Genre source")
+    return matches[0]
+
+
+def _macocu_source_contract_sha256(policy: Mapping[str, Any]) -> str:
+    contract = {
+        "source": dict(_macocu_source(policy)),
+        "schema": list(MACOCU_SCHEMA),
+        "genre_labels": sorted(MACOCU_GENRES),
+    }
+    return hashlib.sha256(canonical_json(contract).encode("utf-8")).hexdigest()
+
+
+def validate_macocu_preparation_manifest(
+    manifest: Mapping[str, Any],
+    policy: Mapping[str, Any],
+    root: str | Path,
+    *,
+    verify_files: bool = True,
+) -> None:
+    """Validate the official gzip -> deterministic zstd-shard preparation."""
+
+    verify_manifest_hash(manifest)
+    if manifest.get("schema_version") != "1.0" or manifest.get("kind") != MACOCU_PREPARATION_KIND:
+        raise TurkishCorpusError("unexpected MaCoCu preparation manifest")
+    if manifest.get("source_contract_sha256") != _macocu_source_contract_sha256(policy):
+        raise TurkishCorpusError("MaCoCu preparation is bound to another source contract")
+    upstream = _require_mapping(manifest.get("upstream"), "macocu.upstream")
+    expected_upstream = {
+        "source_id": MACOCU_SOURCE_ID,
+        "persistent_handle": MACOCU_HANDLE,
+        "uri": MACOCU_SOURCE_URL,
+        "size_bytes": MACOCU_SIZE_BYTES,
+        "md5": MACOCU_MD5,
+        "rows": MACOCU_EXPECTED_ROWS,
+    }
+    for key, expected in expected_upstream.items():
+        if upstream.get(key) != expected:
+            raise TurkishCorpusError(f"MaCoCu upstream {key} drift")
+    if not _SHA256_RE.fullmatch(str(upstream.get("sha256", ""))):
+        raise TurkishCorpusError("MaCoCu upstream SHA-256 is missing")
+    if manifest.get("schema") != list(MACOCU_SCHEMA):
+        raise TurkishCorpusError("MaCoCu prepared schema drift")
+    if manifest.get("genre_labels") != sorted(MACOCU_GENRES):
+        raise TurkishCorpusError("MaCoCu genre vocabulary drift")
+    preparation = _require_mapping(manifest.get("preparation"), "macocu.preparation")
+    if preparation.get("canonicalization") != "canonical_json_sorted_utf8_one_lf_v1":
+        raise TurkishCorpusError("MaCoCu canonicalization drift")
+    if preparation.get("compression") != "zstd" or preparation.get("format") != "jsonl.zst":
+        raise TurkishCorpusError("MaCoCu prepared format drift")
+    _require_positive_int(
+        preparation.get("target_uncompressed_bytes"),
+        "MaCoCu target_uncompressed_bytes",
+    )
+
+    base = Path(root).resolve()
+    shards = manifest.get("shards")
+    if not isinstance(shards, list) or not shards:
+        raise TurkishCorpusError("MaCoCu preparation has no shards")
+    expected_row_start = 0
+    genre_totals: Counter[str] = Counter()
+    for index, raw in enumerate(shards):
+        shard = _require_mapping(raw, f"macocu.shards[{index}]")
+        expected_path = f"shards/part-{index:05d}.jsonl.zst"
+        if shard.get("path") != expected_path:
+            raise TurkishCorpusError("MaCoCu shard order/path drift")
+        rows = _require_positive_int(shard.get("rows"), "MaCoCu shard rows")
+        size = _require_positive_int(shard.get("size_bytes"), "MaCoCu shard size")
+        _require_positive_int(
+            shard.get("uncompressed_bytes"), "MaCoCu shard uncompressed bytes"
+        )
+        if shard.get("row_start") != expected_row_start or shard.get("row_end_exclusive") != expected_row_start + rows:
+            raise TurkishCorpusError("MaCoCu shard row ranges are not contiguous")
+        expected_row_start += rows
+        sha256 = str(shard.get("sha256", ""))
+        if not _SHA256_RE.fullmatch(sha256):
+            raise TurkishCorpusError("MaCoCu shard SHA-256 is missing")
+        counts = _require_mapping(shard.get("genre_counts"), "MaCoCu shard genre_counts")
+        if set(counts) - MACOCU_GENRES or any(
+            isinstance(value, bool) or not isinstance(value, int) or value <= 0
+            for value in counts.values()
+        ) or sum(counts.values()) != rows:
+            raise TurkishCorpusError("MaCoCu shard genre counts drift")
+        genre_totals.update(counts)
+        if verify_files:
+            path = (base / expected_path).resolve()
+            if base not in path.parents or path.is_symlink() or not path.is_file():
+                raise TurkishCorpusError("MaCoCu shard path is unsafe or missing")
+            if path.stat().st_size != size or file_sha256(path) != sha256:
+                raise TurkishCorpusError("MaCoCu prepared shard bytes drift")
+
+    totals = _require_mapping(manifest.get("totals"), "macocu.totals")
+    expected_totals = {
+        "shards": len(shards),
+        "rows": sum(item["rows"] for item in shards),
+        "size_bytes": sum(item["size_bytes"] for item in shards),
+        "uncompressed_bytes": sum(item["uncompressed_bytes"] for item in shards),
+        "genre_counts": dict(sorted(genre_totals.items())),
+    }
+    if dict(totals) != expected_totals or expected_totals["rows"] != MACOCU_EXPECTED_ROWS:
+        raise TurkishCorpusError("MaCoCu preparation totals drift")
+    if verify_files:
+        upstream_path = (base / str(upstream.get("path", ""))).resolve()
+        if base not in upstream_path.parents or upstream_path.is_symlink() or not upstream_path.is_file():
+            raise TurkishCorpusError("MaCoCu upstream gzip is unsafe or missing")
+        if upstream_path.stat().st_size != MACOCU_SIZE_BYTES:
+            raise TurkishCorpusError("MaCoCu retained gzip size drift")
+        observed_sha256, observed_md5 = _file_sha256_md5(upstream_path)
+        if observed_sha256 != upstream["sha256"] or observed_md5 != MACOCU_MD5:
+            raise TurkishCorpusError("MaCoCu retained gzip checksum drift")
+
+
+def prepare_macocu_genre(
+    policy: Mapping[str, Any],
+    output_dir: str | Path,
+    *,
+    target_uncompressed_bytes: int = 512 * 1024 * 1024,
+    request_get: Any = requests.get,
+) -> dict[str, Any]:
+    """Download/verify MaCoCu once and atomically create deterministic shards."""
+
+    validate_corpus_policy(policy)
+    _macocu_source(policy)
+    target_uncompressed_bytes = _require_positive_int(
+        target_uncompressed_bytes, "target_uncompressed_bytes"
+    )
+    destination = Path(output_dir)
+    manifest_path = destination / "manifest.json"
+    if manifest_path.exists():
+        manifest = load_json_strict(manifest_path)
+        validate_macocu_preparation_manifest(manifest, policy, destination)
+        if manifest["preparation"]["target_uncompressed_bytes"] != target_uncompressed_bytes:
+            raise TurkishCorpusError("existing MaCoCu preparation uses another shard target")
+        return manifest
+    if destination.exists():
+        if any(destination.iterdir()):
+            raise TurkishCorpusError(
+                f"incomplete MaCoCu preparation requires audit: {destination}"
+            )
+        destination.rmdir()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    build = Path(
+        tempfile.mkdtemp(prefix=f".{destination.name}.build-", dir=destination.parent)
+    )
+    try:
+        upstream_dir = build / "upstream"
+        shards_dir = build / "shards"
+        upstream_dir.mkdir()
+        shards_dir.mkdir()
+        upstream_path = upstream_dir / "MaCoCu-Genre.tr.jsonl.gz"
+        staged = _stage_source_object(
+            {
+                "uri": MACOCU_SOURCE_URL,
+                "size_bytes": MACOCU_SIZE_BYTES,
+                "expected_checksums": [{"algorithm": "md5", "value": MACOCU_MD5}],
+            },
+            upstream_path,
+            request_get=request_get,
+        )
+
+        shards: list[dict[str, Any]] = []
+        total_genres: Counter[str] = Counter()
+        total_rows = 0
+        total_uncompressed = 0
+        stream: pa.NativeFile | None = None
+        shard_path: Path | None = None
+        shard_rows = 0
+        shard_bytes = 0
+        shard_genres: Counter[str] = Counter()
+        shard_row_start = 0
+
+        def close_shard() -> None:
+            nonlocal stream, shard_path, shard_rows, shard_bytes, shard_genres, shard_row_start
+            if stream is None or shard_path is None:
+                return
+            stream.close()
+            shards.append(
+                {
+                    "path": shard_path.relative_to(build).as_posix(),
+                    "size_bytes": shard_path.stat().st_size,
+                    "sha256": file_sha256(shard_path),
+                    "rows": shard_rows,
+                    "row_start": shard_row_start,
+                    "row_end_exclusive": shard_row_start + shard_rows,
+                    "uncompressed_bytes": shard_bytes,
+                    "genre_counts": dict(sorted(shard_genres.items())),
+                }
+            )
+            shard_row_start += shard_rows
+            stream = None
+            shard_path = None
+            shard_rows = 0
+            shard_bytes = 0
+            shard_genres = Counter()
+
+        with gzip.open(upstream_path, "rb") as source_stream:
+            for line_number, raw in enumerate(source_stream, 1):
+                if not raw.strip():
+                    raise TurkishCorpusError(f"MaCoCu row {line_number} is blank")
+                try:
+                    record = json.loads(raw)
+                except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                    raise TurkishCorpusError(f"MaCoCu row {line_number} is invalid UTF-8 JSON") from exc
+                if not isinstance(record, dict) or set(record) != set(MACOCU_SCHEMA):
+                    raise TurkishCorpusError(f"MaCoCu row {line_number} schema drift")
+                if not all(isinstance(record[field], str) for field in MACOCU_SCHEMA if field != "title"):
+                    raise TurkishCorpusError(f"MaCoCu row {line_number} contains a non-string field")
+                if record["title"] is not None and not isinstance(record["title"], str):
+                    raise TurkishCorpusError(f"MaCoCu row {line_number} title type drift")
+                genre = strict_macocu_genre(record)
+                # Keep the prepared artifact as actual JSONL: every canonical
+                # object is framed by exactly one LF, including the final row.
+                encoded = canonical_json(record).encode("utf-8") + b"\n"
+                if stream is not None and shard_rows and shard_bytes + len(encoded) > target_uncompressed_bytes:
+                    close_shard()
+                if stream is None:
+                    shard_path = shards_dir / f"part-{len(shards):05d}.jsonl.zst"
+                    stream = pa.output_stream(str(shard_path), compression="zstd")
+                stream.write(encoded)
+                shard_rows += 1
+                shard_bytes += len(encoded)
+                shard_genres[genre] += 1
+                total_genres[genre] += 1
+                total_rows += 1
+                total_uncompressed += len(encoded)
+        close_shard()
+        if total_rows != MACOCU_EXPECTED_ROWS:
+            raise TurkishCorpusError(
+                f"MaCoCu row-count drift: expected {MACOCU_EXPECTED_ROWS}, got {total_rows}"
+            )
+        manifest = seal_manifest(
+            {
+                "schema_version": "1.0",
+                "kind": MACOCU_PREPARATION_KIND,
+                "source_contract_sha256": _macocu_source_contract_sha256(policy),
+                "upstream": {
+                    "source_id": MACOCU_SOURCE_ID,
+                    "persistent_handle": MACOCU_HANDLE,
+                    "uri": MACOCU_SOURCE_URL,
+                    "path": upstream_path.relative_to(build).as_posix(),
+                    "size_bytes": staged["size_bytes"],
+                    "md5": MACOCU_MD5,
+                    "sha256": staged["sha256"],
+                    "rows": MACOCU_EXPECTED_ROWS,
+                },
+                "schema": list(MACOCU_SCHEMA),
+                "genre_labels": sorted(MACOCU_GENRES),
+                "preparation": {
+                    "format": "jsonl.zst",
+                    "compression": "zstd",
+                    "canonicalization": "canonical_json_sorted_utf8_one_lf_v1",
+                    "target_uncompressed_bytes": target_uncompressed_bytes,
+                    "pyarrow_version": pa.__version__,
+                },
+                "shards": shards,
+                "totals": {
+                    "shards": len(shards),
+                    "rows": total_rows,
+                    "size_bytes": sum(item["size_bytes"] for item in shards),
+                    "uncompressed_bytes": total_uncompressed,
+                    "genre_counts": dict(sorted(total_genres.items())),
+                },
+                "canonical_sha256": None,
+            }
+        )
+        write_json_atomic(build / "manifest.json", manifest)
+        # The download path already streamed both official MD5 and observed
+        # SHA-256, and every shard hash was computed after close. Avoid a
+        # second full read of tens of GB before the atomic directory publish.
+        validate_macocu_preparation_manifest(
+            manifest, policy, build, verify_files=False
+        )
+        os.replace(build, destination)
+        return manifest
+    except BaseException:
+        shutil.rmtree(build, ignore_errors=True)
+        raise
+
+
+def _parse_macocu_objects(
+    source: Mapping[str, Any],
+    policy: Mapping[str, Any],
+    manifest_path: str | Path,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    path = Path(manifest_path)
+    manifest = load_json_strict(path)
+    root = path.parent
+    validate_macocu_preparation_manifest(manifest, policy, root)
+    objects = []
+    for shard in manifest["shards"]:
+        shard_path = root / shard["path"]
+        objects.append(
+            {
+                "source_id": source["id"],
+                "uri": shard_path.resolve().as_uri(),
+                "size_bytes": shard["size_bytes"],
+                "expected_checksums": [
+                    {"algorithm": "sha256", "value": shard["sha256"]}
+                ],
+                "adapter": source["adapter"],
+                "wds_bin": None,
+                "genre_counts": shard["genre_counts"],
+                "preparation_manifest_sha256": manifest["canonical_sha256"],
+            }
+        )
+    provenance = {
+        "manifest_uri": path.resolve().as_uri(),
+        "manifest_sha256": manifest["canonical_sha256"],
+        "upstream": manifest["upstream"],
+        "prepared_totals": manifest["totals"],
+    }
+    return objects, provenance
+
+
 def validate_source_plan(plan: Mapping[str, Any], policy: Mapping[str, Any]) -> None:
     verify_manifest_hash(plan)
     if plan.get("schema_version") != "1.0" or plan.get("kind") != SOURCE_PLAN_KIND:
@@ -324,6 +665,41 @@ def validate_source_plan(plan: Mapping[str, Any], policy: Mapping[str, Any]) -> 
     if not isinstance(objects, list) or not objects:
         raise TurkishCorpusError("source plan has no objects")
     expected_sources = {item["id"] for item in policy["sources"]}
+    derived_sources = _require_mapping(
+        plan.get("derived_sources", {}), "derived_sources"
+    )
+    expected_derived = {MACOCU_SOURCE_ID} if MACOCU_SOURCE_ID in expected_sources else set()
+    if set(derived_sources) != expected_derived:
+        raise TurkishCorpusError("source-plan derived-source inventory drift")
+    macocu_manifest_sha256 = None
+    macocu_manifest_objects: dict[str, Mapping[str, Any]] = {}
+    if MACOCU_SOURCE_ID in derived_sources:
+        macocu_derived = _require_mapping(
+            derived_sources[MACOCU_SOURCE_ID], "derived_sources.macocu_genre_tr"
+        )
+        macocu_manifest_sha256 = str(macocu_derived.get("manifest_sha256", ""))
+        if not _SHA256_RE.fullmatch(macocu_manifest_sha256):
+            raise TurkishCorpusError("MaCoCu preparation manifest hash is missing")
+        manifest_uri = str(macocu_derived.get("manifest_uri", ""))
+        if urllib.parse.urlparse(manifest_uri).scheme != "file":
+            raise TurkishCorpusError("MaCoCu preparation manifest must be a local sealed file")
+        manifest_path = Path(
+            urllib.parse.unquote(urllib.parse.urlparse(manifest_uri).path)
+        )
+        if manifest_path.is_symlink() or not manifest_path.is_file():
+            raise TurkishCorpusError("MaCoCu preparation manifest is unsafe or missing")
+        prepared_manifest = load_json_strict(manifest_path)
+        verify_manifest_hash(prepared_manifest)
+        if prepared_manifest.get("canonical_sha256") != macocu_manifest_sha256:
+            raise TurkishCorpusError("MaCoCu preparation manifest bytes/hash drift")
+        for shard in prepared_manifest.get("shards", []):
+            shard_uri = (manifest_path.parent / str(shard.get("path", ""))).resolve().as_uri()
+            macocu_manifest_objects[shard_uri] = shard
+        if len(macocu_manifest_objects) != len(prepared_manifest.get("shards", [])):
+            raise TurkishCorpusError("MaCoCu preparation shard inventory is duplicated")
+        upstream = _require_mapping(macocu_derived.get("upstream"), "MaCoCu upstream")
+        if upstream.get("uri") != MACOCU_SOURCE_URL or upstream.get("md5") != MACOCU_MD5:
+            raise TurkishCorpusError("MaCoCu plan upstream binding drift")
     seen_sources: set[str] = set()
     seen_uris: set[str] = set()
     for rank, raw in enumerate(objects):
@@ -335,8 +711,10 @@ def validate_source_plan(plan: Mapping[str, Any], policy: Mapping[str, Any]) -> 
             raise TurkishCorpusError("source plan contains an unknown source")
         seen_sources.add(str(source_id))
         uri = str(item.get("uri", ""))
-        if uri in seen_uris or urllib.parse.urlparse(uri).scheme != "https":
-            raise TurkishCorpusError("source plan has duplicate/non-HTTPS object URI")
+        scheme = urllib.parse.urlparse(uri).scheme
+        allowed_scheme = "file" if source_id == MACOCU_SOURCE_ID else "https"
+        if uri in seen_uris or scheme != allowed_scheme:
+            raise TurkishCorpusError("source plan has duplicate/unsupported object URI")
         seen_uris.add(uri)
         _require_positive_int(item.get("size_bytes"), "source object size")
         checksums = item.get("expected_checksums")
@@ -350,8 +728,29 @@ def validate_source_plan(plan: Mapping[str, Any], policy: Mapping[str, Any]) -> 
                 or (algorithm == "md5" and _MD5_RE.fullmatch(value))
             ):
                 raise TurkishCorpusError("source object has an unsupported checksum")
+        if source_id == MACOCU_SOURCE_ID:
+            if item.get("preparation_manifest_sha256") != macocu_manifest_sha256:
+                raise TurkishCorpusError("MaCoCu object/preparation binding drift")
+            genre_counts = _require_mapping(item.get("genre_counts"), "MaCoCu genre counts")
+            if set(genre_counts) - MACOCU_GENRES or not genre_counts:
+                raise TurkishCorpusError("MaCoCu object genre-count contract drift")
+            prepared_shard = macocu_manifest_objects.get(uri)
+            if prepared_shard is None or (
+                item["size_bytes"] != prepared_shard.get("size_bytes")
+                or item["expected_checksums"]
+                != [{"algorithm": "sha256", "value": prepared_shard.get("sha256")}]
+                or dict(genre_counts) != prepared_shard.get("genre_counts")
+            ):
+                raise TurkishCorpusError("MaCoCu source-plan shard inventory drift")
+            local_path = Path(urllib.parse.unquote(urllib.parse.urlparse(uri).path))
+            if local_path.is_symlink() or not local_path.is_file():
+                raise TurkishCorpusError("MaCoCu source-plan object is unsafe or missing")
     if seen_sources != expected_sources:
         raise TurkishCorpusError("source plan does not cover every configured source")
+    if macocu_manifest_objects and {
+        uri for uri in seen_uris if uri in macocu_manifest_objects
+    } != set(macocu_manifest_objects):
+        raise TurkishCorpusError("source plan does not cover every prepared MaCoCu shard")
     totals = {
         "objects": len(objects),
         "size_bytes": sum(item["size_bytes"] for item in objects),
@@ -368,6 +767,7 @@ def resolve_source_plan(
     request_get: Any = requests.get,
     request_head: Any = requests.head,
     hub_api: Any | None = None,
+    macocu_manifest_path: str | Path | None = None,
 ) -> dict[str, Any]:
     """Resolve every configured source to immutable object identities."""
 
@@ -376,11 +776,21 @@ def resolve_source_plan(
     if destination.exists():
         raise FileExistsError(f"refusing to overwrite source plan: {destination}")
     objects: list[dict[str, Any]] = []
+    derived_sources: dict[str, Any] = {}
     for source in policy["sources"]:
         if source["id"] == "hplt3_tr":
             resolved = _parse_hplt_objects(
                 source, request_get=request_get, request_head=request_head
             )
+        elif source["id"] == MACOCU_SOURCE_ID:
+            if macocu_manifest_path is None:
+                raise TurkishCorpusError(
+                    "MaCoCu policy requires --macocu-manifest from the CPU preparation job"
+                )
+            resolved, provenance = _parse_macocu_objects(
+                source, policy, macocu_manifest_path
+            )
+            derived_sources[MACOCU_SOURCE_ID] = provenance
         else:
             resolved = _parse_hub_objects(source, api=hub_api)
         objects.extend(resolved)
@@ -398,6 +808,7 @@ def resolve_source_plan(
                 "md5_list_sha256": HPLT_MD5_LIST_SHA256,
                 "selected_wds_bins": [8, 9, 10],
             },
+            "derived_sources": derived_sources,
             "objects": objects,
             "totals": {
                 "objects": len(objects),
@@ -415,14 +826,15 @@ def resolve_source_plan(
 
 
 def select_resource_sample_ranks(plan: Mapping[str, Any]) -> list[int]:
-    """Choose every source plus every selected HPLT quality bin deterministically."""
+    """Cover every source, HPLT quality bin, and selected MaCoCu genre."""
 
     by_source: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
     for item in plan["objects"]:
         by_source[str(item["source_id"])].append(item)
     selected = {
         min(items, key=lambda item: (item["size_bytes"], item["uri"]))["rank"]
-        for items in by_source.values()
+        for source_id, items in by_source.items()
+        if source_id != MACOCU_SOURCE_ID
     }
     hplt_objects = by_source.get("hplt3_tr", [])
     hplt_bins = {item.get("wds_bin") for item in hplt_objects}
@@ -433,6 +845,36 @@ def select_resource_sample_ranks(plan: Mapping[str, Any]) -> list[int]:
         selected.add(
             min(in_bin, key=lambda item: (item["size_bytes"], item["uri"]))["rank"]
         )
+    macocu_objects = by_source.get(MACOCU_SOURCE_ID, [])
+    ordered_macocu = sorted(macocu_objects, key=lambda item: item["uri"])
+    if ordered_macocu:
+        # Sample the interior of the prepared stream, never just the usually
+        # tiny tail shard. Three spread points bound source/genre yield skew.
+        for numerator in (1, 2, 3):
+            index = ((len(ordered_macocu) - 1) * numerator) // 4
+            selected.add(ordered_macocu[index]["rank"])
+    for genre in sorted(MACOCU_CONVERSATION_GENRES | MACOCU_GENERAL_GENRES):
+        candidates = [
+            item
+            for item in macocu_objects
+            if int(item.get("genre_counts", {}).get(genre, 0)) > 0
+        ]
+        if macocu_objects and not candidates:
+            raise TurkishCorpusError(
+                f"MaCoCu resource sample cannot cover selected genre {genre!r}"
+            )
+        if candidates:
+            max_count = max(int(item["genre_counts"][genre]) for item in candidates)
+            meaningful = [
+                item
+                for item in candidates
+                if int(item["genre_counts"][genre]) * 2 >= max_count
+            ]
+            selected.add(
+                sorted(meaningful, key=lambda item: item["uri"])[
+                    len(meaningful) // 2
+                ]["rank"]
+            )
     return sorted(selected)
 
 
@@ -1132,6 +1574,7 @@ _INTERNAL_SCHEMA = pa.schema(
         pa.field("quality_score", pa.float64(), nullable=False),
         pa.field("wds_bin", pa.int16(), nullable=True),
         pa.field("web-register", pa.string(), nullable=False),
+        pa.field("genre", pa.string(), nullable=False),
         pa.field("pii_replacements", pa.int32(), nullable=False),
         pa.field("harmful_signal_hits", pa.int32(), nullable=False),
         pa.field("quality_filter_flags", pa.string(), nullable=False),
@@ -1267,6 +1710,8 @@ def _stage_source_object(
     size = 0
     if parsed.scheme == "file":
         source = Path(urllib.parse.unquote(parsed.path))
+        if source.is_symlink() or not source.is_file():
+            raise TurkishCorpusError(f"local source object is unsafe or missing: {source}")
         stream: Any = source.open("rb")
         response = None
     elif parsed.scheme == "https":
@@ -1423,6 +1868,7 @@ def process_source_object(
     samples = _DeterministicRemovalSamples()
     counts: Counter[str] = Counter()
     stage_counts: dict[str, Counter[str]] = {
+        "mixture_selector": Counter(),
         "source_lid": Counter(),
         "independent_glotlid": Counter(),
     }
@@ -1456,6 +1902,42 @@ def process_source_object(
                     )
                 ).hexdigest()
             url = str(_nested_get(record, adapter.get("url_field"), "") or "")
+            genre = ""
+            scores: Mapping[str, Any] = {}
+            wds = item.get("wds_bin")
+            if wds is None:
+                wds = infer_wds_bin(record)
+            if item["source_id"] == MACOCU_SOURCE_ID:
+                genre = strict_macocu_genre(
+                    record, field=str(adapter.get("genre_field", "genre"))
+                )
+                routing_record: Mapping[str, Any] = {"genre": genre}
+            elif item["source_id"] == "hplt3_tr":
+                scores = strict_hplt_register_scores(
+                    record,
+                    field=str(adapter.get("register_field", "web-register")),
+                )
+                routing_record = {"wds_bin": wds, "web-register": scores}
+            else:
+                routing_record = {}
+            if item["source_id"] in {MACOCU_SOURCE_ID, "hplt3_tr"}:
+                stage_counts["mixture_selector"]["input"] += 1
+                if select_mixture_bucket(
+                    item["source_id"], routing_record, policy
+                ) is None:
+                    stage_counts["mixture_selector"]["removed"] += 1
+                    samples.add(
+                        "mixture_selector",
+                        document_id,
+                        _redact_sample_text(text),
+                        {
+                            "source_id": item["source_id"],
+                            "genre": genre,
+                            "wds_bin": wds,
+                        },
+                    )
+                    continue
+                stage_counts["mixture_selector"]["kept"] += 1
             source_label, source_probability, source_passed = _source_lid(record, adapter)
             stage_counts["source_lid"]["input"] += 1
             if not source_passed:
@@ -1486,17 +1968,9 @@ def process_source_object(
                 continue
             stage_counts["independent_glotlid"]["kept"] += 1
             candidate_index = writer.count + len(writer.rows)
-            if item["source_id"] == "hplt3_tr":
-                scores = strict_hplt_register_scores(
-                    record,
-                    field=str(adapter.get("register_field", "web-register")),
-                )
-            else:
+            if item["source_id"] != "hplt3_tr":
                 scores = register_scores(record)
             web_register = canonical_json(scores) if scores else "{}"
-            wds = item.get("wds_bin")
-            if wds is None:
-                wds = infer_wds_bin(record)
             score = _quality_score(record, lid["lid_probability"])
             writer.add(
                 {
@@ -1519,6 +1993,7 @@ def process_source_object(
                     "quality_score": score,
                     "wds_bin": wds,
                     "web-register": web_register,
+                    "genre": genre,
                     "pii_replacements": 0,
                     "harmful_signal_hits": 0,
                     "quality_filter_flags": "[]",
@@ -2145,6 +2620,7 @@ def seal_source_receipt_from_objects(
             "kind": SOURCE_RECEIPT_KIND,
             "policy_sha256": _policy_sha256(policy),
             "source_plan_sha256": plan["canonical_sha256"],
+            "derived_sources": plan.get("derived_sources", {}),
             "object_receipt_sha256": [item["canonical_sha256"] for item in objects],
             "sources": sources,
             "canonical_sha256": None,
@@ -2625,10 +3101,20 @@ def build_resource_projection(
             "sample_cluster_receipt_sha256": cluster["canonical_sha256"],
             "billing_contract": dict(RESOURCE_BILLING_CONTRACT),
             "sample_selection": {
-                "algorithm": "smallest_object_per_source_plus_hplt_wds_bin_v2",
+                "algorithm": "per_source_hplt_bins_plus_macocu_interior_quartiles_and_genres_v3",
                 "ranks": select_resource_sample_ranks(plan),
                 "covers_every_source": True,
                 "covers_hplt_wds_bins": [8, 9, 10],
+                "covers_macocu_selected_genres": (
+                    sorted(MACOCU_CONVERSATION_GENRES | MACOCU_GENERAL_GENRES)
+                    if any(item["source_id"] == MACOCU_SOURCE_ID for item in plan["objects"])
+                    else []
+                ),
+                "macocu_stream_spread_quantiles": (
+                    [0.25, 0.5, 0.75]
+                    if any(item["source_id"] == MACOCU_SOURCE_ID for item in plan["objects"])
+                    else []
+                ),
             },
             "sample_stage_telemetry": {
                 "download": _sum_telemetry(objects, "download"),
@@ -2749,9 +3235,11 @@ def validate_resource_approval(
 
 __all__ = [
     "BACKEND_COLUMNS",
+    "MACOCU_PREPARATION_KIND",
     "build_resource_projection",
     "fetch_glotlid_model",
     "process_source_object",
+    "prepare_macocu_genre",
     "production_processing_binding",
     "resolve_source_plan",
     "run_backend_calibration",
@@ -2765,4 +3253,5 @@ __all__ = [
     "validate_resource_approval",
     "validate_resource_projection",
     "validate_source_plan",
+    "validate_macocu_preparation_manifest",
 ]

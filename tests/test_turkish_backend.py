@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import copy
+import gzip
 import hashlib
+import io
+import json
 from pathlib import Path
 
 import pytest
 
 import nanochat.turkish_backend as backend
+import nanochat.turkish_corpus as corpus
 from nanochat.experiment_manifest import (
     canonical_json,
     seal_manifest,
@@ -27,6 +31,8 @@ from nanochat.turkish_backend import (
 from nanochat.turkish_corpus import (
     TurkishCorpusError,
     audit_document,
+    dominant_register,
+    iter_input_records,
     load_corpus_policy,
     select_mixture_bucket,
     source_lid_result,
@@ -36,6 +42,7 @@ from scripts.turkish_data_backend import build_parser
 
 
 POLICY = Path("configs/pretrain/tr_d32_turkish_general_v1.json")
+POLICY_V2 = Path("configs/pretrain/tr_d32_turkish_general_v2.json")
 
 
 def _resource_accounting():
@@ -157,6 +164,92 @@ def test_literal_web_register_and_mt_gate_are_enforced():
         strict_hplt_register_scores({"web_register": {"SP": 0.9}})
 
 
+def test_macocu_v2_routes_only_frozen_genres_and_non_macocu_genre_is_safe():
+    policy = load_corpus_policy(POLICY_V2)
+    assert select_mixture_bucket(
+        "macocu_genre_tr", {"genre": "Forum", "quality_score": 0.7}, policy
+    ) == ("macocu_conversation", 0.7)
+    assert select_mixture_bucket(
+        "macocu_genre_tr", {"genre": "News", "quality_score": 0.6}, policy
+    ) == ("macocu_general", 0.6)
+    assert select_mixture_bucket(
+        "macocu_genre_tr", {"genre": "Promotion"}, policy
+    ) is None
+    assert dominant_register({"source_id": "hplt3_tr", "genre": "", "web-register": {"IN": 0.9}}) == "IN"
+    assert dominant_register({"source_id": "fineweb2_tr", "genre": ""}) == "not_applicable"
+
+
+class _BytesResponse:
+    def __init__(self, payload: bytes):
+        self.payload = payload
+
+    def raise_for_status(self):
+        return None
+
+    def iter_content(self, *, chunk_size: int):
+        yield from (
+            self.payload[index : index + chunk_size]
+            for index in range(0, len(self.payload), chunk_size)
+        )
+
+    def close(self):
+        return None
+
+
+def test_macocu_preparation_is_deterministic_and_round_trips(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    rows = [
+        {"id": "1", "title": None, "text": "Bir forum yazısı", "url": "https://a", "domain": "a", "tld": "tr", "genre": "Forum"},
+        {"id": "2", "title": "Başlık", "text": "Bir haber yazısı", "url": "https://b", "domain": "b", "tld": "tr", "genre": "News"},
+        {"id": "3", "title": "Bilgi", "text": "Bir açıklama", "url": "https://c", "domain": "c", "tld": "tr", "genre": "Information/Explanation"},
+    ]
+    raw = b"".join(
+        (json.dumps(row, ensure_ascii=False) + "\n").encode("utf-8") for row in rows
+    )
+    compressed_buffer = io.BytesIO()
+    with gzip.GzipFile(fileobj=compressed_buffer, mode="wb", mtime=0) as handle:
+        handle.write(raw)
+    compressed = compressed_buffer.getvalue()
+    md5 = hashlib.md5(compressed).hexdigest()  # noqa: S324 - fixture identity
+
+    for module in (backend, corpus):
+        monkeypatch.setattr(module, "MACOCU_SIZE_BYTES", len(compressed))
+        monkeypatch.setattr(module, "MACOCU_MD5", md5)
+        monkeypatch.setattr(module, "MACOCU_EXPECTED_ROWS", len(rows))
+    policy = json.loads(POLICY_V2.read_text())
+    source = next(item for item in policy["sources"] if item["id"] == "macocu_genre_tr")
+    source["resolved_revision"] = md5
+    source["expected_md5"] = md5
+    source["expected_size_bytes"] = len(compressed)
+    source["expected_rows"] = len(rows)
+
+    request_get = lambda *_args, **_kwargs: _BytesResponse(compressed)
+    first = backend.prepare_macocu_genre(
+        policy,
+        tmp_path / "first",
+        target_uncompressed_bytes=10_000,
+        request_get=request_get,
+    )
+    second = backend.prepare_macocu_genre(
+        policy,
+        tmp_path / "second",
+        target_uncompressed_bytes=10_000,
+        request_get=request_get,
+    )
+    # All fixture records deliberately share one shard so this catches missing
+    # JSONL framing between adjacent canonical objects.
+    assert len(first["shards"]) == 1
+    assert first["shards"][0]["rows"] == len(rows)
+    assert [item["sha256"] for item in first["shards"]] == [
+        item["sha256"] for item in second["shards"]
+    ]
+    observed = []
+    for item in first["shards"]:
+        observed.extend(iter_input_records(tmp_path / "first" / item["path"]))
+    assert [{key: row[key] for key in corpus.MACOCU_SCHEMA} for row in observed] == rows
+
+
 def test_local_source_checksum_drift_fails_closed(tmp_path: Path):
     source = tmp_path / "source.bin"
     source.write_bytes(b"bounded fixture")
@@ -185,6 +278,28 @@ def test_resource_sample_covers_every_source_and_hplt_quality_bin():
     }
 
     assert select_resource_sample_ranks(plan) == [1, 2, 3, 5]
+
+
+def test_resource_sample_spreads_across_macocu_and_avoids_tiny_tail():
+    objects = [
+        {
+            "rank": index,
+            "source_id": "macocu_genre_tr",
+            "size_bytes": 100 if index < 8 else 1,
+            "uri": f"file:///prepared/part-{index:05d}.jsonl.zst",
+            "genre_counts": {
+                "Forum": 100,
+                "Opinion/Argumentation": 100,
+                "Information/Explanation": 100,
+                "Instruction": 100,
+                "News": 100,
+            },
+        }
+        for index in range(9)
+    ]
+    selected = select_resource_sample_ranks({"objects": objects})
+    assert {2, 4, 6} <= set(selected)
+    assert 8 not in selected
 
 
 def test_resource_accounting_bills_wall_time_at_full_cpu2dq_node_rate():

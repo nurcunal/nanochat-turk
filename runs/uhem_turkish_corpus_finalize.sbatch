@@ -29,10 +29,14 @@ set -u
 : "${QUOTA_HEADROOM_BYTES:?Set scheduler/project quota headroom in bytes}"
 
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
-POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v1.json}"
+POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v2.json}"
+FAMILY_RECIPE="${FAMILY_RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v2.json}"
 PYTHON_BIN="${PYTHON_BIN:-$CODE_DIR/.venv/bin/python}"
 cd "$CODE_DIR"
 export PYTHONPATH="$CODE_DIR${PYTHONPATH:+:$PYTHONPATH}"
+
+"$PYTHON_BIN" scripts/d32_family_workflow.py validate-recipe \
+    --recipe "$FAMILY_RECIPE"
 
 "$PYTHON_BIN" scripts/build_turkish_pretrain_corpus.py \
     --policy "$POLICY" finalize \
@@ -44,5 +48,18 @@ export PYTHONPATH="$CODE_DIR${PYTHONPATH:+:$PYTHONPATH}"
     --target-tokens "$APPROVED_SOURCE_TOKENS" \
     --shard-target-tokens "${SHARD_TARGET_TOKENS:-250000000}" \
     --quota-headroom-bytes "$QUOTA_HEADROOM_BYTES"
+
+# Resolve all exposure-index identities from the sealed artifacts just written;
+# never let a v2 corpus silently inherit the historical v1 family default.
+FAMILY_ID="$("$PYTHON_BIN" -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["family_id"])' "$FAMILY_RECIPE")"
+FAMILY_RECIPE_SHA256="$("$PYTHON_BIN" -c 'import sys; from nanochat.experiment_manifest import load_json_strict, verify_manifest_hash; print(verify_manifest_hash(load_json_strict(sys.argv[1])))' "$FAMILY_RECIPE")"
+TOKENIZER_ARTIFACT_SHA256="$("$PYTHON_BIN" -c 'import sys; from nanochat.experiment_manifest import load_json_strict, verify_manifest_hash; print(verify_manifest_hash(load_json_strict(sys.argv[1])))' "$TOKENIZER_DIR/package_manifest.json")"
+
+"$PYTHON_BIN" scripts/build_turkish_pretrain_corpus.py \
+    --policy "$POLICY" exposure-index \
+    --final-corpus-dir "$FINAL_CORPUS_DIR" \
+    --family-id "$FAMILY_ID" \
+    --study-manifest-sha256 "$FAMILY_RECIPE_SHA256" \
+    --tokenizer-artifact-sha256 "$TOKENIZER_ARTIFACT_SHA256"
 
 echo "Capacity passed. Pool data is still retained; run cleanup-pool explicitly only after verifying downstream preflight."
