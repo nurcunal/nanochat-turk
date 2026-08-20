@@ -5,7 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from nanochat.experiment_manifest import seal_manifest, verify_manifest_hash, write_json_atomic
+from nanochat.experiment_manifest import (
+    file_sha256,
+    load_json_strict,
+    seal_manifest,
+    verify_manifest_hash,
+    write_json_atomic,
+)
 from nanochat.turkish_corpus import TurkishCorpusError
 from scripts import turkish_packed_sample as packed
 
@@ -67,6 +73,74 @@ def _slurm_env(lane_id: int, tmp_path: Path) -> dict[str, str]:
         "SLURM_TMPDIR": str(tmp_path / "scratch"),
         **{name: "1" for name in packed.THREAD_CAPS},
     }
+
+
+def _slurm_bucket_env(rank: int) -> dict[str, str]:
+    return {
+        "SLURM_NTASKS": "14",
+        "SLURM_CPUS_PER_TASK": "8",
+        "SLURM_NNODES": "1",
+        "SLURM_PROCID": str(rank),
+        "SLURM_LOCALID": str(rank),
+        "SLURM_JOB_ID": "23456",
+        "SLURM_STEP_ID": "0",
+        "SLURMD_NODENAME": "cpu-node-02",
+        **{name: "1" for name in packed.THREAD_CAPS},
+    }
+
+
+def _write_object_launch_fixture(paths: dict[str, Path], run_root: Path) -> Path:
+    source_plan = load_json_strict(paths["source_plan"])
+    calibration = load_json_strict(paths["calibration"])
+    lane_plan = load_json_strict(paths["lane_plan"])
+    records = []
+    for position, rank in enumerate(lane_plan["resource_sample_ranks"]["ranks"]):
+        receipt = seal_manifest(
+            {
+                "rank": rank,
+                "sample_mode": True,
+                "source_plan_sha256": source_plan["canonical_sha256"],
+                "calibration_sha256": calibration["canonical_sha256"],
+                "canonical_sha256": None,
+            }
+        )
+        path = run_root / "objects" / f"{rank:05d}" / "object_receipt.json"
+        write_json_atomic(path, receipt)
+        records.append(
+            {
+                "lane_id": position % 8,
+                "rank": rank,
+                "path": f"objects/{rank:05d}/object_receipt.json",
+                "canonical_sha256": receipt["canonical_sha256"],
+                "disposition": "produced_by_allocation",
+            }
+        )
+    launch = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": packed.LAUNCH_RECEIPT_KIND,
+            "sample_mode": True,
+            "lane_plan_sha256": lane_plan["canonical_sha256"],
+            "policy_sha256": source_plan["policy_sha256"],
+            "source_plan_sha256": source_plan["canonical_sha256"],
+            "calibration_sha256": calibration["canonical_sha256"],
+            "allocation": {
+                "slurm_job_id": "12345",
+                "slurm_step_id": "0",
+                "slurm_node": "cpu-node-01",
+                "nodes": 1,
+                "tasks": 8,
+                "cpus_per_task": 16,
+                "allocated_cpus": 128,
+            },
+            "object_receipts": records,
+            "all_lanes_completed": True,
+            "canonical_sha256": None,
+        }
+    )
+    path = run_root / "packed_sample_launches" / "job12345" / "launch_receipt.json"
+    write_json_atomic(path, launch)
+    return path
 
 
 def test_lane_plan_is_sealed_disjoint_and_deterministic(
@@ -303,6 +377,170 @@ def test_packed_sbatch_is_direct_sample_only_and_collective():
         option
         for action in run_lane_parser._actions
         for option in action.option_strings
+    }
+    assert "--sample" not in options
+    assert "--resource-approval" not in options
+
+
+def test_bucket_workers_map_one_to_one_and_finalize_collectively(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    ranks = list(range(11))
+    paths = _fixture_inputs(tmp_path, monkeypatch, ranks)
+    packed.seal_lane_plan(
+        paths["policy"],
+        paths["source_plan"],
+        paths["calibration"],
+        paths["sample_ranks"],
+        paths["lane_plan"],
+    )
+    run_root = tmp_path / "sample-run"
+    object_launch = _write_object_launch_fixture(paths, run_root)
+    task_root = tmp_path / "bucket-launch" / "tasks"
+    calls = []
+
+    def fake_bucket(
+        _policy,
+        source_plan,
+        calibration,
+        run_dir,
+        *,
+        rank,
+        sample_mode,
+        resource_approval_path,
+    ):
+        calls.append(
+            {
+                "rank": rank,
+                "sample_mode": sample_mode,
+                "resource_approval_path": resource_approval_path,
+            }
+        )
+        output_path = Path(run_dir) / "bucket_matches" / f"{rank:05d}_00.dups"
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(rank.to_bytes(8, "little") * 2)
+        object_hashes = [
+            item["canonical_sha256"]
+            for item in load_json_strict(object_launch)["object_receipts"]
+        ]
+        receipt = seal_manifest(
+            {
+                "schema_version": "1.0",
+                "kind": packed.BACKEND_BUCKET_RECEIPT_KIND,
+                "sample_mode": sample_mode,
+                "rank": rank,
+                "world_size": 14,
+                "source_plan_sha256": source_plan["canonical_sha256"],
+                "calibration_sha256": calibration["canonical_sha256"],
+                "object_receipt_sha256": object_hashes,
+                "output": {
+                    "path": f"bucket_matches/{rank:05d}_00.dups",
+                    "size_bytes": 16,
+                    "sha256": file_sha256(output_path),
+                    "duplicate_edges": 1,
+                },
+                "canonical_sha256": None,
+            }
+        )
+        write_json_atomic(
+            Path(run_dir) / "bucket_receipts" / f"{rank:05d}.json", receipt
+        )
+        return receipt
+
+    monkeypatch.setattr(packed, "run_datatrove_bucket", fake_bucket)
+    for rank in range(14):
+        packed.run_bucket_task(
+            paths["policy"],
+            paths["source_plan"],
+            paths["calibration"],
+            paths["sample_ranks"],
+            paths["lane_plan"],
+            object_launch,
+            run_root,
+            task_root,
+            env=_slurm_bucket_env(rank),
+        )
+
+    launch = packed.seal_bucket_launch_receipt(
+        paths["policy"],
+        paths["source_plan"],
+        paths["calibration"],
+        paths["sample_ranks"],
+        paths["lane_plan"],
+        object_launch,
+        run_root,
+        task_root,
+        tmp_path / "bucket-launch" / "launch_receipt.json",
+        job_id="23456",
+    )
+
+    assert [item["rank"] for item in calls] == list(range(14))
+    assert all(item["sample_mode"] is True for item in calls)
+    assert all(item["resource_approval_path"] is None for item in calls)
+    assert launch["assignment"] == {
+        "algorithm": packed.BUCKET_ASSIGNMENT_ALGORITHM,
+        "bucket_ranks": list(range(14)),
+        "world_size": 14,
+    }
+    assert launch["allocation"] == {
+        "slurm_job_id": "23456",
+        "slurm_step_id": "0",
+        "slurm_node": "cpu-node-02",
+        "nodes": 1,
+        "tasks": 14,
+        "cpus_per_task": 8,
+        "allocated_cpus": 112,
+    }
+    assert launch["all_buckets_completed"] is True
+    assert [item["bucket_rank"] for item in launch["backend_bucket_receipts"]] == list(
+        range(14)
+    )
+
+
+def test_bucket_context_rejects_topology_mapping_and_thread_drift():
+    with pytest.raises(TurkishCorpusError, match="fourteen tasks"):
+        packed._slurm_bucket_context(
+            _slurm_bucket_env(0) | {"SLURM_NTASKS": "13"}
+        )
+    with pytest.raises(TurkishCorpusError, match="one-to-one"):
+        packed._slurm_bucket_context(
+            _slurm_bucket_env(3) | {"SLURM_LOCALID": "2"}
+        )
+    with pytest.raises(TurkishCorpusError, match="thread caps"):
+        packed._slurm_bucket_context(
+            _slurm_bucket_env(0) | {"MKL_NUM_THREADS": "8"}
+        )
+
+
+def test_packed_bucket_sbatch_is_direct_sample_only_and_collective():
+    source = (
+        ROOT / "runs" / "uhem_turkish_data_buckets_packed_sample.sbatch"
+    ).read_text(encoding="utf-8")
+    required = (
+        "#SBATCH --nodes=1",
+        "#SBATCH --ntasks=14",
+        "#SBATCH --ntasks-per-node=14",
+        "#SBATCH --cpus-per-task=8",
+        "#SBATCH --mem=240G",
+        "srun --nodes=1 --ntasks=14 --ntasks-per-node=14 --cpus-per-task=8",
+        "--cpu-bind=cores --kill-on-bad-exit=1",
+        "-m scripts.turkish_packed_sample run-bucket",
+        "-m scripts.turkish_packed_sample finalize-buckets",
+        'if [ "$srun_rc" -ne 0 ]',
+    )
+    assert all(fragment in source for fragment in required)
+    assert "#SBATCH --array" not in source
+    assert "RESOURCE_APPROVAL" not in source
+    assert "SAMPLE=" not in source
+    for name in packed.THREAD_CAPS:
+        assert f"export {name}=1" in source
+
+    parser = packed.build_parser()
+    bucket_parser = next(
+        action for action in parser._actions if action.dest == "command"
+    ).choices["run-bucket"]
+    options = {
+        option for action in bucket_parser._actions for option in action.option_strings
     }
     assert "--sample" not in options
     assert "--resource-approval" not in options
