@@ -44,6 +44,26 @@ def test_hplt_parallel_language_probability_pairing_is_index_exact():
     assert _source_lid(record, adapter) == ("tur_Latn", 0.91, True)
 
 
+def test_source_lid_clamps_only_fasttext_scale_roundoff():
+    adapter = {
+        "language_field": "language",
+        "language_probability_field": "language_score",
+        "source_lid_min_probability": 0.9,
+        "turkish_values": ["tur"],
+    }
+    assert source_lid_result(
+        {"language": "tur", "language_score": 1.0000100135803223},
+        adapter,
+        strict_schema=True,
+    ) == ("tur", 1.0, True)
+    with pytest.raises(TurkishCorpusError, match="fastText tolerance"):
+        source_lid_result(
+            {"language": "tur", "language_score": 1.001},
+            adapter,
+            strict_schema=True,
+        )
+
+
 @pytest.mark.parametrize(
     "record",
     [

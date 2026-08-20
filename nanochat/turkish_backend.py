@@ -2412,9 +2412,10 @@ def build_resource_projection(
             "sample_bucket_receipt_sha256": [item["canonical_sha256"] for item in buckets],
             "sample_cluster_receipt_sha256": cluster["canonical_sha256"],
             "sample_selection": {
-                "algorithm": "smallest_object_per_source_v1",
+                "algorithm": "smallest_object_per_source_plus_hplt_wds_bin_v2",
                 "ranks": select_resource_sample_ranks(plan),
                 "covers_every_source": True,
+                "covers_hplt_wds_bins": [8, 9, 10],
             },
             "sample_stage_telemetry": {
                 "download": _sum_telemetry(objects, "download"),

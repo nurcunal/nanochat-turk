@@ -105,6 +105,7 @@ _CODE_HOSTS = (
     "pypi.org",
     "crates.io",
 )
+_FASTTEXT_PROBABILITY_EPSILON = 1e-4
 
 # Common function words are deliberately more useful than Turkish-specific
 # letters: clean Turkish may be ASCII-only, while Azerbaijani also uses several
@@ -1549,8 +1550,15 @@ def source_lid_result(
                 return malformed("source LID probability is not numeric")
         else:
             probability = 1.0
-        if not math.isfinite(probability) or not 0.0 <= probability <= 1.0:
-            return malformed("source LID probability is outside [0,1]")
+        if (
+            not math.isfinite(probability)
+            or probability < -_FASTTEXT_PROBABILITY_EPSILON
+            or probability > 1.0 + _FASTTEXT_PROBABILITY_EPSILON
+        ):
+            return malformed(
+                f"source LID probability is outside the fastText tolerance: {probability!r}"
+            )
+        probability = min(1.0, max(0.0, probability))
         return value, probability, value in allowed and probability >= threshold
     if isinstance(value, list):
         probabilities = record.get(adapter.get("language_probability_field", "prob"))
@@ -1564,8 +1572,16 @@ def source_lid_result(
                 probability = float(raw_probability)
             except (TypeError, ValueError):
                 return malformed("parallel source LID probability is not numeric")
-            if not math.isfinite(probability) or not 0.0 <= probability <= 1.0:
-                return malformed("parallel source LID probability is outside [0,1]")
+            if (
+                not math.isfinite(probability)
+                or probability < -_FASTTEXT_PROBABILITY_EPSILON
+                or probability > 1.0 + _FASTTEXT_PROBABILITY_EPSILON
+            ):
+                return malformed(
+                    "parallel source LID probability is outside the fastText "
+                    f"tolerance: {probability!r}"
+                )
+            probability = min(1.0, max(0.0, probability))
             pairs.append((label, probability))
         turkish = [pair for pair in pairs if pair[0] in allowed]
         if turkish:
