@@ -175,6 +175,17 @@ def build_tokenizer_quality_report(
     )
     training_receipt = load_json_strict(tokenizer_root / "training_receipt.json")
     training_hash = verify_manifest_hash(training_receipt)
+    production_chain = training_receipt.get("production_chain")
+    if (
+        package.manifest.get("production_chain") != production_chain
+        or package.manifest.get("policy_sha256")
+        != training_receipt.get("policy_sha256")
+        or package.manifest.get("parent_corpus_manifest_sha256")
+        != training_receipt.get("parent_corpus_manifest_sha256")
+        or package.manifest.get("qa_approval_sha256")
+        != training_receipt.get("qa_approval_sha256")
+    ):
+        raise TurkishCorpusError("tokenizer package/training lineage drift")
     texts, _dataset, validation_identity = _validation_texts(sample_root)
     tokenizer = RustBPETokenizer.from_directory(str(tokenizer_root))
     current_metrics = _metrics(tokenizer, texts)
@@ -202,6 +213,12 @@ def build_tokenizer_quality_report(
             "kind": QUALITY_REPORT_KIND,
             "tokenizer_package_sha256": package.canonical_sha256,
             "training_receipt_sha256": training_hash,
+            "policy_sha256": training_receipt["policy_sha256"],
+            "production_chain": production_chain,
+            "parent_corpus_manifest_sha256": training_receipt[
+                "parent_corpus_manifest_sha256"
+            ],
+            "qa_approval_sha256": training_receipt["qa_approval_sha256"],
             "heldout_validation": validation_identity,
             "metrics": current_metrics,
             "structural_validation": training_receipt["validation"],
@@ -243,6 +260,12 @@ def seal_tokenizer_quality_approval(
             "quality_report_sha256": report_hash,
             "tokenizer_package_sha256": report["tokenizer_package_sha256"],
             "heldout_validation_sha256": report["heldout_validation"]["sha256"],
+            "policy_sha256": report["policy_sha256"],
+            "production_chain": report["production_chain"],
+            "parent_corpus_manifest_sha256": report[
+                "parent_corpus_manifest_sha256"
+            ],
+            "qa_approval_sha256": report["qa_approval_sha256"],
             "reviewer": reviewer,
             "reviewed_at_utc": reviewed_at_utc,
             "decision": decision,
@@ -258,6 +281,7 @@ def validate_tokenizer_quality_gate(
     quality_dir: str | Path,
     *,
     expected_package_sha256: str,
+    expected_production_chain: Mapping[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     root = Path(quality_dir)
     report = load_json_strict(root / "quality_report.json")
@@ -268,6 +292,10 @@ def validate_tokenizer_quality_gate(
         report.get("kind") != QUALITY_REPORT_KIND
         or report.get("tokenizer_package_sha256") != expected_package_sha256
         or report.get("manual_acceptance_required") is not True
+        or (
+            expected_production_chain is not None
+            and report.get("production_chain") != expected_production_chain
+        )
     ):
         raise TurkishCorpusError("tokenizer held-out quality report is absent or stale")
     if (
@@ -275,6 +303,11 @@ def validate_tokenizer_quality_gate(
         or approval.get("quality_report_sha256") != report_hash
         or approval.get("tokenizer_package_sha256") != expected_package_sha256
         or approval.get("decision") != "accepted"
+        or approval.get("policy_sha256") != report.get("policy_sha256")
+        or approval.get("production_chain") != report.get("production_chain")
+        or approval.get("parent_corpus_manifest_sha256")
+        != report.get("parent_corpus_manifest_sha256")
+        or approval.get("qa_approval_sha256") != report.get("qa_approval_sha256")
     ):
         raise TurkishCorpusError("tokenizer quality approval is absent, rejected, or stale")
     if not _RFC3339_UTC_RE.fullmatch(str(approval.get("reviewed_at_utc", ""))):

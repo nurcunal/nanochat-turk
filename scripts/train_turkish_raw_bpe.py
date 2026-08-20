@@ -18,6 +18,7 @@ import pyarrow.parquet as pq
 import torch
 
 from nanochat.experiment_manifest import (
+    canonical_json,
     file_sha256,
     load_json_strict,
     seal_manifest,
@@ -79,6 +80,25 @@ def _validate_training_sample(sample_dir: Path, policy: dict) -> tuple[dict, dic
         raise ValueError("tokenizer sample threshold/overshoot receipt drift")
     if not isinstance(sample.get("qa_approval_sha256"), str):
         raise ValueError("production tokenizer sample is not bound to manual corpus QA approval")
+    policy_sha = hashlib.sha256(canonical_json(policy).encode("utf-8")).hexdigest()
+    production_chain = sample.get("production_chain")
+    required_chain = {
+        "cluster_launch_receipt_sha256",
+        "production_pack_plan_sha256",
+        "resource_approval_sha256",
+        "mixture_quality_approval_sha256",
+        "data_prep_storage_gate_sha256",
+    }
+    if (
+        sample.get("policy_sha256") != policy_sha
+        or not isinstance(production_chain, dict)
+        or set(production_chain) != required_chain
+        or any(
+            not isinstance(value, str) or len(value) != 64
+            for value in production_chain.values()
+        )
+    ):
+        raise ValueError("production tokenizer sample lineage drift")
     if sample.get("trainer_visible_characters") != sample.get("characters"):
         raise ValueError("tokenizer sample trainer-visible character accounting drift")
     if sample.get("max_chars_per_document") != policy["tokenizer_training"][
@@ -94,6 +114,11 @@ def _validate_training_sample(sample_dir: Path, policy: dict) -> tuple[dict, dic
         raise ValueError("tokenizer sample is not declared train-only")
     if sample.get("nanochat_dataset_manifest_sha256") != dataset["canonical_sha256"]:
         raise ValueError("sample and Nanochat dataset manifests differ")
+    if (
+        dataset.get("metadata", {}).get("policy_sha256") != policy_sha
+        or dataset.get("metadata", {}).get("production_chain") != production_chain
+    ):
+        raise ValueError("tokenizer sample dataset lineage drift")
     verify_file_inventory(sample_dir, dataset["ordered_files"])
     return sample, dataset
 
@@ -312,6 +337,12 @@ def _rebuild_package(output_dir: Path, receipt: dict) -> dict:
             "vocab_size": VOCAB_SIZE,
             "implementation": "raw_byte_bpe",
             "training_receipt_sha256": receipt["canonical_sha256"],
+            "policy_sha256": receipt["policy_sha256"],
+            "production_chain": receipt["production_chain"],
+            "parent_corpus_manifest_sha256": receipt[
+                "parent_corpus_manifest_sha256"
+            ],
+            "qa_approval_sha256": receipt["qa_approval_sha256"],
             "files": files,
             "canonical_sha256": None,
         }
@@ -369,6 +400,8 @@ def main(argv: list[str] | None = None) -> int:
             "parent_corpus_manifest_sha256": sample[
                 "parent_corpus_manifest_sha256"
             ],
+            "policy_sha256": sample["policy_sha256"],
+            "production_chain": sample["production_chain"],
             "nanochat_upstream_revision": policy["tokenizer_training"][
                 "nanochat_upstream_revision"
             ],
@@ -399,6 +432,8 @@ def main(argv: list[str] | None = None) -> int:
                 "parent_corpus_manifest_sha256": sample[
                     "parent_corpus_manifest_sha256"
                 ],
+                "policy_sha256": sample["policy_sha256"],
+                "production_chain": sample["production_chain"],
                 "training_characters": sample["characters"],
                 "sample_characters": sample["characters"],
                 "iterator_characters": iterator_stats["characters"],

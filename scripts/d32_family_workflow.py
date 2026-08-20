@@ -21,6 +21,9 @@ import shutil
 import shlex
 import subprocess
 import sys
+import tempfile
+import time
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -48,6 +51,42 @@ DEFAULT_RECIPE = Path("configs/pretrain/tr_d32_turkish_general_wsd_v2.json")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 SAFE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
+DATA_PREP_STORAGE_SAMPLE_KIND = "d32_data_prep_storage_sample"
+DATA_PREP_PACK_PLAN_KIND = "d32_data_prep_production_pack_plan"
+DATA_PREP_WRITER_PROBE_KIND = "d32_data_prep_post_cluster_writer_probe"
+MIXTURE_QUALITY_APPROVAL_KIND = (
+    "turkish_bounded_backend_sample_quality_approval"
+)
+DATA_PREP_STORAGE_COMPONENTS = (
+    "source_downloads",
+    "filtered_text",
+    "minhash_signatures",
+    "minhash_buckets",
+    "cluster_assignments",
+    "tokenized_output",
+    "temporary_merge_space",
+)
+DATA_PREP_FUTURE_CPU_COMPONENTS = (
+    "production_backend",
+    "production_pool_materialization",
+    "tokenizer_sample",
+    "tokenizer_training",
+    "tokenizer_quality",
+    "packing_preflight",
+    "final_corpus_materialization_and_capacity",
+)
+CPU2DQ_BILLABLE_CPUS = 128
+PRODUCTION_WORKERS_PER_NODE = 32
+PRODUCTION_CPUS_PER_WORKER = 4
+DATA_PREP_FIXED_CPU2DQ_CEILINGS = {
+    "tokenizer_sample": 12 * CPU2DQ_BILLABLE_CPUS,
+    "tokenizer_training": 24 * CPU2DQ_BILLABLE_CPUS,
+    "tokenizer_quality": 12 * CPU2DQ_BILLABLE_CPUS,
+    "packing_preflight": 12 * CPU2DQ_BILLABLE_CPUS,
+    "final_corpus_materialization_and_capacity": 48 * CPU2DQ_BILLABLE_CPUS,
+}
+SLURM_ALLOCATION_ID_RE = re.compile(r"^[0-9]+(?:_[0-9]+)?$")
+
 
 class FamilyWorkflowError(ValueError):
     """Raised when an operational prerequisite is missing or inconsistent."""
@@ -72,6 +111,12 @@ def _sequence(value: Any, name: str) -> Sequence[Any]:
 def _positive_int(value: Any, name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         _fail(f"{name} must be a positive integer")
+    return value
+
+
+def _nonnegative_int(value: Any, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        _fail(f"{name} must be a non-negative integer")
     return value
 
 
@@ -1070,41 +1115,69 @@ def _live_beegfs_storage(
     rows = list(csv.reader(io.StringIO(output)))
     if len(rows) < 2:
         _fail("BeeGFS quota CSV has no data row")
-    header = [re.sub(r"[^a-z0-9]+", "_", cell.strip().lower()).strip("_") for cell in rows[0]]
-    candidates = []
-    for row in rows[1:]:
-        if not row or all(not cell.strip() for cell in row):
-            continue
-        padded = row + [""] * max(0, len(header) - len(row))
-        candidates.append(dict(zip(header, padded, strict=False)))
-    if not candidates:
+    raw_header = [cell.strip().lower() for cell in rows[0]]
+    data_rows = [
+        row
+        for row in rows[1:]
+        if row and not all(not cell.strip() for cell in row)
+    ]
+    if not data_rows:
         _fail("BeeGFS quota CSV has no usable data row")
-    selected = next(
-        (
-            row
-            for row in candidates
-            if str(uid) in {value.strip() for value in row.values()}
-        ),
-        candidates[0],
-    )
-
-    def find_field(*needles: str) -> str:
-        matches = [
-            value
-            for key, value in selected.items()
-            if all(needle in key for needle in needles)
-            and "inode" not in key
+    # UHeM's verified BeeGFS build emits duplicate `hard` headings: the first
+    # size/hard pair is byte quota and the second files/hard pair is inode
+    # quota. Preserve the positional schema instead of collapsing duplicate
+    # headings into a dictionary.
+    if raw_header == ["name", "id", "size", "hard", "files", "hard"]:
+        candidates = [row for row in data_rows if len(row) == 6]
+        if not candidates:
+            _fail("UHeM BeeGFS quota CSV row does not have six columns")
+        matching_rows = [row for row in candidates if row[1].strip() == str(uid)]
+        if len(matching_rows) != 1:
+            _fail("UHeM BeeGFS quota CSV must contain exactly one requested UID row")
+        selected_row = matching_rows[0]
+        used_raw = selected_row[2]
+        hard_raw = selected_row[3]
+        csv_schema = "uhem_name_id_size_hard_files_hard_v1"
+    else:
+        header = [
+            re.sub(r"[^a-z0-9]+", "_", cell).strip("_")
+            for cell in raw_header
         ]
-        if len(matches) != 1:
-            _fail(
-                "BeeGFS quota CSV does not expose exactly one "
-                + "/".join(needles)
-                + " size field"
-            )
-        return matches[0]
+        indexed_rows = [
+            list(enumerate(row + [""] * max(0, len(header) - len(row))))
+            for row in data_rows
+        ]
+        matching_rows = [
+            row
+            for row in indexed_rows
+            if str(uid) in {value.strip() for _index, value in row}
+        ]
+        if len(matching_rows) != 1:
+            _fail("BeeGFS quota CSV must contain exactly one requested UID row")
+        selected = matching_rows[0]
 
-    used = _parse_storage_bytes(find_field("used"), "BeeGFS used bytes")
-    hard = _parse_storage_bytes(find_field("hard"), "BeeGFS hard quota")
+        def find_field(*needles: str) -> str:
+            matches = [
+                value
+                for index, value in selected
+                if index < len(header)
+                and all(needle in header[index] for needle in needles)
+                and "inode" not in header[index]
+            ]
+            if len(matches) != 1:
+                _fail(
+                    "BeeGFS quota CSV does not expose exactly one "
+                    + "/".join(needles)
+                    + " size field"
+                )
+            return matches[0]
+
+        used_raw = find_field("used")
+        hard_raw = find_field("hard")
+        csv_schema = "descriptive_used_and_hard_size_headers_v1"
+
+    used = _parse_storage_bytes(used_raw, "BeeGFS used bytes")
+    hard = _parse_storage_bytes(hard_raw, "BeeGFS hard quota")
     if used is None:
         _fail("BeeGFS used-byte value cannot be unlimited")
     physical_free = _disk_free_bytes(path)
@@ -1120,6 +1193,7 @@ def _live_beegfs_storage(
         "used_bytes": used,
         "hard_quota_bytes": hard,
         "hard_quota_unlimited": hard is None,
+        "csv_schema": csv_schema,
         "finite_user_quota_remaining_bytes": finite_remaining,
         "physical_filesystem_free_bytes": physical_free,
         "effective_free_bytes": effective_free,
@@ -1374,15 +1448,2117 @@ def command_validate_recipe(args: argparse.Namespace) -> None:
     print(json.dumps({"family_id": recipe["family_id"], "canonical_sha256": digest}, sort_keys=True))
 
 
+def _data_prep_policy_sha256(policy: Mapping[str, Any]) -> str:
+    return hashlib.sha256(canonical_json(policy).encode("utf-8")).hexdigest()
+
+
+def _load_data_prep_inputs(
+    *,
+    recipe_path: Path,
+    policy_path: Path,
+    source_plan_path: Path,
+    calibration_path: Path,
+) -> tuple[
+    dict[str, Any],
+    str,
+    dict[str, Any],
+    str,
+    dict[str, Any],
+    str,
+    dict[str, Any],
+    str,
+]:
+    """Load and validate the shared data-preparation provenance spine."""
+
+    recipe, recipe_sha = load_recipe(recipe_path)
+    try:
+        from nanochat.turkish_backend import (
+            validate_backend_calibration,
+            validate_source_plan,
+        )
+        from nanochat.turkish_corpus import load_corpus_policy
+
+        policy = load_corpus_policy(policy_path)
+        source_plan = _load_object(source_plan_path, "source plan")
+        calibration = _load_object(calibration_path, "backend calibration")
+        validate_source_plan(source_plan, policy)
+        validate_backend_calibration(calibration, policy)
+    except (OSError, ValueError) as exc:
+        raise FamilyWorkflowError(f"invalid data-preparation provenance: {exc}") from exc
+    policy_sha = _data_prep_policy_sha256(policy)
+    source_plan_sha = _sha256(source_plan.get("canonical_sha256"), "source-plan SHA-256")
+    calibration_sha = _sha256(
+        calibration.get("canonical_sha256"), "backend-calibration SHA-256"
+    )
+    return (
+        recipe,
+        recipe_sha,
+        policy,
+        policy_sha,
+        source_plan,
+        source_plan_sha,
+        calibration,
+        calibration_sha,
+    )
+
+
+def _production_pack_plan_lanes(
+    plan: Mapping[str, Any], node_count: int
+) -> list[dict[str, Any]]:
+    """Balance objects over 32 serial 4-CPU workers on each cpu2dq node."""
+
+    if node_count <= 0:
+        _fail("production pack-plan node count must be positive")
+    lane_count = node_count * PRODUCTION_WORKERS_PER_NODE
+    objects = _sequence(plan.get("objects"), "source-plan objects")
+    if lane_count > len(objects):
+        _fail("production pack-plan cannot have more lanes than source objects")
+    lanes = [
+        {
+            "lane_id": lane_id,
+            "node_index": lane_id // PRODUCTION_WORKERS_PER_NODE,
+            "node_local_lane_id": lane_id % PRODUCTION_WORKERS_PER_NODE,
+            "object_ranks": [],
+            "total_input_bytes": 0,
+        }
+        for lane_id in range(lane_count)
+    ]
+    def object_rank(item: Mapping[str, Any]) -> int:
+        rank = item.get("rank")
+        if isinstance(rank, bool) or not isinstance(rank, int) or rank < 0:
+            _fail("source object rank must be a non-negative integer")
+        return rank
+
+    ordered = sorted(
+        objects,
+        key=lambda item: (
+            -_positive_int(item.get("size_bytes"), "source object size"),
+            object_rank(item),
+        ),
+    )
+    for item in ordered:
+        lane = min(lanes, key=lambda value: (value["total_input_bytes"], value["lane_id"]))
+        lane["object_ranks"].append(int(item["rank"]))
+        lane["total_input_bytes"] += int(item["size_bytes"])
+    size_by_rank = {int(item["rank"]): int(item["size_bytes"]) for item in objects}
+    for lane in lanes:
+        lane["object_ranks"].sort()
+        lane["maximum_staged_raw_bytes"] = max(
+            size_by_rank[rank] for rank in lane["object_ranks"]
+        )
+    return lanes
+
+
+def _validate_production_pack_plan(
+    pack_plan: Mapping[str, Any],
+    *,
+    recipe: Mapping[str, Any],
+    recipe_sha: str,
+    policy_sha: str,
+    source_plan: Mapping[str, Any],
+    source_plan_sha: str,
+) -> int:
+    verify_manifest_hash(pack_plan)
+    if pack_plan.get("schema_version") != "1.0" or pack_plan.get("kind") != DATA_PREP_PACK_PLAN_KIND:
+        _fail("unexpected data-preparation production pack plan")
+    expected_bindings = {
+        "family_id": recipe["family_id"],
+        "recipe_sha256": recipe_sha,
+        "policy_sha256": policy_sha,
+        "source_plan_sha256": source_plan_sha,
+    }
+    for field, expected in expected_bindings.items():
+        if pack_plan.get(field) != expected:
+            _fail(f"production pack-plan {field} binding mismatch")
+    expected_contract = {
+        "allocation": "one_exclusive_128cpu_cpu2dq_allocation_per_node",
+        "workers_per_node": PRODUCTION_WORKERS_PER_NODE,
+        "cpus_per_worker": PRODUCTION_CPUS_PER_WORKER,
+        "lane_concurrency": "thirty_two_worker_lanes_share_each_node_all_nodes_concurrent",
+        "staging": "at_most_one_source_object_per_lane_at_a_time",
+        "rank_execution": "ascending_rank_order_within_each_lane",
+        "production_launch_must_consume_exact_plan": True,
+    }
+    if pack_plan.get("execution_contract") != expected_contract:
+        _fail("production pack-plan execution contract drifted")
+    expected_bucket_contract = {
+        "allocation": "one_exclusive_128cpu_cpu2dq_node",
+        "bucket_tasks": 14,
+        "cpus_per_task": 8,
+        "all_bucket_tasks_concurrent": True,
+        "production_launch_must_consume_exact_plan": True,
+    }
+    if pack_plan.get("minhash_bucket_execution_contract") != expected_bucket_contract:
+        _fail("production pack-plan MinHash bucket execution contract drifted")
+    objects = _sequence(source_plan.get("objects"), "source-plan objects")
+    size_by_rank = {int(item["rank"]): int(item["size_bytes"]) for item in objects}
+    lanes = _sequence(pack_plan.get("lanes"), "production pack-plan lanes")
+    if not lanes:
+        _fail("production pack plan has no lanes")
+    node_count = _positive_int(pack_plan.get("node_count"), "production node count")
+    if (
+        pack_plan.get("workers_per_node") != PRODUCTION_WORKERS_PER_NODE
+        or pack_plan.get("cpus_per_worker") != PRODUCTION_CPUS_PER_WORKER
+        or pack_plan.get("lane_count")
+        != node_count * PRODUCTION_WORKERS_PER_NODE
+        or len(lanes) != node_count * PRODUCTION_WORKERS_PER_NODE
+    ):
+        _fail("production pack-plan node/worker/lane geometry drifted")
+    seen: list[int] = []
+    maxima: list[int] = []
+    for expected_lane_id, raw_lane in enumerate(lanes):
+        lane = _mapping(raw_lane, f"production pack lane {expected_lane_id}")
+        _require_exact_keys(
+            lane,
+            {
+                "lane_id",
+                "node_index",
+                "node_local_lane_id",
+                "object_ranks",
+                "total_input_bytes",
+                "maximum_staged_raw_bytes",
+            },
+            f"production pack lane {expected_lane_id}",
+        )
+        if lane.get("lane_id") != expected_lane_id:
+            _fail("production pack-plan lane IDs must be contiguous")
+        if (
+            lane.get("node_index")
+            != expected_lane_id // PRODUCTION_WORKERS_PER_NODE
+            or lane.get("node_local_lane_id")
+            != expected_lane_id % PRODUCTION_WORKERS_PER_NODE
+        ):
+            _fail("production pack-plan lane-to-node ownership drifted")
+        ranks = list(_sequence(lane.get("object_ranks"), "production lane ranks"))
+        if not ranks or ranks != sorted(ranks) or any(
+            isinstance(rank, bool) or not isinstance(rank, int) or rank not in size_by_rank
+            for rank in ranks
+        ):
+            _fail("production pack-plan lane ranks are invalid or unsorted")
+        if lane.get("total_input_bytes") != sum(size_by_rank[rank] for rank in ranks):
+            _fail("production pack-plan lane input-byte arithmetic mismatch")
+        lane_maximum = max(size_by_rank[rank] for rank in ranks)
+        if lane.get("maximum_staged_raw_bytes") != lane_maximum:
+            _fail("production pack-plan lane staged-byte arithmetic mismatch")
+        seen.extend(ranks)
+        maxima.append(lane_maximum)
+    if sorted(seen) != list(range(len(objects))) or len(seen) != len(set(seen)):
+        _fail("production pack plan must cover every source rank exactly once")
+    projected_peak = sum(maxima)
+    if pack_plan.get("projected_peak_staged_raw_bytes") != projected_peak:
+        _fail("production pack-plan projected staged-byte peak mismatch")
+    return projected_peak
+
+
+def _packed_production_backend_cpu_projection(
+    *,
+    source_plan: Mapping[str, Any],
+    pack_plan: Mapping[str, Any],
+    backend_report: Mapping[str, Any],
+    sample_bucket_receipts: Mapping[int, Mapping[str, Any]],
+) -> tuple[float, dict[str, Any]]:
+    """Bill packed object workers by node wall, then other stages once."""
+
+    source_projections = _mapping(
+        backend_report.get("source_projections"), "backend source projections"
+    )
+    per_byte_wall: dict[str, float] = {}
+    for source_id, raw in source_projections.items():
+        projection = _mapping(raw, f"backend source projection {source_id}")
+        full_bytes = _positive_number(
+            projection.get("full_input_bytes"), f"{source_id} full input bytes"
+        )
+        wall = sum(
+            _nonnegative_number(
+                projection.get(field), f"{source_id} projected {field}"
+            )
+            for field in (
+                "projected_download_wall_seconds",
+                "projected_score_lid_wall_seconds",
+                "projected_minhash_signature_wall_seconds",
+            )
+        )
+        per_byte_wall[str(source_id)] = wall / full_bytes
+    objects = _sequence(source_plan.get("objects"), "source-plan objects")
+    object_wall: dict[int, float] = {}
+    for item in objects:
+        rank = int(item["rank"])
+        source_id = str(item["source_id"])
+        if source_id not in per_byte_wall:
+            _fail(f"backend report lacks a projection for source {source_id}")
+        object_wall[rank] = int(item["size_bytes"]) * per_byte_wall[source_id]
+    node_lane_wall: dict[int, list[float]] = {
+        node: [] for node in range(int(pack_plan["node_count"]))
+    }
+    for raw_lane in pack_plan["lanes"]:
+        lane = _mapping(raw_lane, "production pack lane")
+        lane_wall = sum(object_wall[int(rank)] for rank in lane["object_ranks"])
+        node_lane_wall[int(lane["node_index"])].append(lane_wall)
+    node_wall = {
+        str(node): max(walls) for node, walls in sorted(node_lane_wall.items())
+    }
+    packed_object_cpu = sum(node_wall.values()) * CPU2DQ_BILLABLE_CPUS / 3600.0
+    report_projection = _mapping(
+        backend_report.get("projection"), "backend report projection"
+    )
+    stage_cpu = _mapping(
+        report_projection.get("stage_billed_cpu_saat_before_safety_factor"),
+        "backend stage CPU projection",
+    )
+    # The report's aggregate bucket stage wall is diagnostic here: all fourteen
+    # disjoint bucket ranks share one future node allocation. Project each task
+    # independently and bill the slowest concurrent task once at 128 CPUs.
+    _nonnegative_number(
+        stage_cpu.get("minhash_buckets"), "aggregate MinHash bucket diagnostic"
+    )
+    projected_signature_bytes = _positive_number(
+        report_projection.get("signature_bytes"), "projected signature bytes"
+    )
+    if set(sample_bucket_receipts) != set(range(14)):
+        _fail("packed bucket CPU projection requires all fourteen sample receipts")
+    # The backend report's signature_bytes is the sum over all fourteen MinHash
+    # bands. Each concurrent bucket task owns exactly one band, so extrapolate a
+    # task from one fourteenth of that total rather than charging every task for
+    # the complete signature inventory.
+    projected_signature_bytes_per_bucket = projected_signature_bytes / 14
+    projected_bucket_wall = {
+        str(rank): _positive_number(
+            _mapping(receipt.get("telemetry"), "sample bucket telemetry").get(
+                "wall_seconds"
+            ),
+            "sample bucket wall seconds",
+        )
+        * projected_signature_bytes_per_bucket
+        / _positive_number(
+            receipt.get("input_signature_bytes"), "sample bucket signature bytes"
+        )
+        for rank, receipt in sorted(sample_bucket_receipts.items())
+    }
+    packed_bucket_node_wall = max(projected_bucket_wall.values())
+    bucket_cpu = packed_bucket_node_wall * CPU2DQ_BILLABLE_CPUS / 3600.0
+    cluster_cpu = _nonnegative_number(
+        stage_cpu.get("priority_cluster_quality_format"),
+        "projected priority-cluster CPU-saat",
+    )
+    cluster_scaling = _mapping(
+        report_projection.get("cluster_scaling"),
+        "backend projected cluster scaling",
+    )
+    sample_cluster_peak_rss = _positive_int(
+        cluster_scaling.get("sample_peak_rss_bytes"),
+        "sample cluster peak RSS",
+    )
+    projected_cluster_peak_rss = _positive_number(
+        cluster_scaling.get("projected_peak_rss_bytes"),
+        "projected cluster peak RSS",
+    )
+    total = packed_object_cpu + bucket_cpu + cluster_cpu
+    if total <= 0:
+        _fail("packed production backend CPU projection must be positive")
+    return total, {
+        "object_worker_contract": "thirty_two_4cpu_lanes_per_exclusive_128cpu_node",
+        "node_count": int(pack_plan["node_count"]),
+        "projected_node_wall_seconds_before_safety": node_wall,
+        "projected_packed_object_cpu_saat_before_safety": packed_object_cpu,
+        "projected_signature_bytes_per_bucket_before_safety": (
+            projected_signature_bytes_per_bucket
+        ),
+        "projected_bucket_task_wall_seconds_before_safety": projected_bucket_wall,
+        "projected_packed_bucket_node_wall_seconds_before_safety": (
+            packed_bucket_node_wall
+        ),
+        "projected_minhash_bucket_cpu_saat_before_safety": bucket_cpu,
+        "projected_priority_cluster_cpu_saat_before_safety": cluster_cpu,
+        "sample_priority_cluster_peak_rss_bytes": sample_cluster_peak_rss,
+        "projected_priority_cluster_peak_rss_bytes_before_safety": (
+            projected_cluster_peak_rss
+        ),
+        "sample_priority_cluster_edge_participating_documents": (
+            _nonnegative_int(
+                cluster_scaling.get("sample_edge_participating_documents"),
+                "sample cluster edge-participating documents",
+            )
+        ),
+        "projected_priority_cluster_edge_participating_documents": (
+            _nonnegative_number(
+                cluster_scaling.get("projected_edge_participating_documents"),
+                "projected cluster edge-participating documents",
+            )
+        ),
+        "projected_backend_cpu_saat_before_safety": total,
+    }
+
+
+def command_seal_data_prep_pack_plan(args: argparse.Namespace) -> None:
+    if args.output.exists():
+        _fail(f"refusing to overwrite production pack plan: {args.output}")
+    (
+        recipe,
+        recipe_sha,
+        _policy,
+        policy_sha,
+        source_plan,
+        source_plan_sha,
+        _calibration,
+        _calibration_sha,
+    ) = _load_data_prep_inputs(
+        recipe_path=args.recipe,
+        policy_path=args.policy,
+        source_plan_path=args.source_plan,
+        calibration_path=args.calibration,
+    )
+    lanes = _production_pack_plan_lanes(source_plan, args.nodes)
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": DATA_PREP_PACK_PLAN_KIND,
+            "family_id": recipe["family_id"],
+            "recipe_sha256": recipe_sha,
+            "policy_sha256": policy_sha,
+            "source_plan_sha256": source_plan_sha,
+            "execution_contract": {
+                "allocation": "one_exclusive_128cpu_cpu2dq_allocation_per_node",
+                "workers_per_node": PRODUCTION_WORKERS_PER_NODE,
+                "cpus_per_worker": PRODUCTION_CPUS_PER_WORKER,
+                "lane_concurrency": (
+                    "thirty_two_worker_lanes_share_each_node_all_nodes_concurrent"
+                ),
+                "staging": "at_most_one_source_object_per_lane_at_a_time",
+                "rank_execution": "ascending_rank_order_within_each_lane",
+                "production_launch_must_consume_exact_plan": True,
+            },
+            "minhash_bucket_execution_contract": {
+                "allocation": "one_exclusive_128cpu_cpu2dq_node",
+                "bucket_tasks": 14,
+                "cpus_per_task": 8,
+                "all_bucket_tasks_concurrent": True,
+                "production_launch_must_consume_exact_plan": True,
+            },
+            "node_count": args.nodes,
+            "workers_per_node": PRODUCTION_WORKERS_PER_NODE,
+            "cpus_per_worker": PRODUCTION_CPUS_PER_WORKER,
+            "lane_count": len(lanes),
+            "lanes": lanes,
+            "projected_peak_staged_raw_bytes": sum(
+                int(lane["maximum_staged_raw_bytes"]) for lane in lanes
+            ),
+            "canonical_sha256": None,
+        }
+    )
+    _validate_production_pack_plan(
+        receipt,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        policy_sha=policy_sha,
+        source_plan=source_plan,
+        source_plan_sha=source_plan_sha,
+    )
+    write_json_atomic(args.output, receipt)
+    print(json.dumps(receipt, sort_keys=True))
+
+
+def command_seal_mixture_quality_approval(args: argparse.Namespace) -> None:
+    """Seal an explicit human decision over the bounded QA report and examples."""
+
+    if args.output.exists():
+        _fail(f"refusing to overwrite mixture-quality approval: {args.output}")
+    try:
+        from nanochat.turkish_backend import (
+            validate_backend_calibration,
+            validate_source_plan,
+        )
+        from nanochat.turkish_corpus import load_corpus_policy
+
+        policy = load_corpus_policy(args.policy)
+        source_plan = _load_object(args.source_plan, "source plan")
+        calibration = _load_object(args.calibration, "backend calibration")
+        validate_source_plan(source_plan, policy)
+        validate_backend_calibration(calibration, policy)
+    except (OSError, ValueError) as exc:
+        raise FamilyWorkflowError(f"invalid mixture-quality provenance: {exc}") from exc
+    policy_sha = _data_prep_policy_sha256(policy)
+    source_plan_sha = _sha256(
+        source_plan.get("canonical_sha256"), "source-plan SHA-256"
+    )
+    calibration_sha = _sha256(
+        calibration.get("canonical_sha256"), "calibration SHA-256"
+    )
+    audit, audit_sha = _verify_sealed(
+        args.audit_report, "bounded sample quality audit"
+    )
+    if (
+        audit.get("schema_version") != "1.0"
+        or audit.get("kind") != "turkish_bounded_backend_sample_quality_audit"
+        or audit.get("integrity_checks_passed") is not True
+        or audit.get("manual_review_required") is not True
+        or audit.get("automatic_mixture_approval") is not False
+        or audit.get("review_status") != "pending"
+    ):
+        _fail("bounded sample quality audit is not pending valid manual review")
+    for field, expected in {
+        "policy_sha256": policy_sha,
+        "source_plan_sha256": source_plan_sha,
+        "calibration_sha256": calibration_sha,
+    }.items():
+        if audit.get(field) != expected:
+            _fail(f"bounded sample quality audit {field} binding mismatch")
+    cluster_sha = _sha256(
+        audit.get("cluster_receipt_sha256"), "quality-audit cluster SHA-256"
+    )
+    coverage = _mapping(audit.get("coverage"), "quality-audit coverage")
+    expected_mixtures = sorted(str(item["id"]) for item in policy["mixture"])
+    coverage_complete = (
+        coverage.get("expected_mixtures") == expected_mixtures
+        and coverage.get("mixtures_without_accepted_rows") == []
+        and coverage.get("mixtures_with_accepted_rows") == expected_mixtures
+    )
+    if args.decision == "accepted" and not coverage_complete:
+        _fail("cannot accept a quality audit without accepted-row mixture coverage")
+    if not args.reviewer.strip() or re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", args.reviewed_at_utc
+    ) is None:
+        _fail("mixture-quality approval requires reviewer and RFC3339 UTC timestamp")
+
+    example_sampling = _mapping(
+        audit.get("example_sampling"), "quality-audit example sampling"
+    )
+    files = _mapping(example_sampling.get("files"), "quality-audit example files")
+    reviewed_files: dict[str, dict[str, Any]] = {}
+    audit_root = args.audit_report.expanduser().resolve().parent
+    for decision in ("accepted", "rejected"):
+        record = _mapping(files.get(decision), f"quality-audit {decision} examples")
+        rows = _nonnegative_int(record.get("rows"), f"{decision} example rows")
+        reviewed_files[decision] = {"rows": rows}
+        for representation in ("jsonl", "plaintext"):
+            artifact = _mapping(
+                record.get(representation),
+                f"quality-audit {decision} {representation}",
+            )
+            relative = Path(str(artifact.get("path") or ""))
+            path = (audit_root / relative).resolve()
+            if (
+                not relative.parts
+                or relative.is_absolute()
+                or audit_root not in path.parents
+                or path.is_symlink()
+                or not path.is_file()
+                or path.stat().st_size != artifact.get("size_bytes")
+                or file_sha256(path) != artifact.get("sha256")
+            ):
+                _fail(f"quality-audit {decision} {representation} evidence drift")
+            reviewed_files[decision][f"{representation}_sha256"] = artifact["sha256"]
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": MIXTURE_QUALITY_APPROVAL_KIND,
+            "sample_quality_audit_sha256": audit_sha,
+            "policy_sha256": policy_sha,
+            "source_plan_sha256": source_plan_sha,
+            "calibration_sha256": calibration_sha,
+            "cluster_receipt_sha256": cluster_sha,
+            "reviewed_example_files": reviewed_files,
+            "coverage_complete": coverage_complete,
+            "automatic_decision": False,
+            "review_confirmation": (
+                "bounded_strata_and_accepted_rejected_examples_reviewed"
+            ),
+            "reviewer": args.reviewer.strip(),
+            "reviewed_at_utc": args.reviewed_at_utc,
+            "decision": args.decision,
+            "notes": args.notes,
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(args.output, receipt)
+    print(json.dumps(receipt, sort_keys=True))
+
+
+def _live_completed_cpu2dq_allocation(
+    repo_root: Path,
+    *,
+    job_id: str,
+    stage: str,
+    evidence_receipt_sha256s: Sequence[str],
+) -> dict[str, Any]:
+    """Return one exact completed allocation, never an array parent or job step."""
+
+    if SLURM_ALLOCATION_ID_RE.fullmatch(job_id) is None:
+        _fail(f"invalid Slurm allocation ID: {job_id!r}")
+    evidence = [
+        _sha256(value, f"{stage} evidence receipt SHA-256")
+        for value in evidence_receipt_sha256s
+    ]
+    if not evidence or len(evidence) != len(set(evidence)):
+        _fail(f"{stage} allocation must bind unique evidence receipts")
+    command = [
+        "sacct",
+        "-n",
+        "-X",
+        "-P",
+        "-j",
+        job_id,
+        "-o",
+        "JobID,JobIDRaw,State,Partition,ElapsedRaw,AllocCPUS,CPUTimeRAW",
+    ]
+    try:
+        output = subprocess.check_output(
+            command, cwd=repo_root, text=True, stderr=subprocess.STDOUT
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        details = getattr(exc, "output", "")
+        raise FamilyWorkflowError(
+            "cannot verify completed cpu2dq sample allocation with sacct"
+            + (f": {str(details).strip()}" if details else "")
+        ) from exc
+    rows: list[list[str]] = []
+    for raw_line in output.splitlines():
+        if not raw_line.strip():
+            continue
+        fields = [field.strip() for field in raw_line.split("|")]
+        if len(fields) < 7:
+            _fail(f"unexpected sacct allocation row: {raw_line!r}")
+        if fields[0] == job_id:
+            rows.append(fields[:7])
+    if len(rows) != 1:
+        _fail(f"sacct returned {len(rows)} exact allocation rows for {job_id}")
+    row_job, job_id_raw, state, partition, elapsed_text, cpus_text, cpu_time_text = rows[0]
+    if row_job != job_id or SLURM_ALLOCATION_ID_RE.fullmatch(job_id_raw) is None:
+        _fail("sacct allocation identity is invalid")
+    if state != "COMPLETED" or partition != "cpu2dq":
+        _fail(
+            f"allocation {job_id} must be COMPLETED on cpu2dq, got {state}/{partition}"
+        )
+    try:
+        elapsed = int(elapsed_text)
+        alloc_cpus = int(cpus_text)
+        cpu_time = int(cpu_time_text)
+    except ValueError as exc:
+        raise FamilyWorkflowError(f"cannot parse sacct accounting for {job_id}") from exc
+    if elapsed <= 0 or alloc_cpus != CPU2DQ_BILLABLE_CPUS:
+        _fail(f"allocation {job_id} does not bind one full 128-CPU cpu2dq node")
+    if cpu_time != elapsed * alloc_cpus:
+        _fail(f"allocation {job_id} CPUTimeRAW arithmetic mismatch")
+    return {
+        "job_id": job_id,
+        "job_id_raw": job_id_raw,
+        "stage": stage,
+        "state": state,
+        "partition": partition,
+        "elapsed_raw_seconds": elapsed,
+        "alloc_cpus": alloc_cpus,
+        "cpu_time_raw_seconds": cpu_time,
+        "billed_cpu_saat": cpu_time / 3600.0,
+        "evidence_receipt_sha256s": evidence,
+        "sacct_output_sha256": hashlib.sha256(output.encode("utf-8")).hexdigest(),
+    }
+
+
+def _load_sample_receipt_inventory(
+    sample_run_dir: Path,
+    *,
+    object_ranks: Sequence[int],
+    backend_report: Mapping[str, Any],
+) -> tuple[dict[int, dict[str, Any]], dict[int, dict[str, Any]], dict[str, Any]]:
+    objects: dict[int, dict[str, Any]] = {}
+    for rank in object_ranks:
+        receipt, _digest = _verify_sealed(
+            sample_run_dir / "objects" / f"{rank:05d}" / "object_receipt.json",
+            f"sample object receipt {rank}",
+        )
+        if receipt.get("rank") != rank or receipt.get("sample_mode") is not True:
+            _fail(f"sample object receipt {rank} identity mismatch")
+        objects[rank] = receipt
+    report_object_hashes = list(
+        _sequence(
+            backend_report.get("sample_object_receipt_sha256"),
+            "backend report sample object receipts",
+        )
+    )
+    if report_object_hashes != [objects[rank]["canonical_sha256"] for rank in object_ranks]:
+        _fail("backend report/sample object receipt inventory mismatch")
+    buckets: dict[int, dict[str, Any]] = {}
+    for rank in range(14):
+        receipt, _digest = _verify_sealed(
+            sample_run_dir / "bucket_receipts" / f"{rank:05d}.json",
+            f"sample bucket receipt {rank}",
+        )
+        if receipt.get("rank") != rank or receipt.get("sample_mode") is not True:
+            _fail(f"sample bucket receipt {rank} identity mismatch")
+        buckets[rank] = receipt
+    report_bucket_hashes = list(
+        _sequence(
+            backend_report.get("sample_bucket_receipt_sha256"),
+            "backend report sample bucket receipts",
+        )
+    )
+    if report_bucket_hashes != [buckets[rank]["canonical_sha256"] for rank in range(14)]:
+        _fail("backend report/sample bucket receipt inventory mismatch")
+    cluster, _cluster_sha = _verify_sealed(
+        sample_run_dir / "cluster_receipt.json", "sample cluster receipt"
+    )
+    if cluster.get("sample_mode") is not True:
+        _fail("sample cluster receipt is not a sample-mode receipt")
+    if backend_report.get("sample_cluster_receipt_sha256") != cluster["canonical_sha256"]:
+        _fail("backend report/sample cluster receipt binding mismatch")
+    return objects, buckets, cluster
+
+
+def _validate_writer_probe(
+    probe: Mapping[str, Any],
+    *,
+    recipe: Mapping[str, Any],
+    recipe_sha: str,
+    policy_sha: str,
+    source_plan_sha: str,
+    calibration_sha: str,
+    backend_report_sha: str,
+    cluster_sha: str,
+    sample_documents: int,
+    estimated_total_documents: int,
+) -> tuple[dict[str, dict[str, Any]], float]:
+    verify_manifest_hash(probe)
+    if probe.get("schema_version") != "1.0" or probe.get("kind") != DATA_PREP_WRITER_PROBE_KIND:
+        _fail("unexpected post-cluster writer probe")
+    bindings = {
+        "family_id": recipe["family_id"],
+        "recipe_sha256": recipe_sha,
+        "policy_sha256": policy_sha,
+        "source_plan_sha256": source_plan_sha,
+        "calibration_sha256": calibration_sha,
+        "backend_resource_report_sha256": backend_report_sha,
+        "cluster_receipt_sha256": cluster_sha,
+    }
+    for field, expected in bindings.items():
+        if probe.get(field) != expected:
+            _fail(f"writer probe {field} binding mismatch")
+    sample = _mapping(probe.get("sample"), "writer probe sample")
+    _require_exact_keys(
+        sample,
+        {
+            "candidate_documents",
+            "accepted_documents",
+            "pool_parquet_bytes",
+            "train_parquet_bytes",
+            "temporary_peak_bytes",
+            "elapsed_wall_seconds",
+            "process_cpu_seconds",
+            "source_output_documents",
+            "mixture_output_documents",
+        },
+        "writer probe sample",
+    )
+    if sample.get("candidate_documents") != sample_documents:
+        _fail("writer probe candidate-document count mismatch")
+    accepted = _positive_int(sample.get("accepted_documents"), "writer accepted documents")
+    if accepted > sample_documents:
+        _fail("writer probe accepted more documents than it received")
+    pool_bytes = _positive_int(sample.get("pool_parquet_bytes"), "writer pool bytes")
+    train_bytes = _positive_int(sample.get("train_parquet_bytes"), "writer train bytes")
+    temporary_bytes = _positive_int(
+        sample.get("temporary_peak_bytes"), "writer temporary peak bytes"
+    )
+    if train_bytes > pool_bytes:
+        _fail("writer probe train bytes exceed its complete pool bytes")
+    elapsed = _positive_number(sample.get("elapsed_wall_seconds"), "writer elapsed wall")
+    _nonnegative_number(sample.get("process_cpu_seconds"), "writer process CPU")
+    for label in ("source_output_documents", "mixture_output_documents"):
+        counts = _mapping(sample.get(label), f"writer {label}")
+        if not counts or any(
+            not isinstance(key, str)
+            or not key
+            or isinstance(value, bool)
+            or not isinstance(value, int)
+            or value <= 0
+            for key, value in counts.items()
+        ):
+            _fail(f"writer {label} must contain positive document counts")
+        if sum(counts.values()) != accepted:
+            _fail(f"writer {label} does not sum to accepted_documents")
+    scale = estimated_total_documents / sample_documents
+    projected_tokenized = math.ceil(train_bytes * scale)
+    projected_temporary = temporary_bytes
+    projected_cpu = elapsed * scale * CPU2DQ_BILLABLE_CPUS / 3600.0
+    expected_projection = {
+        "target_candidate_documents": estimated_total_documents,
+        "document_scale": scale,
+        "tokenized_output_bytes_before_safety": projected_tokenized,
+        "tokenized_output_projection_basis": "linear_by_candidate_documents",
+        "temporary_merge_bytes_before_safety": projected_temporary,
+        "temporary_merge_projection_basis": "measured_bounded_fixed_peak",
+        "billable_cpus_per_job": CPU2DQ_BILLABLE_CPUS,
+        "materialization_and_finalization_cpu_saat_before_safety": projected_cpu,
+        "cpu_projection_basis": (
+            "sample_elapsed_wall_linear_by_candidate_documents_times_128_cpu2dq_cpus"
+        ),
+        "safety_factor_applied": False,
+    }
+    projection = _mapping(probe.get("projection"), "writer probe projection")
+    if set(projection) != set(expected_projection):
+        _fail("writer probe projection keys drifted")
+    for field, expected in expected_projection.items():
+        actual = projection.get(field)
+        if isinstance(expected, float):
+            if (
+                isinstance(actual, bool)
+                or not isinstance(actual, (int, float))
+                or not math.isclose(float(actual), expected, rel_tol=1e-12, abs_tol=1e-9)
+            ):
+                _fail(f"writer probe {field} arithmetic mismatch")
+        elif actual != expected:
+            _fail(f"writer probe {field} mismatch")
+    evidence = [probe["canonical_sha256"], cluster_sha]
+    components = {
+        "tokenized_output": {
+            "sample_measured_bytes": train_bytes,
+            "projected_peak_bytes_before_safety": projected_tokenized,
+            "projection_basis": "post_cluster_writer_probe_linear_by_candidate_documents",
+            "evidence_sha256s": evidence,
+        },
+        "temporary_merge_space": {
+            "sample_measured_bytes": temporary_bytes,
+            "projected_peak_bytes_before_safety": projected_temporary,
+            "projection_basis": "post_cluster_writer_probe_measured_bounded_fixed_peak",
+            "evidence_sha256s": evidence,
+        },
+    }
+    return components, projected_cpu
+
+
+def command_seal_data_prep_writer_probe(args: argparse.Namespace) -> None:
+    """Run the production pool writer over the bounded post-cluster sample."""
+
+    if args.output.exists():
+        _fail(f"refusing to overwrite post-cluster writer probe: {args.output}")
+    (
+        recipe,
+        recipe_sha,
+        policy,
+        policy_sha,
+        source_plan,
+        source_plan_sha,
+        _calibration,
+        calibration_sha,
+    ) = _load_data_prep_inputs(
+        recipe_path=args.recipe,
+        policy_path=args.policy,
+        source_plan_path=args.source_plan,
+        calibration_path=args.calibration,
+    )
+    try:
+        import pyarrow.parquet as pq
+
+        from nanochat.turkish_backend import validate_resource_projection
+        from nanochat.turkish_corpus import (
+            FragmentWriter,
+            _production_lid_ok,
+            _production_quality_ok,
+            assign_split,
+            audit_document,
+            canonical_text_hash,
+            dominant_register,
+            select_mixture_bucket,
+            stable_shuffle_key,
+        )
+    except ImportError as exc:
+        raise FamilyWorkflowError("Turkish data writer environment is unavailable") from exc
+
+    backend_report = _load_object(args.backend_resource_report, "backend resource report")
+    try:
+        backend_report_sha = validate_resource_projection(backend_report)
+    except ValueError as exc:
+        raise FamilyWorkflowError(f"invalid backend resource report: {exc}") from exc
+    for field, expected in {
+        "policy_sha256": policy_sha,
+        "source_plan_sha256": source_plan_sha,
+        "calibration_sha256": calibration_sha,
+    }.items():
+        if backend_report.get(field) != expected:
+            _fail(f"backend resource report {field} binding mismatch")
+    report_projection = _mapping(
+        backend_report.get("projection"), "backend resource projection"
+    )
+    if report_projection.get("safety_factor") != 1.0:
+        _fail("writer probe requires a pre-safety backend report")
+    if backend_report.get("automated_gate_passed") is not True:
+        _fail("backend resource report failed its automated storage gate")
+    expected_ranks = list(
+        _sequence(
+            _mapping(backend_report.get("sample_selection"), "sample selection").get(
+                "ranks"
+            ),
+            "backend report sample ranks",
+        )
+    )
+    sample_run_dir = args.sample_run_dir.expanduser().resolve()
+    objects, _buckets, cluster = _load_sample_receipt_inventory(
+        sample_run_dir,
+        object_ranks=expected_ranks,
+        backend_report=backend_report,
+    )
+    sample_documents = sum(int(item["candidate_file"]["rows"]) for item in objects.values())
+    estimated_total_documents = math.ceil(
+        _positive_number(
+            report_projection.get("candidate_documents"),
+            "projected candidate documents",
+        )
+    )
+    if sample_documents <= 0 or estimated_total_documents < sample_documents:
+        _fail("writer probe document horizon is invalid")
+    scratch_root = args.scratch_dir.expanduser().resolve()
+    if not scratch_root.is_dir() or scratch_root.is_symlink():
+        _fail("writer probe scratch directory must exist and not be a symlink")
+    conservative_probe_scratch = (
+        2 * sum(int(item["size_bytes"]) for item in cluster["output_files"])
+        + 1_073_741_824
+    )
+    if shutil.disk_usage(scratch_root).free < conservative_probe_scratch:
+        _fail("writer probe scratch has insufficient bounded free space")
+
+    source_policies = {source["id"]: source for source in policy["sources"]}
+    source_counts: Counter[str] = Counter()
+    mixture_counts: Counter[str] = Counter()
+    accepted = 0
+    observed_candidates = 0
+    start_wall = time.monotonic()
+    start_cpu = time.process_time()
+    with tempfile.TemporaryDirectory(prefix="d32-writer-probe-", dir=scratch_root) as raw:
+        probe_root = Path(raw)
+        writer = FragmentWriter(
+            probe_root,
+            rows_per_fragment=int(policy["materialization"]["rows_per_fragment"]),
+            buckets=int(policy["materialization"]["shuffle_buckets"]),
+            max_buffered_rows=int(policy["materialization"]["max_buffered_rows"]),
+            rows_per_output_file=int(
+                policy["materialization"]["rows_per_output_file"]
+            ),
+        )
+        for file_record in cluster["output_files"]:
+            path = sample_run_dir / str(file_record["path"])
+            parquet = pq.ParquetFile(path)
+            for batch in parquet.iter_batches(batch_size=2048):
+                for record in batch.to_pylist():
+                    observed_candidates += 1
+                    source_id = str(record.get("source_id") or "")
+                    if source_id not in source_policies:
+                        continue
+                    if record.get("dedup_keep") is not True:
+                        continue
+                    if not _production_lid_ok(record, policy) or not _production_quality_ok(
+                        record
+                    ):
+                        continue
+                    source_policy = source_policies[source_id]
+                    adapter = source_policy["adapter"]
+                    source_label = record.get("source_lid_label")
+                    source_probability = record.get("source_lid_probability")
+                    source_lid_ok = source_label in set(
+                        adapter.get("turkish_values", ["tur", "tur_Latn"])
+                    )
+                    if source_probability is not None:
+                        try:
+                            source_lid_ok = source_lid_ok and float(
+                                source_probability
+                            ) >= float(adapter.get("source_lid_min_probability", 0.0))
+                        except (TypeError, ValueError):
+                            source_lid_ok = False
+                    audit = audit_document(
+                        record.get("text"),
+                        url=str(record.get("url") or ""),
+                        source_lid_ok=source_lid_ok,
+                        content_policy=policy["content_policy"],
+                    )
+                    if not audit.accepted:
+                        continue
+                    candidate = select_mixture_bucket(source_id, record, policy)
+                    if candidate is None:
+                        continue
+                    cluster_id = str(record.get("dedup_cluster_id") or "")
+                    if SHA256_RE.fullmatch(cluster_id) is None:
+                        _fail("writer probe encountered an invalid dedup cluster ID")
+                    mixture_id, selector_quality = candidate
+                    document_id = str(
+                        record.get("document_id")
+                        or canonical_text_hash(audit.normalized_text)
+                    )
+                    split = assign_split(cluster_id, policy["splits"])
+                    writer.add(
+                        split,
+                        mixture_id,
+                        {
+                            "text": audit.normalized_text,
+                            "source_id": source_id,
+                            "mixture_id": mixture_id,
+                            "document_id": document_id,
+                            "url": str(record.get("url") or ""),
+                            "cluster_id": cluster_id,
+                            "shuffle_key": stable_shuffle_key(
+                                document_id, policy["splits"]["seed"]
+                            ),
+                            "quality_score": max(
+                                float(record.get("quality_score") or 0.0),
+                                selector_quality,
+                            ),
+                            "register_bucket": dominant_register(record),
+                        },
+                    )
+                    accepted += 1
+                    source_counts[source_id] += 1
+                    mixture_counts[mixture_id] += 1
+        files = writer.close()
+        elapsed_wall = time.monotonic() - start_wall
+        process_cpu = time.process_time() - start_cpu
+        if observed_candidates != sample_documents or accepted <= 0:
+            _fail("writer probe candidate/accepted document accounting mismatch")
+        pool_bytes = sum(int(item["size_bytes"]) for item in files)
+        train_files = [item for item in files if item["split"] == "train"]
+        train_bytes = sum(int(item["size_bytes"]) for item in train_files)
+        if pool_bytes <= 0 or train_bytes <= 0:
+            _fail("writer probe emitted no usable pool/train Parquet bytes")
+        maximum_train_fragment_by_mixture = {
+            mixture_id: max(
+                (
+                    int(item["size_bytes"])
+                    for item in train_files
+                    if item["mixture_id"] == mixture_id
+                ),
+                default=0,
+            )
+            for mixture_id in mixture_counts
+        }
+        eval_bytes = sum(
+            int(item["size_bytes"])
+            for item in files
+            if item["split"] in {"val", "test"}
+        )
+        temporary_peak = (
+            sum(maximum_train_fragment_by_mixture.values())
+            + math.ceil(eval_bytes * 1.5)
+            + 1_073_741_824
+        )
+
+    scale = estimated_total_documents / sample_documents
+    projected_cpu = elapsed_wall * scale * CPU2DQ_BILLABLE_CPUS / 3600.0
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": DATA_PREP_WRITER_PROBE_KIND,
+            "family_id": recipe["family_id"],
+            "recipe_sha256": recipe_sha,
+            "policy_sha256": policy_sha,
+            "source_plan_sha256": source_plan_sha,
+            "calibration_sha256": calibration_sha,
+            "backend_resource_report_sha256": backend_report_sha,
+            "cluster_receipt_sha256": cluster["canonical_sha256"],
+            "sample": {
+                "candidate_documents": sample_documents,
+                "accepted_documents": accepted,
+                "pool_parquet_bytes": pool_bytes,
+                "train_parquet_bytes": train_bytes,
+                "temporary_peak_bytes": temporary_peak,
+                "elapsed_wall_seconds": elapsed_wall,
+                "process_cpu_seconds": process_cpu,
+                "source_output_documents": dict(sorted(source_counts.items())),
+                "mixture_output_documents": dict(sorted(mixture_counts.items())),
+            },
+            "projection": {
+                "target_candidate_documents": estimated_total_documents,
+                "document_scale": scale,
+                "tokenized_output_bytes_before_safety": math.ceil(train_bytes * scale),
+                "tokenized_output_projection_basis": "linear_by_candidate_documents",
+                "temporary_merge_bytes_before_safety": temporary_peak,
+                "temporary_merge_projection_basis": "measured_bounded_fixed_peak",
+                "billable_cpus_per_job": CPU2DQ_BILLABLE_CPUS,
+                "materialization_and_finalization_cpu_saat_before_safety": (
+                    projected_cpu
+                ),
+                "cpu_projection_basis": (
+                    "sample_elapsed_wall_linear_by_candidate_documents_times_128_cpu2dq_cpus"
+                ),
+                "safety_factor_applied": False,
+            },
+            "canonical_sha256": None,
+        }
+    )
+    _validate_writer_probe(
+        receipt,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        policy_sha=policy_sha,
+        source_plan_sha=source_plan_sha,
+        calibration_sha=calibration_sha,
+        backend_report_sha=backend_report_sha,
+        cluster_sha=cluster["canonical_sha256"],
+        sample_documents=sample_documents,
+        estimated_total_documents=estimated_total_documents,
+    )
+    write_json_atomic(args.output, receipt)
+    print(json.dumps(receipt, sort_keys=True))
+
+
+def _validate_sample_lane_plan(
+    lane_plan: Mapping[str, Any],
+    *,
+    policy_sha: str,
+    source_plan_sha: str,
+    calibration_sha: str,
+    expected_ranks: Sequence[int],
+) -> tuple[dict[int, list[int]], int, int]:
+    """Validate the packed sample allocation-to-object-rank ownership map."""
+
+    verify_manifest_hash(lane_plan)
+    lane_count = _positive_int(lane_plan.get("lane_count"), "sample lane count")
+    cpus_per_lane = _positive_int(
+        lane_plan.get("cpus_per_lane"), "sample CPUs per lane"
+    )
+    if (
+        lane_plan.get("schema_version") != "1.0"
+        or lane_plan.get("kind") != "turkish_packed_resource_sample_lane_plan"
+        or lane_plan.get("sample_mode") is not True
+        or lane_plan.get("assignment_algorithm") != "sorted_rank_round_robin_v1"
+        or lane_count != 32
+        or cpus_per_lane != 4
+        or lane_count * cpus_per_lane != CPU2DQ_BILLABLE_CPUS
+    ):
+        _fail("unexpected packed resource-sample lane plan")
+    bindings = {
+        "policy_sha256": policy_sha,
+        "source_plan_sha256": source_plan_sha,
+        "calibration_sha256": calibration_sha,
+    }
+    for field, expected in bindings.items():
+        if lane_plan.get(field) != expected:
+            _fail(f"sample lane-plan {field} binding mismatch")
+    raw_lanes = _sequence(lane_plan.get("lanes"), "sample lane-plan lanes")
+    if len(raw_lanes) != lane_count:
+        _fail("sample lane-plan lane inventory does not match its geometry")
+    lanes: dict[int, list[int]] = {}
+    seen: list[int] = []
+    for expected_lane_id, raw in enumerate(raw_lanes):
+        lane = _mapping(raw, f"sample lane {expected_lane_id}")
+        lane_id = lane.get("lane_id")
+        ranks_value = lane.get("object_ranks", lane.get("ranks"))
+        if lane_id != expected_lane_id:
+            _fail("sample lane IDs must be contiguous")
+        ranks = list(_sequence(ranks_value, f"sample lane {lane_id} ranks"))
+        if ranks != sorted(ranks) or any(
+            isinstance(rank, bool) or not isinstance(rank, int) or rank < 0
+            for rank in ranks
+        ):
+            _fail("sample lane ranks are invalid or unsorted")
+        lanes[int(lane_id)] = ranks
+        seen.extend(ranks)
+    if sorted(seen) != sorted(expected_ranks) or len(seen) != len(set(seen)):
+        _fail("sample lane plan must cover every sampled source rank exactly once")
+    rank_binding = _mapping(
+        lane_plan.get("resource_sample_ranks"), "sample lane-plan rank binding"
+    )
+    _sha256(rank_binding.get("file_sha256"), "resource sample-ranks file SHA-256")
+    declared_ranks = _sequence(
+        rank_binding.get("ranks"), "sample lane-plan declared ranks"
+    )
+    if list(declared_ranks) != sorted(expected_ranks):
+        _fail("sample lane-plan declared rank inventory mismatch")
+    return lanes, lane_count, cpus_per_lane
+
+
+def _validate_packed_sample_launch_receipt(
+    receipt: Mapping[str, Any],
+    *,
+    job_id: str,
+    lane_plan_sha: str,
+    policy_sha: str,
+    source_plan_sha: str,
+    calibration_sha: str,
+    objects: Mapping[int, Mapping[str, Any]],
+    lane_count: int,
+    cpus_per_lane: int,
+) -> str:
+    digest = verify_manifest_hash(receipt)
+    if (
+        receipt.get("schema_version") != "1.0"
+        or receipt.get("kind") != "turkish_packed_resource_sample_launch_receipt"
+        or receipt.get("sample_mode") is not True
+        or receipt.get("all_lanes_completed") is not True
+    ):
+        _fail("unexpected packed object-sample launch receipt")
+    bindings = {
+        "lane_plan_sha256": lane_plan_sha,
+        "policy_sha256": policy_sha,
+        "source_plan_sha256": source_plan_sha,
+        "calibration_sha256": calibration_sha,
+    }
+    for field, expected in bindings.items():
+        if receipt.get(field) != expected:
+            _fail(f"packed object-sample launch {field} binding mismatch")
+    allocation = _mapping(receipt.get("allocation"), "packed sample allocation")
+    if allocation != {
+        "slurm_job_id": job_id,
+        "slurm_step_id": allocation.get("slurm_step_id"),
+        "slurm_node": allocation.get("slurm_node"),
+        "nodes": 1,
+        "tasks": lane_count,
+        "cpus_per_task": cpus_per_lane,
+        "allocated_cpus": 128,
+    }:
+        _fail("packed object-sample launch allocation geometry mismatch")
+    if (
+        not isinstance(allocation.get("slurm_step_id"), str)
+        or not allocation["slurm_step_id"]
+        or not isinstance(allocation.get("slurm_node"), str)
+        or not allocation["slurm_node"]
+    ):
+        _fail("packed object-sample launch lacks Slurm step/node identity")
+    lane_records = _sequence(receipt.get("lane_receipts"), "packed lane receipts")
+    if len(lane_records) != lane_count:
+        _fail("packed object-sample launch lane inventory drifted")
+    for lane_id, raw in enumerate(lane_records):
+        record = _mapping(raw, f"packed lane record {lane_id}")
+        if record.get("lane_id") != lane_id:
+            _fail("packed object-sample lane receipt order drifted")
+        _sha256(record.get("canonical_sha256"), "packed lane receipt SHA-256")
+    object_records = _sequence(
+        receipt.get("object_receipts"), "packed launch object receipts"
+    )
+    if [record.get("rank") for record in object_records if isinstance(record, Mapping)] != sorted(
+        objects
+    ):
+        _fail("packed launch object-rank inventory mismatch")
+    for raw in object_records:
+        record = _mapping(raw, "packed launch object record")
+        rank = int(record["rank"])
+        if record.get("canonical_sha256") != objects[rank]["canonical_sha256"]:
+            _fail(f"packed launch object receipt {rank} hash mismatch")
+    return digest
+
+
+def _validate_packed_bucket_launch_receipt(
+    receipt: Mapping[str, Any],
+    *,
+    job_id: str,
+    object_launch_sha: str,
+    policy_sha: str,
+    source_plan_sha: str,
+    calibration_sha: str,
+    buckets: Mapping[int, Mapping[str, Any]],
+) -> str:
+    digest = verify_manifest_hash(receipt)
+    if (
+        receipt.get("schema_version") != "1.0"
+        or receipt.get("kind") != "turkish_packed_sample_bucket_launch_receipt"
+        or receipt.get("sample_mode") is not True
+        or receipt.get("all_buckets_completed") is not True
+    ):
+        _fail("unexpected packed bucket-sample launch receipt")
+    bindings = {
+        "policy_sha256": policy_sha,
+        "source_plan_sha256": source_plan_sha,
+        "calibration_sha256": calibration_sha,
+        "object_sample_launch_receipt_sha256": object_launch_sha,
+    }
+    for field, expected in bindings.items():
+        if receipt.get(field) != expected:
+            _fail(f"packed bucket-sample launch {field} binding mismatch")
+    if receipt.get("assignment") != {
+        "algorithm": "slurm_procid_equals_minhash_bucket_rank_v1",
+        "bucket_ranks": list(range(14)),
+        "world_size": 14,
+    }:
+        _fail("packed bucket-sample assignment drifted")
+    allocation = _mapping(receipt.get("allocation"), "packed bucket allocation")
+    if allocation != {
+        "slurm_job_id": job_id,
+        "slurm_step_id": allocation.get("slurm_step_id"),
+        "slurm_node": allocation.get("slurm_node"),
+        "nodes": 1,
+        "tasks": 14,
+        "cpus_per_task": 8,
+        "allocated_cpus": 112,
+    }:
+        _fail("packed bucket-sample launch allocation geometry mismatch")
+    if (
+        not isinstance(allocation.get("slurm_step_id"), str)
+        or not allocation["slurm_step_id"]
+        or not isinstance(allocation.get("slurm_node"), str)
+        or not allocation["slurm_node"]
+    ):
+        _fail("packed bucket-sample launch lacks Slurm step/node identity")
+    task_records = _sequence(receipt.get("task_receipts"), "packed bucket tasks")
+    backend_records = _sequence(
+        receipt.get("backend_bucket_receipts"), "packed backend bucket receipts"
+    )
+    if len(task_records) != 14 or len(backend_records) != 14:
+        _fail("packed bucket launch must bind fourteen task/backend receipts")
+    for rank in range(14):
+        task = _mapping(task_records[rank], f"packed bucket task record {rank}")
+        backend = _mapping(
+            backend_records[rank], f"packed backend bucket record {rank}"
+        )
+        if task.get("bucket_rank") != rank or backend.get("bucket_rank") != rank:
+            _fail("packed bucket receipt order drifted")
+        _sha256(task.get("canonical_sha256"), "packed bucket task SHA-256")
+        if backend.get("canonical_sha256") != buckets[rank]["canonical_sha256"]:
+            _fail(f"packed backend bucket receipt {rank} hash mismatch")
+    return digest
+
+
+def _validate_data_prep_storage_sample(
+    measurement: Mapping[str, Any],
+    *,
+    recipe: Mapping[str, Any] | None = None,
+    recipe_sha: str | None = None,
+) -> str:
+    digest = verify_manifest_hash(measurement)
+    if (
+        measurement.get("schema_version") != "2.0"
+        or measurement.get("kind") != DATA_PREP_STORAGE_SAMPLE_KIND
+    ):
+        _fail("data-preparation storage sample has the wrong kind/version")
+    if recipe is not None:
+        if measurement.get("family_id") != recipe["family_id"]:
+            _fail("data-preparation sample family binding mismatch")
+        if measurement.get("recipe_sha256") != recipe_sha:
+            _fail("data-preparation sample recipe binding mismatch")
+    for field in (
+        "recipe_sha256",
+        "policy_sha256",
+        "source_plan_sha256",
+        "calibration_sha256",
+        "backend_resource_report_sha256",
+        "resource_approval_sha256",
+        "mixture_quality_approval_sha256",
+        "sample_quality_audit_sha256",
+        "sample_lane_plan_sha256",
+        "production_pack_plan_sha256",
+        "writer_probe_sha256",
+        "macocu_preparation_manifest_sha256",
+    ):
+        _sha256(measurement.get(field), f"data-preparation sample {field}")
+    sample_documents = _positive_int(
+        measurement.get("sample_documents"), "sample_documents"
+    )
+    total_documents = _positive_int(
+        measurement.get("estimated_total_documents"), "estimated_total_documents"
+    )
+    if total_documents < sample_documents:
+        _fail("estimated total documents cannot be smaller than the sample")
+
+    components = _mapping(measurement.get("components"), "sample components")
+    if set(components) != set(DATA_PREP_STORAGE_COMPONENTS):
+        _fail("data-preparation sample storage component set mismatch")
+    for name in DATA_PREP_STORAGE_COMPONENTS:
+        record = _mapping(components[name], f"sample component {name}")
+        _require_exact_keys(
+            record,
+            {
+                "sample_measured_bytes",
+                "projected_peak_bytes_before_safety",
+                "projection_basis",
+                "evidence_sha256s",
+            },
+            f"sample component {name}",
+        )
+        _nonnegative_int(record.get("sample_measured_bytes"), f"{name}.sample bytes")
+        _nonnegative_int(
+            record.get("projected_peak_bytes_before_safety"),
+            f"{name}.projected bytes",
+        )
+        if not isinstance(record.get("projection_basis"), str) or not record[
+            "projection_basis"
+        ]:
+            _fail(f"{name}.projection_basis must be non-empty")
+        evidence = _sequence(record.get("evidence_sha256s"), f"{name} evidence")
+        if not evidence or len(evidence) != len(set(evidence)):
+            _fail(f"{name} evidence SHA-256 inventory is empty or duplicated")
+        for value in evidence:
+            _sha256(value, f"{name} evidence SHA-256")
+
+    allocations = _sequence(
+        measurement.get("sample_allocations"), "sample allocation ledger"
+    )
+    if not allocations:
+        _fail("sample allocation ledger is empty")
+    job_ids: set[str] = set()
+    raw_ids: set[str] = set()
+    total_billed = 0.0
+    total_cpu_time = 0
+    expected_allocation_keys = {
+        "job_id",
+        "job_id_raw",
+        "stage",
+        "state",
+        "partition",
+        "elapsed_raw_seconds",
+        "alloc_cpus",
+        "cpu_time_raw_seconds",
+        "billed_cpu_saat",
+        "evidence_receipt_sha256s",
+        "sacct_output_sha256",
+    }
+    for index, raw in enumerate(allocations):
+        allocation = _mapping(raw, f"sample allocation {index}")
+        _require_exact_keys(
+            allocation, expected_allocation_keys, f"sample allocation {index}"
+        )
+        job_id = allocation.get("job_id")
+        job_id_raw = allocation.get("job_id_raw")
+        if (
+            not isinstance(job_id, str)
+            or SLURM_ALLOCATION_ID_RE.fullmatch(job_id) is None
+            or not isinstance(job_id_raw, str)
+            or SLURM_ALLOCATION_ID_RE.fullmatch(job_id_raw) is None
+        ):
+            _fail("sample allocation contains an invalid Slurm identity")
+        if job_id in job_ids or job_id_raw in raw_ids:
+            _fail("sample allocation ledger contains a duplicate allocation ID")
+        job_ids.add(job_id)
+        raw_ids.add(job_id_raw)
+        _safe_id(allocation.get("stage"), "sample allocation stage")
+        if allocation.get("state") != "COMPLETED" or allocation.get("partition") != "cpu2dq":
+            _fail("sample allocation must be a completed cpu2dq allocation")
+        elapsed = _positive_int(
+            allocation.get("elapsed_raw_seconds"), "allocation elapsed seconds"
+        )
+        if allocation.get("alloc_cpus") != CPU2DQ_BILLABLE_CPUS:
+            _fail("sample allocation does not bind 128 billed CPUs")
+        cpu_time = _positive_int(
+            allocation.get("cpu_time_raw_seconds"), "allocation CPUTimeRAW"
+        )
+        if cpu_time != elapsed * CPU2DQ_BILLABLE_CPUS:
+            _fail("sample allocation CPUTimeRAW arithmetic mismatch")
+        billed = _positive_number(
+            allocation.get("billed_cpu_saat"), "sample allocation billed CPU-saat"
+        )
+        if not math.isclose(billed, cpu_time / 3600.0, rel_tol=1e-12, abs_tol=1e-9):
+            _fail("sample allocation billed CPU-saat arithmetic mismatch")
+        evidence = _sequence(
+            allocation.get("evidence_receipt_sha256s"), "allocation evidence"
+        )
+        if not evidence or len(evidence) != len(set(evidence)):
+            _fail("sample allocation evidence is empty or duplicated")
+        for value in evidence:
+            _sha256(value, "sample allocation evidence SHA-256")
+        _sha256(allocation.get("sacct_output_sha256"), "sacct output SHA-256")
+        total_billed += billed
+        total_cpu_time += cpu_time
+    totals = _mapping(
+        measurement.get("sample_allocation_totals"), "sample allocation totals"
+    )
+    expected_totals = {
+        "unique_allocations": len(allocations),
+        "cpu_time_raw_seconds": total_cpu_time,
+        "billed_cpu_saat": total_billed,
+        "accounting_role": "already_consumed_measurement_evidence_not_future_quota",
+    }
+    if set(totals) != set(expected_totals):
+        _fail("sample allocation total keys drifted")
+    for field, expected in expected_totals.items():
+        actual = totals.get(field)
+        if isinstance(expected, float):
+            if not math.isclose(float(actual), expected, rel_tol=1e-12, abs_tol=1e-9):
+                _fail("sample allocation billed total arithmetic mismatch")
+        elif actual != expected:
+            _fail(f"sample allocation total {field} mismatch")
+
+    historical = _sequence(
+        measurement.get("historical_one_time_preparations"),
+        "historical one-time preparations",
+    )
+    if len(historical) != 1:
+        _fail("exactly one historical MaCoCu preparation is required")
+    macocu = _mapping(historical[0], "historical MaCoCu preparation")
+    _require_exact_keys(
+        macocu,
+        {
+            "preparation_id",
+            "manifest_sha256",
+            "allocation",
+            "accounting_status",
+            "future_projected_cpu_saat",
+        },
+        "historical MaCoCu preparation",
+    )
+    if (
+        macocu.get("preparation_id") != "macocu_genre_tr_v1"
+        or macocu.get("manifest_sha256")
+        != measurement.get("macocu_preparation_manifest_sha256")
+        or macocu.get("accounting_status")
+        != "already_consumed_excluded_from_future_projection"
+        or macocu.get("future_projected_cpu_saat") != 0
+    ):
+        _fail("historical MaCoCu accounting contract drifted")
+    historical_allocation = _mapping(macocu.get("allocation"), "MaCoCu allocation")
+    _require_exact_keys(
+        historical_allocation,
+        expected_allocation_keys,
+        "historical MaCoCu allocation",
+    )
+    if historical_allocation.get("job_id_raw") in raw_ids:
+        _fail("historical preparation allocation duplicates the sample ledger")
+    if (
+        not isinstance(historical_allocation.get("job_id"), str)
+        or SLURM_ALLOCATION_ID_RE.fullmatch(historical_allocation["job_id"])
+        is None
+        or not isinstance(historical_allocation.get("job_id_raw"), str)
+        or SLURM_ALLOCATION_ID_RE.fullmatch(historical_allocation["job_id_raw"])
+        is None
+        or historical_allocation.get("stage") != "macocu_genre_preparation"
+    ):
+        _fail("historical MaCoCu allocation identity drifted")
+    # Reuse the exact allocation arithmetic validator by checking its essential fields.
+    hist_elapsed = _positive_int(
+        historical_allocation.get("elapsed_raw_seconds"), "MaCoCu elapsed seconds"
+    )
+    hist_cpu_time = _positive_int(
+        historical_allocation.get("cpu_time_raw_seconds"), "MaCoCu CPUTimeRAW"
+    )
+    if (
+        historical_allocation.get("state") != "COMPLETED"
+        or historical_allocation.get("partition") != "cpu2dq"
+        or historical_allocation.get("alloc_cpus") != CPU2DQ_BILLABLE_CPUS
+        or hist_cpu_time != hist_elapsed * CPU2DQ_BILLABLE_CPUS
+        or not math.isclose(
+            float(historical_allocation.get("billed_cpu_saat", -1)),
+            hist_cpu_time / 3600.0,
+            rel_tol=1e-12,
+            abs_tol=1e-9,
+        )
+    ):
+        _fail("historical MaCoCu allocation accounting drifted")
+    evidence = _sequence(
+        historical_allocation.get("evidence_receipt_sha256s"),
+        "historical MaCoCu evidence",
+    )
+    if evidence != [measurement.get("macocu_preparation_manifest_sha256")]:
+        _fail("historical MaCoCu allocation must bind only its manifest")
+    _sha256(historical_allocation.get("sacct_output_sha256"), "MaCoCu sacct SHA-256")
+
+    future = _mapping(
+        measurement.get("future_resource_projection"), "future resource projection"
+    )
+    _require_exact_keys(
+        future,
+        {
+            "components",
+            "allocation_details",
+            "projected_cpu_saat_before_safety",
+            "safety_factor_applied",
+            "excluded_historical_and_sample_allocations",
+        },
+        "future resource projection",
+    )
+    future_components = _mapping(
+        future.get("components"), "future resource projection components"
+    )
+    if set(future_components) != set(DATA_PREP_FUTURE_CPU_COMPONENTS):
+        _fail("future resource projection component set mismatch")
+    allocation_details = _mapping(
+        future.get("allocation_details"), "future allocation details"
+    )
+    if set(allocation_details) != set(DATA_PREP_FUTURE_CPU_COMPONENTS):
+        _fail("future allocation-detail component set mismatch")
+    for name in DATA_PREP_FUTURE_CPU_COMPONENTS:
+        if not _mapping(allocation_details[name], f"future allocation details {name}"):
+            _fail("future allocation details must not be empty")
+    for name, ceiling in DATA_PREP_FIXED_CPU2DQ_CEILINGS.items():
+        expected_details = {
+            "allocation_contract": "one_exclusive_128cpu_cpu2dq_node",
+            "maximum_wall_hours": ceiling / CPU2DQ_BILLABLE_CPUS,
+            "projected_cpu_saat_before_safety": float(ceiling),
+            "submission_must_not_exceed_ceiling": True,
+        }
+        if allocation_details.get(name) != expected_details:
+            _fail(f"future {name} allocation ceiling drifted")
+    projected_cpu = 0.0
+    for name in DATA_PREP_FUTURE_CPU_COMPONENTS:
+        record = _mapping(future_components[name], f"future CPU component {name}")
+        _require_exact_keys(
+            record,
+            {
+                "projected_cpu_saat_before_safety",
+                "projection_basis",
+                "evidence_sha256s",
+            },
+            f"future CPU component {name}",
+        )
+        component_cpu = _positive_number(
+            record.get("projected_cpu_saat_before_safety"),
+            f"future CPU component {name}",
+        )
+        projected_cpu += component_cpu
+        if name in DATA_PREP_FIXED_CPU2DQ_CEILINGS and not math.isclose(
+            component_cpu,
+            float(DATA_PREP_FIXED_CPU2DQ_CEILINGS[name]),
+            rel_tol=0.0,
+            abs_tol=1e-9,
+        ):
+            _fail(f"future {name} CPU ceiling drifted")
+        if not isinstance(record.get("projection_basis"), str) or not record[
+            "projection_basis"
+        ]:
+            _fail("future CPU projection basis is empty")
+        component_evidence = _sequence(
+            record.get("evidence_sha256s"), f"future CPU {name} evidence"
+        )
+        if not component_evidence or len(component_evidence) != len(
+            set(component_evidence)
+        ):
+            _fail("future CPU evidence is empty or duplicated")
+        for value in component_evidence:
+            _sha256(value, f"future CPU {name} evidence SHA-256")
+    if not math.isclose(
+        float(future.get("projected_cpu_saat_before_safety", -1)),
+        projected_cpu,
+        rel_tol=1e-12,
+        abs_tol=1e-9,
+    ):
+        _fail("future projected CPU-saat arithmetic mismatch")
+    if (
+        future.get("safety_factor_applied") is not False
+        or future.get("excluded_historical_and_sample_allocations") is not True
+    ):
+        _fail("future resource projection must exclude history and be pre-safety")
+    return digest
+
+
+def command_seal_data_prep_storage_sample(args: argparse.Namespace) -> None:
+    if args.output.exists():
+        _fail(f"refusing to overwrite data-preparation storage sample: {args.output}")
+    (
+        recipe,
+        recipe_sha,
+        policy,
+        policy_sha,
+        source_plan,
+        source_plan_sha,
+        calibration,
+        calibration_sha,
+    ) = _load_data_prep_inputs(
+        recipe_path=args.recipe,
+        policy_path=args.policy,
+        source_plan_path=args.source_plan,
+        calibration_path=args.calibration,
+    )
+    try:
+        from nanochat.turkish_backend import (
+            select_resource_sample_ranks,
+            validate_macocu_preparation_manifest,
+            validate_mixture_quality_approval,
+            validate_resource_approval,
+            validate_resource_projection,
+        )
+        from scripts.turkish_packed_sample import (
+            _validate_bucket_task_receipt,
+            _validate_lane_receipt,
+            validate_lane_plan,
+        )
+    except ImportError as exc:
+        raise FamilyWorkflowError("Turkish data environment is unavailable") from exc
+
+    backend_report = _load_object(args.backend_resource_report, "backend resource report")
+    try:
+        backend_report_sha = validate_resource_projection(backend_report)
+    except ValueError as exc:
+        raise FamilyWorkflowError(f"invalid backend resource report: {exc}") from exc
+    expected_report_bindings = {
+        "policy_sha256": policy_sha,
+        "source_plan_sha256": source_plan_sha,
+        "calibration_sha256": calibration_sha,
+    }
+    for field, expected in expected_report_bindings.items():
+        if backend_report.get(field) != expected:
+            _fail(f"backend resource report {field} binding mismatch")
+    report_projection = _mapping(
+        backend_report.get("projection"), "backend resource projection"
+    )
+    if report_projection.get("safety_factor") != 1.0:
+        _fail("backend resource report must be pre-safety; use --safety-factor=1")
+    if backend_report.get("automated_gate_passed") is not True:
+        _fail("backend resource report failed its automated storage gate")
+
+    mixture_quality_approval, mixture_quality_approval_sha = _verify_sealed(
+        args.mixture_quality_approval, "mixture-quality approval"
+    )
+    try:
+        validate_mixture_quality_approval(
+            mixture_quality_approval,
+            policy_sha256=policy_sha,
+            source_plan_sha256=source_plan_sha,
+            calibration_sha256=calibration_sha,
+        )
+    except ValueError as exc:
+        raise FamilyWorkflowError(f"invalid mixture-quality approval: {exc}") from exc
+    resource_approval, resource_approval_sha = _verify_sealed(
+        args.resource_approval, "backend resource approval"
+    )
+    try:
+        validate_resource_approval(
+            resource_approval,
+            plan=source_plan,
+            policy=policy,
+            calibration=calibration,
+        )
+    except ValueError as exc:
+        raise FamilyWorkflowError(f"invalid backend resource approval: {exc}") from exc
+    if (
+        resource_approval.get("resource_report_sha256") != backend_report_sha
+        or resource_approval.get("mixture_quality_approval_sha256")
+        != mixture_quality_approval_sha
+    ):
+        _fail("resource approval does not bind the supplied report/quality approval")
+
+    macocu, macocu_sha = _verify_sealed(
+        args.macocu_manifest, "MaCoCu preparation manifest"
+    )
+    try:
+        validate_macocu_preparation_manifest(
+            macocu, policy, args.macocu_manifest.parent, verify_files=False
+        )
+    except ValueError as exc:
+        raise FamilyWorkflowError(f"invalid MaCoCu preparation manifest: {exc}") from exc
+    derived = _mapping(source_plan.get("derived_sources"), "source-plan derived sources")
+    macocu_binding = _mapping(
+        derived.get("macocu_genre_tr"), "source-plan MaCoCu binding"
+    )
+    if macocu_binding.get("manifest_sha256") != macocu_sha:
+        _fail("source plan is not bound to the supplied MaCoCu preparation")
+
+    sample_selection = _mapping(
+        backend_report.get("sample_selection"), "sample selection"
+    )
+    expected_object_ranks = list(
+        _sequence(sample_selection.get("ranks"), "backend report sample ranks")
+    )
+    selected_by_current_code = select_resource_sample_ranks(source_plan)
+    expected_hplt_objects = [
+        {
+            "rank": item["rank"],
+            "wds_bin": item["wds_bin"],
+            "size_bytes": item["size_bytes"],
+            "uri": item["uri"],
+        }
+        for item in source_plan["objects"]
+        if item["source_id"] == "hplt3_tr"
+        and item["rank"] in selected_by_current_code
+    ]
+    if (
+        expected_object_ranks != selected_by_current_code
+        or sample_selection.get("covers_every_source") is not True
+        or sample_selection.get("size_based_selection") is not True
+        or sample_selection.get("hplt_selected_objects") != expected_hplt_objects
+    ):
+        _fail("backend resource report sample selection drifted from current code")
+    lane_plan, lane_plan_sha = _verify_sealed(
+        args.sample_lane_plan, "packed resource-sample lane plan"
+    )
+    try:
+        validate_lane_plan(
+            lane_plan,
+            policy=policy,
+            source_plan=source_plan,
+            calibration=calibration,
+            sample_ranks_path=args.sample_ranks,
+        )
+    except ValueError as exc:
+        raise FamilyWorkflowError(f"invalid packed resource-sample lane plan: {exc}") from exc
+    sample_lanes, sample_lane_count, sample_cpus_per_lane = _validate_sample_lane_plan(
+        lane_plan,
+        policy_sha=policy_sha,
+        source_plan_sha=source_plan_sha,
+        calibration_sha=calibration_sha,
+        expected_ranks=expected_object_ranks,
+    )
+    sample_run_dir = args.sample_run_dir.expanduser().resolve()
+    if not sample_run_dir.is_dir() or sample_run_dir.is_symlink():
+        _fail("sample run directory must exist and not be a symlink")
+    objects, buckets, cluster = _load_sample_receipt_inventory(
+        sample_run_dir,
+        object_ranks=expected_object_ranks,
+        backend_report=backend_report,
+    )
+    object_hashes = [
+        objects[rank]["canonical_sha256"] for rank in expected_object_ranks
+    ]
+    bucket_hashes = [buckets[rank]["canonical_sha256"] for rank in range(14)]
+    packed_launch, _packed_launch_sha = _verify_sealed(
+        args.sample_object_launch_receipt, "packed object-sample launch receipt"
+    )
+    packed_launch_sha = _validate_packed_sample_launch_receipt(
+        packed_launch,
+        job_id=args.sample_object_job_id,
+        lane_plan_sha=lane_plan_sha,
+        policy_sha=policy_sha,
+        source_plan_sha=source_plan_sha,
+        calibration_sha=calibration_sha,
+        objects=objects,
+        lane_count=sample_lane_count,
+        cpus_per_lane=sample_cpus_per_lane,
+    )
+    for lane_id, record in enumerate(packed_launch["lane_receipts"]):
+        lane_receipt_path = args.sample_object_launch_receipt.parent / record["path"]
+        lane_receipt = _load_object(
+            lane_receipt_path, f"packed object-sample lane receipt {lane_id}"
+        )
+        try:
+            lane_receipt_sha = _validate_lane_receipt(
+                lane_receipt,
+                lane_id=lane_id,
+                lane_plan=lane_plan,
+                source_plan=source_plan,
+                calibration=calibration,
+                run_root=sample_run_dir,
+                job_id=args.sample_object_job_id,
+            )
+        except ValueError as exc:
+            raise FamilyWorkflowError(
+                f"invalid packed object-sample lane receipt {lane_id}: {exc}"
+            ) from exc
+        if lane_receipt_sha != record["canonical_sha256"]:
+            _fail(f"packed object-sample lane receipt {lane_id} hash mismatch")
+    packed_bucket_launch, _packed_bucket_launch_sha = _verify_sealed(
+        args.sample_bucket_launch_receipt, "packed bucket-sample launch receipt"
+    )
+    packed_bucket_launch_sha = _validate_packed_bucket_launch_receipt(
+        packed_bucket_launch,
+        job_id=args.sample_bucket_job_id,
+        object_launch_sha=packed_launch_sha,
+        policy_sha=policy_sha,
+        source_plan_sha=source_plan_sha,
+        calibration_sha=calibration_sha,
+        buckets=buckets,
+    )
+    for rank, record in enumerate(packed_bucket_launch["task_receipts"]):
+        task_receipt_path = args.sample_bucket_launch_receipt.parent / record["path"]
+        task_receipt = _load_object(
+            task_receipt_path, f"packed bucket-sample task receipt {rank}"
+        )
+        try:
+            task_sha, backend_sha = _validate_bucket_task_receipt(
+                task_receipt,
+                rank=rank,
+                source_plan=source_plan,
+                calibration=calibration,
+                object_launch_sha256=packed_launch_sha,
+                object_receipt_hashes=object_hashes,
+                run_root=sample_run_dir,
+                job_id=args.sample_bucket_job_id,
+            )
+        except ValueError as exc:
+            raise FamilyWorkflowError(
+                f"invalid packed bucket-sample task receipt {rank}: {exc}"
+            ) from exc
+        if (
+            task_sha != record["canonical_sha256"]
+            or backend_sha != buckets[rank]["canonical_sha256"]
+        ):
+            _fail(f"packed bucket-sample task {rank} receipt hash mismatch")
+    sample_documents = sum(
+        _positive_int(
+            _mapping(receipt.get("candidate_file"), "candidate file").get("rows"),
+            "sample candidate rows",
+        )
+        for receipt in objects.values()
+    )
+    projected_documents_float = _positive_number(
+        report_projection.get("candidate_documents"), "projected candidate documents"
+    )
+    estimated_total_documents = math.ceil(projected_documents_float)
+    if estimated_total_documents < sample_documents:
+        _fail("backend report projects fewer documents than its sample")
+
+    pack_plan, pack_plan_sha = _verify_sealed(
+        args.production_pack_plan, "production source pack plan"
+    )
+    source_download_peak = _validate_production_pack_plan(
+        pack_plan,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        policy_sha=policy_sha,
+        source_plan=source_plan,
+        source_plan_sha=source_plan_sha,
+    )
+    writer_probe, writer_probe_sha = _verify_sealed(
+        args.writer_probe, "post-cluster writer probe"
+    )
+    writer_components, writer_projected_cpu = _validate_writer_probe(
+        writer_probe,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        policy_sha=policy_sha,
+        source_plan_sha=source_plan_sha,
+        calibration_sha=calibration_sha,
+        backend_report_sha=backend_report_sha,
+        cluster_sha=cluster["canonical_sha256"],
+        sample_documents=sample_documents,
+        estimated_total_documents=estimated_total_documents,
+    )
+
+    sample_source_peak = sum(
+        max(
+            _positive_int(
+                _mapping(objects[rank].get("raw_object"), "raw object").get(
+                    "size_bytes"
+                ),
+                "sample raw object bytes",
+            )
+            for rank in ranks
+        )
+        for ranks in sample_lanes.values()
+        if ranks
+    )
+    components: dict[str, dict[str, Any]] = {
+        "source_downloads": {
+            "sample_measured_bytes": sample_source_peak,
+            "projected_peak_bytes_before_safety": source_download_peak,
+            "projection_basis": "explicit_serial_per_lane_production_pack_plan",
+            "evidence_sha256s": [lane_plan_sha, pack_plan_sha, *object_hashes],
+        },
+        "filtered_text": {
+            "sample_measured_bytes": sum(
+                int(receipt["candidate_file"]["size_bytes"])
+                for receipt in objects.values()
+            ),
+            "projected_peak_bytes_before_safety": math.ceil(
+                _nonnegative_number(
+                    report_projection.get("candidate_bytes"),
+                    "projected candidate bytes",
+                )
+            ),
+            "projection_basis": "backend_report_source_stratified_candidate_projection",
+            "evidence_sha256s": [backend_report_sha, *object_hashes],
+        },
+        "minhash_signatures": {
+            "sample_measured_bytes": sum(
+                int(item["size_bytes"])
+                for receipt in objects.values()
+                for item in receipt["signature_files"]
+            ),
+            "projected_peak_bytes_before_safety": math.ceil(
+                _nonnegative_number(
+                    report_projection.get("signature_bytes"),
+                    "projected signature bytes",
+                )
+            ),
+            "projection_basis": "backend_report_projected_candidates_times_signature_layout",
+            "evidence_sha256s": [backend_report_sha, *object_hashes],
+        },
+        "minhash_buckets": {
+            "sample_measured_bytes": sum(
+                int(receipt["output"]["size_bytes"]) for receipt in buckets.values()
+            ),
+            "projected_peak_bytes_before_safety": math.ceil(
+                _nonnegative_number(
+                    report_projection.get("duplicate_edge_bytes"),
+                    "projected duplicate-edge bytes",
+                )
+            ),
+            "projection_basis": "backend_report_sample_edge_density_projection",
+            "evidence_sha256s": [backend_report_sha, *bucket_hashes],
+        },
+        "cluster_assignments": {
+            "sample_measured_bytes": sum(
+                int(item["size_bytes"]) for item in cluster["output_files"]
+            ),
+            "projected_peak_bytes_before_safety": math.ceil(
+                _nonnegative_number(
+                    report_projection.get("backend_output_bytes"),
+                    "projected backend output bytes",
+                )
+            ),
+            "projection_basis": "backend_report_sample_cluster_output_projection",
+            "evidence_sha256s": [backend_report_sha, cluster["canonical_sha256"]],
+        },
+        **writer_components,
+    }
+
+    allocations = [
+        _live_completed_cpu2dq_allocation(
+            REPO_ROOT,
+            job_id=args.bootstrap_job_id,
+            stage="bootstrap",
+            evidence_receipt_sha256s=[source_plan_sha, calibration_sha, lane_plan_sha],
+        )
+    ]
+    allocations.append(
+        _live_completed_cpu2dq_allocation(
+            REPO_ROOT,
+            job_id=args.sample_object_job_id,
+            stage="packed_object_sample",
+            evidence_receipt_sha256s=[packed_launch_sha, *object_hashes],
+        )
+    )
+    allocations.append(
+        _live_completed_cpu2dq_allocation(
+            REPO_ROOT,
+            job_id=args.sample_bucket_job_id,
+            stage="packed_minhash_bucket_sample",
+            evidence_receipt_sha256s=[packed_bucket_launch_sha, *bucket_hashes],
+        )
+    )
+    allocations.extend(
+        [
+            _live_completed_cpu2dq_allocation(
+                REPO_ROOT,
+                job_id=args.sample_cluster_job_id,
+                stage="priority_cluster_quality_format",
+                evidence_receipt_sha256s=[cluster["canonical_sha256"]],
+            ),
+            _live_completed_cpu2dq_allocation(
+                REPO_ROOT,
+                job_id=args.sample_quality_audit_job_id,
+                stage="bounded_sample_quality_audit",
+                evidence_receipt_sha256s=[
+                    mixture_quality_approval["sample_quality_audit_sha256"]
+                ],
+            ),
+            _live_completed_cpu2dq_allocation(
+                REPO_ROOT,
+                job_id=args.writer_probe_job_id,
+                stage="post_cluster_writer_probe",
+                evidence_receipt_sha256s=[writer_probe_sha],
+            ),
+        ]
+    )
+    if len({item["job_id_raw"] for item in allocations}) != len(allocations):
+        _fail("sample allocation ledger contains a duplicate Slurm allocation")
+    macocu_allocation = _live_completed_cpu2dq_allocation(
+        REPO_ROOT,
+        job_id=args.macocu_job_id,
+        stage="macocu_genre_preparation",
+        evidence_receipt_sha256s=[macocu_sha],
+    )
+    if macocu_allocation["job_id_raw"] in {
+        item["job_id_raw"] for item in allocations
+    }:
+        _fail("MaCoCu preparation allocation duplicates the sample ledger")
+
+    backend_projected_cpu, backend_allocation_projection = (
+        _packed_production_backend_cpu_projection(
+            source_plan=source_plan,
+            pack_plan=pack_plan,
+            backend_report=backend_report,
+            sample_bucket_receipts=buckets,
+        )
+    )
+    future_components = {
+        "production_backend": {
+            "projected_cpu_saat_before_safety": backend_projected_cpu,
+            "projection_basis": (
+                "packed_object_node_wall_plus_once_billed_bucket_and_cluster_allocations"
+            ),
+            "evidence_sha256s": [backend_report_sha, pack_plan_sha],
+        },
+        "production_pool_materialization": {
+            "projected_cpu_saat_before_safety": writer_projected_cpu,
+            "projection_basis": (
+                "post_cluster_writer_probe_wall_linear_by_candidate_documents"
+            ),
+            "evidence_sha256s": [writer_probe_sha, cluster["canonical_sha256"]],
+        },
+    }
+    for stage, ceiling in DATA_PREP_FIXED_CPU2DQ_CEILINGS.items():
+        future_components[stage] = {
+            "projected_cpu_saat_before_safety": float(ceiling),
+            "projection_basis": (
+                "explicit_one_node_cpu2dq_submission_walltime_ceiling"
+            ),
+            "evidence_sha256s": [recipe_sha, policy_sha],
+        }
+    fixed_allocation_details = {
+        stage: {
+            "allocation_contract": "one_exclusive_128cpu_cpu2dq_node",
+            "maximum_wall_hours": ceiling / CPU2DQ_BILLABLE_CPUS,
+            "projected_cpu_saat_before_safety": float(ceiling),
+            "submission_must_not_exceed_ceiling": True,
+        }
+        for stage, ceiling in DATA_PREP_FIXED_CPU2DQ_CEILINGS.items()
+    }
+    total_sample_cpu_time = sum(int(item["cpu_time_raw_seconds"]) for item in allocations)
+    total_sample_billed = sum(float(item["billed_cpu_saat"]) for item in allocations)
+    receipt = seal_manifest(
+        {
+            "schema_version": "2.0",
+            "kind": DATA_PREP_STORAGE_SAMPLE_KIND,
+            "family_id": recipe["family_id"],
+            "recipe_sha256": recipe_sha,
+            "policy_sha256": policy_sha,
+            "source_plan_sha256": source_plan_sha,
+            "calibration_sha256": calibration_sha,
+            "backend_resource_report_sha256": backend_report_sha,
+            "resource_approval_sha256": resource_approval_sha,
+            "mixture_quality_approval_sha256": mixture_quality_approval_sha,
+            "sample_quality_audit_sha256": mixture_quality_approval[
+                "sample_quality_audit_sha256"
+            ],
+            "sample_lane_plan_sha256": lane_plan_sha,
+            "production_pack_plan_sha256": pack_plan_sha,
+            "writer_probe_sha256": writer_probe_sha,
+            "macocu_preparation_manifest_sha256": macocu_sha,
+            "sample_documents": sample_documents,
+            "estimated_total_documents": estimated_total_documents,
+            "components": components,
+            "sample_allocations": allocations,
+            "sample_allocation_totals": {
+                "unique_allocations": len(allocations),
+                "cpu_time_raw_seconds": total_sample_cpu_time,
+                "billed_cpu_saat": total_sample_billed,
+                "accounting_role": (
+                    "already_consumed_measurement_evidence_not_future_quota"
+                ),
+            },
+            "historical_one_time_preparations": [
+                {
+                    "preparation_id": "macocu_genre_tr_v1",
+                    "manifest_sha256": macocu_sha,
+                    "allocation": macocu_allocation,
+                    "accounting_status": (
+                        "already_consumed_excluded_from_future_projection"
+                    ),
+                    "future_projected_cpu_saat": 0,
+                }
+            ],
+            "future_resource_projection": {
+                "components": future_components,
+                "allocation_details": {
+                    "production_backend": backend_allocation_projection,
+                    "production_pool_materialization": {
+                        "allocation_contract": (
+                            "one_exclusive_128cpu_cpu2dq_node_scaled_by_candidate_documents"
+                        ),
+                        "sample_elapsed_wall_seconds": writer_probe["sample"][
+                            "elapsed_wall_seconds"
+                        ],
+                        "document_scale": writer_probe["projection"]["document_scale"],
+                        "projected_cpu_saat_before_safety": writer_projected_cpu,
+                    },
+                    **fixed_allocation_details,
+                },
+                "projected_cpu_saat_before_safety": sum(
+                    float(item["projected_cpu_saat_before_safety"])
+                    for item in future_components.values()
+                ),
+                "safety_factor_applied": False,
+                "excluded_historical_and_sample_allocations": True,
+            },
+            "canonical_sha256": None,
+        }
+    )
+    _validate_data_prep_storage_sample(
+        receipt, recipe=recipe, recipe_sha=recipe_sha
+    )
+    write_json_atomic(args.output, receipt)
+    print(json.dumps(receipt, sort_keys=True))
+
+
 def command_data_prep_storage_gate(args: argparse.Namespace) -> None:
-    """Extrapolate the measured dedup/tokenization peak before data preparation."""
+    """Gate the explicit future peak; historical/sample allocations stay excluded."""
 
     recipe, recipe_sha = load_recipe(args.recipe)
     measurement, measurement_sha = _verify_sealed(
         args.sample_measurement, "data-preparation storage sample"
     )
-    if measurement.get("kind") != "d32_data_prep_storage_sample":
-        _fail("sample measurement has the wrong kind")
+    _validate_data_prep_storage_sample(
+        measurement, recipe=recipe, recipe_sha=recipe_sha
+    )
     policy = recipe["storage"]["data_preparation_peak_gate"]
     sample_documents = _positive_int(
         measurement.get("sample_documents"), "sample_documents"
@@ -1396,7 +3572,9 @@ def command_data_prep_storage_gate(args: argparse.Namespace) -> None:
         _fail("estimated total documents cannot be smaller than the sample")
     components = _mapping(measurement.get("components"), "sample components")
     expected_components = set(policy["required_measured_components"])
-    if set(components) != expected_components:
+    if expected_components != set(DATA_PREP_STORAGE_COMPONENTS) or set(
+        components
+    ) != expected_components:
         _fail(
             "data-preparation sample component set mismatch; "
             f"missing={sorted(expected_components - set(components))}, "
@@ -1406,59 +3584,21 @@ def command_data_prep_storage_gate(args: argparse.Namespace) -> None:
     projected_peak = 0
     for name in sorted(expected_components):
         record = _mapping(components[name], f"sample component {name}")
-        _require_exact_keys(record, {"measured_bytes", "projection"}, f"sample component {name}")
-        measured_bytes = _positive_int(record["measured_bytes"], f"{name}.measured_bytes")
-        projection = record["projection"]
-        if projection == "linear_by_documents":
-            projected = math.ceil(measured_bytes * total_documents / sample_documents)
-        elif projection == "fixed":
-            projected = measured_bytes
-        else:
-            _fail(f"{name}.projection must be linear_by_documents or fixed")
-        projections[name] = {
-            "measured_bytes": measured_bytes,
-            "projection": projection,
-            "projected_bytes": projected,
-        }
+        projected = _nonnegative_int(
+            record["projected_peak_bytes_before_safety"],
+            f"{name}.projected_peak_bytes_before_safety",
+        )
+        projections[name] = dict(record)
         projected_peak += projected
-    resource_components = _mapping(
-        measurement.get("resource_components"), "sample resource_components"
+    future_projection = _mapping(
+        measurement.get("future_resource_projection"), "future resource projection"
     )
-    if set(resource_components) != expected_components:
-        _fail(
-            "data-preparation resource component set mismatch; "
-            f"missing={sorted(expected_components - set(resource_components))}, "
-            f"unexpected={sorted(set(resource_components) - expected_components)}"
-        )
-    resource_projections: dict[str, dict[str, Any]] = {}
-    projected_cpu_saat = 0.0
-    for name in sorted(expected_components):
-        record = _mapping(resource_components[name], f"resource component {name}")
-        _require_exact_keys(
-            record,
-            {"measured_billed_cpu_saat", "projection", "sacct_job_id"},
-            f"resource component {name}",
-        )
-        measured = _nonnegative_number(
-            record["measured_billed_cpu_saat"],
-            f"{name}.measured_billed_cpu_saat",
-        )
-        if not isinstance(record["sacct_job_id"], str) or not record["sacct_job_id"]:
-            _fail(f"{name}.sacct_job_id must bind the measured UHeM sample job")
-        projection = record["projection"]
-        if projection == "linear_by_documents":
-            projected = measured * total_documents / sample_documents
-        elif projection == "fixed":
-            projected = measured
-        else:
-            _fail(f"{name}.resource projection must be linear_by_documents or fixed")
-        resource_projections[name] = {
-            "measured_billed_cpu_saat": measured,
-            "projection": projection,
-            "projected_cpu_saat": projected,
-            "sacct_job_id": record["sacct_job_id"],
-        }
-        projected_cpu_saat += projected
+    if future_projection.get("safety_factor_applied") is not False:
+        _fail("future resource projection already contains a safety factor")
+    projected_cpu_saat = _positive_number(
+        future_projection.get("projected_cpu_saat_before_safety"),
+        "future projected data-preparation CPU-saat",
+    )
     safety_factor = float(policy["extrapolation_safety_factor"])
     projected_with_safety = math.ceil(projected_peak * safety_factor)
     projected_cpu_saat_with_safety = math.ceil(projected_cpu_saat * safety_factor)
@@ -1491,17 +3631,41 @@ def command_data_prep_storage_gate(args: argparse.Namespace) -> None:
         )
     receipt = seal_manifest(
         {
-            "schema_version": "1.0",
+            "schema_version": "2.0",
             "kind": "d32_data_prep_storage_gate",
             "family_id": recipe["family_id"],
             "recipe_sha256": recipe_sha,
             "sample_measurement_sha256": measurement_sha,
+            "policy_sha256": measurement["policy_sha256"],
+            "source_plan_sha256": measurement["source_plan_sha256"],
+            "calibration_sha256": measurement["calibration_sha256"],
+            "backend_resource_report_sha256": measurement[
+                "backend_resource_report_sha256"
+            ],
+            "resource_approval_sha256": measurement[
+                "resource_approval_sha256"
+            ],
+            "mixture_quality_approval_sha256": measurement[
+                "mixture_quality_approval_sha256"
+            ],
+            "sample_quality_audit_sha256": measurement[
+                "sample_quality_audit_sha256"
+            ],
+            "production_pack_plan_sha256": measurement[
+                "production_pack_plan_sha256"
+            ],
+            "writer_probe_sha256": measurement["writer_probe_sha256"],
             "sample_documents": sample_documents,
             "estimated_total_documents": total_documents,
             "component_projections": projections,
-            "resource_component_projections": resource_projections,
+            "sample_allocation_totals": measurement["sample_allocation_totals"],
+            "historical_one_time_preparations": measurement[
+                "historical_one_time_preparations"
+            ],
+            "future_resource_projection": future_projection,
             "projected_peak_bytes_before_safety": projected_peak,
             "safety_factor": safety_factor,
+            "safety_factor_application_count": 1,
             "projected_peak_bytes_with_safety": projected_with_safety,
             "projected_data_preparation_cpu_saat_before_safety": projected_cpu_saat,
             "projected_data_preparation_cpu_saat_with_safety": projected_cpu_saat_with_safety,
@@ -1521,23 +3685,391 @@ def command_data_prep_storage_gate(args: argparse.Namespace) -> None:
             "canonical_sha256": None,
         }
     )
+    _validate_data_prep_storage_gate_receipt(
+        receipt, recipe=recipe, recipe_sha=recipe_sha
+    )
     write_json_atomic(args.output, receipt)
     print(json.dumps(receipt, sort_keys=True))
 
 
+def _validate_data_prep_storage_gate_receipt(
+    gate: Mapping[str, Any], *, recipe: Mapping[str, Any], recipe_sha: str
+) -> int:
+    """Recompute every post-safety storage/future-CPU gate invariant."""
+
+    verify_manifest_hash(gate)
+    if (
+        gate.get("schema_version") != "2.0"
+        or gate.get("kind") != "d32_data_prep_storage_gate"
+        or gate.get("family_id") != recipe["family_id"]
+        or gate.get("recipe_sha256") != recipe_sha
+        or gate.get("never_auto_delete_existing_artifacts") is not True
+    ):
+        _fail("data-preparation storage gate identity drifted")
+    for field in (
+        "sample_measurement_sha256",
+        "policy_sha256",
+        "source_plan_sha256",
+        "calibration_sha256",
+        "backend_resource_report_sha256",
+        "resource_approval_sha256",
+        "mixture_quality_approval_sha256",
+        "sample_quality_audit_sha256",
+        "production_pack_plan_sha256",
+        "writer_probe_sha256",
+    ):
+        _sha256(gate.get(field), f"data-preparation gate {field}")
+    safety = float(recipe["storage"]["data_preparation_peak_gate"]["extrapolation_safety_factor"])
+    if gate.get("safety_factor") != safety or gate.get("safety_factor_application_count") != 1:
+        _fail("data-preparation storage gate safety-factor drifted")
+    components = _mapping(gate.get("component_projections"), "gate storage components")
+    if set(components) != set(DATA_PREP_STORAGE_COMPONENTS):
+        _fail("data-preparation storage component inventory drifted")
+    projected_storage = sum(
+        _nonnegative_int(
+            _mapping(components[name], f"gate component {name}").get(
+                "projected_peak_bytes_before_safety"
+            ),
+            f"gate component {name} projected bytes",
+        )
+        for name in DATA_PREP_STORAGE_COMPONENTS
+    )
+    storage_with_safety = math.ceil(projected_storage * safety)
+    required_free = storage_with_safety + int(recipe["storage"]["minimum_free_headroom_bytes"])
+    if (
+        gate.get("projected_peak_bytes_before_safety") != projected_storage
+        or gate.get("projected_peak_bytes_with_safety") != storage_with_safety
+        or gate.get("required_free_bytes_including_headroom") != required_free
+        or _nonnegative_int(gate.get("observed_free_bytes"), "gate observed free bytes")
+        < required_free
+    ):
+        _fail("data-preparation storage gate byte arithmetic drifted")
+    future = _mapping(gate.get("future_resource_projection"), "gate future projection")
+    if (
+        future.get("safety_factor_applied") is not False
+        or future.get("excluded_historical_and_sample_allocations") is not True
+    ):
+        _fail("data-preparation future projection accounting drifted")
+    future_components = _mapping(future.get("components"), "gate future components")
+    details = _mapping(future.get("allocation_details"), "gate allocation details")
+    if set(future_components) != set(DATA_PREP_FUTURE_CPU_COMPONENTS) or set(details) != set(
+        DATA_PREP_FUTURE_CPU_COMPONENTS
+    ):
+        _fail("data-preparation future CPU component inventory drifted")
+    projected_cpu = 0.0
+    for name in DATA_PREP_FUTURE_CPU_COMPONENTS:
+        component = _mapping(future_components[name], f"gate future component {name}")
+        value = _positive_number(
+            component.get("projected_cpu_saat_before_safety"),
+            f"gate future component {name} CPU-saat",
+        )
+        projected_cpu += value
+        if name in DATA_PREP_FIXED_CPU2DQ_CEILINGS:
+            ceiling = DATA_PREP_FIXED_CPU2DQ_CEILINGS[name]
+            expected_details = {
+                "allocation_contract": "one_exclusive_128cpu_cpu2dq_node",
+                "maximum_wall_hours": ceiling / CPU2DQ_BILLABLE_CPUS,
+                "projected_cpu_saat_before_safety": float(ceiling),
+                "submission_must_not_exceed_ceiling": True,
+            }
+            if value != float(ceiling) or details.get(name) != expected_details:
+                _fail(f"data-preparation gate {name} ceiling drifted")
+    backend_details = _mapping(
+        details.get("production_backend"), "gate production backend allocation details"
+    )
+    node_count = _positive_int(
+        backend_details.get("node_count"), "gate production object node count"
+    )
+    node_walls = _mapping(
+        backend_details.get("projected_node_wall_seconds_before_safety"),
+        "gate production object node walls",
+    )
+    if set(node_walls) != {str(index) for index in range(node_count)}:
+        _fail("gate production object node-wall inventory drifted")
+    object_cpu = (
+        sum(
+            _positive_number(value, "gate production object node wall")
+            for value in node_walls.values()
+        )
+        * CPU2DQ_BILLABLE_CPUS
+        / 3600.0
+    )
+    bucket_wall = _positive_number(
+        backend_details.get(
+            "projected_packed_bucket_node_wall_seconds_before_safety"
+        ),
+        "gate production bucket node wall",
+    )
+    bucket_cpu = bucket_wall * CPU2DQ_BILLABLE_CPUS / 3600.0
+    cluster_cpu = _positive_number(
+        backend_details.get("projected_priority_cluster_cpu_saat_before_safety"),
+        "gate production cluster CPU-saat",
+    )
+    backend_cpu = object_cpu + bucket_cpu + cluster_cpu
+    for actual, expected, label in (
+        (
+            backend_details.get("projected_packed_object_cpu_saat_before_safety"),
+            object_cpu,
+            "object CPU",
+        ),
+        (
+            backend_details.get("projected_minhash_bucket_cpu_saat_before_safety"),
+            bucket_cpu,
+            "bucket CPU",
+        ),
+        (
+            backend_details.get("projected_backend_cpu_saat_before_safety"),
+            backend_cpu,
+            "backend CPU",
+        ),
+        (
+            future_components["production_backend"].get(
+                "projected_cpu_saat_before_safety"
+            ),
+            backend_cpu,
+            "backend component CPU",
+        ),
+    ):
+        if not isinstance(actual, (int, float)) or isinstance(actual, bool) or not math.isclose(
+            float(actual), expected, rel_tol=1e-12, abs_tol=1e-9
+        ):
+            _fail(f"data-preparation gate production {label} arithmetic drifted")
+    cluster_wall = cluster_cpu * 3600.0 / CPU2DQ_BILLABLE_CPUS
+    pool_cpu = _positive_number(
+        _mapping(
+            future_components["production_pool_materialization"],
+            "gate production pool component",
+        ).get("projected_cpu_saat_before_safety"),
+        "gate production pool CPU-saat",
+    )
+    pool_details = _mapping(
+        details.get("production_pool_materialization"),
+        "gate production pool allocation details",
+    )
+    if (
+        pool_details.get("allocation_contract")
+        != "one_exclusive_128cpu_cpu2dq_node_scaled_by_candidate_documents"
+        or not math.isclose(
+            float(pool_details.get("projected_cpu_saat_before_safety", -1)),
+            pool_cpu,
+            rel_tol=1e-12,
+            abs_tol=1e-9,
+        )
+    ):
+        _fail("data-preparation gate production pool allocation drifted")
+    pool_wall = pool_cpu * 3600.0 / CPU2DQ_BILLABLE_CPUS
+    cluster_memory_limit = 192 * 1024**3
+    sample_cluster_peak_rss = _positive_int(
+        backend_details.get("sample_priority_cluster_peak_rss_bytes"),
+        "gate sample priority-cluster peak RSS",
+    )
+    projected_cluster_peak_rss = _positive_number(
+        backend_details.get(
+            "projected_priority_cluster_peak_rss_bytes_before_safety"
+        ),
+        "gate projected priority-cluster peak RSS",
+    )
+    if (
+        max(float(value) for value in node_walls.values()) * safety > 172_800
+        or bucket_wall * safety > 86_400
+        or cluster_wall * safety > 172_800
+        or pool_wall * safety > 172_800
+        or sample_cluster_peak_rss >= cluster_memory_limit
+        or projected_cluster_peak_rss * safety >= cluster_memory_limit
+    ):
+        _fail("data-preparation gate exceeds a production backend walltime/RSS limit")
+    cpu_with_safety = math.ceil(projected_cpu * safety)
+    training_ceiling = int(recipe["uhem_budget"]["operational_ceiling_cpu_saat"])
+    total_ceiling = cpu_with_safety + training_ceiling
+    if (
+        not math.isclose(
+            float(future.get("projected_cpu_saat_before_safety", -1)),
+            projected_cpu,
+            rel_tol=1e-12,
+            abs_tol=1e-9,
+        )
+        or not math.isclose(
+            float(gate.get("projected_data_preparation_cpu_saat_before_safety", -1)),
+            projected_cpu,
+            rel_tol=1e-12,
+            abs_tol=1e-9,
+        )
+        or gate.get("projected_data_preparation_cpu_saat_with_safety")
+        != cpu_with_safety
+        or gate.get("training_proxy_smoke_operational_ceiling_cpu_saat")
+        != training_ceiling
+        or gate.get("total_project_operational_ceiling_cpu_saat") != total_ceiling
+    ):
+        _fail("data-preparation gate CPU arithmetic drifted")
+    quota = _mapping(gate.get("uhem_quota"), "gate UHeM quota")
+    if _positive_number(quota.get("remaining_cpu_saat"), "gate remaining CPU-saat") < total_ceiling:
+        _fail("data-preparation gate sealed insufficient CPU quota")
+    return cpu_with_safety
+
+
 def command_preflight(args: argparse.Namespace) -> None:
     recipe, recipe_sha = load_recipe(args.recipe)
+    try:
+        from nanochat.turkish_backend import (
+            validate_backend_calibration,
+            validate_mixture_quality_approval,
+            validate_resource_approval,
+            validate_source_plan,
+        )
+        from nanochat.turkish_corpus import load_corpus_policy
+
+        policy = load_corpus_policy(args.policy)
+        source_plan = _load_object(args.source_plan, "source plan")
+        calibration = _load_object(args.calibration, "backend calibration")
+        validate_source_plan(source_plan, policy)
+        validate_backend_calibration(calibration, policy)
+    except (OSError, ValueError) as exc:
+        raise FamilyWorkflowError(f"invalid preflight data provenance: {exc}") from exc
+    policy_sha = _data_prep_policy_sha256(policy)
+    source_plan_sha = _sha256(
+        source_plan.get("canonical_sha256"), "preflight source-plan SHA-256"
+    )
+    calibration_sha = _sha256(
+        calibration.get("canonical_sha256"), "preflight calibration SHA-256"
+    )
+    mixture_quality_approval, mixture_quality_approval_sha = _verify_sealed(
+        args.mixture_quality_approval, "preflight mixture-quality approval"
+    )
+    try:
+        validate_mixture_quality_approval(
+            mixture_quality_approval,
+            policy_sha256=policy_sha,
+            source_plan_sha256=source_plan_sha,
+            calibration_sha256=calibration_sha,
+        )
+    except ValueError as exc:
+        raise FamilyWorkflowError(f"invalid mixture-quality approval: {exc}") from exc
+    resource_approval, resource_approval_sha = _verify_sealed(
+        args.resource_approval, "preflight backend resource approval"
+    )
+    try:
+        validate_resource_approval(
+            resource_approval,
+            plan=source_plan,
+            policy=policy,
+            calibration=calibration,
+        )
+    except ValueError as exc:
+        raise FamilyWorkflowError(f"invalid backend resource approval: {exc}") from exc
+    if (
+        resource_approval.get("mixture_quality_approval_sha256")
+        != mixture_quality_approval_sha
+    ):
+        _fail("resource approval does not bind the current mixture-quality approval")
     data_prep_gate, data_prep_gate_sha = _load_receipt(
         args.data_prep_storage_gate, "d32_data_prep_storage_gate"
     )
+    data_prep_cpu = _validate_data_prep_storage_gate_receipt(
+        data_prep_gate, recipe=recipe, recipe_sha=recipe_sha
+    )
     if data_prep_gate.get("recipe_sha256") != recipe_sha:
         _fail("data-preparation storage gate was created for a different recipe")
+    if data_prep_gate.get("schema_version") != "2.0":
+        _fail("data-preparation storage gate schema is stale")
+    expected_data_bindings = {
+        "policy_sha256": policy_sha,
+        "source_plan_sha256": source_plan_sha,
+        "calibration_sha256": calibration_sha,
+        "resource_approval_sha256": resource_approval_sha,
+        "mixture_quality_approval_sha256": mixture_quality_approval_sha,
+        "sample_quality_audit_sha256": mixture_quality_approval[
+            "sample_quality_audit_sha256"
+        ],
+        "backend_resource_report_sha256": resource_approval[
+            "resource_report_sha256"
+        ],
+    }
+    for field, expected in expected_data_bindings.items():
+        if data_prep_gate.get(field) != expected:
+            _fail(f"data-preparation gate {field} binding mismatch")
+    cluster_launch, cluster_launch_sha = _verify_sealed(
+        args.cluster_launch_receipt, "production cluster launch receipt"
+    )
+    expected_cluster_launch = {
+        "schema_version": "1.0",
+        "kind": "turkish_packed_production_cluster_launch_receipt",
+        "family_id": recipe["family_id"],
+        "recipe_sha256": recipe_sha,
+        "policy_sha256": policy_sha,
+        "source_plan_sha256": source_plan_sha,
+        "calibration_sha256": calibration_sha,
+        "production_pack_plan_sha256": data_prep_gate[
+            "production_pack_plan_sha256"
+        ],
+        "resource_approval_sha256": resource_approval_sha,
+        "mixture_quality_approval_sha256": mixture_quality_approval_sha,
+        "data_prep_storage_gate_sha256": data_prep_gate_sha,
+        "cluster_completed": True,
+    }
+    for field, expected in expected_cluster_launch.items():
+        if cluster_launch.get(field) != expected:
+            _fail(f"production cluster launch {field} binding mismatch")
     if data_prep_gate.get("never_auto_delete_existing_artifacts") is not True:
         _fail("data-preparation storage gate does not preserve existing artifacts")
-    data_prep_cpu = _positive_int(
-        data_prep_gate.get("projected_data_preparation_cpu_saat_with_safety"),
-        "data-preparation projected CPU-saat",
+    data_prep_policy = recipe["storage"]["data_preparation_peak_gate"]
+    safety_factor = float(data_prep_policy["extrapolation_safety_factor"])
+    if (
+        data_prep_gate.get("safety_factor") != safety_factor
+        or data_prep_gate.get("safety_factor_application_count") != 1
+    ):
+        _fail("data-preparation gate safety-factor contract drifted")
+    gate_components = _mapping(
+        data_prep_gate.get("component_projections"),
+        "data-preparation gate component projections",
     )
+    if set(gate_components) != set(DATA_PREP_STORAGE_COMPONENTS):
+        _fail("data-preparation gate component inventory drifted")
+    projected_peak_before = sum(
+        _nonnegative_int(
+            _mapping(gate_components[name], f"data-preparation gate {name}").get(
+                "projected_peak_bytes_before_safety"
+            ),
+            f"data-preparation gate {name} projected peak",
+        )
+        for name in DATA_PREP_STORAGE_COMPONENTS
+    )
+    if (
+        data_prep_gate.get("projected_peak_bytes_before_safety")
+        != projected_peak_before
+        or data_prep_gate.get("projected_peak_bytes_with_safety")
+        != math.ceil(projected_peak_before * safety_factor)
+    ):
+        _fail("data-preparation gate storage safety arithmetic mismatch")
+    future_projection = _mapping(
+        data_prep_gate.get("future_resource_projection"),
+        "data-preparation gate future resource projection",
+    )
+    if (
+        future_projection.get("safety_factor_applied") is not False
+        or future_projection.get("excluded_historical_and_sample_allocations")
+        is not True
+    ):
+        _fail("data-preparation gate future-work accounting drifted")
+    projected_cpu_before = _positive_number(
+        future_projection.get("projected_cpu_saat_before_safety"),
+        "data-preparation gate future CPU-saat",
+    )
+    if (
+        not math.isclose(
+            float(
+                data_prep_gate.get(
+                    "projected_data_preparation_cpu_saat_before_safety", -1
+                )
+            ),
+            projected_cpu_before,
+            rel_tol=1e-12,
+            abs_tol=1e-9,
+        )
+        or data_prep_gate.get("projected_data_preparation_cpu_saat_with_safety")
+        != math.ceil(projected_cpu_before * safety_factor)
+    ):
+        _fail("data-preparation gate CPU safety arithmetic mismatch")
+    data_prep_cpu = _positive_int(data_prep_cpu, "data-preparation projected CPU-saat")
     expected_total_ceiling = (
         data_prep_cpu + int(recipe["uhem_budget"]["operational_ceiling_cpu_saat"])
     )
@@ -1614,6 +4146,49 @@ def command_preflight(args: argparse.Namespace) -> None:
     for field, expected in expected_corpus_fields.items():
         if corpus.get(field) != expected:
             _fail(f"corpus manifest {field} differs from the family contract")
+    production_chain = _mapping(
+        corpus.get("production_chain"), "corpus production chain"
+    )
+    parent_pool, parent_pool_sha = _verify_sealed(
+        paths["corpus_root"] / "parent_pool_manifest.json",
+        "archived parent pool manifest",
+    )
+    archived_qa_approval, archived_qa_sha = _verify_sealed(
+        paths["corpus_root"] / "qa" / "qa_approval.json",
+        "archived parent pool QA approval",
+    )
+    expected_chain_bindings = {
+        "cluster_launch_receipt_sha256": cluster_launch_sha,
+        "production_pack_plan_sha256": data_prep_gate[
+            "production_pack_plan_sha256"
+        ],
+        "resource_approval_sha256": resource_approval_sha,
+        "mixture_quality_approval_sha256": mixture_quality_approval_sha,
+        "data_prep_storage_gate_sha256": data_prep_gate_sha,
+    }
+    if (
+        set(production_chain) != set(expected_chain_bindings)
+        or any(
+            production_chain.get(field) != expected
+            for field, expected in expected_chain_bindings.items()
+        )
+        or source_receipt.get("production_chain") != production_chain
+        or dataset.get("metadata", {}).get("production_chain")
+        != production_chain
+        or parent_pool.get("production_chain") != production_chain
+        or parent_pool.get("policy_sha256") != policy_sha
+        or corpus.get("parent_pool_manifest_sha256") != parent_pool_sha
+        or dataset.get("metadata", {}).get("parent_pool_manifest_sha256")
+        != parent_pool_sha
+        or dataset.get("metadata", {}).get("qa_approval_sha256")
+        != archived_qa_sha
+        or _mapping(corpus.get("quality_assurance"), "corpus quality assurance").get(
+            "approval_sha256"
+        )
+        != archived_qa_sha
+        or archived_qa_approval.get("decision") != "accepted"
+    ):
+        _fail("final corpus lineage does not descend from the current data gate")
     corpus_tokenizer = _mapping(corpus.get("tokenizer"), "corpus tokenizer")
 
     validation_exposure, validation_exposure_sha = _verify_sealed(
@@ -1653,6 +4228,10 @@ def command_preflight(args: argparse.Namespace) -> None:
         corpus_tokenizer.get("name") != artifacts["tokenizer_name"]
         or corpus_tokenizer.get("vocab_size") != recipe["model"]["vocab_size"]
         or corpus_tokenizer.get("package_sha256") != package_sha
+        or package.get("policy_sha256") != policy_sha
+        or package.get("production_chain") != production_chain
+        or package.get("parent_corpus_manifest_sha256") != parent_pool_sha
+        or package.get("qa_approval_sha256") != archived_qa_sha
     ):
         _fail("corpus manifest tokenizer binding differs from the family contract")
 
@@ -1968,12 +4547,34 @@ def command_preflight(args: argparse.Namespace) -> None:
                 "corpus_name": corpus_id,
             },
             "data_preparation_storage_gate_sha256": data_prep_gate_sha,
+            "production_cluster_launch_receipt_sha256": cluster_launch_sha,
+            "data_preparation_provenance": {
+                "policy_sha256": policy_sha,
+                "source_plan_sha256": source_plan_sha,
+                "calibration_sha256": calibration_sha,
+                "backend_resource_report_sha256": resource_approval[
+                    "resource_report_sha256"
+                ],
+                "resource_approval_sha256": resource_approval_sha,
+                "mixture_quality_approval_sha256": (
+                    mixture_quality_approval_sha
+                ),
+                "sample_quality_audit_sha256": mixture_quality_approval[
+                    "sample_quality_audit_sha256"
+                ],
+                "production_pack_plan_sha256": data_prep_gate[
+                    "production_pack_plan_sha256"
+                ],
+            },
             "data_preparation_cpu_saat_with_safety": data_prep_cpu,
             "total_project_operational_ceiling_cpu_saat": expected_total_ceiling,
             "corpus": {
                 "root": str(paths["corpus_root"]),
                 "name": corpus_id,
                 "manifest_sha256": corpus_sha,
+                "parent_pool_manifest_sha256": parent_pool_sha,
+                "qa_approval_sha256": archived_qa_sha,
+                "production_chain": dict(production_chain),
                 "dataset_manifest_sha256": dataset_sha,
                 "source_receipt_sha256": source_sha,
                 "validation_exposure_manifest_sha256": validation_exposure_sha,
@@ -5308,6 +7909,90 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--allow-unsealed", action="store_true")
     validate.set_defaults(func=command_validate_recipe)
 
+    quality_approval = subparsers.add_parser("seal-mixture-quality-approval")
+    quality_approval.add_argument(
+        "--policy",
+        type=Path,
+        default=Path("configs/pretrain/tr_d32_turkish_general_v2.json"),
+    )
+    quality_approval.add_argument("--source-plan", type=Path, required=True)
+    quality_approval.add_argument("--calibration", type=Path, required=True)
+    quality_approval.add_argument("--audit-report", type=Path, required=True)
+    quality_approval.add_argument("--reviewer", required=True)
+    quality_approval.add_argument("--reviewed-at-utc", required=True)
+    quality_approval.add_argument(
+        "--decision", choices=("accepted", "rejected"), required=True
+    )
+    quality_approval.add_argument("--notes", default="")
+    quality_approval.add_argument("--output", type=Path, required=True)
+    quality_approval.set_defaults(func=command_seal_mixture_quality_approval)
+
+    pack_plan = subparsers.add_parser("seal-data-prep-pack-plan")
+    pack_plan.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    pack_plan.add_argument(
+        "--policy",
+        type=Path,
+        default=Path("configs/pretrain/tr_d32_turkish_general_v2.json"),
+    )
+    pack_plan.add_argument("--source-plan", type=Path, required=True)
+    pack_plan.add_argument("--calibration", type=Path, required=True)
+    pack_plan.add_argument("--nodes", type=int, required=True)
+    pack_plan.add_argument("--output", type=Path, required=True)
+    pack_plan.set_defaults(func=command_seal_data_prep_pack_plan)
+
+    writer_probe = subparsers.add_parser("seal-data-prep-writer-probe")
+    writer_probe.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    writer_probe.add_argument(
+        "--policy",
+        type=Path,
+        default=Path("configs/pretrain/tr_d32_turkish_general_v2.json"),
+    )
+    writer_probe.add_argument("--source-plan", type=Path, required=True)
+    writer_probe.add_argument("--calibration", type=Path, required=True)
+    writer_probe.add_argument("--sample-run-dir", type=Path, required=True)
+    writer_probe.add_argument("--backend-resource-report", type=Path, required=True)
+    writer_probe.add_argument("--scratch-dir", type=Path, required=True)
+    writer_probe.add_argument("--output", type=Path, required=True)
+    writer_probe.set_defaults(func=command_seal_data_prep_writer_probe)
+
+    data_prep_sample = subparsers.add_parser("seal-data-prep-storage-sample")
+    data_prep_sample.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    data_prep_sample.add_argument(
+        "--policy",
+        type=Path,
+        default=Path("configs/pretrain/tr_d32_turkish_general_v2.json"),
+    )
+    data_prep_sample.add_argument("--source-plan", type=Path, required=True)
+    data_prep_sample.add_argument("--calibration", type=Path, required=True)
+    data_prep_sample.add_argument("--sample-ranks", type=Path, required=True)
+    data_prep_sample.add_argument("--sample-lane-plan", type=Path, required=True)
+    data_prep_sample.add_argument("--sample-run-dir", type=Path, required=True)
+    data_prep_sample.add_argument(
+        "--sample-object-launch-receipt", type=Path, required=True
+    )
+    data_prep_sample.add_argument(
+        "--sample-bucket-launch-receipt", type=Path, required=True
+    )
+    data_prep_sample.add_argument(
+        "--backend-resource-report", type=Path, required=True
+    )
+    data_prep_sample.add_argument("--resource-approval", type=Path, required=True)
+    data_prep_sample.add_argument(
+        "--mixture-quality-approval", type=Path, required=True
+    )
+    data_prep_sample.add_argument("--macocu-manifest", type=Path, required=True)
+    data_prep_sample.add_argument("--production-pack-plan", type=Path, required=True)
+    data_prep_sample.add_argument("--writer-probe", type=Path, required=True)
+    data_prep_sample.add_argument("--macocu-job-id", required=True)
+    data_prep_sample.add_argument("--bootstrap-job-id", required=True)
+    data_prep_sample.add_argument("--sample-object-job-id", required=True)
+    data_prep_sample.add_argument("--sample-bucket-job-id", required=True)
+    data_prep_sample.add_argument("--sample-cluster-job-id", required=True)
+    data_prep_sample.add_argument("--sample-quality-audit-job-id", required=True)
+    data_prep_sample.add_argument("--writer-probe-job-id", required=True)
+    data_prep_sample.add_argument("--output", type=Path, required=True)
+    data_prep_sample.set_defaults(func=command_seal_data_prep_storage_sample)
+
     data_prep = subparsers.add_parser("data-prep-storage-gate")
     data_prep.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
     data_prep.add_argument("--sample-measurement", type=Path, required=True)
@@ -5320,6 +8005,18 @@ def build_parser() -> argparse.ArgumentParser:
     preflight.add_argument("--repo-root", type=Path, default=Path.cwd())
     preflight.add_argument("--base-dir", type=Path, required=True)
     preflight.add_argument("--data-prep-storage-gate", type=Path, required=True)
+    preflight.add_argument("--cluster-launch-receipt", type=Path, required=True)
+    preflight.add_argument(
+        "--policy",
+        type=Path,
+        default=Path("configs/pretrain/tr_d32_turkish_general_v2.json"),
+    )
+    preflight.add_argument("--source-plan", type=Path, required=True)
+    preflight.add_argument("--calibration", type=Path, required=True)
+    preflight.add_argument("--resource-approval", type=Path, required=True)
+    preflight.add_argument(
+        "--mixture-quality-approval", type=Path, required=True
+    )
     preflight.add_argument("--corpus-manifest-sha256", required=True)
     preflight.add_argument("--dataset-manifest-sha256", required=True)
     preflight.add_argument("--source-receipt-sha256", required=True)

@@ -40,7 +40,48 @@ args=(
 if [ "$SAMPLE" = 1 ]; then
     args+=(--sample)
 else
-    : "${RESOURCE_APPROVAL:?}"
+    : "${RESOURCE_APPROVAL:?Set accepted backend resource approval}"
+    : "${MIXTURE_QUALITY_APPROVAL:?Set accepted manual quality approval}"
+    : "${DATA_PREP_STORAGE_GATE:?Set passed post-safety storage gate}"
+    : "${PACK_PLAN:?Set sealed production pack plan}"
+    : "${OBJECT_NODE_RECEIPT_DIR:?Set packed production object node receipts}"
+    : "${BUCKET_LAUNCH_RECEIPT:?Set packed production bucket launch receipt}"
+    RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v2.json}"
+    CLUSTER_LAUNCH_ROOT="${CLUSTER_LAUNCH_ROOT:-$DATA_RUN_DIR/packed_production_cluster/job${SLURM_JOB_ID:?}}"
+    CLUSTER_INPUT_RECEIPT="$CLUSTER_LAUNCH_ROOT/input_receipt.json"
+    CLUSTER_LAUNCH_RECEIPT="$CLUSTER_LAUNCH_ROOT/launch_receipt.json"
+    test ! -e "$CLUSTER_LAUNCH_ROOT"
+    mkdir -p "$CLUSTER_LAUNCH_ROOT"
+    "$UV_BIN" run --project environments/turkish-data --locked python \
+        -m scripts.turkish_packed_production validate-gate \
+        --recipe="$RECIPE" --policy="$POLICY" --source-plan="$SOURCE_PLAN" \
+        --calibration="$CALIBRATION" --pack-plan="$PACK_PLAN" \
+        --resource-approval="$RESOURCE_APPROVAL" \
+        --mixture-quality-approval="$MIXTURE_QUALITY_APPROVAL" \
+        --storage-gate="$DATA_PREP_STORAGE_GATE" \
+        --write-dir="$DATA_RUN_DIR"
+    "$UV_BIN" run --project environments/turkish-data --locked python \
+        -m scripts.turkish_packed_production validate-cluster-inputs \
+        --recipe="$RECIPE" --policy="$POLICY" --source-plan="$SOURCE_PLAN" \
+        --calibration="$CALIBRATION" --pack-plan="$PACK_PLAN" \
+        --resource-approval="$RESOURCE_APPROVAL" \
+        --mixture-quality-approval="$MIXTURE_QUALITY_APPROVAL" \
+        --storage-gate="$DATA_PREP_STORAGE_GATE" --run-dir="$DATA_RUN_DIR" \
+        --object-node-receipt-dir="$OBJECT_NODE_RECEIPT_DIR" \
+        --bucket-launch-receipt="$BUCKET_LAUNCH_RECEIPT" \
+        --output="$CLUSTER_INPUT_RECEIPT"
     args+=(--resource-approval "$RESOURCE_APPROVAL")
 fi
 "$UV_BIN" run --project environments/turkish-data --locked python "${args[@]}"
+if [ "$SAMPLE" != 1 ]; then
+    "$UV_BIN" run --project environments/turkish-data --locked python \
+        -m scripts.turkish_packed_production seal-cluster-launch \
+        --recipe="$RECIPE" --policy="$POLICY" --source-plan="$SOURCE_PLAN" \
+        --calibration="$CALIBRATION" --pack-plan="$PACK_PLAN" \
+        --resource-approval="$RESOURCE_APPROVAL" \
+        --mixture-quality-approval="$MIXTURE_QUALITY_APPROVAL" \
+        --storage-gate="$DATA_PREP_STORAGE_GATE" --run-dir="$DATA_RUN_DIR" \
+        --cluster-input-receipt="$CLUSTER_INPUT_RECEIPT" \
+        --output="$CLUSTER_LAUNCH_RECEIPT"
+    test -f "$CLUSTER_LAUNCH_RECEIPT"
+fi

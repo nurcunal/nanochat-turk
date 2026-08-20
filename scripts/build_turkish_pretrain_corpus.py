@@ -58,6 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     production.add_argument("--source-receipt", type=Path, required=True)
     production.add_argument("--backend-receipt", type=Path, required=True)
+    production.add_argument("--cluster-launch-receipt", type=Path, required=True)
     production.add_argument("--output-dir", type=Path, required=True)
 
     sample = subparsers.add_parser(
@@ -176,10 +177,12 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "production-pool":
             source_receipt = load_json_strict(args.source_receipt)
             receipt = load_json_strict(args.backend_receipt)
+            cluster_launch_receipt = load_json_strict(args.cluster_launch_receipt)
             output = materialize_production_pool(
                 policy,
                 source_receipt,
                 receipt,
+                cluster_launch_receipt,
                 args.output_dir,
                 git_commit=_git_commit(),
             )

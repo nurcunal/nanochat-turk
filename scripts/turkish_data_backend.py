@@ -110,6 +110,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     approve = sub.add_parser("approve-resources", help="seal manual resource decision")
     approve.add_argument("--report", type=Path, required=True)
+    approve.add_argument("--mixture-quality-approval", type=Path, required=True)
     approve.add_argument("--output", type=Path, required=True)
     approve.add_argument("--reviewer", required=True)
     approve.add_argument("--reviewed-at-utc", required=True)
@@ -118,10 +119,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     source = sub.add_parser("seal-source", help="seal full source receipt")
     _run_inputs(source)
+    source.add_argument("--cluster-launch-receipt", type=Path, required=True)
     source.add_argument("--output", type=Path, required=True)
 
     backend = sub.add_parser("seal-backend", help="seal production backend receipt")
     _run_inputs(backend)
+    backend.add_argument("--cluster-launch-receipt", type=Path, required=True)
     backend.add_argument("--source-receipt", type=Path, required=True)
     backend.add_argument("--output", type=Path, required=True)
     return parser
@@ -133,6 +136,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "approve-resources":
             result = seal_resource_approval(
                 args.report,
+                args.mixture_quality_approval,
                 args.output,
                 reviewer=args.reviewer,
                 reviewed_at_utc=args.reviewed_at_utc,
@@ -223,6 +227,7 @@ def main(argv: list[str] | None = None) -> int:
                             plan,
                             calibration,
                             args.run_dir,
+                            args.cluster_launch_receipt,
                             args.output,
                         )
                     else:
@@ -235,6 +240,7 @@ def main(argv: list[str] | None = None) -> int:
                             source_receipt,
                             calibration,
                             args.run_dir,
+                            args.cluster_launch_receipt,
                             args.output,
                         )
         print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))

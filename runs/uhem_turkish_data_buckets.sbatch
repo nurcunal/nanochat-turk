@@ -37,10 +37,9 @@ args=(
     --run-dir "$DATA_RUN_DIR"
     --rank "${SLURM_ARRAY_TASK_ID:?submit this file with --array=0-13}"
 )
-if [ "$SAMPLE" = 1 ]; then
-    args+=(--sample)
-else
-    : "${RESOURCE_APPROVAL:?}"
-    args+=(--resource-approval "$RESOURCE_APPROVAL")
+if [ "$SAMPLE" != 1 ]; then
+    echo "Legacy array-per-bucket production is disabled; use uhem_turkish_data_buckets_packed_production.sbatch" >&2
+    exit 2
 fi
+args+=(--sample)
 "$UV_BIN" run --project environments/turkish-data --locked python "${args[@]}"

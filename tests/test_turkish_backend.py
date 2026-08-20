@@ -18,6 +18,7 @@ from nanochat.experiment_manifest import (
     write_json_atomic,
 )
 from nanochat.turkish_backend import (
+    MIXTURE_QUALITY_APPROVAL_KIND,
     RESOURCE_APPROVAL_KIND,
     RESOURCE_BILLING_CONTRACT,
     RESOURCE_REPORT_KIND,
@@ -70,6 +71,7 @@ def _resource_accounting():
 
 
 def _sealed_resource_report(policy: dict, plan_sha256: str) -> dict:
+    accounting = _resource_accounting()
     return seal_manifest(
         {
             "schema_version": "1.0",
@@ -80,7 +82,30 @@ def _sealed_resource_report(policy: dict, plan_sha256: str) -> dict:
             "source_plan_sha256": plan_sha256,
             "calibration_sha256": "c" * 64,
             "billing_contract": dict(RESOURCE_BILLING_CONTRACT),
-            "projection": {"safety_factor": 1.5, **_resource_accounting()},
+            "projection": {
+                "safety_factor": 1.5,
+                "candidate_documents": 200.0,
+                "peak_disk_bytes_with_safety_factor": 1_000.0,
+                "cluster_scaling": {
+                    "sample_candidate_documents": 100,
+                    "projected_candidate_scale": 2.0,
+                    "sample_edge_participating_documents": 10,
+                    "projected_edge_participating_documents": 20.0,
+                    "sample_peak_rss_bytes": 1024**3,
+                    "projected_peak_rss_bytes": 2 * 1024**3,
+                    "projected_peak_rss_bytes_with_safety_factor": 3 * 1024**3,
+                    "projected_wall_seconds_with_safety_factor": 30.0,
+                    "rss_projection_model": (
+                        "sample_peak_rss_times_max_one_and_candidate_scale"
+                    ),
+                },
+                **accounting,
+            },
+            "limits": {
+                "effective_peak_limit_bytes": 10_000,
+                "cluster_memory_limit_bytes": 192 * 1024**3,
+                "cluster_wall_limit_seconds": 172_800,
+            },
             "automated_gate_passed": True,
             "manual_approval_required": True,
             "canonical_sha256": None,
@@ -419,7 +444,12 @@ def test_resource_projection_uses_stage_wall_not_process_cpu(
         {
             "canonical_sha256": None,
             "sample_mode": True,
-            "telemetry": {"wall_seconds": 11.0, "cpu_seconds": 10.0},
+            "telemetry": {
+                "wall_seconds": 11.0,
+                "cpu_seconds": 10.0,
+                "peak_rss_bytes": 1024**3,
+                "edge_participating_documents": 4,
+            },
             "output_files": [{"size_bytes": 30}],
         }
     )
@@ -491,11 +521,43 @@ def test_resource_report_and_approval_bind_billed_cpu_contract(tmp_path: Path):
     report = _sealed_resource_report(policy, plan_sha256)
     assert validate_resource_projection(report) == report["canonical_sha256"]
     report_path = tmp_path / "resource-report.json"
+    quality_path = tmp_path / "mixture-quality-approval.json"
     approval_path = tmp_path / "resource-approval.json"
     write_json_atomic(report_path, report)
+    quality = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": MIXTURE_QUALITY_APPROVAL_KIND,
+            "sample_quality_audit_sha256": "d" * 64,
+            "policy_sha256": report["policy_sha256"],
+            "source_plan_sha256": plan_sha256,
+            "calibration_sha256": "c" * 64,
+            "cluster_receipt_sha256": "e" * 64,
+            "reviewed_example_files": {
+                decision: {
+                    "rows": 1,
+                    "jsonl_sha256": "f" * 64,
+                    "plaintext_sha256": "a" * 64,
+                }
+                for decision in ("accepted", "rejected")
+            },
+            "coverage_complete": True,
+            "automatic_decision": False,
+            "review_confirmation": (
+                "bounded_strata_and_accepted_rejected_examples_reviewed"
+            ),
+            "reviewer": "quality-reviewer",
+            "reviewed_at_utc": "2026-08-20T17:00:00Z",
+            "decision": "accepted",
+            "notes": "fixture",
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(quality_path, quality)
 
     approval = seal_resource_approval(
         report_path,
+        quality_path,
         approval_path,
         reviewer="resource-reviewer",
         reviewed_at_utc="2026-08-20T18:00:00Z",
@@ -511,6 +573,7 @@ def test_resource_report_and_approval_bind_billed_cpu_contract(tmp_path: Path):
         approval,
         plan={"canonical_sha256": plan_sha256},
         policy=policy,
+        calibration={"canonical_sha256": "c" * 64},
     )
 
     bad_report = copy.deepcopy(report)
@@ -529,6 +592,7 @@ def test_resource_report_and_approval_bind_billed_cpu_contract(tmp_path: Path):
             bad_approval,
             plan={"canonical_sha256": plan_sha256},
             policy=policy,
+            calibration={"canonical_sha256": "c" * 64},
         )
 
 

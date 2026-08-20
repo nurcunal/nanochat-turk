@@ -73,6 +73,14 @@ BACKEND_RECEIPT_KIND = "turkish_production_backend_output"
 CORPUS_MANIFEST_KIND = "turkish_pretrain_corpus"
 POOL_OWNERSHIP_KIND = "turkish_run_owned_filtered_pool"
 POOL_OWNERSHIP_FILE = "run_owned_pool.json"
+PRODUCTION_CLUSTER_LAUNCH_KIND = "turkish_packed_production_cluster_launch_receipt"
+PRODUCTION_CHAIN_FIELDS = (
+    "cluster_launch_receipt_sha256",
+    "production_pack_plan_sha256",
+    "resource_approval_sha256",
+    "mixture_quality_approval_sha256",
+    "data_prep_storage_gate_sha256",
+)
 
 MACOCU_SOURCE_ID = "macocu_genre_tr"
 MACOCU_HANDLE = "https://hdl.handle.net/11356/1969"
@@ -1464,10 +1472,21 @@ def _production_quality_ok(record: Mapping[str, Any]) -> bool:
     return flags == []
 
 
+def _validated_production_chain(value: Any) -> dict[str, str]:
+    chain = _require_mapping(value, "production_chain")
+    if set(chain) != set(PRODUCTION_CHAIN_FIELDS) or any(
+        not _SHA256_RE.fullmatch(str(chain.get(field, "")))
+        for field in PRODUCTION_CHAIN_FIELDS
+    ):
+        raise TurkishCorpusError("production_chain is missing or malformed")
+    return {field: str(chain[field]) for field in PRODUCTION_CHAIN_FIELDS}
+
+
 def materialize_production_pool(
     policy: Mapping[str, Any],
     source_receipt: Mapping[str, Any],
     backend_receipt: Mapping[str, Any],
+    cluster_launch_receipt: Mapping[str, Any],
     output_dir: str | Path,
     *,
     git_commit: str,
@@ -1477,6 +1496,40 @@ def materialize_production_pool(
 
     validate_corpus_policy(policy)
     validate_backend_receipt(backend_receipt, policy, source_receipt)
+    cluster_launch_sha = verify_manifest_hash(cluster_launch_receipt)
+    if (
+        cluster_launch_receipt.get("schema_version") != "1.0"
+        or cluster_launch_receipt.get("kind") != PRODUCTION_CLUSTER_LAUNCH_KIND
+        or cluster_launch_receipt.get("cluster_completed") is not True
+        or cluster_launch_receipt.get("policy_sha256")
+        != hashlib.sha256(canonical_json(policy).encode("utf-8")).hexdigest()
+        or cluster_launch_receipt.get("source_plan_sha256")
+        != backend_receipt.get("source_plan_sha256")
+        or cluster_launch_receipt.get("cluster_receipt_sha256")
+        != backend_receipt.get("cluster_receipt_sha256")
+    ):
+        raise TurkishCorpusError("production pool cluster-launch binding drift")
+    expected_production_chain = {
+        "cluster_launch_receipt_sha256": cluster_launch_sha,
+        "production_pack_plan_sha256": cluster_launch_receipt.get(
+            "production_pack_plan_sha256"
+        ),
+        "resource_approval_sha256": cluster_launch_receipt.get(
+            "resource_approval_sha256"
+        ),
+        "mixture_quality_approval_sha256": cluster_launch_receipt.get(
+            "mixture_quality_approval_sha256"
+        ),
+        "data_prep_storage_gate_sha256": cluster_launch_receipt.get(
+            "data_prep_storage_gate_sha256"
+        ),
+    }
+    if (
+        any(not _SHA256_RE.fullmatch(str(value or "")) for value in expected_production_chain.values())
+        or source_receipt.get("production_chain") != expected_production_chain
+        or backend_receipt.get("production_chain") != expected_production_chain
+    ):
+        raise TurkishCorpusError("production pool provenance-chain binding drift")
     if not _SHA1_RE.fullmatch(git_commit) and not _SHA256_RE.fullmatch(git_commit):
         raise TurkishCorpusError("git_commit must be a full Git commit")
     destination = Path(output_dir)
@@ -1659,6 +1712,7 @@ def materialize_production_pool(
                 "policy_sha256": policy_hash,
                 "source_receipt_sha256": backend_receipt["source_receipt_sha256"],
                 "backend_receipt_sha256": backend_receipt["canonical_sha256"],
+                "production_chain": expected_production_chain,
                 "source_provenance": [
                     {
                         "id": source["id"],
@@ -2802,6 +2856,11 @@ def representative_sample(
     verify_manifest_hash(manifest)
     if manifest.get("stage") != "filtered_pool":
         raise TurkishCorpusError("tokenizer sample requires a filtered pool")
+    policy_sha = hashlib.sha256(canonical_json(policy).encode("utf-8")).hexdigest()
+    if manifest.get("policy_sha256") != policy_sha:
+        raise TurkishCorpusError("tokenizer sample pool/policy binding drift")
+    if manifest.get("backend_scope") == "production_glotlid_datatrove":
+        _validated_production_chain(manifest.get("production_chain"))
     target = int(max_chars or policy["tokenizer_training"]["max_chars"])
     document_cap = int(policy["tokenizer_training"]["max_chars_per_document"])
     buckets = [bucket for bucket in policy["mixture"]]
@@ -2856,9 +2915,16 @@ def write_tokenizer_sample(
     destination.mkdir(parents=True, exist_ok=True)
     pool_manifest = load_json_strict(Path(pool_dir) / "corpus_manifest.json")
     verify_manifest_hash(pool_manifest)
+    policy_sha = hashlib.sha256(canonical_json(policy).encode("utf-8")).hexdigest()
+    if pool_manifest.get("policy_sha256") != policy_sha:
+        raise TurkishCorpusError("tokenizer sample pool/policy binding drift")
     validate_pool_ownership(pool_dir, pool_manifest)
     qa_approval: dict[str, Any] | None = None
+    production_chain: dict[str, str] | None = None
     if pool_manifest.get("backend_scope") == "production_glotlid_datatrove":
+        production_chain = _validated_production_chain(
+            pool_manifest.get("production_chain")
+        )
         qa_approval = validate_qa_gate(pool_dir, pool_manifest)
     elif not allow_reference_pool:
         raise TurkishCorpusError("tokenizer sample refuses a reference/smoke filtered pool")
@@ -2946,6 +3012,8 @@ def write_tokenizer_sample(
             "metadata": {
                 "revision_semantics": "sha1_of_parent_corpus_manifest_not_hub_commit",
                 "parent_corpus_manifest_sha256": pool_manifest["canonical_sha256"],
+                "policy_sha256": policy_sha,
+                "production_chain": production_chain,
                 "sample_scope": "post_filter_train_only",
                 "max_chars_per_document": policy["tokenizer_training"][
                     "max_chars_per_document"
@@ -2965,6 +3033,8 @@ def write_tokenizer_sample(
             "name": TOKENIZER_NAME,
             "vocab_size": VOCAB_SIZE,
             "parent_corpus_manifest_sha256": pool_manifest["canonical_sha256"],
+            "policy_sha256": policy_sha,
+            "production_chain": production_chain,
             "nanochat_dataset_manifest_sha256": compatibility["canonical_sha256"],
             "characters": sample_characters,
             "trainer_visible_characters": sample_characters,
@@ -3496,7 +3566,13 @@ def build_packing_preflight_report(
     pool_hash = verify_manifest_hash(pool_manifest)
     if pool_manifest.get("backend_scope") != "production_glotlid_datatrove":
         raise TurkishCorpusError("packing planning refuses a reference pool")
-    validate_qa_gate(pool_root, pool_manifest)
+    policy_hash = hashlib.sha256(canonical_json(policy).encode("utf-8")).hexdigest()
+    if pool_manifest.get("policy_sha256") != policy_hash:
+        raise TurkishCorpusError("packing preflight pool/policy binding drift")
+    production_chain = _validated_production_chain(
+        pool_manifest.get("production_chain")
+    )
+    qa_approval = validate_qa_gate(pool_root, pool_manifest)
 
     from nanochat.tokenizer import RustBPETokenizer
     from nanochat.strict_tokenizer import verify_tokenizer_package
@@ -3511,6 +3587,13 @@ def build_packing_preflight_report(
         expected_name=TOKENIZER_NAME,
         expected_vocab_size=VOCAB_SIZE,
     ).manifest
+    if (
+        package.get("policy_sha256") != policy_hash
+        or package.get("production_chain") != production_chain
+        or package.get("parent_corpus_manifest_sha256") != pool_hash
+        or package.get("qa_approval_sha256") != qa_approval["canonical_sha256"]
+    ):
+        raise TurkishCorpusError("packing preflight tokenizer lineage drift")
     tokenizer = RustBPETokenizer.from_directory(str(tokenizer_root))
     if tokenizer.get_vocab_size() != VOCAB_SIZE:
         raise TurkishCorpusError("packing preflight tokenizer vocabulary drift")
@@ -3651,10 +3734,10 @@ def build_packing_preflight_report(
         {
             "schema_version": "1.0",
             "kind": PACKING_PREFLIGHT_REPORT_KIND,
-            "policy_sha256": hashlib.sha256(
-                canonical_json(policy).encode("utf-8")
-            ).hexdigest(),
+            "policy_sha256": policy_hash,
+            "production_chain": production_chain,
             "pool_manifest_sha256": pool_hash,
+            "qa_approval_sha256": qa_approval["canonical_sha256"],
             "tokenizer_package_sha256": package["canonical_sha256"],
             "sample_contract": {
                 "algorithm": "hashed_row_groups_per_mixture_virtual_rank_v1",
@@ -3717,7 +3800,9 @@ def seal_packing_preflight_approval(
             "packing_report_sha256": report_hash,
             "policy_sha256": report["policy_sha256"],
             "pool_manifest_sha256": report["pool_manifest_sha256"],
+            "qa_approval_sha256": report["qa_approval_sha256"],
             "tokenizer_package_sha256": report["tokenizer_package_sha256"],
+            "production_chain": report["production_chain"],
             "approved_source_token_target": report["recommended_source_token_target"],
             "approved_source_weights": report["recommended_source_weights"],
             "reviewer": reviewer.strip(),
@@ -3754,7 +3839,10 @@ def validate_packing_preflight_gate(
         or report.get("tokenizer_package_sha256") != tokenizer_package_sha256
         or approval.get("policy_sha256") != policy_hash
         or approval.get("pool_manifest_sha256") != pool_manifest_sha256
+        or report.get("qa_approval_sha256")
+        != approval.get("qa_approval_sha256")
         or approval.get("tokenizer_package_sha256") != tokenizer_package_sha256
+        or report.get("production_chain") != approval.get("production_chain")
         or approval.get("approved_source_token_target")
         != report.get("recommended_source_token_target")
         or approval.get("approved_source_weights")
@@ -3803,9 +3891,15 @@ def materialize_final_corpus(
         canonical_json(policy).encode("utf-8")
     ).hexdigest():
         raise TurkishCorpusError("filtered pool and final policy differ")
+    production_chain = _validated_production_chain(
+        pool_manifest.get("production_chain")
+    )
     source_receipt = load_json_strict(pool_root / "source_receipt.json")
     validate_source_receipt(source_receipt, policy)
-    if source_receipt["canonical_sha256"] != pool_manifest["source_receipt_sha256"]:
+    if (
+        source_receipt["canonical_sha256"] != pool_manifest["source_receipt_sha256"]
+        or source_receipt.get("production_chain") != production_chain
+    ):
         raise TurkishCorpusError("final corpus/source receipt hash binding differs")
 
     from nanochat.tokenizer import RustBPETokenizer
@@ -3818,12 +3912,32 @@ def materialize_final_corpus(
         expected_vocab_size=VOCAB_SIZE,
     )
     package = verified_package.manifest
+    if (
+        package.get("policy_sha256") != pool_manifest["policy_sha256"]
+        or package.get("production_chain") != production_chain
+        or package.get("parent_corpus_manifest_sha256")
+        != pool_manifest["canonical_sha256"]
+        or package.get("qa_approval_sha256") != qa_approval["canonical_sha256"]
+    ):
+        raise TurkishCorpusError("final corpus tokenizer lineage drift")
     from nanochat.tokenizer_quality import validate_tokenizer_quality_gate
 
     tokenizer_quality_report, tokenizer_quality_approval = validate_tokenizer_quality_gate(
         tokenizer_quality_dir,
         expected_package_sha256=package["canonical_sha256"],
+        expected_production_chain=production_chain,
     )
+    if (
+        tokenizer_quality_report.get("parent_corpus_manifest_sha256")
+        != pool_manifest["canonical_sha256"]
+        or tokenizer_quality_report.get("qa_approval_sha256")
+        != qa_approval["canonical_sha256"]
+        or tokenizer_quality_approval.get("parent_corpus_manifest_sha256")
+        != pool_manifest["canonical_sha256"]
+        or tokenizer_quality_approval.get("qa_approval_sha256")
+        != qa_approval["canonical_sha256"]
+    ):
+        raise TurkishCorpusError("final corpus tokenizer quality lineage drift")
     tokenizer = RustBPETokenizer.from_directory(str(tokenizer_root))
     if tokenizer.get_vocab_size() != VOCAB_SIZE:
         raise TurkishCorpusError(
@@ -3834,12 +3948,30 @@ def materialize_final_corpus(
         raise TurkishCorpusError("tokenizer training_receipt.json is required")
     tokenizer_receipt = load_json_strict(receipt_path)
     verify_manifest_hash(tokenizer_receipt)
+    if (
+        tokenizer_receipt.get("policy_sha256") != pool_manifest["policy_sha256"]
+        or tokenizer_receipt.get("production_chain") != production_chain
+        or tokenizer_receipt.get("parent_corpus_manifest_sha256")
+        != pool_manifest["canonical_sha256"]
+        or tokenizer_receipt.get("qa_approval_sha256")
+        != qa_approval["canonical_sha256"]
+    ):
+        raise TurkishCorpusError("final corpus tokenizer receipt lineage drift")
     packing_report, packing_approval = validate_packing_preflight_gate(
         packing_preflight_dir,
         policy=policy,
         pool_manifest_sha256=pool_manifest["canonical_sha256"],
         tokenizer_package_sha256=package["canonical_sha256"],
     )
+    if (
+        packing_report.get("production_chain") != production_chain
+        or packing_approval.get("production_chain") != production_chain
+        or packing_report.get("qa_approval_sha256")
+        != qa_approval["canonical_sha256"]
+        or packing_approval.get("qa_approval_sha256")
+        != qa_approval["canonical_sha256"]
+    ):
+        raise TurkishCorpusError("final corpus packing-preflight lineage drift")
     if target_tokens != int(packing_approval["approved_source_token_target"]):
         raise TurkishCorpusError(
             "--target-tokens must equal the manually approved measured packing target"
@@ -4093,6 +4225,15 @@ def materialize_final_corpus(
     write_json_atomic(
         tokenizer_quality_archive / "quality_approval.json", tokenizer_quality_approval
     )
+    packing_preflight_archive = destination / "packing_preflight"
+    packing_preflight_archive.mkdir()
+    write_json_atomic(
+        packing_preflight_archive / "packing_preflight_report.json", packing_report
+    )
+    write_json_atomic(
+        packing_preflight_archive / "packing_preflight_approval.json",
+        packing_approval,
+    )
 
     ordered_files = [
         {key: item[key] for key in ("path", "size_bytes", "sha256")}
@@ -4132,6 +4273,7 @@ def materialize_final_corpus(
                 "revision_semantics": "sha1_of_pool_tokenizer_horizon_not_hub_commit",
                 "corpus_name": policy["name"],
                 "parent_pool_manifest_sha256": parent_hash,
+                "production_chain": production_chain,
                 "tokenizer_package_sha256": package["canonical_sha256"],
                 "scheduled_prefix_tokens": target_tokens,
                 "materialized_tokens_with_terminal_overhang": total,
@@ -4203,6 +4345,7 @@ def materialize_final_corpus(
             "stage": "final_interleaved",
             "policy_sha256": pool_manifest["policy_sha256"],
             "parent_pool_manifest_sha256": parent_hash,
+            "production_chain": production_chain,
             "source_receipt_sha256": pool_manifest["source_receipt_sha256"],
             "tokenizer": {
                 "name": TOKENIZER_NAME,

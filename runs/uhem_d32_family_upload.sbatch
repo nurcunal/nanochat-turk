@@ -24,6 +24,7 @@ set -u
 
 : "${HF_REPO_ID:?Set the destination Hugging Face model repository}"
 : "${FINAL_OPTIMIZER_POLICY:?Set FINAL_OPTIMIZER_POLICY to include or omit}"
+: "${CLUSTER_LAUNCH_RECEIPT:?Set the exact production cluster launch receipt}"
 if [ "$FINAL_OPTIMIZER_POLICY" != include ] && [ "$FINAL_OPTIMIZER_POLICY" != omit ]; then
     echo "FINAL_OPTIMIZER_POLICY must equal include or omit" >&2
     exit 2
@@ -51,6 +52,7 @@ args=(
     --static-launcher-gate="$CONTROL_DIR/static_launcher_gate_ws4.json"
     --signal-resume-gate="$CONTROL_DIR/signal_resume_gate_ws4.json"
     --production-gate="$CONTROL_DIR/production_topology_gate.json"
+    --cluster-launch-receipt="$CLUSTER_LAUNCH_RECEIPT"
     --lineage-dir="$CONTROL_DIR/lineage"
     --family-final-optimizer-policy="$FINAL_OPTIMIZER_POLICY"
 )

@@ -122,7 +122,10 @@ def test_family_upload_retains_end_to_end_reproduction_sources() -> None:
     required = (
         'repo_root / "pyproject.toml"',
         '"scripts/build_turkish_pretrain_corpus.py"',
+        '"scripts/audit_turkish_backend_sample.py"',
         '"scripts/train_turkish_raw_bpe.py"',
+        '"scripts/turkish_packed_sample.py"',
+        '"scripts/turkish_packed_production.py"',
         '"scripts/d32_static_launch_probe.py"',
         '"scripts/upload_base_checkpoint_to_hf.py"',
         '"nanochat/turkish_backend.py"',
@@ -134,10 +137,21 @@ def test_family_upload_retains_end_to_end_reproduction_sources() -> None:
         '"schemas/artifact-manifest.schema.json"',
         '"schemas/dataset-manifest.schema.json"',
         '"runs/uhem_d32_prepare_training_env.sh"',
+        '"runs/uhem_d32_data_prep_storage_sample.sbatch"',
+        '"runs/uhem_d32_data_prep_writer_probe.sbatch"',
         '"runs/uhem_turkish_data_objects.sbatch"',
+        '"runs/uhem_turkish_data_objects_packed_sample.sbatch"',
+        '"runs/uhem_turkish_data_objects_packed_production.sbatch"',
+        '"runs/uhem_turkish_data_buckets_packed_sample.sbatch"',
+        '"runs/uhem_turkish_data_buckets_packed_production.sbatch"',
+        '"runs/uhem_turkish_sample_quality_audit.sbatch"',
         '"runs/uhem_turkish_data_bootstrap.sbatch"',
         '"runs/uhem_turkish_prepare_data_env.sbatch"',
         '"runs/uhem_turkish_packing_preflight.sbatch"',
+        '"runs/uhem_turkish_production_pool.sbatch"',
+        '"runs/uhem_turkish_tokenizer_sample.sbatch"',
+        '"runs/uhem_turkish_tokenizer_train.sbatch"',
+        '"runs/uhem_turkish_tokenizer_quality.sbatch"',
     )
     assert all(path in source for path in required)
 
@@ -151,6 +165,88 @@ def test_family_upload_includes_tokenizer_sample_and_quality_evidence() -> None:
     assert 'sample_root / "tokenizer_sample_manifest.json"' in source
     assert 'sample_root / "fineweb2_manifest.json"' in source
     assert 'training_receipt.get("sample_manifest_sha256") != sample_sha' in source
+    for evidence in (
+        "parent_pool_manifest.json",
+        "parent_pool_ownership.json",
+        "qa_report.json",
+        "packing_preflight_report.json",
+        "packing_preflight_approval.json",
+        "cluster-launch-receipt",
+    ):
+        assert evidence in source
+
+
+def test_production_data_and_tokenizer_launchers_consume_exact_gate() -> None:
+    contracts = {
+        "runs/uhem_turkish_data_objects_packed_production.sbatch": (
+            "#SBATCH --time=2-00:00:00",
+            "#SBATCH --ntasks=32",
+            "#SBATCH --cpus-per-task=4",
+        ),
+        "runs/uhem_turkish_data_buckets_packed_production.sbatch": (
+            "#SBATCH --time=1-00:00:00",
+            "#SBATCH --ntasks=14",
+            "#SBATCH --cpus-per-task=8",
+        ),
+        "runs/uhem_turkish_production_pool.sbatch": (
+            "#SBATCH --time=2-00:00:00",
+            "--cluster-launch-receipt",
+            "production-pool",
+        ),
+        "runs/uhem_turkish_tokenizer_sample.sbatch": (
+            "#SBATCH --time=12:00:00",
+            "--pool-dir",
+            "--cluster-launch-receipt",
+        ),
+        "runs/uhem_turkish_tokenizer_train.sbatch": (
+            "#SBATCH --time=1-00:00:00",
+            "--tokenizer-sample-dir",
+            "--cluster-launch-receipt",
+        ),
+        "runs/uhem_turkish_tokenizer_quality.sbatch": (
+            "#SBATCH --time=12:00:00",
+            "--tokenizer-quality-dir",
+            "--cluster-launch-receipt",
+        ),
+        "runs/uhem_turkish_packing_preflight.sbatch": (
+            "#SBATCH --time=12:00:00",
+            "--pool-dir",
+            "--cluster-launch-receipt",
+        ),
+        "runs/uhem_turkish_corpus_finalize.sbatch": (
+            "#SBATCH --time=2-00:00:00",
+            "--packing-preflight-dir",
+            "--cluster-launch-receipt",
+        ),
+    }
+    for relative, required in contracts.items():
+        source = (ROOT / relative).read_text(encoding="utf-8")
+        assert "scripts.turkish_packed_production validate-gate" in source
+        assert all(fragment in source for fragment in required), relative
+    for relative in (
+        "runs/uhem_turkish_data_objects_packed_production.sbatch",
+        "runs/uhem_turkish_data_buckets_packed_production.sbatch",
+        "runs/uhem_turkish_data_cluster.sbatch",
+    ):
+        source = (ROOT / relative).read_text(encoding="utf-8")
+        assert '--write-dir="$DATA_RUN_DIR"' in source, relative
+
+
+def test_family_preflight_and_upload_require_exact_cluster_launch() -> None:
+    workflow_source = (ROOT / "scripts" / "d32_family_workflow.py").read_text(
+        encoding="utf-8"
+    )
+    upload_source = (ROOT / "scripts" / "upload_base_checkpoint_to_hf.py").read_text(
+        encoding="utf-8"
+    )
+    upload_wrapper = (ROOT / "runs" / "uhem_d32_family_upload.sbatch").read_text(
+        encoding="utf-8"
+    )
+    assert 'preflight.add_argument("--cluster-launch-receipt"' in workflow_source
+    assert '"production_cluster_launch_receipt_sha256": cluster_launch_sha' in workflow_source
+    assert 'parser.add_argument("--cluster-launch-receipt"' in upload_source
+    assert 'expected_chain.get("cluster_launch_receipt_sha256")' in upload_source
+    assert '--cluster-launch-receipt="$CLUSTER_LAUNCH_RECEIPT"' in upload_wrapper
 
 
 def test_v2_exposure_index_requires_and_launches_with_family_identity() -> None:
@@ -258,6 +354,34 @@ def test_turkish_data_jobs_use_the_pinned_uv_binary() -> None:
         source = (ROOT / relative).read_text(encoding="utf-8")
         assert 'UV_BIN="${UV_BIN:-$HOME/.local/bin/uv}"' in source
         assert '"$UV_BIN" run --project environments/turkish-data --locked' in source
+
+
+def test_data_prep_storage_bridge_is_dependent_and_pre_safety() -> None:
+    storage_source = (
+        ROOT / "runs" / "uhem_d32_data_prep_storage_sample.sbatch"
+    ).read_text(encoding="utf-8")
+    writer_source = (
+        ROOT / "runs" / "uhem_d32_data_prep_writer_probe.sbatch"
+    ).read_text(encoding="utf-8")
+    assert "#SBATCH --cpus-per-task=128" in storage_source
+    assert "SAMPLE_BUCKET_JOB_ID" in storage_source
+    assert "SAMPLE_BUCKET_LAUNCH_RECEIPT" in storage_source
+    assert "seal-data-prep-pack-plan" in storage_source
+    assert "seal-data-prep-storage-sample" in storage_source
+    assert "data-prep-storage-gate" in storage_source
+    assert '"$MACOCU_MANIFEST" "$BACKEND_RESOURCE_REPORT" "$WRITER_PROBE"' in storage_source
+    assert 'test -f "$input"' in storage_source
+    assert "scripts/turkish_data_backend.py resource-report" not in storage_source
+    assert 'test ! -e "$STORAGE_SAMPLE"' in storage_source
+    assert 'test ! -e "$STORAGE_GATE"' in storage_source
+
+    assert "#SBATCH --cpus-per-task=128" in writer_source
+    assert '--billable-cpus-per-job 128 --safety-factor 1' in writer_source
+    assert "resource-report" in writer_source
+    assert "seal-data-prep-writer-probe" in writer_source
+    assert 'scratch/data_prep_writer_probe/job${SLURM_JOB_ID:?}' in writer_source
+    assert 'test "$BASE_DEVICE" = "$SCRATCH_DEVICE"' in writer_source
+    assert 'test ! -e "$BACKEND_RESOURCE_REPORT"' in writer_source
 
 
 def test_signal_path_targets_the_srun_step_on_slurm_20() -> None:

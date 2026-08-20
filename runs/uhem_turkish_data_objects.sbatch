@@ -45,11 +45,10 @@ args=(
     --rank "${SLURM_ARRAY_TASK_ID:?submit this file with --array}"
     --scratch-dir "${SLURM_TMPDIR:-$DATA_RUN_DIR/.scratch}"
 )
-if [ "$SAMPLE" = 1 ]; then
-    args+=(--sample)
-else
-    : "${RESOURCE_APPROVAL:?Full processing requires an accepted RESOURCE_APPROVAL}"
-    args+=(--resource-approval "$RESOURCE_APPROVAL")
+if [ "$SAMPLE" != 1 ]; then
+    echo "Legacy array-per-object production is disabled; use uhem_turkish_data_objects_packed_production.sbatch" >&2
+    exit 2
 fi
+args+=(--sample)
 
 "$UV_BIN" run --project environments/turkish-data --locked python "${args[@]}"

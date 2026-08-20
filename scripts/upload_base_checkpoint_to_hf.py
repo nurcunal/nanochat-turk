@@ -38,6 +38,7 @@ def parse_args():
     parser.add_argument("--static-launcher-gate", default="")
     parser.add_argument("--signal-resume-gate", default="")
     parser.add_argument("--production-gate", default="")
+    parser.add_argument("--cluster-launch-receipt", default="")
     parser.add_argument("--lineage-dir", default="")
     parser.add_argument(
         "--family-final-optimizer-policy",
@@ -351,6 +352,7 @@ def main_family(args):
         "static-launcher-gate": args.static_launcher_gate,
         "signal-resume-gate": args.signal_resume_gate,
         "production-gate": args.production_gate,
+        "cluster-launch-receipt": args.cluster_launch_receipt,
         "lineage-dir": args.lineage_dir,
     }
     missing = [name for name, value in required_args.items() if not value]
@@ -376,6 +378,16 @@ def main_family(args):
     preflight, preflight_sha = _load_receipt(
         Path(args.preflight_receipt), "d32_family_preflight_receipt"
     )
+    cluster_launch, cluster_launch_sha = _load_receipt(
+        Path(args.cluster_launch_receipt),
+        "turkish_packed_production_cluster_launch_receipt",
+    )
+    if (
+        preflight.get("production_cluster_launch_receipt_sha256")
+        != cluster_launch_sha
+        or cluster_launch.get("cluster_completed") is not True
+    ):
+        raise ValueError("upload cluster launch differs from production preflight")
     _probe, probe_sha = _verify_attention_probe(
         Path(args.attention_probe),
         recipe=recipe,
@@ -426,12 +438,16 @@ def main_family(args):
 
     files = []
     retention = {"stable_forks": [], "finals": []}
+    checkpoint_manifests = {}
     trunk_tag = recipe["checkpoints"]["trunk_model_tag"]
     for fork in recipe["checkpoints"]["stable_forks"]:
         step = int(fork["step"])
         step_dir = base_dir / "base_checkpoints" / trunk_tag / f"strict_{step:06d}"
         manifest = inspect_strict_checkpoint(step_dir.parent, step)
-        verify_manifest_hash(manifest)
+        checkpoint_manifests[(trunk_tag, step)] = (
+            manifest,
+            verify_manifest_hash(manifest),
+        )
         retention["stable_forks"].append(
             {
                 "model_tag": trunk_tag,
@@ -453,7 +469,10 @@ def main_family(args):
         step = int(final["final_step"])
         step_dir = base_dir / "base_checkpoints" / model_tag / f"strict_{step:06d}"
         manifest = inspect_strict_checkpoint(step_dir.parent, step)
-        verify_manifest_hash(manifest)
+        checkpoint_manifests[(model_tag, step)] = (
+            manifest,
+            verify_manifest_hash(manifest),
+        )
         retention["finals"].append(
             {
                 "label": label,
@@ -474,24 +493,157 @@ def main_family(args):
     for stage in recipe["stages"]:
         path = lineage_dir / f"{stage['id']}.json"
         receipt, digest = _load_receipt(path, "d32_checkpoint_lineage_receipt")
+        stage_id = stage["id"]
+        target_key = (str(stage["model_tag"]), int(stage["target_step"]))
+        target_manifest, target_sha = checkpoint_manifests[target_key]
+        target_identity = target_manifest.get("identity")
+        if not isinstance(target_identity, dict):
+            raise ValueError(f"target checkpoint identity is malformed: {stage_id}")
+        protocol = target_identity.get("protocol")
+        if not isinstance(protocol, dict):
+            raise ValueError(f"target checkpoint protocol is malformed: {stage_id}")
+        exposure_key = (
+            f"{stage['exposure_plan_family']}_ws"
+            f"{gate['authorized_production_world_size']}_seed42"
+        )
+        exposure_sha = preflight["corpus"]["training_exposure_plans"][
+            exposure_key
+        ]["sha256"]
+        expected_run_id = (
+            f"{recipe['family_id']}_trunk"
+            if stage["kind"] == "trunk"
+            else f"{recipe['family_id']}_{stage_id}"
+        )
+        expected_recipe_scope = (
+            "production_trunk" if stage["kind"] == "trunk" else stage_id
+        )
+        source_step = stage.get("source_step")
+        expected_source = None
+        if source_step is not None:
+            source_key = (
+                str(stage.get("source_model_tag", stage["model_tag"])),
+                int(source_step),
+            )
+            source_manifest, source_sha = checkpoint_manifests[source_key]
+            source_identity = source_manifest.get("identity")
+            if not isinstance(source_identity, dict):
+                raise ValueError(f"source checkpoint identity is malformed: {stage_id}")
+            expected_source = {
+                "model_tag": source_key[0],
+                "step": source_key[1],
+                "checkpoint_sha256": source_sha,
+                "run_id": source_identity.get("run_id"),
+            }
         if (
             receipt.get("family_id") != recipe["family_id"]
+            or receipt.get("stage_id") != stage_id
             or receipt.get("recipe_sha256") != recipe_sha
+            or receipt.get("preflight_receipt_sha256") != preflight_sha
             or receipt.get("production_gate_sha256") != gate_sha
             or receipt.get("wsd_proxy_approval_sha256") != approval_sha
+            or receipt.get("production_world_size")
+            != gate["authorized_production_world_size"]
+            or receipt.get("exposure_plan_key") != exposure_key
+            or receipt.get("source") != expected_source
+            or receipt.get("target", {}).get("model_tag") != target_key[0]
+            or receipt.get("target", {}).get("step") != target_key[1]
+            or receipt.get("target", {}).get("checkpoint_sha256") != target_sha
+            or target_manifest.get("expected_world_size")
+            != gate["authorized_production_world_size"]
+            or target_identity.get("run_id") != expected_run_id
+            or target_identity.get("study_manifest_sha256") != recipe_sha
+            or target_identity.get("tokenizer_artifact_sha256")
+            != preflight["tokenizer"]["package_manifest_sha256"]
+            or target_identity.get("exposure_plan_sha256") != exposure_sha
+            or protocol.get("protocol_version") != "d32_wsd_strict_v1"
+            or protocol.get("run_kind") != "production"
+            or protocol.get("recipe_scope") != expected_recipe_scope
+            or protocol.get("model_tag") != target_key[0]
+            or protocol.get("num_iterations") != int(stage["num_iterations"])
         ):
             raise ValueError(f"lineage receipt mismatch: {path}")
         lineage_hashes[stage["id"]] = digest
         files.append((path, repo_path("provenance", "lineage", path.name)))
+
+    corpus_root = Path(preflight["corpus"]["root"])
+    expected_chain = preflight["corpus"].get("production_chain")
+    if (
+        not isinstance(expected_chain, dict)
+        or expected_chain.get("data_prep_storage_gate_sha256")
+        != preflight["data_preparation_storage_gate_sha256"]
+        or expected_chain.get("cluster_launch_receipt_sha256")
+        != cluster_launch_sha
+    ):
+        raise ValueError("production preflight has malformed data lineage")
+    corpus_manifest, corpus_manifest_sha = _load_receipt(
+        corpus_root / recipe["artifacts"]["corpus_manifest"],
+        "turkish_pretrain_corpus",
+    )
+    parent_pool, parent_pool_sha = _load_receipt(
+        corpus_root / "parent_pool_manifest.json", "turkish_pretrain_corpus"
+    )
+    qa_approval, qa_approval_sha = _load_receipt(
+        corpus_root / "qa" / "qa_approval.json", "turkish_pretrain_qa_approval"
+    )
+    parent_ownership, parent_ownership_sha = _load_receipt(
+        corpus_root / "parent_pool_ownership.json", "turkish_run_owned_filtered_pool"
+    )
+    qa_report, qa_report_sha = _load_receipt(
+        corpus_root / "qa" / "qa_report.json",
+        "turkish_pretrain_stratified_qa_report",
+    )
+    packing_report, packing_report_sha = _load_receipt(
+        corpus_root / "packing_preflight" / "packing_preflight_report.json",
+        "turkish_packing_preflight_report",
+    )
+    packing_approval, packing_approval_sha = _load_receipt(
+        corpus_root / "packing_preflight" / "packing_preflight_approval.json",
+        "turkish_packing_preflight_approval",
+    )
+    final_dataset_path = require_file(
+        corpus_root / recipe["artifacts"]["nanochat_dataset_manifest"],
+        "final dataset manifest",
+    )
+    final_dataset = json.loads(final_dataset_path.read_text(encoding="utf-8"))
+    final_dataset_sha = verify_manifest_hash(final_dataset)
+    if (
+        corpus_manifest_sha != preflight["corpus"]["manifest_sha256"]
+        or parent_pool_sha != preflight["corpus"]["parent_pool_manifest_sha256"]
+        or qa_approval_sha != preflight["corpus"]["qa_approval_sha256"]
+        or final_dataset_sha != preflight["corpus"]["dataset_manifest_sha256"]
+        or corpus_manifest.get("production_chain") != expected_chain
+        or parent_pool.get("production_chain") != expected_chain
+        or corpus_manifest.get("parent_pool_manifest_sha256") != parent_pool_sha
+        or final_dataset.get("metadata", {}).get("parent_pool_manifest_sha256")
+        != parent_pool_sha
+        or final_dataset.get("metadata", {}).get("qa_approval_sha256")
+        != qa_approval_sha
+        or final_dataset.get("metadata", {}).get("production_chain")
+        != expected_chain
+        or qa_approval.get("decision") != "accepted"
+        or parent_ownership.get("pool_manifest_sha256") != parent_pool_sha
+        or qa_approval.get("qa_report_sha256") != qa_report_sha
+        or corpus_manifest.get("quality_assurance", {}).get("report_sha256")
+        != qa_report_sha
+        or corpus_manifest.get("quality_assurance", {}).get("approval_sha256")
+        != qa_approval_sha
+        or corpus_manifest.get("packing_preflight", {}).get("report_sha256")
+        != packing_report_sha
+        or corpus_manifest.get("packing_preflight", {}).get("approval_sha256")
+        != packing_approval_sha
+        or packing_approval.get("packing_report_sha256") != packing_report_sha
+    ):
+        raise ValueError("final corpus differs from exact preflight pool/QA lineage")
 
     tokenizer_root = Path(preflight["tokenizer"]["root"])
     add_tree(files, tokenizer_root, repo_path("tokenizer"))
     tokenizer_name = preflight["tokenizer"]["name"]
     tokenizer_control_root = base_dir / "control" / "tokenizer" / tokenizer_name
     quality_root = tokenizer_control_root / "quality"
-    validate_tokenizer_quality_gate(
+    quality_report, quality_approval = validate_tokenizer_quality_gate(
         quality_root,
         expected_package_sha256=preflight["tokenizer"]["package_manifest_sha256"],
+        expected_production_chain=expected_chain,
     )
     for name in ("quality_report.json", "quality_approval.json"):
         path = require_file(quality_root / name, f"tokenizer quality evidence {name}")
@@ -501,6 +653,9 @@ def main_family(args):
     training_receipt = _load_receipt(
         tokenizer_root / "training_receipt.json", "turkish_raw_bpe_training_receipt"
     )[0]
+    tokenizer_package, tokenizer_package_sha = _load_receipt(
+        tokenizer_root / "package_manifest.json", "turkish_raw_bpe_tokenizer_package"
+    )
     sample_manifest, sample_sha = _load_receipt(
         sample_root / "tokenizer_sample_manifest.json", "turkish_raw_bpe_training_sample"
     )
@@ -512,13 +667,34 @@ def main_family(args):
     if (
         training_receipt.get("sample_manifest_sha256") != sample_sha
         or sample_manifest.get("nanochat_dataset_manifest_sha256") != dataset_sha
+        or tokenizer_package_sha
+        != preflight["tokenizer"]["package_manifest_sha256"]
+        or any(
+            receipt.get("production_chain") != expected_chain
+            or receipt.get("parent_corpus_manifest_sha256") != parent_pool_sha
+            or receipt.get("qa_approval_sha256") != qa_approval_sha
+            for receipt in (
+                training_receipt,
+                tokenizer_package,
+                sample_manifest,
+                quality_report,
+                quality_approval,
+            )
+        )
+        or dataset_payload.get("metadata", {}).get("production_chain")
+        != expected_chain
+        or dataset_payload.get("metadata", {}).get(
+            "parent_corpus_manifest_sha256"
+        )
+        != parent_pool_sha
+        or dataset_payload.get("metadata", {}).get("qa_approval_sha256")
+        != qa_approval_sha
     ):
         raise ValueError("tokenizer sample provenance differs from its training receipt")
     for path in (sample_root / "tokenizer_sample_manifest.json", dataset_manifest):
         files.append(
             (path, repo_path("provenance", "tokenizer", "sample", path.name))
         )
-    corpus_root = Path(preflight["corpus"]["root"])
     source_receipt_path = require_file(
         corpus_root / recipe["artifacts"]["source_receipt"],
         "family source receipt",
@@ -543,6 +719,49 @@ def main_family(args):
     for name in sorted(provenance_names):
         path = require_file(corpus_root / name, f"corpus provenance {name}")
         files.append((path, repo_path("provenance", "data", name)))
+    files.append(
+        (
+            corpus_root / "parent_pool_manifest.json",
+            repo_path("provenance", "data", "parent_pool_manifest.json"),
+        )
+    )
+    files.append(
+        (
+            corpus_root / "parent_pool_ownership.json",
+            repo_path("provenance", "data", "parent_pool_ownership.json"),
+        )
+    )
+    files.append(
+        (
+            corpus_root / "qa" / "qa_report.json",
+            repo_path("provenance", "data", "qa", "qa_report.json"),
+        )
+    )
+    for record in qa_report["examples"].values():
+        path = require_file(
+            corpus_root / "qa" / record["path"], "archived QA reviewed example"
+        )
+        if path.stat().st_size != record["size_bytes"] or file_sha256(path) != record["sha256"]:
+            raise ValueError("archived QA reviewed example differs from report")
+        files.append(
+            (path, repo_path("provenance", "data", "qa", path.name))
+        )
+    for name in (
+        "packing_preflight_report.json",
+        "packing_preflight_approval.json",
+    ):
+        files.append(
+            (
+                corpus_root / "packing_preflight" / name,
+                repo_path("provenance", "data", "packing_preflight", name),
+            )
+        )
+    files.append(
+        (
+            corpus_root / "qa" / "qa_approval.json",
+            repo_path("provenance", "data", "qa", "qa_approval.json"),
+        )
+    )
     macocu_manifest = recipe["artifacts"].get("macocu_preparation_manifest")
     if macocu_manifest:
         path = require_file(base_dir / macocu_manifest, "MaCoCu preparation manifest")
@@ -581,6 +800,7 @@ def main_family(args):
         Path(args.static_launcher_gate),
         Path(args.signal_resume_gate),
         Path(args.production_gate),
+        Path(args.cluster_launch_receipt),
         repo_root / recipe["artifacts"]["mixture_config"],
         repo_root / "pyproject.toml",
         repo_root / "uv.lock",
@@ -596,8 +816,11 @@ def main_family(args):
             "scripts/d32_static_launch_probe.py",
             "scripts/d32_wsd_train.py",
             "scripts/build_turkish_pretrain_corpus.py",
+            "scripts/audit_turkish_backend_sample.py",
             "scripts/review_turkish_tokenizer_quality.py",
             "scripts/train_turkish_raw_bpe.py",
+            "scripts/turkish_packed_sample.py",
+            "scripts/turkish_packed_production.py",
             "scripts/turkish_data_backend.py",
             "scripts/upload_base_checkpoint_to_hf.py",
             "nanochat/experiment_manifest.py",
@@ -637,15 +860,26 @@ def main_family(args):
             "runs/uhem_d32_production.sbatch",
             "runs/uhem_d32_stage_finalize.sbatch",
             "runs/uhem_d32_family_upload.sbatch",
+            "runs/uhem_d32_data_prep_storage_sample.sbatch",
+            "runs/uhem_d32_data_prep_writer_probe.sbatch",
             "runs/uhem_submit_d32_family.sh",
             "runs/uhem_turkish_data_objects.sbatch",
+            "runs/uhem_turkish_data_objects_packed_sample.sbatch",
+            "runs/uhem_turkish_data_objects_packed_production.sbatch",
+            "runs/uhem_turkish_data_buckets_packed_sample.sbatch",
+            "runs/uhem_turkish_data_buckets_packed_production.sbatch",
             "runs/uhem_turkish_data_buckets.sbatch",
             "runs/uhem_turkish_data_cluster.sbatch",
             "runs/uhem_turkish_data_bootstrap.sbatch",
             "runs/uhem_turkish_data_prepare_macocu.sbatch",
+            "runs/uhem_turkish_sample_quality_audit.sbatch",
             "runs/uhem_turkish_prepare_data_env.sbatch",
             "runs/uhem_turkish_corpus_finalize.sbatch",
             "runs/uhem_turkish_packing_preflight.sbatch",
+            "runs/uhem_turkish_production_pool.sbatch",
+            "runs/uhem_turkish_tokenizer_sample.sbatch",
+            "runs/uhem_turkish_tokenizer_train.sbatch",
+            "runs/uhem_turkish_tokenizer_quality.sbatch",
         }
     )
     for relative in sorted(code_paths):

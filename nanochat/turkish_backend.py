@@ -24,8 +24,10 @@ import json
 import math
 import os
 import re
+import resource
 import shutil
 import struct
+import sys
 import tempfile
 import time
 import urllib.parse
@@ -84,6 +86,10 @@ BUCKET_RECEIPT_KIND = "turkish_datatrove_bucket_result"
 CLUSTER_RECEIPT_KIND = "turkish_priority_cluster_result"
 RESOURCE_REPORT_KIND = "turkish_backend_resource_projection"
 RESOURCE_APPROVAL_KIND = "turkish_backend_resource_approval"
+PRODUCTION_CLUSTER_LAUNCH_KIND = "turkish_packed_production_cluster_launch_receipt"
+MIXTURE_QUALITY_APPROVAL_KIND = (
+    "turkish_bounded_backend_sample_quality_approval"
+)
 MACOCU_PREPARATION_KIND = "turkish_macocu_genre_preparation"
 
 RESOURCE_BILLING_CONTRACT = {
@@ -209,6 +215,13 @@ def _elapsed(start_wall: float, start_cpu: float) -> dict[str, float]:
         "wall_seconds": max(0.0, time.monotonic() - start_wall),
         "cpu_seconds": max(0.0, time.process_time() - start_cpu),
     }
+
+
+def _peak_rss_bytes() -> int:
+    """Return process peak RSS using the platform-specific ru_maxrss unit."""
+
+    value = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+    return value if sys.platform == "darwin" else value * 1024
 
 
 def _http_bytes(uri: str, *, request_get: Any = requests.get) -> bytes:
@@ -1856,7 +1869,10 @@ def process_source_object(
         if resource_approval_path is None:
             raise TurkishCorpusError("full object processing requires resource approval")
         validate_resource_approval(
-            load_json_strict(resource_approval_path), plan=plan, policy=policy
+            load_json_strict(resource_approval_path),
+            plan=plan,
+            policy=policy,
+            calibration=calibration,
         )
     run_root = Path(run_dir)
     object_dir = run_root / "objects" / f"{rank:05d}"
@@ -2188,7 +2204,10 @@ def run_datatrove_bucket(
         if resource_approval_path is None:
             raise TurkishCorpusError("full bucket processing requires resource approval")
         validate_resource_approval(
-            load_json_strict(resource_approval_path), plan=plan, policy=policy
+            load_json_strict(resource_approval_path),
+            plan=plan,
+            policy=policy,
+            calibration=calibration,
         )
     run_root = Path(run_dir)
     objects = _load_object_receipts(
@@ -2364,7 +2383,10 @@ def run_priority_cluster_merge(
         if resource_approval_path is None:
             raise TurkishCorpusError("full priority clustering requires resource approval")
         validate_resource_approval(
-            load_json_strict(resource_approval_path), plan=plan, policy=policy
+            load_json_strict(resource_approval_path),
+            plan=plan,
+            policy=policy,
+            calibration=calibration,
         )
     run_root = Path(run_dir)
     objects = _load_object_receipts(
@@ -2410,15 +2432,19 @@ def run_priority_cluster_merge(
         source_id: index
         for index, source_id in enumerate(policy["deduplication"]["source_priority"])
     }
+    # Singleton candidates are always their own winner, so only candidates
+    # participating in a duplicate edge need resident winner state.
     winners: dict[tuple[int, int], tuple[tuple[Any, ...], tuple[int, int], str]] = {}
-    seen_nodes: set[tuple[int, int]] = set()
+    seen_edge_nodes: set[tuple[int, int]] = set()
     for object_receipt in objects:
         path = run_root / object_receipt["candidate_file"]["path"]
         for row in _iter_candidate_rows(path):
             node = (int(row["candidate_rank"]), int(row["candidate_doc_index"]))
             if node[0] != object_receipt["rank"]:
                 raise TurkishCorpusError("candidate rank/file identity drift")
-            root = union.find(node) if node in union.parent else node
+            if node not in union.parent:
+                continue
+            root = union.find(node)
             key = (
                 priority[row["source_id"]],
                 -float(row["quality_score"]),
@@ -2428,8 +2454,8 @@ def run_priority_cluster_merge(
             current = winners.get(root)
             if current is None or key < current[0]:
                 winners[root] = (key, node, str(row["document_id"]))
-            seen_nodes.add(node)
-    missing_edge_nodes = set(union.parent) - seen_nodes
+            seen_edge_nodes.add(node)
+    missing_edge_nodes = set(union.parent) - seen_edge_nodes
     if missing_edge_nodes:
         raise TurkishCorpusError(
             f"DataTrove duplicate edges reference {len(missing_edge_nodes)} absent candidate rows"
@@ -2456,10 +2482,14 @@ def run_priority_cluster_merge(
         writer = _ParquetBatchWriter(output_path, _BACKEND_SCHEMA)
         for row in _iter_candidate_rows(input_path):
             node = (int(row.pop("candidate_rank")), int(row.pop("candidate_doc_index")))
-            root = union.find(node) if node in union.parent else node
-            winner = winners[root]
-            dedup_keep = node == winner[1]
-            row["dedup_cluster_id"] = _cluster_id(winner[2])
+            if node in union.parent:
+                winner = winners[union.find(node)]
+                dedup_keep = node == winner[1]
+                winner_document_id = winner[2]
+            else:
+                dedup_keep = True
+                winner_document_id = str(row["document_id"])
+            row["dedup_cluster_id"] = _cluster_id(winner_document_id)
             row["dedup_keep"] = dedup_keep
             flags: list[str] = []
             if not dedup_keep:
@@ -2557,6 +2587,9 @@ def run_priority_cluster_merge(
         "input_bytes": sum(item["candidate_file"]["size_bytes"] for item in objects)
         + sum(item["output"]["size_bytes"] for item in buckets),
         "output_bytes": sum(item["size_bytes"] for item in output_files),
+        "peak_rss_bytes": _peak_rss_bytes(),
+        "edge_participating_documents": len(seen_edge_nodes),
+        "winner_components": len(winners),
     }
     receipt = seal_manifest(
         {
@@ -2586,11 +2619,62 @@ def run_priority_cluster_merge(
     return receipt
 
 
+def _validate_production_cluster_launch(
+    path: str | Path,
+    *,
+    policy: Mapping[str, Any],
+    plan: Mapping[str, Any],
+    calibration: Mapping[str, Any],
+    run_root: Path,
+) -> tuple[dict[str, Any], str]:
+    launch = load_json_strict(path)
+    digest = verify_manifest_hash(launch)
+    cluster = load_json_strict(run_root / "cluster_receipt.json")
+    cluster_sha = verify_manifest_hash(cluster)
+    if (
+        launch.get("schema_version") != "1.0"
+        or launch.get("kind") != PRODUCTION_CLUSTER_LAUNCH_KIND
+        or launch.get("cluster_completed") is not True
+        or launch.get("policy_sha256") != _policy_sha256(policy)
+        or launch.get("source_plan_sha256") != plan["canonical_sha256"]
+        or launch.get("calibration_sha256") != calibration["canonical_sha256"]
+        or launch.get("cluster_receipt_sha256") != cluster_sha
+        or cluster.get("sample_mode") is not False
+    ):
+        raise TurkishCorpusError("production cluster launch receipt binding drift")
+    for field in (
+        "recipe_sha256",
+        "production_pack_plan_sha256",
+        "resource_approval_sha256",
+        "mixture_quality_approval_sha256",
+        "data_prep_storage_gate_sha256",
+        "cluster_input_receipt_sha256",
+    ):
+        if not _SHA256_RE.fullmatch(str(launch.get(field, ""))):
+            raise TurkishCorpusError("production cluster launch provenance drift")
+    allocation = launch.get("allocation")
+    if (
+        not isinstance(allocation, Mapping)
+        or allocation.get("partition") != "cpu2dq"
+        or allocation.get("nodes") != 1
+        or allocation.get("tasks") != 1
+        or allocation.get("cpus_per_task") != 16
+        or allocation.get("billable_cpus") != 128
+        or allocation.get("memory_bytes") != 192 * 1024**3
+        or allocation.get("maximum_wall_seconds") != 172_800
+        or not str(allocation.get("slurm_job_id", "")).isdigit()
+        or not allocation.get("node_list")
+    ):
+        raise TurkishCorpusError("production cluster launch allocation drift")
+    return launch, digest
+
+
 def seal_source_receipt_from_objects(
     policy: Mapping[str, Any],
     plan: Mapping[str, Any],
     calibration: Mapping[str, Any],
     run_dir: str | Path,
+    cluster_launch_receipt_path: str | Path,
     output_path: str | Path,
 ) -> dict[str, Any]:
     """Seal source SHA-256 identities after every bounded acquisition task."""
@@ -2602,6 +2686,13 @@ def seal_source_receipt_from_objects(
     if destination.exists():
         raise FileExistsError(f"refusing to overwrite source receipt: {destination}")
     run_root = Path(run_dir)
+    cluster_launch, cluster_launch_sha = _validate_production_cluster_launch(
+        cluster_launch_receipt_path,
+        policy=policy,
+        plan=plan,
+        calibration=calibration,
+        run_root=run_root,
+    )
     objects = _load_object_receipts(
         run_root, plan, calibration, sample_mode=False
     )
@@ -2639,6 +2730,21 @@ def seal_source_receipt_from_objects(
             "source_plan_sha256": plan["canonical_sha256"],
             "derived_sources": plan.get("derived_sources", {}),
             "object_receipt_sha256": [item["canonical_sha256"] for item in objects],
+            "production_chain": {
+                "cluster_launch_receipt_sha256": cluster_launch_sha,
+                "production_pack_plan_sha256": cluster_launch[
+                    "production_pack_plan_sha256"
+                ],
+                "resource_approval_sha256": cluster_launch[
+                    "resource_approval_sha256"
+                ],
+                "mixture_quality_approval_sha256": cluster_launch[
+                    "mixture_quality_approval_sha256"
+                ],
+                "data_prep_storage_gate_sha256": cluster_launch[
+                    "data_prep_storage_gate_sha256"
+                ],
+            },
             "sources": sources,
             "canonical_sha256": None,
         }
@@ -2654,6 +2760,7 @@ def seal_backend_receipt_from_cluster(
     source_receipt: Mapping[str, Any],
     calibration: Mapping[str, Any],
     run_dir: str | Path,
+    cluster_launch_receipt_path: str | Path,
     output_path: str | Path,
 ) -> dict[str, Any]:
     validate_corpus_policy(policy)
@@ -2664,6 +2771,28 @@ def seal_backend_receipt_from_cluster(
     if destination.exists():
         raise FileExistsError(f"refusing to overwrite backend receipt: {destination}")
     run_root = Path(run_dir)
+    cluster_launch, cluster_launch_sha = _validate_production_cluster_launch(
+        cluster_launch_receipt_path,
+        policy=policy,
+        plan=plan,
+        calibration=calibration,
+        run_root=run_root,
+    )
+    expected_chain = {
+        "cluster_launch_receipt_sha256": cluster_launch_sha,
+        "production_pack_plan_sha256": cluster_launch[
+            "production_pack_plan_sha256"
+        ],
+        "resource_approval_sha256": cluster_launch["resource_approval_sha256"],
+        "mixture_quality_approval_sha256": cluster_launch[
+            "mixture_quality_approval_sha256"
+        ],
+        "data_prep_storage_gate_sha256": cluster_launch[
+            "data_prep_storage_gate_sha256"
+        ],
+    }
+    if source_receipt.get("production_chain") != expected_chain:
+        raise TurkishCorpusError("source receipt production-chain binding drift")
     cluster = load_json_strict(run_root / "cluster_receipt.json")
     verify_manifest_hash(cluster)
     if cluster.get("kind") != CLUSTER_RECEIPT_KIND or cluster.get("sample_mode") is not False:
@@ -2755,6 +2884,7 @@ def seal_backend_receipt_from_cluster(
             ],
             "removal_samples": cluster["removal_samples"],
             "cluster_receipt_sha256": cluster["canonical_sha256"],
+            "production_chain": expected_chain,
             "columns": list(BACKEND_COLUMNS),
             "files": file_records,
             "output_totals": {
@@ -2926,10 +3056,85 @@ def validate_resource_projection(report: Mapping[str, Any]) -> str:
         "process_cpu_efficiency_against_billable_capacity",
     ):
         require_close(diagnostics.get(key), expected_diagnostics[key], key)
+    cluster_scaling = _require_mapping(
+        projection.get("cluster_scaling"), "projection.cluster_scaling"
+    )
+    limits = _require_mapping(report.get("limits"), "limits")
+    sample_candidates = cluster_scaling.get("sample_candidate_documents")
+    projected_candidates = projection.get("candidate_documents")
+    sample_peak_rss = cluster_scaling.get("sample_peak_rss_bytes")
+    if (
+        isinstance(sample_candidates, bool)
+        or not isinstance(sample_candidates, (int, float))
+        or float(sample_candidates) <= 0
+        or isinstance(projected_candidates, bool)
+        or not isinstance(projected_candidates, (int, float))
+        or float(projected_candidates) < 0
+        or isinstance(sample_peak_rss, bool)
+        or not isinstance(sample_peak_rss, int)
+        or sample_peak_rss <= 0
+    ):
+        raise TurkishCorpusError("resource projection cluster scaling is invalid")
+    candidate_scale = float(projected_candidates) / float(sample_candidates)
+    require_close(
+        cluster_scaling.get("projected_candidate_scale"),
+        candidate_scale,
+        "cluster projected candidate scale",
+    )
+    sample_edge_documents = cluster_scaling.get(
+        "sample_edge_participating_documents"
+    )
+    if (
+        isinstance(sample_edge_documents, bool)
+        or not isinstance(sample_edge_documents, int)
+        or sample_edge_documents < 0
+    ):
+        raise TurkishCorpusError("resource projection sample edge count is invalid")
+    require_close(
+        cluster_scaling.get("projected_edge_participating_documents"),
+        sample_edge_documents * candidate_scale,
+        "cluster projected edge-participating documents",
+    )
+    projected_peak_rss = float(sample_peak_rss) * max(1.0, candidate_scale)
+    require_close(
+        cluster_scaling.get("projected_peak_rss_bytes"),
+        projected_peak_rss,
+        "cluster projected peak RSS",
+    )
+    projected_peak_rss_with_safety = projected_peak_rss * float(
+        projection["safety_factor"]
+    )
+    require_close(
+        cluster_scaling.get("projected_peak_rss_bytes_with_safety_factor"),
+        projected_peak_rss_with_safety,
+        "cluster projected peak RSS with safety factor",
+    )
+    projected_cluster_wall_with_safety = float(
+        projection["stage_wall_seconds_before_safety_factor"][
+            "priority_cluster_quality_format"
+        ]
+    ) * float(projection["safety_factor"])
+    require_close(
+        cluster_scaling.get("projected_wall_seconds_with_safety_factor"),
+        projected_cluster_wall_with_safety,
+        "cluster projected wall with safety factor",
+    )
+    if (
+        limits.get("cluster_memory_limit_bytes") != 192 * 1024**3
+        or limits.get("cluster_wall_limit_seconds") != 172_800
+    ):
+        raise TurkishCorpusError("resource projection cluster limits drift")
+    expected_automated_gate = (
+        float(projection.get("peak_disk_bytes_with_safety_factor", math.inf))
+        <= float(limits.get("effective_peak_limit_bytes", -1))
+        and sample_peak_rss < limits["cluster_memory_limit_bytes"]
+        and projected_peak_rss_with_safety < limits["cluster_memory_limit_bytes"]
+        and projected_cluster_wall_with_safety <= limits["cluster_wall_limit_seconds"]
+    )
     if report.get("manual_approval_required") is not True:
         raise TurkishCorpusError("resource projection must require manual approval")
-    if not isinstance(report.get("automated_gate_passed"), bool):
-        raise TurkishCorpusError("resource projection automated gate result is missing")
+    if report.get("automated_gate_passed") is not expected_automated_gate:
+        raise TurkishCorpusError("resource projection automated gate result drift")
     return report_hash
 
 
@@ -3070,6 +3275,17 @@ def build_resource_projection(
         if sample_candidates
         else 0.0
     )
+    cluster_sample_peak_rss = int(cluster["telemetry"].get("peak_rss_bytes", 0))
+    if cluster_sample_peak_rss <= 0:
+        raise TurkishCorpusError("sample cluster telemetry is missing peak_rss_bytes")
+    cluster_sample_edge_documents = int(
+        cluster["telemetry"].get("edge_participating_documents", 0)
+    )
+    candidate_scale = (
+        projected_candidates / sample_candidates if sample_candidates else 0.0
+    )
+    projected_cluster_edge_documents = cluster_sample_edge_documents * candidate_scale
+    projected_cluster_peak_rss = cluster_sample_peak_rss * max(1.0, candidate_scale)
     sample_backend_bytes = sum(item["size_bytes"] for item in cluster["output_files"])
     projected_backend_bytes = (
         sample_backend_bytes * projected_candidates / sample_candidates
@@ -3105,7 +3321,15 @@ def build_resource_projection(
         billable_cpus_per_job=billable_cpus_per_job,
     )
     limit = min(int(policy["materialization"]["max_peak_disk_bytes"]), quota_headroom_bytes)
-    automated_pass = projected_peak <= limit
+    cluster_memory_limit = 192 * 1024**3
+    projected_cluster_peak_rss_with_safety = projected_cluster_peak_rss * safety_factor
+    projected_cluster_wall_with_safety = projected_cluster_wall * safety_factor
+    automated_pass = (
+        projected_peak <= limit
+        and cluster_sample_peak_rss < cluster_memory_limit
+        and projected_cluster_peak_rss_with_safety < cluster_memory_limit
+        and projected_cluster_wall_with_safety <= 172_800
+    )
     report = seal_manifest(
         {
             "schema_version": "1.0",
@@ -3176,11 +3400,30 @@ def build_resource_projection(
                 **accounting,
                 "peak_disk_bytes_with_safety_factor": projected_peak,
                 "peak_disk_model": "raw_largest+candidates+signatures+dups+backend_output; conservative until streaming cleanup is proven",
+                "cluster_scaling": {
+                    "sample_candidate_documents": sample_candidates,
+                    "projected_candidate_scale": candidate_scale,
+                    "sample_edge_participating_documents": cluster_sample_edge_documents,
+                    "projected_edge_participating_documents": projected_cluster_edge_documents,
+                    "sample_peak_rss_bytes": cluster_sample_peak_rss,
+                    "projected_peak_rss_bytes": projected_cluster_peak_rss,
+                    "projected_peak_rss_bytes_with_safety_factor": (
+                        projected_cluster_peak_rss_with_safety
+                    ),
+                    "projected_wall_seconds_with_safety_factor": (
+                        projected_cluster_wall_with_safety
+                    ),
+                    "rss_projection_model": (
+                        "sample_peak_rss_times_max_one_and_candidate_scale"
+                    ),
+                },
             },
             "limits": {
                 "policy_max_peak_disk_bytes": policy["materialization"]["max_peak_disk_bytes"],
                 "reported_quota_headroom_bytes": quota_headroom_bytes,
                 "effective_peak_limit_bytes": limit,
+                "cluster_memory_limit_bytes": cluster_memory_limit,
+                "cluster_wall_limit_seconds": 172_800,
             },
             "automated_gate_passed": automated_pass,
             "manual_approval_required": True,
@@ -3194,6 +3437,7 @@ def build_resource_projection(
 
 def seal_resource_approval(
     report_path: str | Path,
+    mixture_quality_approval_path: str | Path,
     output_path: str | Path,
     *,
     reviewer: str,
@@ -3203,6 +3447,13 @@ def seal_resource_approval(
 ) -> dict[str, Any]:
     report = load_json_strict(report_path)
     report_hash = validate_resource_projection(report)
+    mixture_quality_approval = load_json_strict(mixture_quality_approval_path)
+    mixture_quality_approval_hash = validate_mixture_quality_approval(
+        mixture_quality_approval,
+        policy_sha256=report["policy_sha256"],
+        source_plan_sha256=report["source_plan_sha256"],
+        calibration_sha256=report["calibration_sha256"],
+    )
     if report.get("automated_gate_passed") is not True and decision == "accepted":
         raise TurkishCorpusError("cannot accept a resource projection that exceeds the hard peak limit")
     if not reviewer.strip() or not _RFC3339_UTC_RE.fullmatch(reviewed_at_utc):
@@ -3214,11 +3465,13 @@ def seal_resource_approval(
         raise FileExistsError(f"refusing to overwrite resource approval: {destination}")
     approval = seal_manifest(
         {
-            "schema_version": "1.0",
+            "schema_version": "2.0",
             "kind": RESOURCE_APPROVAL_KIND,
             "resource_report_sha256": report_hash,
             "policy_sha256": report["policy_sha256"],
             "source_plan_sha256": report["source_plan_sha256"],
+            "calibration_sha256": report["calibration_sha256"],
+            "mixture_quality_approval_sha256": mixture_quality_approval_hash,
             "approved_projection": {
                 "billing_contract": report["billing_contract"],
                 "billed_cpu_saat_with_safety_factor": report["projection"][
@@ -3237,19 +3490,31 @@ def seal_resource_approval(
 
 
 def validate_resource_approval(
-    approval: Mapping[str, Any], *, plan: Mapping[str, Any], policy: Mapping[str, Any]
+    approval: Mapping[str, Any],
+    *,
+    plan: Mapping[str, Any],
+    policy: Mapping[str, Any],
+    calibration: Mapping[str, Any],
 ) -> None:
     verify_manifest_hash(approval)
     if (
-        approval.get("schema_version") != "1.0"
+        approval.get("schema_version") != "2.0"
         or approval.get("kind") != RESOURCE_APPROVAL_KIND
         or approval.get("decision") != "accepted"
+        or not isinstance(approval.get("reviewer"), str)
+        or not approval["reviewer"].strip()
+        or not _RFC3339_UTC_RE.fullmatch(str(approval.get("reviewed_at_utc", "")))
     ):
         raise TurkishCorpusError("full backend requires an accepted resource approval")
     if (
         approval.get("source_plan_sha256") != plan["canonical_sha256"]
         or approval.get("policy_sha256") != _policy_sha256(policy)
+        or approval.get("calibration_sha256")
+        != calibration["canonical_sha256"]
         or not _SHA256_RE.fullmatch(str(approval.get("resource_report_sha256", "")))
+        or not _SHA256_RE.fullmatch(
+            str(approval.get("mixture_quality_approval_sha256", ""))
+        )
     ):
         raise TurkishCorpusError("resource approval binding drift")
     projection = _require_mapping(
@@ -3271,9 +3536,71 @@ def validate_resource_approval(
         raise TurkishCorpusError("resource approval lacks billed CPU-saat")
 
 
+def validate_mixture_quality_approval(
+    approval: Mapping[str, Any],
+    *,
+    policy_sha256: str,
+    source_plan_sha256: str,
+    calibration_sha256: str,
+) -> str:
+    """Validate a human decision over the bounded quality-audit evidence."""
+
+    digest = verify_manifest_hash(approval)
+    if (
+        approval.get("schema_version") != "1.0"
+        or approval.get("kind") != MIXTURE_QUALITY_APPROVAL_KIND
+        or approval.get("decision") != "accepted"
+        or approval.get("automatic_decision") is not False
+        or approval.get("coverage_complete") is not True
+        or approval.get("review_confirmation")
+        != "bounded_strata_and_accepted_rejected_examples_reviewed"
+        or not isinstance(approval.get("reviewer"), str)
+        or not approval["reviewer"].strip()
+        or not _RFC3339_UTC_RE.fullmatch(str(approval.get("reviewed_at_utc", "")))
+    ):
+        raise TurkishCorpusError(
+            "full backend requires an accepted manual mixture-quality approval"
+        )
+    bindings = {
+        "policy_sha256": policy_sha256,
+        "source_plan_sha256": source_plan_sha256,
+        "calibration_sha256": calibration_sha256,
+    }
+    for field, expected in bindings.items():
+        if approval.get(field) != expected:
+            raise TurkishCorpusError("mixture-quality approval binding drift")
+    for field in (
+        "sample_quality_audit_sha256",
+        "cluster_receipt_sha256",
+    ):
+        if not _SHA256_RE.fullmatch(str(approval.get(field, ""))):
+            raise TurkishCorpusError("mixture-quality approval evidence drift")
+    example_files = approval.get("reviewed_example_files")
+    if not isinstance(example_files, Mapping) or set(example_files) != {
+        "accepted",
+        "rejected",
+    }:
+        raise TurkishCorpusError("mixture-quality approval example inventory drift")
+    for decision in ("accepted", "rejected"):
+        record = example_files[decision]
+        if (
+            not isinstance(record, Mapping)
+            or not isinstance(record.get("rows"), int)
+            or isinstance(record.get("rows"), bool)
+            or record["rows"] < 0
+            or not _SHA256_RE.fullmatch(str(record.get("jsonl_sha256", "")))
+            or not _SHA256_RE.fullmatch(str(record.get("plaintext_sha256", "")))
+        ):
+            raise TurkishCorpusError(
+                "mixture-quality approval example evidence drift"
+            )
+    return digest
+
+
 __all__ = [
     "BACKEND_COLUMNS",
     "MACOCU_PREPARATION_KIND",
+    "MIXTURE_QUALITY_APPROVAL_KIND",
     "build_resource_projection",
     "fetch_glotlid_model",
     "process_source_object",
@@ -3289,6 +3616,7 @@ __all__ = [
     "select_resource_sample_ranks",
     "validate_backend_calibration",
     "validate_resource_approval",
+    "validate_mixture_quality_approval",
     "validate_resource_projection",
     "validate_source_plan",
     "validate_macocu_preparation_manifest",

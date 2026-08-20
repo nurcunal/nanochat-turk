@@ -218,7 +218,7 @@ def _slurm_lane_context(env: Mapping[str, str]) -> dict[str, Any]:
         raise TurkishCorpusError("Slurm task coordinates must be integers") from exc
     if proc_id not in range(LANE_COUNT) or local_id != proc_id:
         raise TurkishCorpusError(
-            "packed sample tasks must map one-to-one to local lane IDs 0..7"
+            f"packed sample tasks must map one-to-one to local lane IDs 0..{LANE_COUNT - 1}"
         )
     job_id = env.get("SLURM_JOB_ID", "")
     step_id = env.get("SLURM_STEP_ID", "")

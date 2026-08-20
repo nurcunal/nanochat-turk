@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
+import math
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -186,6 +189,467 @@ def test_beegfs_unlimited_quota_uses_physical_free(monkeypatch, tmp_path: Path) 
     assert free == 123_456
     assert audit["hard_quota_unlimited"] is True
     assert audit["used_bytes"] == 2 * 1024**4
+
+
+def test_beegfs_live_uhem_duplicate_hard_schema_is_parsed_positionally(
+    monkeypatch, tmp_path: Path
+) -> None:
+    output = (
+        "name,id,size,hard,files,hard\n"
+        "nunal,4500,2791507521536,unlimited,873812,unlimited\n"
+    )
+    monkeypatch.setattr(workflow.subprocess, "check_output", lambda *a, **k: output)
+    monkeypatch.setattr(workflow, "_disk_free_bytes", lambda _path: 987_654)
+
+    free, audit = workflow._live_beegfs_storage(
+        tmp_path, uid=4500, storage_pool_id=1, path=tmp_path
+    )
+
+    assert free == 987_654
+    assert audit["used_bytes"] == 2_791_507_521_536
+    assert audit["hard_quota_unlimited"] is True
+    assert audit["csv_schema"] == "uhem_name_id_size_hard_files_hard_v1"
+
+
+def test_beegfs_rejects_missing_requested_uid(monkeypatch, tmp_path: Path) -> None:
+    output = "name,id,size,hard,files,hard\nother,9999,1,unlimited,1,unlimited\n"
+    monkeypatch.setattr(workflow.subprocess, "check_output", lambda *a, **k: output)
+    with pytest.raises(workflow.FamilyWorkflowError, match="requested UID"):
+        workflow._live_beegfs_storage(
+            tmp_path, uid=4500, storage_pool_id=1, path=tmp_path
+        )
+
+
+def _data_prep_allocation(job_id: str, *, stage: str, elapsed: int = 10) -> dict:
+    cpu_time = elapsed * workflow.CPU2DQ_BILLABLE_CPUS
+    return {
+        "job_id": job_id,
+        "job_id_raw": job_id,
+        "stage": stage,
+        "state": "COMPLETED",
+        "partition": "cpu2dq",
+        "elapsed_raw_seconds": elapsed,
+        "alloc_cpus": workflow.CPU2DQ_BILLABLE_CPUS,
+        "cpu_time_raw_seconds": cpu_time,
+        "billed_cpu_saat": cpu_time / 3600.0,
+        "evidence_receipt_sha256s": ["e" * 64],
+        "sacct_output_sha256": "f" * 64,
+    }
+
+
+def _data_prep_measurement(recipe: dict, recipe_sha: str) -> dict:
+    components = {
+        name: {
+            "sample_measured_bytes": 50 + index,
+            "projected_peak_bytes_before_safety": 100 + index,
+            "projection_basis": f"fixture_{name}",
+            "evidence_sha256s": [f"{index + 1:064x}"],
+        }
+        for index, name in enumerate(workflow.DATA_PREP_STORAGE_COMPONENTS)
+    }
+    allocations = [
+        _data_prep_allocation("100", stage="bootstrap"),
+        _data_prep_allocation("101", stage="packed_object_sample", elapsed=20),
+    ]
+    total_cpu_time = sum(item["cpu_time_raw_seconds"] for item in allocations)
+    total_billed = sum(item["billed_cpu_saat"] for item in allocations)
+    historical = _data_prep_allocation("99", stage="macocu_genre_preparation")
+    historical["evidence_receipt_sha256s"] = ["9" * 64]
+    future_values = {
+        "production_backend": 10.0,
+        "production_pool_materialization": 20.0,
+        **{
+            name: float(value)
+            for name, value in workflow.DATA_PREP_FIXED_CPU2DQ_CEILINGS.items()
+        },
+    }
+    future_components = {
+        name: {
+            "projected_cpu_saat_before_safety": future_values[name],
+            "projection_basis": f"fixture_{name}",
+            "evidence_sha256s": [f"{index + 10:064x}"],
+        }
+        for index, name in enumerate(workflow.DATA_PREP_FUTURE_CPU_COMPONENTS)
+    }
+    future_cpu = sum(
+        item["projected_cpu_saat_before_safety"]
+        for item in future_components.values()
+    )
+    return seal_manifest(
+        {
+            "schema_version": "2.0",
+            "kind": workflow.DATA_PREP_STORAGE_SAMPLE_KIND,
+            "family_id": recipe["family_id"],
+            "recipe_sha256": recipe_sha,
+            "policy_sha256": "1" * 64,
+            "source_plan_sha256": "2" * 64,
+            "calibration_sha256": "3" * 64,
+            "backend_resource_report_sha256": "4" * 64,
+            "resource_approval_sha256": "a" * 64,
+            "mixture_quality_approval_sha256": "b" * 64,
+            "sample_quality_audit_sha256": "c" * 64,
+            "sample_lane_plan_sha256": "5" * 64,
+            "production_pack_plan_sha256": "6" * 64,
+            "writer_probe_sha256": "7" * 64,
+            "macocu_preparation_manifest_sha256": "9" * 64,
+            "sample_documents": 100_000,
+            "estimated_total_documents": 1_000_000,
+            "components": components,
+            "sample_allocations": allocations,
+            "sample_allocation_totals": {
+                "unique_allocations": len(allocations),
+                "cpu_time_raw_seconds": total_cpu_time,
+                "billed_cpu_saat": total_billed,
+                "accounting_role": (
+                    "already_consumed_measurement_evidence_not_future_quota"
+                ),
+            },
+            "historical_one_time_preparations": [
+                {
+                    "preparation_id": "macocu_genre_tr_v1",
+                    "manifest_sha256": "9" * 64,
+                    "allocation": historical,
+                    "accounting_status": (
+                        "already_consumed_excluded_from_future_projection"
+                    ),
+                    "future_projected_cpu_saat": 0,
+                }
+            ],
+            "future_resource_projection": {
+                "components": future_components,
+                "allocation_details": {
+                    "production_backend": {
+                        "node_count": 1,
+                        "projected_node_wall_seconds_before_safety": {"0": 10.0},
+                        "projected_packed_object_cpu_saat_before_safety": (
+                            10 * workflow.CPU2DQ_BILLABLE_CPUS / 3600
+                        ),
+                        "projected_packed_bucket_node_wall_seconds_before_safety": 10.0,
+                        "projected_minhash_bucket_cpu_saat_before_safety": (
+                            10 * workflow.CPU2DQ_BILLABLE_CPUS / 3600
+                        ),
+                        "projected_priority_cluster_cpu_saat_before_safety": (
+                            10 - 20 * workflow.CPU2DQ_BILLABLE_CPUS / 3600
+                        ),
+                        "sample_priority_cluster_peak_rss_bytes": 1024**3,
+                        "projected_priority_cluster_peak_rss_bytes_before_safety": (
+                            2 * 1024**3
+                        ),
+                        "sample_priority_cluster_edge_participating_documents": 10,
+                        "projected_priority_cluster_edge_participating_documents": 20.0,
+                        "projected_backend_cpu_saat_before_safety": 10.0,
+                    },
+                    "production_pool_materialization": {
+                        "allocation_contract": (
+                            "one_exclusive_128cpu_cpu2dq_node_scaled_by_candidate_documents"
+                        ),
+                        "sample_elapsed_wall_seconds": 10.0,
+                        "document_scale": 2.0,
+                        "projected_cpu_saat_before_safety": 20.0,
+                    },
+                    **{
+                        name: {
+                            "allocation_contract": (
+                                "one_exclusive_128cpu_cpu2dq_node"
+                            ),
+                            "maximum_wall_hours": (
+                                value / workflow.CPU2DQ_BILLABLE_CPUS
+                            ),
+                            "projected_cpu_saat_before_safety": float(value),
+                            "submission_must_not_exceed_ceiling": True,
+                        }
+                        for name, value in (
+                            workflow.DATA_PREP_FIXED_CPU2DQ_CEILINGS.items()
+                        )
+                    },
+                },
+                "projected_cpu_saat_before_safety": future_cpu,
+                "safety_factor_applied": False,
+                "excluded_historical_and_sample_allocations": True,
+            },
+            "canonical_sha256": None,
+        }
+    )
+
+
+def test_data_prep_gate_applies_safety_once_to_explicit_future_only(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    recipe, recipe_sha = workflow.load_recipe(RECIPE_V2)
+    measurement = _data_prep_measurement(recipe, recipe_sha)
+    measurement_path = tmp_path / "measurement.json"
+    output_path = tmp_path / "gate.json"
+    write_json_atomic(measurement_path, measurement)
+    monkeypatch.setattr(
+        workflow,
+        "_live_beegfs_storage",
+        lambda *_args, **_kwargs: (10**15, {"fixture": True}),
+    )
+    monkeypatch.setattr(
+        workflow,
+        "_live_uhem_cpu_saat",
+        lambda *_args, **_kwargs: (100_000.0, "c" * 64, {"fixture": True}),
+    )
+
+    workflow.command_data_prep_storage_gate(
+        argparse.Namespace(
+            recipe=RECIPE_V2,
+            sample_measurement=measurement_path,
+            work_dir=tmp_path,
+            output=output_path,
+        )
+    )
+
+    gate = json.loads(output_path.read_text(encoding="utf-8"))
+    projected_bytes = sum(100 + index for index in range(7))
+    assert gate["projected_peak_bytes_before_safety"] == projected_bytes
+    assert gate["projected_peak_bytes_with_safety"] == math.ceil(
+        projected_bytes * 1.35
+    )
+    assert gate["safety_factor_application_count"] == 1
+    assert gate["projected_data_preparation_cpu_saat_before_safety"] == 13_854.0
+    assert gate["projected_data_preparation_cpu_saat_with_safety"] == 18_703
+    assert gate["total_project_operational_ceiling_cpu_saat"] == 58_703
+    assert gate["sample_allocation_totals"]["billed_cpu_saat"] > 1
+    assert gate["historical_one_time_preparations"][0][
+        "future_projected_cpu_saat"
+    ] == 0
+
+
+def test_data_prep_sample_rejects_duplicate_allocations_and_double_safety() -> None:
+    recipe, recipe_sha = workflow.load_recipe(RECIPE_V2)
+    measurement = _data_prep_measurement(recipe, recipe_sha)
+    workflow._validate_data_prep_storage_sample(
+        measurement, recipe=recipe, recipe_sha=recipe_sha
+    )
+
+    duplicate = copy.deepcopy(measurement)
+    duplicate["sample_allocations"][1]["job_id_raw"] = duplicate[
+        "sample_allocations"
+    ][0]["job_id_raw"]
+    duplicate = seal_manifest(duplicate)
+    with pytest.raises(workflow.FamilyWorkflowError, match="duplicate allocation"):
+        workflow._validate_data_prep_storage_sample(
+            duplicate, recipe=recipe, recipe_sha=recipe_sha
+        )
+
+    double_safety = copy.deepcopy(measurement)
+    double_safety["future_resource_projection"]["safety_factor_applied"] = True
+    double_safety = seal_manifest(double_safety)
+    with pytest.raises(workflow.FamilyWorkflowError, match="pre-safety"):
+        workflow._validate_data_prep_storage_sample(
+            double_safety, recipe=recipe, recipe_sha=recipe_sha
+        )
+
+
+def test_production_pack_plan_bills_thirty_two_workers_as_one_node() -> None:
+    source_plan = {
+        "objects": [
+            {"rank": rank, "source_id": "source", "size_bytes": 100}
+            for rank in range(64)
+        ]
+    }
+    lanes = workflow._production_pack_plan_lanes(source_plan, 1)
+    assert len(lanes) == 32
+    assert all(len(lane["object_ranks"]) == 2 for lane in lanes)
+    pack_plan = {
+        "node_count": 1,
+        "lanes": lanes,
+    }
+    report = {
+        "source_projections": {
+            "source": {
+                "full_input_bytes": 6_400,
+                "projected_download_wall_seconds": 64.0,
+                "projected_score_lid_wall_seconds": 256.0,
+                "projected_minhash_signature_wall_seconds": 320.0,
+            }
+        },
+        "projection": {
+            "stage_billed_cpu_saat_before_safety_factor": {
+                "download": 64 * 128 / 3600,
+                "score_lid": 256 * 128 / 3600,
+                "minhash_signature": 320 * 128 / 3600,
+                "minhash_buckets": 2.0,
+                "priority_cluster_quality_format": 3.0,
+            },
+            "signature_bytes": 14_000,
+            "cluster_scaling": {
+                "sample_peak_rss_bytes": 1024**3,
+                "projected_peak_rss_bytes": 2 * 1024**3,
+                "sample_edge_participating_documents": 10,
+                "projected_edge_participating_documents": 20.0,
+            },
+        },
+    }
+    bucket_receipts = {
+        rank: {
+            "input_signature_bytes": 1_000,
+            "telemetry": {"wall_seconds": 1.0 + rank / 10},
+        }
+        for rank in range(14)
+    }
+
+    total, audit = workflow._packed_production_backend_cpu_projection(
+        source_plan=source_plan,
+        pack_plan=pack_plan,
+        backend_report=report,
+        sample_bucket_receipts=bucket_receipts,
+    )
+
+    assert audit["projected_node_wall_seconds_before_safety"] == {"0": 20.0}
+    assert audit["projected_packed_object_cpu_saat_before_safety"] == pytest.approx(
+        20 * 128 / 3600
+    )
+    assert audit["projected_signature_bytes_per_bucket_before_safety"] == 1_000
+    expected_bucket_wall = 2.3
+    expected_bucket_cpu = expected_bucket_wall * 128 / 3600
+    assert total == pytest.approx(20 * 128 / 3600 + expected_bucket_cpu + 3.0)
+
+
+def test_sacct_allocation_uses_exact_array_task_and_full_node_billing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    output = "123_4|900_4|COMPLETED|cpu2dq|10|128|1280|\n"
+    monkeypatch.setattr(workflow.subprocess, "check_output", lambda *a, **k: output)
+
+    allocation = workflow._live_completed_cpu2dq_allocation(
+        tmp_path,
+        job_id="123_4",
+        stage="minhash_bucket_004",
+        evidence_receipt_sha256s=["a" * 64],
+    )
+
+    assert allocation["job_id"] == "123_4"
+    assert allocation["job_id_raw"] == "900_4"
+    assert allocation["cpu_time_raw_seconds"] == 1280
+    assert allocation["billed_cpu_saat"] == pytest.approx(1280 / 3600)
+
+
+def test_post_cluster_writer_probe_generator_emits_valid_bounded_receipt(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    import nanochat.turkish_backend as backend
+    import nanochat.turkish_corpus as corpus
+
+    run_dir = tmp_path / "sample"
+    run_dir.mkdir()
+    cluster_path = run_dir / "backend_output" / "00000.parquet"
+    cluster_path.parent.mkdir()
+    rows = [
+        {
+            "source_id": "source",
+            "dedup_keep": True,
+            "source_lid_label": "tur",
+            "source_lid_probability": 0.99,
+            "text": f"Türkçe deneme metni {index}",
+            "url": "https://example.test/",
+            "dedup_cluster_id": f"{index + 1:064x}",
+            "document_id": f"doc-{index}",
+            "quality_score": 0.9,
+        }
+        for index in range(2)
+    ]
+    pq.write_table(pa.Table.from_pylist(rows), cluster_path)
+    cluster = {
+        "canonical_sha256": "c" * 64,
+        "output_files": [
+            {
+                "path": "backend_output/00000.parquet",
+                "size_bytes": cluster_path.stat().st_size,
+            }
+        ],
+    }
+    objects = {0: {"candidate_file": {"rows": 2}}}
+    report = seal_manifest(
+        {
+            "policy_sha256": "p" * 64,
+            "source_plan_sha256": "s" * 64,
+            "calibration_sha256": "a" * 64,
+            "sample_selection": {"ranks": [0]},
+            "projection": {"safety_factor": 1.0, "candidate_documents": 20.0},
+            "automated_gate_passed": True,
+            "canonical_sha256": None,
+        }
+    )
+    report_path = tmp_path / "backend-report.json"
+    write_json_atomic(report_path, report)
+    recipe = {"family_id": "tr_d32_general_bpe32k_v2"}
+    policy = {
+        "sources": [
+            {"id": "source", "adapter": {"turkish_values": ["tur"]}}
+        ],
+        "content_policy": {},
+        "splits": {"seed": 42},
+        "materialization": {
+            "rows_per_fragment": 1,
+            "shuffle_buckets": 4,
+            "max_buffered_rows": 4,
+            "rows_per_output_file": 4,
+        },
+    }
+    monkeypatch.setattr(
+        workflow,
+        "_load_data_prep_inputs",
+        lambda **_kwargs: (
+            recipe,
+            "r" * 64,
+            policy,
+            "p" * 64,
+            {"objects": []},
+            "s" * 64,
+            {},
+            "a" * 64,
+        ),
+    )
+    monkeypatch.setattr(backend, "validate_resource_projection", lambda value: value["canonical_sha256"])
+    monkeypatch.setattr(
+        workflow,
+        "_load_sample_receipt_inventory",
+        lambda *_args, **_kwargs: (objects, {}, cluster),
+    )
+    monkeypatch.setattr(corpus, "_production_lid_ok", lambda *_args: True)
+    monkeypatch.setattr(corpus, "_production_quality_ok", lambda *_args: True)
+    monkeypatch.setattr(
+        corpus,
+        "audit_document",
+        lambda text, **_kwargs: SimpleNamespace(accepted=True, normalized_text=text),
+    )
+    monkeypatch.setattr(
+        corpus, "select_mixture_bucket", lambda *_args: ("general", 0.5)
+    )
+    monkeypatch.setattr(corpus, "assign_split", lambda *_args: "train")
+    monkeypatch.setattr(corpus, "dominant_register", lambda *_args: "general")
+    monkeypatch.setattr(
+        corpus,
+        "stable_shuffle_key",
+        lambda document_id, _seed: (document_id.encode().hex() + "0" * 64)[:64],
+    )
+    output = tmp_path / "writer-probe.json"
+
+    workflow.command_seal_data_prep_writer_probe(
+        argparse.Namespace(
+            recipe=tmp_path / "recipe.json",
+            policy=tmp_path / "policy.json",
+            source_plan=tmp_path / "plan.json",
+            calibration=tmp_path / "calibration.json",
+            sample_run_dir=run_dir,
+            backend_resource_report=report_path,
+            scratch_dir=tmp_path,
+            output=output,
+        )
+    )
+
+    receipt = json.loads(output.read_text(encoding="utf-8"))
+    assert receipt["kind"] == workflow.DATA_PREP_WRITER_PROBE_KIND
+    assert receipt["sample"]["candidate_documents"] == 2
+    assert receipt["sample"]["accepted_documents"] == 2
+    assert receipt["sample"]["train_parquet_bytes"] > 0
+    assert receipt["sample"]["temporary_peak_bytes"] >= 1_073_741_824
+    assert receipt["projection"]["document_scale"] == 10.0
+    assert not list(tmp_path.glob("d32-writer-probe-*"))
 
 
 def _sealed_sha(label: str) -> str:

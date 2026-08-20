@@ -7,8 +7,9 @@ immutable trunk checkpoints; after each fork, the trunk continues toward the
 next boundary. They are therefore three final models without paying for three
 independent pretraining runs.
 
-No production submission is exposed by the repository. The operator and user
-must review the sealed gates and topology decision first.
+No automatic end-to-end production submitter is exposed by the repository.
+The operator and user must review the sealed gates and topology decision before
+submitting each bounded production launcher.
 
 ## Frozen model and data contract
 
@@ -64,8 +65,8 @@ must review the sealed gates and topology decision first.
    clean measured speedup over ws8 is at least 1.7; otherwise seal ws8 as the
    fallback. One selected world size is locked for the entire family lineage.
 10. Review every sealed receipt before constructing any production stage
-    submission. The repository deliberately provides no production-submit
-    mode.
+    submission. The repository deliberately provides no umbrella
+    production-submit mode.
 
 All distributed work uses direct Slurm `srun` tasks, one task and one visible
 GPU per rank. It does not use `torchrun`, elastic rendezvous, or `mpirun`.
@@ -114,6 +115,70 @@ to bind the preparation manifest into the immutable v2 source plan and seal the
 pinned GlotLID model/calibration and deterministic sample ranks. The v1 policy
 and its existing audit artifacts remain separate; never reuse a v1 plan,
 calibration, approval, receipt, pool, tokenizer, or packing receipt with v2.
+
+The object resource sample runs through
+`runs/uhem_turkish_data_objects_packed_sample.sbatch`: one exclusive cpu2dq
+allocation contains thirty-two 4-CPU worker lanes, and every sample rank belongs to
+exactly one serial lane. The post-cluster writer-probe job is the sole producer
+of the backend report and deliberately seals it with safety factor 1.0. After
+the bucket, cluster, and writer-probe jobs complete, submit
+`runs/uhem_d32_data_prep_storage_sample.sbatch` with an `afterok` dependency
+and the exact allocation IDs; it requires and consumes that existing report.
+The family gate then
+applies the recipe's 1.35 factor exactly once to seven explicit projected
+storage peaks and to future production CPU work. MaCoCu preparation, bootstrap,
+sample, and writer-probe allocations remain sealed historical evidence and are
+not charged against the future-work projection a second time. Production
+source-object work uses an explicit node plan: thirty-two serial lanes share each
+128-CPU node, and CPU-saat is projected from the slowest lane on each node,
+not from thirty-two independent node charges.
+
+### Executable post-gate data order
+
+The passed `data_prep_storage_gate.json` is authorization for this exact chain,
+not a reusable capacity estimate. Every production launcher re-queries BeeGFS
+and UHeM quota immediately before work, verifies the sealed policy, source plan,
+calibration, pack plan, resource approval, manual mixture-quality approval, and
+gate, and refuses output directories outside the gated BeeGFS tree/device.
+
+1. Submit `runs/uhem_turkish_data_objects_packed_production.sbatch` as the exact
+   zero-based array declared by `production_source_pack_plan.json`. Each array
+   allocation is one 128-CPU node with 32 tasks × 4 CPUs and a 48-hour maximum.
+   Set `RESOURCE_APPROVAL`, `MIXTURE_QUALITY_APPROVAL`,
+   `DATA_PREP_STORAGE_GATE`, and the standard `SOURCE_PLAN`, `CALIBRATION`,
+   `PACK_PLAN`, and `DATA_RUN_DIR` overrides only when needed.
+2. After every object-node receipt exists, run
+   `runs/uhem_turkish_data_buckets_packed_production.sbatch`. It is one node,
+   14 tasks × 8 CPUs, with a 24-hour maximum. Set
+   `OBJECT_NODE_RECEIPT_DIR` to the completed packed-object receipt directory.
+3. Run `runs/uhem_turkish_data_cluster.sbatch` with `SAMPLE=0`, the exact object
+   receipt directory, and `BUCKET_LAUNCH_RECEIPT`. Its single 192-GiB node has
+   a 48-hour maximum. Submission is forbidden unless sampled/projected wall
+   time and measured/projected peak RSS, after the one 1.35 safety factor, fit
+   those limits. Preserve its `CLUSTER_LAUNCH_RECEIPT`; all later artifacts and
+   the family preflight bind its canonical hash.
+4. Run `runs/uhem_turkish_production_pool.sbatch` with that cluster-launch
+   receipt. It seals source/backend receipts and materializes the production
+   pool on one node with a 48-hour maximum. Review `qa/qa_examples.jsonl` and
+   `qa/qa_examples.txt`, then create the explicit accepted pool QA approval.
+5. Run, in order, `runs/uhem_turkish_tokenizer_sample.sbatch` (12 hours),
+   `runs/uhem_turkish_tokenizer_train.sbatch` (24 hours), and—only after human
+   review of `quality_report.json`—`runs/uhem_turkish_tokenizer_quality.sbatch`
+   (12-hour ceiling). Each command requires `POOL_DIR` and the same exact
+   `CLUSTER_LAUNCH_RECEIPT`; the sample, package, training receipt, quality
+   report, and approval carry the parent-pool, QA, policy, and production chain.
+6. Run `runs/uhem_turkish_packing_preflight.sbatch` (12 hours), manually review
+   and seal `packing_preflight_approval.json`, then run
+   `runs/uhem_turkish_corpus_finalize.sbatch` (48 hours). The final corpus must
+   match the exact pool, QA approval, tokenizer, quality approval, packing
+   approval, and production chain before family preflight can pass.
+
+Never continue from a partially written output directory. Leave it quarantined
+for audit, choose a new output/launch directory, and keep all prior artifacts;
+these scripts intentionally refuse overwrite and never auto-delete data. The
+family `preflight` command now requires `--cluster-launch-receipt`, and the HF
+export requires `CLUSTER_LAUNCH_RECEIPT`, so a merely well-formed 64-hex hash
+cannot stand in for the completed production allocation.
 
 Before creating the family preflight, run
 `bash runs/uhem_d32_prepare_training_env.sh`. It requires uv 0.11.29 and
