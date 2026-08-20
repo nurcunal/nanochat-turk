@@ -284,7 +284,7 @@ def test_resource_sample_covers_every_source_and_hplt_quality_bin():
         ]
     }
 
-    assert select_resource_sample_ranks(plan) == [1, 2, 3, 4]
+    assert select_resource_sample_ranks(plan) == [1, 2, 3, 5]
 
 
 def test_resource_sample_uses_interior_spread_and_avoids_tiny_tail():
@@ -311,7 +311,7 @@ def test_resource_sample_uses_interior_spread_and_avoids_tiny_tail():
     assert all(objects[item]["size_bytes"] != 1 for item in selected)
 
 
-def test_resource_sample_spreads_within_each_hplt_wds_bin():
+def test_resource_sample_uses_smallest_complete_hplt_shard_per_wds_bin():
     objects = []
     expected = set()
     rank = 0
@@ -329,14 +329,14 @@ def test_resource_sample_spreads_within_each_hplt_wds_bin():
                     ),
                 }
             )
-            if index in (2, 4, 6):
+            if index == 8:
                 expected.add(rank)
             rank += 1
 
     selected = set(select_resource_sample_ranks({"objects": objects}))
 
     assert selected == expected
-    assert all(objects[item]["size_bytes"] != 1 for item in selected)
+    assert all(objects[item]["size_bytes"] == 1 for item in selected)
 
 
 def test_resource_sample_spreads_across_macocu_and_avoids_tiny_tail():

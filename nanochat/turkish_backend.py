@@ -827,13 +827,15 @@ def resolve_source_plan(
 
 
 def select_resource_sample_ranks(plan: Mapping[str, Any]) -> list[int]:
-    """Select representative spread points for every source and quality stratum.
+    """Select bounded whole-object samples for every source and quality stratum.
 
-    Source inventories commonly end with a much smaller tail shard. Selecting
-    the smallest object therefore biases both retained-yield and throughput
-    estimates. URI order is part of the sealed source plan, so fixed 25/50/75
-    percent stream positions give deterministic interior coverage without
-    inspecting mutable file contents.
+    Ordinary source inventories use fixed 25/50/75 percent URI-order points.
+    HPLT shards are much larger and sample mode still verifies and scans whole
+    immutable objects. Use the smallest complete shard in each WDS bin so the
+    bounded audit cannot exceed the 48-hour cpu2dq limit merely because a bin's
+    interior shards are 20+ GB. The per-byte fixed overhead makes this choice
+    conservative for resource projection, while each selected HPLT shard still
+    supplies a large, complete stratum sample for quality review.
     """
 
     def spread(items: list[Mapping[str, Any]]) -> set[int]:
@@ -859,7 +861,14 @@ def select_resource_sample_ranks(plan: Mapping[str, Any]) -> list[int]:
         raise TurkishCorpusError("HPLT resource-sample objects require integer WDS bins")
     for wds_bin in sorted(hplt_bins):
         in_bin = [item for item in hplt_objects if item.get("wds_bin") == wds_bin]
-        selected.update(spread(in_bin))
+        selected.add(
+            int(
+                min(
+                    in_bin,
+                    key=lambda item: (int(item["size_bytes"]), str(item["uri"])),
+                )["rank"]
+            )
+        )
     macocu_objects = by_source.get(MACOCU_SOURCE_ID, [])
     for genre in sorted(MACOCU_CONVERSATION_GENRES | MACOCU_GENERAL_GENRES):
         candidates = [
