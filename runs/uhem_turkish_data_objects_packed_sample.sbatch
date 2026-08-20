@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# One full cpu2dq node runs the deterministic v2 object resource sample as
+# One full cpu2dq node runs the deterministic v3 object resource sample as
 # thirty-two disjoint lanes. Each worker is single-core in practice, while four
 # CPUs/task preserve one full exclusive 128-CPU allocation. This launcher has
 # no production mode: every object is processed with sample_mode=True and no
@@ -27,15 +27,15 @@ module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
 set -u
 
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
-NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v2}"
-POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v2.json}"
-CONTROL_DIR="${CONTROL_DIR:-$NANOCHAT_BASE_DIR/control/data_v2}"
+NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
+POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v3.json}"
+CONTROL_DIR="${CONTROL_DIR:-$NANOCHAT_BASE_DIR/control/data_v3}"
 SOURCE_PLAN="${SOURCE_PLAN:-$CONTROL_DIR/source_plan.json}"
 CALIBRATION="${CALIBRATION:-$CONTROL_DIR/backend_calibration.json}"
 SAMPLE_RANKS="${SAMPLE_RANKS:-$CONTROL_DIR/resource_sample_ranks.json}"
 LANE_PLAN="${LANE_PLAN:-$CONTROL_DIR/resource_sample_lane_plan.json}"
 GLOTLID_MODEL="${GLOTLID_MODEL:-$NANOCHAT_BASE_DIR/source_models/glotlid-v3/model_v3.bin}"
-DATA_RUN_DIR="${DATA_RUN_DIR:-$NANOCHAT_BASE_DIR/data_backend/resource_sample_v2}"
+DATA_RUN_DIR="${DATA_RUN_DIR:-$NANOCHAT_BASE_DIR/data_backend/resource_sample_v3}"
 PYTHON="$CODE_DIR/environments/turkish-data/.venv/bin/python"
 LAUNCH_ROOT="$DATA_RUN_DIR/packed_sample_launches/job${SLURM_JOB_ID:?}"
 LANE_RECEIPT_DIR="$LAUNCH_ROOT/lanes"
@@ -103,4 +103,4 @@ fi
     --receipt-dir="$LANE_RECEIPT_DIR" --job-id="$SLURM_JOB_ID" \
     --output="$LAUNCH_RECEIPT"
 test -f "$LAUNCH_RECEIPT"
-echo "Verified packed v2 object sample: $LAUNCH_RECEIPT"
+echo "Verified packed v3 object sample: $LAUNCH_RECEIPT"

@@ -1,0 +1,694 @@
+{
+  "schema_version": "3.0",
+  "name": "tr_general_clean_v3",
+  "language_policy": {
+    "allowed": [
+      "tur_Latn"
+    ],
+    "require_source_lid": true,
+    "require_independent_text_audit": true,
+    "independent_audit": {
+      "implementation": "GlotLID-v3-fastText",
+      "repo_id": "cis-lmu/glotlid",
+      "hub_revision": "85cd6716494360367b75f642b5bc78667605d0b4",
+      "artifact": "model_v3.bin",
+      "artifact_size_bytes": 1687094687,
+      "artifact_sha256": "a818b6bd42a628ab47d3dfc1578c7ea615c45381f3494c42535e31e8c4cafc9e",
+      "license_id": "Apache-2.0-with-model-notices",
+      "license_url": "https://huggingface.co/cis-lmu/glotlid/blob/85cd6716494360367b75f642b5bc78667605d0b4/LICENSE",
+      "required_top_label": "tur_Latn",
+      "document_min_probability": 0.8,
+      "document_min_margin": 0.2,
+      "paragraph_min_probability": 0.65,
+      "paragraph_min_margin": 0.1,
+      "paragraph_min_chars": 240,
+      "max_failed_long_paragraph_fraction": 0.1,
+      "calibration_languages": [
+        "tur_Latn",
+        "azj_Latn",
+        "tuk_Latn",
+        "crh_Latn",
+        "eng_Latn"
+      ],
+      "calibration_required_before_seal": true,
+      "secondary_heuristic": "turkish_lexical_suffix_script_v1"
+    }
+  },
+  "content_policy": {
+    "allow_code": false,
+    "min_chars": 160,
+    "max_chars": 100000,
+    "min_words": 24,
+    "min_turkish_confidence": 0.58,
+    "min_alphabetic_fraction": 0.45,
+    "max_foreign_script_fraction": 0.02,
+    "min_foreign_script_characters": 32,
+    "max_code_line_fraction": 0.02,
+    "max_code_punctuation_fraction": 0.012,
+    "max_programming_term_hits": 1,
+    "max_software_download_hits": 1,
+    "max_commerce_hits": 1,
+    "max_cookie_ui_hits": 1,
+    "max_unicode_replacement_characters": 0,
+    "max_mojibake_sequence_hits": 0,
+    "max_c1_control_characters": 0,
+    "max_unicode_surrogate_characters": 0,
+    "reject_known_download_hosts": true,
+    "reject_software_download_urls": true,
+    "reject_commerce_url_with_hit": true,
+    "reject_legal_policy_pages": true,
+    "reject_taxonomy_urls": true,
+    "reject_seo_definition_templates": true,
+    "max_duplicate_line_fraction": 0.2,
+    "max_common_word_fraction": 0.12,
+    "max_boilerplate_hits": 2,
+    "production_processing": {
+      "implementation": "datatrove_0_10_0_plus_conservative_turkish_pii_v1",
+      "language": "tur_Latn",
+      "ordered_stages": [
+        "GopherRepetitionFilter",
+        "FineWebQualityFilter",
+        "GopherQualityFilter",
+        "FTFYFormatter",
+        "PIIFormatter",
+        "TurkishPhoneRedactor",
+        "SymbolLinesFormatter",
+        "nanochat_nfc_whitespace_audit"
+      ],
+      "fineweb2_turkish_control": {
+        "repository": "https://github.com/huggingface/fineweb-2",
+        "revision": "d0defb24f193bb9a5a11b8b14524a03c4858e1b6",
+        "path": "configs/tur_Latn.yml",
+        "local_path": "configs/pretrain/fineweb2_tur_Latn.yml",
+        "sha256": "f0ccd5fef17c5978f0c8863809dc6a3ec9bededa772f6d25bfa0a4f7f20d67c1",
+        "adaptations": {
+          "independent_glotlid_document_min_probability": 0.8,
+          "source_lid_minimum_remains_source_specific": true,
+          "minimum_document_words": 24,
+          "paragraph_repetition_checks_disabled": true,
+          "short_line_check_disabled": true,
+          "character_duplicate_ratio": 0.1
+        }
+      },
+      "pii": {
+        "email_replacement": "<email>",
+        "public_ip_replacement": "<ip>",
+        "turkish_phone_replacement": "<telefon>",
+        "redaction_only": true
+      },
+      "harmful_content": {
+        "action": "measure_and_manual_qa",
+        "lexicon_version": "turkish_harmful_signal_v1",
+        "automatic_semantic_rewriting": false
+      }
+    },
+    "allow_domains": [
+      "everyday_conversation",
+      "discussion",
+      "opinion",
+      "narrative",
+      "how_to",
+      "general_information",
+      "news_and_culture",
+      "education",
+      "reference"
+    ],
+    "deny_domains": [
+      "software_development",
+      "source_code",
+      "programming_tutorials",
+      "machine_translated",
+      "lyrics"
+    ]
+  },
+  "deduplication": {
+    "exact": "sha256_nfc_whitespace_v1",
+    "near": "minhash_word5_v1",
+    "scope": "global_cross_source",
+    "winner": "source_priority_then_quality_then_stable_id",
+    "source_priority": [
+      "parlamint_tr_v5_0",
+      "mot_tr_v1_11",
+      "finewiki_tr",
+      "macocu_genre_tr",
+      "fineweb2_hq_tr",
+      "hplt3_tr",
+      "fineweb2_strict_tr_v3"
+    ],
+    "production_backend": {
+      "implementation": "huggingface_datatrove_minhash",
+      "version": "0.10.0",
+      "git_revision": "a649de79c14a550dc90f48a15c025f2dd3fd3b57",
+      "precision_bits": 64,
+      "num_buckets": 14,
+      "hashes_per_bucket": 8,
+      "ngram_words": 5,
+      "signature_language": "tur_Latn",
+      "match_rule": "any_equal_8_hash_bucket_signature",
+      "candidate_probability_formula": "1-(1-s^8)^14",
+      "similarity_at_50_percent_candidate_probability": 0.6846976524441254,
+      "candidate_probability_at_similarity_0_82": 0.9592976771685121,
+      "synthetic_similarity_calibration_required": true,
+      "cluster_representative": "minimum_source_priority_then_negative_quality_then_stable_id",
+      "required_output": "deduplicated_documents_with_backend_receipt"
+    },
+    "reference_backend": {
+      "implementation": "nanochat.turkish_corpus.SQLiteMinHashDeduper",
+      "num_hashes": 64,
+      "bands": 16,
+      "similarity_threshold": 0.82,
+      "scope": "synthetic_tests_and_bounded_smoke_only",
+      "production_allowed": false
+    }
+  },
+  "splits": {
+    "unit": "dedup_cluster",
+    "algorithm": "sha256_threshold_v1",
+    "seed": "tr-general-clean-v3-cluster-split-2026-08-21",
+    "fractions": {
+      "train": 0.997,
+      "val": 0.0015,
+      "test": 0.0015
+    },
+    "holdout_before_tokenizer_training": true,
+    "benchmark_decontamination_required_before_release": true
+  },
+  "sources": [
+    {
+      "id": "hplt3_tr",
+      "repo_id": "HPLT/HPLT3.0:tur_Latn",
+      "resolved_revision": "3619a23b7aa1a261ec1100117296801aa43feacd1e517db796830f3814a95367",
+      "revision_kind": "sha256",
+      "revision_description": "SHA-256 of https://data.hplt-project.org/three/sorted/tur_Latn.map retrieved 2026-08-20; official checksum-list SHA-256 is 1c52b5e0ac204149ece78ef76e5e00ec129182b6a90864106a6a7c9731d9d675",
+      "license_id": "CC0-1.0-packaging",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "rights_note": "HPLT does not own the underlying texts; downstream use must satisfy source rights, takedown requests, GDPR, and applicable law",
+      "source_url": "https://data.hplt-project.org/three/sorted/tur_Latn.map",
+      "adapter": {
+        "format": "jsonl.zst",
+        "text_field": "text",
+        "id_field": "id",
+        "url_field": "u",
+        "language_field": "lang",
+        "language_probability_field": "prob",
+        "register_field": "web-register",
+        "source_lid_min_probability": 0.9,
+        "turkish_values": [
+          "tur",
+          "tur_Latn"
+        ]
+      },
+      "selected_wds_bins": [
+        8,
+        9
+      ],
+      "text_origin": "born_digital_text"
+    },
+    {
+      "id": "fineweb2_hq_tr",
+      "repo_id": "epfml/FineWeb2-HQ",
+      "resolved_revision": "c0c06e94fd3a44ae9e802b2b0fc533817601eb5e",
+      "revision_kind": "hub_commit",
+      "revision_description": "immutable Hugging Face dataset commit",
+      "license_id": "ODC-By-1.0",
+      "license_url": "https://opendatacommons.org/licenses/by/1-0/",
+      "rights_note": "Common Crawl source content remains subject to source rights and Common Crawl terms",
+      "source_url": "https://huggingface.co/datasets/epfml/FineWeb2-HQ/tree/c0c06e94fd3a44ae9e802b2b0fc533817601eb5e/tur_Latn",
+      "adapter": {
+        "format": "parquet",
+        "text_field": "text",
+        "id_field": "id",
+        "url_field": "url",
+        "language_field": "language",
+        "language_probability_field": "language_score",
+        "source_lid_min_probability": 0.9,
+        "turkish_values": [
+          "tur"
+        ]
+      },
+      "text_origin": "born_digital_text"
+    },
+    {
+      "id": "fineweb2_strict_tr_v3",
+      "repo_id": "HuggingFaceFW/fineweb-2",
+      "resolved_revision": "af9c13333eb981300149d5ca60a8e9d659b276b9",
+      "revision_kind": "hub_commit",
+      "revision_description": "immutable Hugging Face dataset commit",
+      "license_id": "ODC-By-1.0",
+      "license_url": "https://opendatacommons.org/licenses/by/1-0/",
+      "rights_note": "Common Crawl source content remains subject to source rights and Common Crawl terms",
+      "source_url": "https://huggingface.co/datasets/HuggingFaceFW/fineweb-2/tree/af9c13333eb981300149d5ca60a8e9d659b276b9/data/tur_Latn/train",
+      "adapter": {
+        "format": "parquet",
+        "text_field": "text",
+        "id_field": "id",
+        "url_field": "url",
+        "language_field": "language",
+        "language_probability_field": "language_score",
+        "source_lid_min_probability": 0.92,
+        "turkish_values": [
+          "tur"
+        ]
+      },
+      "text_origin": "born_digital_text",
+      "derivation": {
+        "kind": "strict_filtered_full_fineweb2_turkish_v3",
+        "upstream_source_id": "fineweb2_tr",
+        "upstream_repo_id": "HuggingFaceFW/fineweb-2",
+        "upstream_resolved_revision": "af9c13333eb981300149d5ca60a8e9d659b276b9",
+        "upstream_path": "data/tur_Latn/train",
+        "expected_object_count": 30,
+        "expected_total_bytes": 134789283815,
+        "expected_inventory_sha256": "e2f10096b18e2329ddad230e99fbcf77e0294ebe6d1f9f652b077b57fb04adca",
+        "inventory_hash_semantics": "canonical_json_uri_sorted_uri_size_bytes_expected_checksums_v1",
+        "candidate_admission": "only_rows_passing_source_lid_independent_glotlid_production_filters_local_audit_and_mixture_selector",
+        "raw_fallback_allowed": false,
+        "processing_binding_sha256": "86be4e2dc969e91cb0d949d07cd5335af1d880917bda4e8eddb8e4f292a7ac31",
+        "audit_policy_binding_sha256": "adab731e985036894dd54d49998679735962a517b7d81a54777da9ef744befc7"
+      }
+    },
+    {
+      "id": "macocu_genre_tr",
+      "repo_id": "CLARIN.SI/11356/1969",
+      "resolved_revision": "abe376c21256798ded30e54770666aa0",
+      "revision_kind": "md5",
+      "revision_description": "official MD5 for MaCoCu-Genre.tr.jsonl.gz from CLARIN.SI handle 11356/1969",
+      "license_id": "CC0-1.0-packaging",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "rights_note": "Corpus packaging is CC0; underlying web texts remain subject to source rights, takedown requests, privacy obligations, and applicable law",
+      "persistent_handle": "https://hdl.handle.net/11356/1969",
+      "source_url": "https://www.clarin.si/repository/xmlui/bitstream/handle/11356/1969/MaCoCu-Genre.tr.jsonl.gz?isAllowed=y&sequence=15",
+      "expected_size_bytes": 14448949031,
+      "expected_md5": "abe376c21256798ded30e54770666aa0",
+      "expected_rows": 10453221,
+      "adapter": {
+        "format": "jsonl.zst",
+        "text_field": "text",
+        "id_field": "id",
+        "url_field": "url",
+        "language_field": "$partition",
+        "partition_language": "tur_Latn",
+        "turkish_values": [
+          "tur_Latn"
+        ],
+        "genre_field": "genre"
+      },
+      "text_origin": "born_digital_text"
+    },
+    {
+      "id": "finewiki_tr",
+      "repo_id": "HuggingFaceFW/finewiki",
+      "resolved_revision": "8bd13e72e6a002407649b3e898535f42ceb1aeb9",
+      "revision_kind": "hub_commit",
+      "revision_description": "immutable Hugging Face dataset commit",
+      "license_id": "CC-BY-SA-4.0-and-GFDL",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "rights_note": "Attribution and share-alike/GFDL obligations must be preserved in the release datasheet",
+      "source_url": "https://huggingface.co/datasets/HuggingFaceFW/finewiki/tree/8bd13e72e6a002407649b3e898535f42ceb1aeb9/data/trwiki",
+      "adapter": {
+        "format": "parquet",
+        "text_field": "text",
+        "id_field": "id",
+        "url_field": "url",
+        "language_field": "$partition",
+        "partition_language": "tur_Latn",
+        "turkish_values": [
+          "tur_Latn"
+        ]
+      },
+      "text_origin": "structured_text"
+    },
+    {
+      "id": "mot_tr_v1_11",
+      "repo_id": "bltlab/mot",
+      "resolved_revision": "9204cad746dfff0921e7a8f64c0cc0917bc75554",
+      "revision_kind": "hub_commit",
+      "revision_description": "official MOT v1.11 release commit; local prepared shards require a fully validated accepted-production manifest",
+      "license_id": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "rights_note": "Native article JSON only; agency-derived and PDF/OCR fallback material is excluded by the sealed preparer",
+      "source_url": "https://github.com/bltlab/mot/releases/tag/v1.11",
+      "text_origin": "structured_text",
+      "prepared_source": {
+        "manifest_kind": "turkish_high_trust_anchor_preparation",
+        "required_source_id": "mot_tr_v1_11",
+        "required_preparer_version": "turkish_anchor_preparation_v2",
+        "required_production_acceptance_stage": "accepted_production",
+        "downstream_turkish_no_code_audit_required": true
+      },
+      "adapter": {
+        "format": "jsonl.zst",
+        "text_field": "text",
+        "id_field": "id",
+        "url_field": "provenance.url",
+        "language_field": "$partition",
+        "partition_language": "tur_Latn",
+        "turkish_values": [
+          "tur_Latn"
+        ]
+      }
+    },
+    {
+      "id": "parlamint_tr_v5_0",
+      "repo_id": "clarin-eric/ParlaMint",
+      "resolved_revision": "978f9051793367fc2192eedc80c1e71ac8ec7ea5",
+      "revision_kind": "hub_commit",
+      "revision_description": "official ParlaMint 5.0 release commit; local prepared shards require a fully validated accepted-production manifest",
+      "license_id": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "rights_note": "Native Turkish TEI/text only; PDF/OCR input is forbidden by the sealed preparer",
+      "source_url": "http://hdl.handle.net/11356/2004",
+      "text_origin": "structured_text",
+      "prepared_source": {
+        "manifest_kind": "turkish_high_trust_anchor_preparation",
+        "required_source_id": "parlamint_tr_v5_0",
+        "required_preparer_version": "turkish_anchor_preparation_v2",
+        "required_production_acceptance_stage": "accepted_production",
+        "downstream_turkish_no_code_audit_required": true
+      },
+      "adapter": {
+        "format": "jsonl.zst",
+        "text_field": "text",
+        "id_field": "id",
+        "url_field": "provenance.session_id",
+        "language_field": "$partition",
+        "partition_language": "tur_Latn",
+        "turkish_values": [
+          "tur_Latn"
+        ]
+      }
+    }
+  ],
+  "mixture": [
+    {
+      "id": "hplt_wds8_general",
+      "source_id": "hplt3_tr",
+      "weight": 0.19,
+      "role": "audited HPLT WDS8 general Turkish web text",
+      "max_passes": 1,
+      "source_cap": 0.19,
+      "fallback": [],
+      "selector": {
+        "wds_bins": [
+          8
+        ],
+        "register_any": [
+          "IN",
+          "NA",
+          "HI",
+          "IP"
+        ],
+        "register_min_probability": 0.4,
+        "max_machine_translated_probability": 0.1
+      }
+    },
+    {
+      "id": "hplt_wds9_general",
+      "source_id": "hplt3_tr",
+      "weight": 0.06,
+      "role": "bounded audited HPLT WDS9 general Turkish web text",
+      "max_passes": 1,
+      "source_cap": 0.06,
+      "fallback": [],
+      "selector": {
+        "wds_bins": [
+          9
+        ],
+        "register_any": [
+          "IN",
+          "NA",
+          "HI",
+          "IP"
+        ],
+        "register_min_probability": 0.4,
+        "max_machine_translated_probability": 0.1
+      }
+    },
+    {
+      "id": "fineweb2_hq_general",
+      "source_id": "fineweb2_hq_tr",
+      "weight": 0.15,
+      "role": "model-selected Turkish web scale after all local gates",
+      "max_passes": 1,
+      "source_cap": 0.15,
+      "fallback": [],
+      "selector": {}
+    },
+    {
+      "id": "fineweb2_strict_general",
+      "source_id": "fineweb2_strict_tr_v3",
+      "weight": 0.4865,
+      "role": "all 30 raw Turkish FineWeb2 objects as acquisition input; only strictly passing rows",
+      "max_passes": 1,
+      "source_cap": 0.4865,
+      "fallback": [],
+      "selector": {}
+    },
+    {
+      "id": "macocu_forum",
+      "source_id": "macocu_genre_tr",
+      "weight": 0.008,
+      "role": "natural Turkish forum text",
+      "max_passes": 1,
+      "source_cap": 0.008,
+      "fallback": [],
+      "selector": {
+        "genre_any": [
+          "Forum"
+        ]
+      }
+    },
+    {
+      "id": "macocu_opinion",
+      "source_id": "macocu_genre_tr",
+      "weight": 0.017,
+      "role": "Turkish opinion and argumentation",
+      "max_passes": 1,
+      "source_cap": 0.017,
+      "fallback": [],
+      "selector": {
+        "genre_any": [
+          "Opinion/Argumentation"
+        ]
+      }
+    },
+    {
+      "id": "macocu_information",
+      "source_id": "macocu_genre_tr",
+      "weight": 0.02,
+      "role": "general information and explanation",
+      "max_passes": 1,
+      "source_cap": 0.02,
+      "fallback": [],
+      "selector": {
+        "genre_any": [
+          "Information/Explanation"
+        ]
+      }
+    },
+    {
+      "id": "macocu_instruction",
+      "source_id": "macocu_genre_tr",
+      "weight": 0.015,
+      "role": "practical instructions and how-to prose",
+      "max_passes": 1,
+      "source_cap": 0.015,
+      "fallback": [],
+      "selector": {
+        "genre_any": [
+          "Instruction"
+        ]
+      }
+    },
+    {
+      "id": "macocu_news",
+      "source_id": "macocu_genre_tr",
+      "weight": 0.04,
+      "role": "bounded current-affairs and cultural knowledge",
+      "max_passes": 1,
+      "source_cap": 0.04,
+      "fallback": [],
+      "selector": {
+        "genre_any": [
+          "News"
+        ]
+      }
+    },
+    {
+      "id": "finewiki_reference",
+      "source_id": "finewiki_tr",
+      "weight": 0.004,
+      "role": "small encyclopedic factual anchor",
+      "max_passes": 1,
+      "source_cap": 0.004,
+      "fallback": [],
+      "selector": {}
+    },
+    {
+      "id": "mot_general",
+      "source_id": "mot_tr_v1_11",
+      "weight": 0.008,
+      "role": "native Turkish article JSON general-knowledge anchor",
+      "max_passes": 1,
+      "source_cap": 0.008,
+      "fallback": [],
+      "selector": {}
+    },
+    {
+      "id": "parlamint_conversation",
+      "source_id": "parlamint_tr_v5_0",
+      "weight": 0.0015,
+      "role": "native structured parliamentary dialogue anchor",
+      "max_passes": 1,
+      "source_cap": 0.0015,
+      "fallback": [],
+      "selector": {}
+    }
+  ],
+  "tokenizer_training": {
+    "name": "tr_general_raw_bpe_32k_v3",
+    "algorithm": "raw_byte_bpe",
+    "vocab_size": 32768,
+    "sample_scope": "post_filter_train_only",
+    "max_chars": 2000000000,
+    "max_chars_per_document": 10000,
+    "stop_rule": "yield_full_capped_document_then_stop_when_cumulative_characters_strictly_exceed_threshold",
+    "sampling": "weighted_deficit_stable_rowgroup_shuffle_v2",
+    "sampling_seed": "tr-general-clean-v3-raw-bpe-rowgroups-2026-08-21",
+    "holdout": {
+      "split": "val",
+      "selection": "smallest_sha256_stratified_prefix_v1",
+      "seed": "tr-general-clean-v3-raw-bpe-val-holdout-2026-08-21",
+      "min_documents": 50000,
+      "min_utf8_bytes": 134217728,
+      "threshold_semantics": "documents_gte_min_or_utf8_bytes_gte_min",
+      "strata_fields": [
+        "mixture_id",
+        "source_id",
+        "register_bucket"
+      ],
+      "require_every_available_stratum": true,
+      "target_documents_per_available_stratum": 32
+    },
+    "baseline": {
+      "name": "bpe_32768",
+      "vocab_size": 32768,
+      "split_pattern": "nanochat_gpt4_style_numbers_1_or_2_v1",
+      "special_token_policy": "nanochat_9_v1",
+      "token_byte_table_semantics": "legacy_decoded_utf8_replacement_v1",
+      "raw_byte_length_mismatch_count": 159,
+      "payload_inventory_sha256": "03445f0b5e300c806c305e44029ea48753886eae4048f8805fb9d3f57f83eb52",
+      "files": [
+        {
+          "path": "token_bytes.pt",
+          "size_bytes": 132649,
+          "sha256": "ba345dc7eea5f07b3200f213ccf61ea6e9990d15d81d25e2e323009f4fba502e"
+        },
+        {
+          "path": "tokenizer.pkl",
+          "size_bytes": 436874,
+          "sha256": "3b7f00d8697a303bb0ac7379b497fec6b76a61bd5bb694825264eecd4cb62a20"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size_bytes": 122,
+          "sha256": "b381631bad8ca489b85dbab686d63f0691b6455300f2ae43f8af43ad3b80a916"
+        }
+      ]
+    },
+    "quality_gate": {
+      "schema_version": "1.0",
+      "baseline_required": true,
+      "max_roundtrip_failures": 0,
+      "min_vocab_utilization_fraction": 0.75,
+      "max_overall_efficiency_regression_fraction": 0.02,
+      "max_per_stratum_efficiency_regression_fraction": 0.25,
+      "max_overall_fertility_regression_fraction": 0.05,
+      "max_per_stratum_fertility_regression_fraction": 0.3,
+      "max_single_byte_token_use_fraction": 0.65,
+      "min_non_ascii_token_use_fraction": 0.005,
+      "max_invalid_utf8_token_use_fraction": 0.1,
+      "max_probe_efficiency_regression_fraction": 0.25,
+      "max_probe_fertility_regression_fraction": 0.3,
+      "fixed_probe_suite": "turkish_apostrophe_casing_long_suffix_v1",
+      "fixed_probe_suite_sha256": "60c963ff62721a24f1a88064f2354a47420e87385c61d81fb8e4869e48d70593"
+    },
+    "normalization": "none_after_corpus_nfc_whitespace_v1",
+    "split_pattern": "nanochat_gpt4_style_numbers_1_or_2_v1",
+    "special_token_policy": "nanochat_9_v1",
+    "nanochat_upstream_revision": "92d63d4e",
+    "required_validation": [
+      "exact_vocab_size",
+      "all_256_bytes_representable",
+      "unicode_roundtrip",
+      "turkish_roundtrip",
+      "package_content_hash"
+    ]
+  },
+  "quality_assurance": {
+    "schema_version": "1.0",
+    "examples_per_stratum_and_decision": 8,
+    "max_example_characters": 2000,
+    "quantile_sample_size": 8192,
+    "quantiles": [
+      0.0,
+      0.1,
+      0.25,
+      0.5,
+      0.75,
+      0.9,
+      0.99,
+      1.0
+    ],
+    "require_accepted_example_per_mixture": true,
+    "require_manual_approval_before_tokenizer_or_final": true,
+    "plaintext_and_jsonl_examples": true
+  },
+  "materialization": {
+    "stream_one_input_shard": true,
+    "staging_scope": "run_owned_temp_only",
+    "compression": "zstd",
+    "rows_per_fragment": 4096,
+    "rows_per_output_file": 262144,
+    "shuffle_buckets": 256,
+    "max_buffered_rows": 16384,
+    "interleave": "weighted_token_deficit_v1",
+    "target_family_tokens": 17112760320,
+    "target_family_tokens_semantics": "minimum_unique_source_floor_repeat_capacity_is_separately_simulated_v3",
+    "packing_capacity_gate": {
+      "implementation": "nanochat_upstream_bos_bestfit_repeat_capacity_v3",
+      "world_sizes": [
+        8,
+        16
+      ],
+      "device_batch_sequences": 4,
+      "max_seq_len": 2048,
+      "tokenizer_batch_size": 128,
+      "buffer_size": 1000,
+      "global_batch_tokens": 2097152,
+      "horizon_optimizer_steps": {
+        "s12": 9600,
+        "s20": 16000,
+        "s40": 32000,
+        "s40_margin": 32640
+      },
+      "preferred_min_first_epoch_packed_positions": 34225520640,
+      "hard_min_first_epoch_packed_positions": 17112760320,
+      "preferred_max_loaded_epoch": 2,
+      "preferred_max_consumed_epoch": 2,
+      "hard_max_loaded_epoch": 4,
+      "hard_max_consumed_epoch": 4,
+      "whole_pool_repetition_only": true,
+      "source_specific_repetition": false,
+      "manual_repetition_risk_approval_between_tiers": true,
+      "mix_absolute_tolerance": 0.03,
+      "require_all_world_sizes": true,
+      "require_upstream_fixture_parity": true
+    },
+    "token_count_includes_document_bos": true,
+    "max_peak_disk_bytes": 515396075520,
+    "require_source_checksum": "sha256",
+    "remove_generated_staging_after_verification": true,
+    "remove_user_inputs": false
+  }
+}

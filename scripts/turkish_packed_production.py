@@ -38,11 +38,14 @@ from scripts.d32_family_workflow import (
     CPU2DQ_BILLABLE_CPUS,
     DATA_PREP_FIXED_CPU2DQ_CEILINGS,
     DATA_PREP_FUTURE_CPU_COMPONENTS,
+    DEFAULT_POLICY,
+    DEFAULT_RECIPE,
     _data_prep_policy_sha256,
     _live_beegfs_storage,
     _live_uhem_cpu_saat,
     _validate_data_prep_storage_gate_receipt,
     _validate_production_pack_plan,
+    _validate_recipe_policy_identity,
     load_recipe,
 )
 
@@ -161,6 +164,7 @@ def _load_inputs(
 ) -> dict[str, Any]:
     recipe, recipe_sha = load_recipe(recipe_path)
     policy = load_corpus_policy(policy_path)
+    _validate_recipe_policy_identity(recipe, policy)
     _validate_production_source_eligibility(policy)
     source_plan = load_json_strict(source_plan_path)
     calibration = load_json_strict(calibration_path)
@@ -1022,8 +1026,8 @@ def _input_paths(args: argparse.Namespace) -> tuple[Path, ...]:
 
 
 def _common(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--recipe", type=Path, required=True)
-    parser.add_argument("--policy", type=Path, required=True)
+    parser.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    parser.add_argument("--policy", type=Path, default=DEFAULT_POLICY)
     parser.add_argument("--source-plan", type=Path, required=True)
     parser.add_argument("--calibration", type=Path, required=True)
     parser.add_argument("--pack-plan", type=Path, required=True)

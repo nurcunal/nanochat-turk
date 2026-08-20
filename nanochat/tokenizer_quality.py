@@ -28,7 +28,6 @@ from nanochat.experiment_manifest import (
 from nanochat.strict_tokenizer import verify_tokenizer_package
 from nanochat.tokenizer import RustBPETokenizer, SPECIAL_TOKENS, SPLIT_PATTERN
 from nanochat.turkish_corpus import (
-    TOKENIZER_NAME,
     TOKENIZER_QUALITY_GATE_V1,
     VOCAB_SIZE,
     TurkishCorpusError,
@@ -869,13 +868,16 @@ def build_tokenizer_quality_report(
     destination = Path(output_dir)
     if destination.exists() and any(destination.iterdir()):
         raise FileExistsError(f"refusing non-empty tokenizer quality directory: {destination}")
-    package = verify_tokenizer_package(
-        tokenizer_root / "package_manifest.json",
-        expected_name=TOKENIZER_NAME,
-        expected_vocab_size=VOCAB_SIZE,
-    )
     training_receipt = load_json_strict(tokenizer_root / "training_receipt.json")
     training_hash = verify_manifest_hash(training_receipt)
+    tokenizer_name = training_receipt.get("name")
+    if not isinstance(tokenizer_name, str) or not tokenizer_name:
+        raise TurkishCorpusError("tokenizer training receipt has no valid identity")
+    package = verify_tokenizer_package(
+        tokenizer_root / "package_manifest.json",
+        expected_name=tokenizer_name,
+        expected_vocab_size=VOCAB_SIZE,
+    )
     production_chain = training_receipt.get("production_chain")
     if (
         package.manifest.get("production_chain") != production_chain
@@ -889,7 +891,8 @@ def build_tokenizer_quality_report(
         raise TurkishCorpusError("tokenizer package/training lineage drift")
     rows, dataset, sample, validation_identity = _validation_rows(sample_root)
     if (
-        training_receipt.get("sample_manifest_sha256") != sample["canonical_sha256"]
+        sample.get("name") != tokenizer_name
+        or training_receipt.get("sample_manifest_sha256") != sample["canonical_sha256"]
         or training_receipt.get("dataset_manifest_sha256")
         != dataset["canonical_sha256"]
         or training_receipt.get("quality_holdout") != sample.get("quality_holdout")
@@ -1015,7 +1018,7 @@ def seal_tokenizer_quality_approval(
     package = verify_tokenizer_package(
         Path(tokenizer_dir) / "package_manifest.json",
         expected_sha256=report_package_sha256,
-        expected_name=TOKENIZER_NAME,
+        expected_name=None,
         expected_vocab_size=VOCAB_SIZE,
     )
     expected_training_receipt_sha256 = package.manifest.get(

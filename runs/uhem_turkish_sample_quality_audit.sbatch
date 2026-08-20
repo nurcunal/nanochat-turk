@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Read-only QA pass over the completed bounded Turkish v2 backend sample.
+# Read-only QA pass over the completed bounded Turkish v3 backend sample.
 # Success seals evidence for manual review; it never approves the mixture or
 # authorizes production materialization.
 
@@ -24,12 +24,12 @@ module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
 set -u
 
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
-NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v2}"
-CONTROL_DIR="${CONTROL_DIR:-$NANOCHAT_BASE_DIR/control/data_v2}"
-POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v2.json}"
+NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
+CONTROL_DIR="${CONTROL_DIR:-$NANOCHAT_BASE_DIR/control/data_v3}"
+POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v3.json}"
 SOURCE_PLAN="${SOURCE_PLAN:-$CONTROL_DIR/source_plan.json}"
 CALIBRATION="${CALIBRATION:-$CONTROL_DIR/backend_calibration.json}"
-SAMPLE_RUN_DIR="${SAMPLE_RUN_DIR:-$NANOCHAT_BASE_DIR/data_backend/resource_sample_v2}"
+SAMPLE_RUN_DIR="${SAMPLE_RUN_DIR:-$NANOCHAT_BASE_DIR/data_backend/resource_sample_v3}"
 AUDIT_OUTPUT_DIR="${AUDIT_OUTPUT_DIR:-$CONTROL_DIR/sample_quality_audit}"
 PYTHON="${PYTHON:-$CODE_DIR/environments/turkish-data/.venv/bin/python}"
 

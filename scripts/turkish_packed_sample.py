@@ -1,4 +1,4 @@
-"""Seal and execute packed Turkish v2 object and MinHash resource samples.
+"""Seal and execute packed Turkish object and MinHash resource samples.
 
 The launchers are deliberately sample-only.  Object ranks are assigned
 round-robin to thirty-two Slurm workers; the fourteen fixed MinHash buckets map
@@ -37,7 +37,11 @@ LANE_COUNT = 32
 CPUS_PER_LANE = 4
 BUCKET_COUNT = 14
 CPUS_PER_BUCKET_TASK = 8
-V2_POLICY_NAME = "tr_general_clean_v2"
+DEFAULT_POLICY = Path("configs/pretrain/tr_d32_turkish_general_v3.json")
+V2_POLICY_NAME = "tr_general_clean_v2"  # Backwards-compatible public alias.
+SUPPORTED_POLICY_IDENTITIES = frozenset(
+    {("2.0", V2_POLICY_NAME), ("3.0", "tr_general_clean_v3")}
+)
 LANE_PLAN_KIND = "turkish_packed_resource_sample_lane_plan"
 LANE_RECEIPT_KIND = "turkish_packed_resource_sample_lane_receipt"
 LAUNCH_RECEIPT_KIND = "turkish_packed_resource_sample_launch_receipt"
@@ -62,12 +66,11 @@ def _load_bound_inputs(
     calibration_path: str | Path,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     policy = load_corpus_policy(policy_path)
-    if (
-        policy.get("schema_version") != "2.0"
-        or policy.get("name") != V2_POLICY_NAME
+    if (policy.get("schema_version"), policy.get("name")) not in (
+        SUPPORTED_POLICY_IDENTITIES
     ):
         raise TurkishCorpusError(
-            "the packed object sample accepts only the frozen Turkish v2 policy"
+            "the packed object sample accepts only frozen Turkish v2/v3 policies"
         )
     source_plan = load_json_strict(source_plan_path)
     calibration = load_json_strict(calibration_path)
@@ -941,7 +944,7 @@ def seal_bucket_launch_receipt(
 
 
 def _common_inputs(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--policy", type=Path, required=True)
+    parser.add_argument("--policy", type=Path, default=DEFAULT_POLICY)
     parser.add_argument("--source-plan", type=Path, required=True)
     parser.add_argument("--calibration", type=Path, required=True)
     parser.add_argument("--sample-ranks", type=Path, required=True)

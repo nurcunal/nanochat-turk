@@ -37,7 +37,7 @@ from nanochat.tokenizer_quality import (
     build_tokenizer_quality_report,
     validate_pinned_baseline_tokenizer,
 )
-from nanochat.turkish_corpus import TOKENIZER_NAME, VOCAB_SIZE, load_corpus_policy
+from nanochat.turkish_corpus import VOCAB_SIZE, load_corpus_policy
 
 
 PACKAGE_KIND = "turkish_raw_bpe_tokenizer_package"
@@ -57,7 +57,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--policy",
         type=Path,
-        default=Path("configs/pretrain/tr_d32_turkish_general_v2.json"),
+        default=Path("configs/pretrain/tr_d32_turkish_general_v3.json"),
     )
     parser.add_argument("--sample-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
@@ -74,9 +74,10 @@ def build_parser() -> argparse.ArgumentParser:
 def _validate_training_sample(sample_dir: Path, policy: dict) -> tuple[dict, dict]:
     sample = load_json_strict(sample_dir / "tokenizer_sample_manifest.json")
     verify_manifest_hash(sample)
+    tokenizer_name = policy["tokenizer_training"]["name"]
     if sample.get("kind") != "turkish_raw_bpe_training_sample":
         raise ValueError("unexpected tokenizer sample manifest")
-    if sample.get("name") != TOKENIZER_NAME or sample.get("vocab_size") != VOCAB_SIZE:
+    if sample.get("name") != tokenizer_name or sample.get("vocab_size") != VOCAB_SIZE:
         raise ValueError("tokenizer sample identity drift")
     requested = policy["tokenizer_training"]["max_chars"]
     realized = sample.get("characters", 0)
@@ -484,6 +485,8 @@ def _export_and_verify_canonical_tiktoken(
     tokenizer: RustBPETokenizer,
     output_dir: Path,
     token_byte_lengths: torch.Tensor,
+    *,
+    tokenizer_name: str | None = None,
 ) -> dict[str, object]:
     """Export canonical rank-sorted tiktoken BPE bytes and reconstruct runtime IDs."""
 
@@ -536,7 +539,7 @@ def _export_and_verify_canonical_tiktoken(
         token: lexical + index for index, token in enumerate(SPECIAL_TOKENS)
     }
     rebuilt = tiktoken.Encoding(
-        name=TOKENIZER_NAME,
+        name=tokenizer_name or str(tokenizer.enc.name),
         pat_str=SPLIT_PATTERN,
         mergeable_ranks=reconstructed,
         special_tokens=special_tokens,
@@ -614,7 +617,9 @@ def _validate_tokenizer(tokenizer: RustBPETokenizer) -> dict[str, object]:
     }
 
 
-def _rebuild_package(output_dir: Path, receipt: dict) -> dict:
+def _rebuild_package(
+    output_dir: Path, receipt: dict, *, tokenizer_name: str
+) -> dict:
     roles = {
         "tokenizer.pkl": "tokenizer",
         "tokenizer.tiktoken": "canonical_tiktoken_export",
@@ -639,7 +644,7 @@ def _rebuild_package(output_dir: Path, receipt: dict) -> dict:
         {
             "schema_version": "1.0",
             "kind": PACKAGE_KIND,
-            "name": TOKENIZER_NAME,
+            "name": tokenizer_name,
             "vocab_size": VOCAB_SIZE,
             "implementation": "raw_byte_bpe",
             "training_receipt_sha256": receipt["canonical_sha256"],
@@ -661,6 +666,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         policy = load_corpus_policy(args.policy)
+        tokenizer_name = str(policy["tokenizer_training"]["name"])
         _baseline_tokenizer, baseline_identity = validate_pinned_baseline_tokenizer(
             args.baseline_tokenizer_dir,
             policy["tokenizer_training"]["baseline"],
@@ -706,7 +712,7 @@ def main(argv: list[str] | None = None) -> int:
         }
         config = {
             "schema_version": "1.0",
-            "name": TOKENIZER_NAME,
+            "name": tokenizer_name,
             "implementation": "bpe",
             "algorithm": "raw_byte_bpe",
             "vocab_size": VOCAB_SIZE,
@@ -751,7 +757,10 @@ def main(argv: list[str] | None = None) -> int:
         token_byte_lengths = _token_byte_lengths(tokenizer)
         _torch_save_atomic(token_byte_lengths, args.output_dir / "token_bytes.pt")
         canonical_export = _export_and_verify_canonical_tiktoken(
-            tokenizer, args.output_dir, token_byte_lengths
+            tokenizer,
+            args.output_dir,
+            token_byte_lengths,
+            tokenizer_name=tokenizer_name,
         )
         validation["canonical_export"] = canonical_export
         config["canonical_export"] = canonical_export
@@ -760,7 +769,7 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "schema_version": "1.0",
                 "kind": "turkish_raw_bpe_training_receipt",
-                "name": TOKENIZER_NAME,
+                "name": tokenizer_name,
                 "vocab_size": VOCAB_SIZE,
                 "algorithm": "raw_byte_bpe",
                 "reproducibility": config["reproducibility"],
@@ -810,7 +819,9 @@ def main(argv: list[str] | None = None) -> int:
             }
         )
         write_json_atomic(args.output_dir / "training_receipt.json", receipt)
-        package = _rebuild_package(args.output_dir, receipt)
+        package = _rebuild_package(
+            args.output_dir, receipt, tokenizer_name=tokenizer_name
+        )
         quality = build_tokenizer_quality_report(
             args.output_dir,
             args.sample_dir,
@@ -820,7 +831,7 @@ def main(argv: list[str] | None = None) -> int:
         print(
             json.dumps(
                 {
-                    "tokenizer": TOKENIZER_NAME,
+                    "tokenizer": tokenizer_name,
                     "vocab_size": VOCAB_SIZE,
                     "output_dir": str(args.output_dir),
                     "package_sha256": package["canonical_sha256"],

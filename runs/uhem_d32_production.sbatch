@@ -29,8 +29,8 @@ set -u
 
 : "${STAGE:?Set STAGE to one frozen family stage ID}"
 export CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
-export NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v2}"
-export RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v2.json}"
+export NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
+export RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v3.json}"
 export PREFLIGHT_RECEIPT="${PREFLIGHT_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/preflight.json}"
 export ATTENTION_PROBE_RECEIPT="${ATTENTION_PROBE_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/attention_probe.json}"
 export WSD_PROXY_APPROVAL="${WSD_PROXY_APPROVAL:-$NANOCHAT_BASE_DIR/control/d32/wd_proxy_approval.json}"
@@ -88,9 +88,9 @@ export LR_SCHEDULE=wsd
 export NNODES="$PRODUCTION_NODES"
 export NPROC_PER_NODE=4
 export STUDY_MANIFEST="$RECIPE"
-export DATA_DIR="$NANOCHAT_BASE_DIR/pretrain_data/tr_general_clean_v2"
+export DATA_DIR="${DATA_DIR:-$NANOCHAT_BASE_DIR/pretrain_data/tr_general_clean_v3}"
 export PACKING_CAPACITY_RECEIPT="$DATA_DIR/packing_capacity_receipt.json"
-export TOKENIZER_MANIFEST="$NANOCHAT_BASE_DIR/tokenizers/tr_general_raw_bpe_32k_v2/package_manifest.json"
+export TOKENIZER_MANIFEST="${TOKENIZER_MANIFEST:-$NANOCHAT_BASE_DIR/tokenizers/tr_general_raw_bpe_32k_v3/package_manifest.json}"
 export VALIDATION_MANIFEST="$DATA_DIR/validation_exposure_manifest.json"
 export EXPOSURE_PLAN="$DATA_DIR/training_exposure_${EXPOSURE_PLAN_KEY}.json"
 export METRICS_DIR="$NANOCHAT_BASE_DIR/metrics/d32_family/$RUN_ID"

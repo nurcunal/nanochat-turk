@@ -19,25 +19,32 @@ submitting each bounded production launcher.
 - Global batch is fixed at 2,097,152 scheduled positions for ws8 and ws16.
 - Data is Turkish-only, code corpora are forbidden, and validation is a fixed,
   finite whole-document manifest.
-- The v2 policy replaces Cosmos with the official Turkish MaCoCu-Genre release
+- The production policy is `tr_general_clean_v3`; v1/v2 remain historical and
+  cannot be renamed or promoted. It uses the official Turkish MaCoCu-Genre release
   (CLARIN handle `11356/1969`). A one-time CPU job verifies its 14,448,949,031-
   byte gzip and MD5 `abe376c21256798ded30e54770666aa0`, then streams it into
   deterministic sealed zstd JSONL shards. Object-array ranks consume those
   shards; they never redownload or independently decompress the full gzip.
-- MaCoCu conversation selects only `Forum` and `Opinion/Argumentation`; general
-  selects only `Information/Explanation`, `Instruction`, and `News`. Promotion,
+- MaCoCu has separate frozen lanes for `Forum` (0.8%),
+  `Opinion/Argumentation` (1.7%), `Information/Explanation` (2.0%),
+  `Instruction` (1.5%), and bounded `News` (4.0%). Promotion,
   prose/lyrics, legal, other, and mixed genres are excluded. HPLT is not treated
   as a conversation source because the bounded register audit did not support
   that interpretation.
-- The v2 sampling mix is an audit-only candidate, not a production approval:
-  HPLT general 35%, FineWeb2-HQ 30%, raw FineWeb2 12%, MaCoCu
-  conversation/general 6%/4%, FinePDF 8%, and FineWiki 5%. The bounded audit
+- The frozen v3 planning mix is HPLT WDS8/WDS9 19%/6%, FineWeb2-HQ 15%,
+  `fineweb2_strict_tr_v3` 48.65%, the MaCoCu lanes above (10% total),
+  FineWiki 0.4%, native MOT article JSON 0.8%, and native ParlaMint structured
+  dialogue 0.15%. The bounded audit
   disqualified FinePDF because manually reviewed Turkish rows contained OCR,
   reading-order, and layout corruption. It also found that the raw-FineWeb
   structural filters were too permissive for semantic junk. No production
-  corpus, tokenizer, or model may descend from this v2 mixture. The approved
-  mixture must use a fresh policy/source-plan lineage, set the FinePDF weight
-  and raw-FineWeb2 weights to zero by omitting both sources, and pass the same
+  corpus, tokenizer, or model may descend from that v2 mixture. V3 omits
+  FinePDF and the historical direct `fineweb2_tr` identity. All 30 immutable
+  Turkish FineWeb2 objects are nevertheless acquired under the distinct
+  `fineweb2_strict_tr_v3` derivation; its exact 30-object/134,789,283,815-byte
+  inventory, upstream commit, processing hash, and audit-policy hash are
+  receipt-bound, and only rows passing every gate become candidates. There is
+  no direct raw fallback. The fresh policy/source-plan lineage must pass the
   accepted-token-yield, dedup-overlap, language, quality, and genre gates from
   scratch. PDF- and OCR-derived text is out of scope for this family;
   replacing FinePDF with a different OCR corpus is not an allowed fallback.
@@ -56,14 +63,20 @@ submitting each bounded production launcher.
   candidates, and no ForumSohbetleri configuration is currently admitted.
   `memurlar` may be reconsidered only through a bounded conversation selector
   and a new manual audit. See `docs/tr_d32_native_text_candidate_audit.md`.
-- The project-local v2 audit rejects substantial mixed-script text only when it
+- The project-local audit rejects substantial mixed-script text only when it
   exceeds both 32 letters and 2% of alphabetic text. Contextual APK/download,
   commerce, cookie-interface, legal-policy, taxonomy/search, and strong SEO
   template gates use narrowly calibrated phrases and URL context; generic words
   such as “uygulama”, “ürün”, “fiyat”, “KVKK”, or “gizlilik” do not reject text.
-- The finite best-fit simulation must prove no epoch wrap through 40x plus a
-  2% margin for both ws8 and ws16. It also checks the retained post-cropping
-  mixture, rather than treating raw source-token totals as usable capacity.
+- The exact upstream best-fit repeat simulation runs through s12, s20, s40,
+  and s40 plus 2% for ws8 and ws16, including buffer prefetch across epoch
+  boundaries. At least 34,225,520,640 first-epoch packed positions is the
+  preferred at-most-two-epoch tier. Between 17,112,760,320 and that value is a
+  manual-risk at-most-four-epoch tier; below the hard floor is a no-go. Only the
+  complete composite pool may repeat—small sources never cycle independently.
+  The manual-risk tier remains defined so capacity receipts can report and
+  audit it, but it cannot authorize this production run: every production gate
+  and launcher requires the preferred at-most-two-epoch tier.
 - The upstream training core at commit
   `92d63d4e8bb4df75c3b71618f31ddde2378b2bcd` is immutable and every relied-on
   upstream file is exact-hash pinned. The production lane is additive only.
@@ -133,11 +146,52 @@ and the reviewed Turkish-data project and lock hashes.
 Then run `sbatch runs/uhem_turkish_data_prepare_macocu.sbatch` once on the shared
 filesystem. It atomically writes the retained verified gzip, reasonably sized
 prepared shards, per-shard SHA-256/row/genre accounting, and `manifest.json`.
-Only after that succeeds, run `sbatch runs/uhem_turkish_data_bootstrap.sbatch`
-to bind the preparation manifest into the immutable v2 source plan and seal the
-pinned GlotLID model/calibration and deterministic sample ranks. The v1 policy
-and its existing audit artifacts remain separate; never reuse a v1 plan,
-calibration, approval, receipt, pool, tokenizer, or packing receipt with v2.
+If the official gzip is already present, set `MACOCU_UPSTREAM_FILE` to that
+regular, non-symlink file before submission. The preparer verifies its exact
+size and official MD5, seals its SHA-256, and verifies the staged copy against
+both checksums before parsing; with the variable unset, the pinned HTTPS path
+is unchanged.
+Fetch and prepare both native-text anchors before bootstrap, in this exact
+order:
+
+1. Submit `runs/uhem_turkish_anchor_fetch_v3.sbatch` to stage the pinned two
+   MOT v1.11 archives and ParlaMint-TR v5.0 archive.
+2. Submit `runs/uhem_turkish_anchor_prepare_v3.sbatch` with
+   `MODE=discovery`. Inspect each discovery `manifest.json`, its native-text
+   evidence, counts, exclusions, Unicode audit, and archive-member provenance
+   under `source_data/mot_tr_v1_11_discovery` and
+   `source_data/parlamint_tr_v5_0_discovery`.
+3. Only after that manual inspection, seal two independent count acceptances:
+
+   ```bash
+   environments/turkish-data/.venv/bin/python scripts/prepare_turkish_anchors.py accept-counts \
+     --discovery-output-dir "$NANOCHAT_BASE_DIR/source_data/mot_tr_v1_11_discovery" \
+     --reviewer "$REVIEWER" --reviewed-at-utc "$REVIEWED_AT_UTC" \
+     --decision accepted \
+     --output "$NANOCHAT_BASE_DIR/control/data_v3/anchors/mot_count_acceptance.json"
+
+   environments/turkish-data/.venv/bin/python scripts/prepare_turkish_anchors.py accept-counts \
+     --discovery-output-dir "$NANOCHAT_BASE_DIR/source_data/parlamint_tr_v5_0_discovery" \
+     --reviewer "$REVIEWER" --reviewed-at-utc "$REVIEWED_AT_UTC" \
+     --decision accepted \
+     --output "$NANOCHAT_BASE_DIR/control/data_v3/anchors/parlamint_count_acceptance.json"
+   ```
+
+4. Submit the same preparation launcher with `MODE=production`,
+   `MOT_COUNT_ACCEPTANCE` set to the MOT receipt above, and
+   `PARLAMINT_COUNT_ACCEPTANCE` set to the ParlaMint receipt above. It writes
+   the production manifests at `source_data/mot_tr_v1_11/manifest.json` and
+   `source_data/parlamint_tr_v5_0/manifest.json`; discovery outputs are never
+   admitted directly.
+
+Only after MaCoCu and both accepted-production anchor manifests exist, run
+`sbatch runs/uhem_turkish_data_bootstrap.sbatch`. Its active v3 defaults pass
+both manifests as repeatable `--prepared-source-manifest` arguments and bind
+them with MaCoCu into the immutable source plan before sealing the pinned
+GlotLID model/calibration and deterministic sample ranks. Historical
+v1/v2 policies and their existing audit artifacts remain separate; never reuse
+their plan, calibration, approval, receipt, pool, tokenizer, or packing receipt
+with v3.
 
 The object resource sample runs through
 `runs/uhem_turkish_data_objects_packed_sample.sbatch`: one exclusive cpu2dq
@@ -269,7 +323,7 @@ gate, and refuses output directories outside the gated BeeGFS tree/device.
    `BASELINE_TOKENIZER_DIR` defaults to the pinned prior tokenizer at
    `/ari/users/nunal/nanochat-turk-d20-bpe32k/tokenizers/bpe_32768`; its exact
    three-file inventory is verified before any output directory is created.
-   The new `tr_general_raw_bpe_32k_v2` tokenizer is trained from the
+   The new `tr_general_raw_bpe_32k_v3` tokenizer is trained from the
    deterministic full-pool row-group traversal, while its
    fixed val-only holdout contains at least 50,000 documents or 128 MiB and
    targets at least 32 documents in every available mixture/source/register

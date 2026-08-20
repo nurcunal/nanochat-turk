@@ -954,6 +954,8 @@ def main_family(args):
             "runs/uhem_turkish_data_cluster.sbatch",
             "runs/uhem_turkish_data_bootstrap.sbatch",
             "runs/uhem_turkish_data_prepare_macocu.sbatch",
+            "runs/uhem_turkish_anchor_fetch_v3.sbatch",
+            "runs/uhem_turkish_anchor_prepare_v3.sbatch",
             "runs/uhem_turkish_sample_quality_audit.sbatch",
             "runs/uhem_turkish_prepare_data_env.sbatch",
             "runs/uhem_turkish_corpus_finalize.sbatch",

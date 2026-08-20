@@ -47,13 +47,21 @@ from nanochat.experiment_manifest import (
 
 CORPUS_NAME = "tr_general_clean_v1"
 CORPUS_NAME_V2 = "tr_general_clean_v2"
-SUPPORTED_CORPUS_NAMES = frozenset({CORPUS_NAME, CORPUS_NAME_V2})
+CORPUS_NAME_V3 = "tr_general_clean_v3"
+SUPPORTED_CORPUS_NAMES = frozenset({CORPUS_NAME, CORPUS_NAME_V2, CORPUS_NAME_V3})
 TOKENIZER_NAME_V1 = "tr_general_raw_bpe_32k_v1"
 TOKENIZER_NAME_V2 = "tr_general_raw_bpe_32k_v2"
-TOKENIZER_NAME = TOKENIZER_NAME_V2
+TOKENIZER_NAME_V3 = "tr_general_raw_bpe_32k_v3"
+TOKENIZER_NAME = TOKENIZER_NAME_V3
 VOCAB_SIZE = 32_768
-TOKENIZER_SAMPLE_SEED = "tr-general-raw-bpe-rowgroups-2026-08-20"
-TOKENIZER_HOLDOUT_SEED = "tr-general-raw-bpe-val-holdout-2026-08-20"
+TOKENIZER_SAMPLE_SEED_V2 = "tr-general-raw-bpe-rowgroups-2026-08-20"
+TOKENIZER_HOLDOUT_SEED_V2 = "tr-general-raw-bpe-val-holdout-2026-08-20"
+TOKENIZER_SAMPLE_SEED_V3 = "tr-general-clean-v3-raw-bpe-rowgroups-2026-08-21"
+TOKENIZER_HOLDOUT_SEED_V3 = "tr-general-clean-v3-raw-bpe-val-holdout-2026-08-21"
+# The unqualified names identify the active production lineage. Historical
+# policy validation below uses the version-qualified constants.
+TOKENIZER_SAMPLE_SEED = TOKENIZER_SAMPLE_SEED_V3
+TOKENIZER_HOLDOUT_SEED = TOKENIZER_HOLDOUT_SEED_V3
 TOKENIZER_HOLDOUT_MIN_DOCUMENTS = 50_000
 TOKENIZER_HOLDOUT_MIN_UTF8_BYTES = 128 * 1024 * 1024
 TOKENIZER_HOLDOUT_DOCUMENTS_PER_STRATUM = 32
@@ -88,13 +96,16 @@ TOKENIZER_BASELINE_V1 = {
 TOKENIZER_HOLDOUT_CONTRACT_V1 = {
     "split": "val",
     "selection": "smallest_sha256_stratified_prefix_v1",
-    "seed": TOKENIZER_HOLDOUT_SEED,
+    "seed": TOKENIZER_HOLDOUT_SEED_V2,
     "min_documents": TOKENIZER_HOLDOUT_MIN_DOCUMENTS,
     "min_utf8_bytes": TOKENIZER_HOLDOUT_MIN_UTF8_BYTES,
     "threshold_semantics": "documents_gte_min_or_utf8_bytes_gte_min",
     "strata_fields": ["mixture_id", "source_id", "register_bucket"],
     "require_every_available_stratum": True,
     "target_documents_per_available_stratum": TOKENIZER_HOLDOUT_DOCUMENTS_PER_STRATUM,
+}
+TOKENIZER_HOLDOUT_CONTRACT_V3 = TOKENIZER_HOLDOUT_CONTRACT_V1 | {
+    "seed": TOKENIZER_HOLDOUT_SEED_V3,
 }
 TOKENIZER_QUALITY_GATE_V1 = {
     "schema_version": "1.0",
@@ -150,6 +161,95 @@ PRODUCTION_CHAIN_FIELDS = (
 )
 
 MACOCU_SOURCE_ID = "macocu_genre_tr"
+FINEWEB2_STRICT_SOURCE_ID = "fineweb2_strict_tr_v3"
+MOT_SOURCE_ID = "mot_tr_v1_11"
+PARLAMINT_SOURCE_ID = "parlamint_tr_v5_0"
+V3_SOURCE_IDS = frozenset(
+    {
+        "hplt3_tr",
+        "fineweb2_hq_tr",
+        FINEWEB2_STRICT_SOURCE_ID,
+        MACOCU_SOURCE_ID,
+        "finewiki_tr",
+        MOT_SOURCE_ID,
+        PARLAMINT_SOURCE_ID,
+    }
+)
+V3_ALLOWED_TEXT_ORIGINS = frozenset({"born_digital_text", "structured_text"})
+V3_SOURCE_REVISIONS = {
+    "hplt3_tr": "3619a23b7aa1a261ec1100117296801aa43feacd1e517db796830f3814a95367",
+    "fineweb2_hq_tr": "c0c06e94fd3a44ae9e802b2b0fc533817601eb5e",
+    FINEWEB2_STRICT_SOURCE_ID: "af9c13333eb981300149d5ca60a8e9d659b276b9",
+    MACOCU_SOURCE_ID: "abe376c21256798ded30e54770666aa0",
+    "finewiki_tr": "8bd13e72e6a002407649b3e898535f42ceb1aeb9",
+    MOT_SOURCE_ID: "9204cad746dfff0921e7a8f64c0cc0917bc75554",
+    PARLAMINT_SOURCE_ID: "978f9051793367fc2192eedc80c1e71ac8ec7ea5",
+}
+V3_SOURCE_TEXT_ORIGINS = {
+    "hplt3_tr": "born_digital_text",
+    "fineweb2_hq_tr": "born_digital_text",
+    FINEWEB2_STRICT_SOURCE_ID: "born_digital_text",
+    MACOCU_SOURCE_ID: "born_digital_text",
+    "finewiki_tr": "structured_text",
+    MOT_SOURCE_ID: "structured_text",
+    PARLAMINT_SOURCE_ID: "structured_text",
+}
+V3_FINEWEB2_UPSTREAM_COMMIT = "af9c13333eb981300149d5ca60a8e9d659b276b9"
+V3_FINEWEB2_OBJECT_COUNT = 30
+V3_FINEWEB2_TOTAL_BYTES = 134_789_283_815
+V3_FINEWEB2_INVENTORY_SHA256 = (
+    "e2f10096b18e2329ddad230e99fbcf77e0294ebe6d1f9f652b077b57fb04adca"
+)
+V3_FINEWEB2_INVENTORY_SEMANTICS = (
+    "canonical_json_uri_sorted_uri_size_bytes_expected_checksums_v1"
+)
+V3_MIXTURE_WEIGHTS = {
+    "hplt_wds8_general": 0.19,
+    "hplt_wds9_general": 0.06,
+    "fineweb2_hq_general": 0.15,
+    "fineweb2_strict_general": 0.4865,
+    "macocu_forum": 0.008,
+    "macocu_opinion": 0.017,
+    "macocu_information": 0.02,
+    "macocu_instruction": 0.015,
+    "macocu_news": 0.04,
+    "finewiki_reference": 0.004,
+    "mot_general": 0.008,
+    "parlamint_conversation": 0.0015,
+}
+V3_TEXT_INTEGRITY_LIMITS = {
+    "max_unicode_replacement_characters": 0,
+    "max_mojibake_sequence_hits": 0,
+    "max_c1_control_characters": 0,
+    "max_unicode_surrogate_characters": 0,
+}
+V3_REPEAT_CAPACITY_GATE = {
+    "implementation": "nanochat_upstream_bos_bestfit_repeat_capacity_v3",
+    "world_sizes": [8, 16],
+    "device_batch_sequences": 4,
+    "max_seq_len": 2048,
+    "tokenizer_batch_size": 128,
+    "buffer_size": 1000,
+    "global_batch_tokens": D32_GLOBAL_BATCH_TOKENS,
+    "horizon_optimizer_steps": {
+        "s12": 9_600,
+        "s20": 16_000,
+        "s40": 32_000,
+        "s40_margin": 32_640,
+    },
+    "preferred_min_first_epoch_packed_positions": 34_225_520_640,
+    "hard_min_first_epoch_packed_positions": 17_112_760_320,
+    "preferred_max_loaded_epoch": 2,
+    "preferred_max_consumed_epoch": 2,
+    "hard_max_loaded_epoch": 4,
+    "hard_max_consumed_epoch": 4,
+    "whole_pool_repetition_only": True,
+    "source_specific_repetition": False,
+    "manual_repetition_risk_approval_between_tiers": True,
+    "mix_absolute_tolerance": 0.03,
+    "require_all_world_sizes": True,
+    "require_upstream_fixture_parity": True,
+}
 MACOCU_HANDLE = "https://hdl.handle.net/11356/1969"
 MACOCU_SOURCE_URL = (
     "https://www.clarin.si/repository/xmlui/bitstream/handle/11356/1969/"
@@ -552,11 +652,14 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
     }
     if set(policy) != required:
         raise TurkishCorpusError(f"policy fields must be exactly {sorted(required)}")
-    if policy["schema_version"] != "2.0":
-        raise TurkishCorpusError("schema_version must be '2.0'")
     if policy["name"] not in SUPPORTED_CORPUS_NAMES:
         raise TurkishCorpusError(
             f"policy name must be one of {sorted(SUPPORTED_CORPUS_NAMES)!r}"
+        )
+    expected_schema = "3.0" if policy["name"] == CORPUS_NAME_V3 else "2.0"
+    if policy["schema_version"] != expected_schema:
+        raise TurkishCorpusError(
+            f"{policy['name']} schema_version must be {expected_schema!r}"
         )
 
     language = _require_mapping(policy["language_policy"], "language_policy")
@@ -584,7 +687,7 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
     for key in ("min_chars", "min_words"):
         if not isinstance(content.get(key), int) or content[key] <= 0:
             raise TurkishCorpusError(f"content_policy.{key} must be positive")
-    if policy["name"] == CORPUS_NAME_V2:
+    if policy["name"] in {CORPUS_NAME_V2, CORPUS_NAME_V3}:
         exact_noise_policy = {
             "max_foreign_script_fraction": 0.02,
             "min_foreign_script_characters": 32,
@@ -602,6 +705,13 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
             if content.get(key) != expected:
                 raise TurkishCorpusError(
                     f"content_policy.{key} must be frozen to {expected!r} for v2"
+                )
+    if policy["name"] == CORPUS_NAME_V3:
+        for key, expected in V3_TEXT_INTEGRITY_LIMITS.items():
+            value = content.get(key)
+            if isinstance(value, bool) or not isinstance(value, int) or value != expected:
+                raise TurkishCorpusError(
+                    f"content_policy.{key} must be the integer zero for v3"
                 )
     processing = _require_mapping(
         content.get("production_processing"), "content_policy.production_processing"
@@ -699,6 +809,95 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
         adapter = _require_mapping(source.get("adapter"), f"{source_id}.adapter")
         if adapter.get("text_field") != "text":
             raise TurkishCorpusError(f"{source_id}: adapter.text_field must be text")
+        if policy["name"] == CORPUS_NAME_V3:
+            if source.get("text_origin") not in V3_ALLOWED_TEXT_ORIGINS:
+                raise TurkishCorpusError(
+                    f"{source_id}: v3 text_origin must be explicitly native/structured"
+                )
+            if source_id in {"fineweb2_tr", "finepdfs_edu_tr"}:
+                raise TurkishCorpusError(
+                    f"{source_id}: historical raw/PDF source identities are forbidden in v3"
+                )
+            if source_id == FINEWEB2_STRICT_SOURCE_ID:
+                derivation = _require_mapping(
+                    source.get("derivation"), f"{source_id}.derivation"
+                )
+                expected_derivation = {
+                    "kind": "strict_filtered_full_fineweb2_turkish_v3",
+                    "upstream_source_id": "fineweb2_tr",
+                    "upstream_repo_id": "HuggingFaceFW/fineweb-2",
+                    "upstream_resolved_revision": V3_FINEWEB2_UPSTREAM_COMMIT,
+                    "upstream_path": "data/tur_Latn/train",
+                    "expected_object_count": V3_FINEWEB2_OBJECT_COUNT,
+                    "expected_total_bytes": V3_FINEWEB2_TOTAL_BYTES,
+                    "expected_inventory_sha256": V3_FINEWEB2_INVENTORY_SHA256,
+                    "inventory_hash_semantics": V3_FINEWEB2_INVENTORY_SEMANTICS,
+                    "candidate_admission": (
+                        "only_rows_passing_source_lid_independent_glotlid_"
+                        "production_filters_local_audit_and_mixture_selector"
+                    ),
+                    "raw_fallback_allowed": False,
+                    "processing_binding_sha256": derivation.get(
+                        "processing_binding_sha256"
+                    ),
+                    "audit_policy_binding_sha256": derivation.get(
+                        "audit_policy_binding_sha256"
+                    ),
+                }
+                if dict(derivation) != expected_derivation:
+                    raise TurkishCorpusError(
+                        "fineweb2_strict_tr_v3 derivation contract drift"
+                    )
+                for field in (
+                    "processing_binding_sha256",
+                    "audit_policy_binding_sha256",
+                ):
+                    if not _SHA256_RE.fullmatch(str(derivation.get(field, ""))):
+                        raise TurkishCorpusError(
+                            f"fineweb2_strict_tr_v3 {field} must be frozen"
+                        )
+                if (
+                    source.get("repo_id") != "HuggingFaceFW/fineweb-2"
+                    or source.get("resolved_revision")
+                    != V3_FINEWEB2_UPSTREAM_COMMIT
+                    or source.get("revision_kind") != "hub_commit"
+                ):
+                    raise TurkishCorpusError(
+                        "fineweb2_strict_tr_v3 upstream identity drift"
+                    )
+            if source_id == "hplt3_tr" and source.get("selected_wds_bins") != [8, 9]:
+                raise TurkishCorpusError("v3 HPLT acquisition must be exactly WDS 8 and 9")
+            if source_id in {MOT_SOURCE_ID, PARLAMINT_SOURCE_ID}:
+                prepared = _require_mapping(
+                    source.get("prepared_source"), f"{source_id}.prepared_source"
+                )
+                if dict(prepared) != {
+                    "manifest_kind": "turkish_high_trust_anchor_preparation",
+                    "required_source_id": source_id,
+                    "required_preparer_version": "turkish_anchor_preparation_v2",
+                    "required_production_acceptance_stage": "accepted_production",
+                    "downstream_turkish_no_code_audit_required": True,
+                }:
+                    raise TurkishCorpusError(f"{source_id} prepared-source contract drift")
+                expected_anchor_identity = {
+                    MOT_SOURCE_ID: {
+                        "repo_id": "bltlab/mot",
+                        "resolved_revision": "9204cad746dfff0921e7a8f64c0cc0917bc75554",
+                        "license_id": "CC-BY-4.0",
+                        "source_url": "https://github.com/bltlab/mot/releases/tag/v1.11",
+                    },
+                    PARLAMINT_SOURCE_ID: {
+                        "repo_id": "clarin-eric/ParlaMint",
+                        "resolved_revision": "978f9051793367fc2192eedc80c1e71ac8ec7ea5",
+                        "license_id": "CC-BY-4.0",
+                        "source_url": "http://hdl.handle.net/11356/2004",
+                    },
+                }[source_id]
+                if any(
+                    source.get(key) != expected
+                    for key, expected in expected_anchor_identity.items()
+                ):
+                    raise TurkishCorpusError(f"{source_id} frozen source identity drift")
         if source_id == MACOCU_SOURCE_ID:
             exact = {
                 "repo_id": "CLARIN.SI/11356/1969",
@@ -726,6 +925,22 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
             }
             if dict(adapter) != expected_adapter:
                 raise TurkishCorpusError("MaCoCu adapter contract drift")
+    if policy["name"] == CORPUS_NAME_V3 and source_ids != V3_SOURCE_IDS:
+        raise TurkishCorpusError(
+            "v3 source inventory must be exactly the frozen PDF/OCR-free set"
+        )
+    if policy["name"] == CORPUS_NAME_V3:
+        observed_revisions = {
+            str(source["id"]): str(source["resolved_revision"])
+            for source in sources
+        }
+        observed_origins = {
+            str(source["id"]): str(source["text_origin"]) for source in sources
+        }
+        if observed_revisions != V3_SOURCE_REVISIONS:
+            raise TurkishCorpusError("v3 source revision inventory drift")
+        if observed_origins != V3_SOURCE_TEXT_ORIGINS:
+            raise TurkishCorpusError("v3 source text-origin inventory drift")
     priority = dedup.get("source_priority")
     if not isinstance(priority, list) or len(priority) != len(set(priority)):
         raise TurkishCorpusError("deduplication.source_priority must be a unique array")
@@ -787,6 +1002,12 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
             bins = selector.get("wds_bins")
             if not isinstance(bins, list) or not bins or min(bins) < 8 or max(bins) > 10:
                 raise TurkishCorpusError("HPLT3 is candidate-only and must use WDS bins 8-10")
+            if policy["name"] == CORPUS_NAME_V3 and (
+                len(bins) != 1 or bins[0] not in {8, 9}
+            ):
+                raise TurkishCorpusError(
+                    "each v3 HPLT lane must select exactly one of WDS 8 or 9"
+                )
             registers = selector.get("register_any")
             if not isinstance(registers, list) or not registers:
                 raise TurkishCorpusError("HPLT3 selection requires explicit registers")
@@ -812,6 +1033,44 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
         MACOCU_CONVERSATION_GENRES | MACOCU_GENERAL_GENRES
     ):
         raise TurkishCorpusError("MaCoCu buckets must select the frozen conversation/general genres")
+    if policy["name"] == CORPUS_NAME_V3:
+        observed_v3_weights = {
+            str(bucket["id"]): float(bucket["weight"]) for bucket in mixture
+        }
+        if observed_v3_weights != V3_MIXTURE_WEIGHTS:
+            raise TurkishCorpusError("v3 mixture ids/weights differ from the frozen plan")
+        expected_v3_sources = {
+            "hplt_wds8_general": "hplt3_tr",
+            "hplt_wds9_general": "hplt3_tr",
+            "fineweb2_hq_general": "fineweb2_hq_tr",
+            "fineweb2_strict_general": FINEWEB2_STRICT_SOURCE_ID,
+            "macocu_forum": MACOCU_SOURCE_ID,
+            "macocu_opinion": MACOCU_SOURCE_ID,
+            "macocu_information": MACOCU_SOURCE_ID,
+            "macocu_instruction": MACOCU_SOURCE_ID,
+            "macocu_news": MACOCU_SOURCE_ID,
+            "finewiki_reference": "finewiki_tr",
+            "mot_general": MOT_SOURCE_ID,
+            "parlamint_conversation": PARLAMINT_SOURCE_ID,
+        }
+        if {
+            str(bucket["id"]): str(bucket["source_id"]) for bucket in mixture
+        } != expected_v3_sources:
+            raise TurkishCorpusError("v3 mixture source routing drift")
+        hplt_lanes = {
+            str(bucket["id"]): list(bucket["selector"]["wds_bins"])
+            for bucket in mixture
+            if bucket["source_id"] == "hplt3_tr"
+        }
+        if hplt_lanes != {
+            "hplt_wds8_general": [8],
+            "hplt_wds9_general": [9],
+        }:
+            raise TurkishCorpusError("v3 HPLT lane/bin contract drift")
+        if any(bucket["fallback"] for bucket in mixture):
+            raise TurkishCorpusError(
+                "v3 lanes may not silently fall back across quality tiers"
+            )
     if not math.isclose(weights, 1.0, abs_tol=1e-12):
         raise TurkishCorpusError(f"mixture weights must sum to 1, got {weights}")
     for bucket in mixture:
@@ -822,9 +1081,11 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
             )
 
     tokenizer = _require_mapping(policy["tokenizer_training"], "tokenizer_training")
-    expected_tokenizer_name = (
-        TOKENIZER_NAME_V2 if policy["name"] == CORPUS_NAME_V2 else TOKENIZER_NAME_V1
-    )
+    expected_tokenizer_name = {
+        CORPUS_NAME: TOKENIZER_NAME_V1,
+        CORPUS_NAME_V2: TOKENIZER_NAME_V2,
+        CORPUS_NAME_V3: TOKENIZER_NAME_V3,
+    }[str(policy["name"])]
     if (
         tokenizer.get("name") != expected_tokenizer_name
         or tokenizer.get("vocab_size") != VOCAB_SIZE
@@ -852,7 +1113,12 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
             raise TurkishCorpusError(
                 "tokenizer sampling must use the full-pool row-group shuffle"
             )
-        if tokenizer.get("sampling_seed") != TOKENIZER_SAMPLE_SEED:
+        expected_sample_seed = (
+            TOKENIZER_SAMPLE_SEED_V3
+            if policy["name"] == CORPUS_NAME_V3
+            else TOKENIZER_SAMPLE_SEED_V2
+        )
+        if tokenizer.get("sampling_seed") != expected_sample_seed:
             raise TurkishCorpusError("tokenizer sampling seed drift")
         holdout = _require_mapping(
             tokenizer.get("holdout"), "tokenizer_training.holdout"
@@ -922,8 +1188,13 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
         )
         if dict(baseline) != TOKENIZER_BASELINE_V1:
             raise TurkishCorpusError("v2 production tokenizer baseline inventory drift")
-        if dict(holdout) != TOKENIZER_HOLDOUT_CONTRACT_V1:
-            raise TurkishCorpusError("v2 production tokenizer holdout constants drift")
+        expected_holdout = (
+            TOKENIZER_HOLDOUT_CONTRACT_V3
+            if policy["name"] == CORPUS_NAME_V3
+            else TOKENIZER_HOLDOUT_CONTRACT_V1
+        )
+        if dict(holdout) != expected_holdout:
+            raise TurkishCorpusError("production tokenizer holdout constants drift")
         if dict(quality_gate) != TOKENIZER_QUALITY_GATE_V1:
             raise TurkishCorpusError("v2 production tokenizer quality constants drift")
 
@@ -967,27 +1238,39 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
             raise TurkishCorpusError(f"materialization.{key} must be positive")
     if materialization["rows_per_output_file"] < materialization["rows_per_fragment"]:
         raise TurkishCorpusError("rows_per_output_file must cover one row group")
-    if materialization.get("target_family_tokens_semantics") != (
-        "minimum_encoded_source_floor_not_a_model-position-capacity-claim"
+    expected_target_semantics = (
+        "minimum_unique_source_floor_repeat_capacity_is_separately_simulated_v3"
+        if policy["name"] == CORPUS_NAME_V3
+        else "minimum_encoded_source_floor_not_a_model-position-capacity-claim"
+    )
+    if materialization.get("target_family_tokens_semantics") != expected_target_semantics:
+        raise TurkishCorpusError("raw source target semantics drift")
+    if (
+        policy["name"] == CORPUS_NAME_V3
+        and materialization.get("target_family_tokens") != 17_112_760_320
     ):
-        raise TurkishCorpusError("raw source target must not claim model-position capacity")
+        raise TurkishCorpusError("v3 initial unique-source planning floor drift")
     capacity = _require_mapping(
         materialization.get("packing_capacity_gate"), "packing_capacity_gate"
     )
-    expected_capacity = {
-        "implementation": "nanochat_upstream_bos_bestfit_crop_capacity_v2",
-        "world_sizes": [8, 16],
-        "device_batch_sequences": 4,
-        "max_seq_len": 2048,
-        "tokenizer_batch_size": 128,
-        "buffer_size": 1000,
-        "global_batch_tokens": D32_GLOBAL_BATCH_TOKENS,
-        "required_optimizer_steps": 32_000,
-        "safety_margin_fraction": 0.02,
-        "mix_absolute_tolerance": 0.03,
-        "require_all_world_sizes": True,
-        "require_upstream_fixture_parity": True,
-    }
+    expected_capacity = (
+        V3_REPEAT_CAPACITY_GATE
+        if policy["name"] == CORPUS_NAME_V3
+        else {
+            "implementation": "nanochat_upstream_bos_bestfit_crop_capacity_v2",
+            "world_sizes": [8, 16],
+            "device_batch_sequences": 4,
+            "max_seq_len": 2048,
+            "tokenizer_batch_size": 128,
+            "buffer_size": 1000,
+            "global_batch_tokens": D32_GLOBAL_BATCH_TOKENS,
+            "required_optimizer_steps": 32_000,
+            "safety_margin_fraction": 0.02,
+            "mix_absolute_tolerance": 0.03,
+            "require_all_world_sizes": True,
+            "require_upstream_fixture_parity": True,
+        }
+    )
     if dict(capacity) != expected_capacity:
         raise TurkishCorpusError("packing capacity gate differs from the frozen d32 contract")
 
@@ -1004,7 +1287,16 @@ def validate_source_receipt(receipt: Mapping[str, Any], policy: Mapping[str, Any
     derived_sources = receipt.get("derived_sources", {})
     if not isinstance(derived_sources, Mapping):
         raise TurkishCorpusError("source receipt derived_sources must be an object")
-    expected_derived = {MACOCU_SOURCE_ID} if MACOCU_SOURCE_ID in policy_sources else set()
+    expected_derived = {
+        source_id
+        for source_id in (
+            MACOCU_SOURCE_ID,
+            FINEWEB2_STRICT_SOURCE_ID,
+            MOT_SOURCE_ID,
+            PARLAMINT_SOURCE_ID,
+        )
+        if source_id in policy_sources
+    }
     if set(derived_sources) != expected_derived:
         raise TurkishCorpusError("source receipt derived-source inventory drift")
     if MACOCU_SOURCE_ID in derived_sources:
@@ -1020,6 +1312,80 @@ def validate_source_receipt(receipt: Mapping[str, Any], policy: Mapping[str, Any
             or upstream.get("size_bytes") != MACOCU_SIZE_BYTES
         ):
             raise TurkishCorpusError("source receipt MaCoCu upstream identity drift")
+    if FINEWEB2_STRICT_SOURCE_ID in derived_sources:
+        strict = _require_mapping(
+            derived_sources[FINEWEB2_STRICT_SOURCE_ID],
+            "source receipt strict FineWeb provenance",
+        )
+        configured = _require_mapping(
+            policy_sources[FINEWEB2_STRICT_SOURCE_ID].get("derivation"),
+            "strict FineWeb policy derivation",
+        )
+        inventory = _require_mapping(
+            strict.get("resolved_inventory"), "strict FineWeb resolved inventory"
+        )
+        admission = _require_mapping(
+            strict.get("admission"), "strict FineWeb admission"
+        )
+        if strict.get("contract") != configured or inventory != {
+            "object_count": V3_FINEWEB2_OBJECT_COUNT,
+            "total_bytes": V3_FINEWEB2_TOTAL_BYTES,
+            "sha256": V3_FINEWEB2_INVENTORY_SHA256,
+            "hash_semantics": V3_FINEWEB2_INVENTORY_SEMANTICS,
+        }:
+            raise TurkishCorpusError("source receipt strict FineWeb inventory drift")
+        if (
+            admission.get("candidate_source_id") != FINEWEB2_STRICT_SOURCE_ID
+            or admission.get("raw_source_id") != "fineweb2_tr"
+            or admission.get("only_passing_rows_enter_candidates") is not True
+            or admission.get("direct_raw_fallback") is not False
+            or admission.get("processing_binding_sha256")
+            != configured.get("processing_binding_sha256")
+            or admission.get("audit_policy_binding_sha256")
+            != configured.get("audit_policy_binding_sha256")
+        ):
+            raise TurkishCorpusError("source receipt strict FineWeb admission drift")
+    for anchor_id in (MOT_SOURCE_ID, PARLAMINT_SOURCE_ID):
+        if anchor_id not in derived_sources:
+            continue
+        from nanochat.turkish_anchor_preparation import validate_anchor_preparation
+
+        anchor = _require_mapping(
+            derived_sources[anchor_id], f"source receipt {anchor_id} provenance"
+        )
+        manifest_uri = str(anchor.get("manifest_uri", ""))
+        parsed = urllib.parse.urlparse(manifest_uri)
+        if parsed.scheme != "file":
+            raise TurkishCorpusError("source receipt anchor manifest must be local")
+        manifest_path = Path(urllib.parse.unquote(parsed.path))
+        if manifest_path.name != "manifest.json" or manifest_path.is_symlink():
+            raise TurkishCorpusError("source receipt anchor manifest path is unsafe")
+        try:
+            manifest = validate_anchor_preparation(
+                manifest_path.parent, verify_files=True
+            )
+        except (OSError, ValueError) as exc:
+            raise TurkishCorpusError(
+                f"source receipt {anchor_id} preparation is invalid"
+            ) from exc
+        if (
+            manifest.get("source_id") != anchor_id
+            or manifest.get("canonical_sha256") != anchor.get("manifest_sha256")
+            or manifest.get("production_acceptance", {}).get("stage")
+            != "accepted_production"
+            or manifest.get("production_acceptance", {}).get(
+                "eligible_for_production"
+            )
+            is not True
+            or anchor.get("downstream_admission")
+            != {
+                "preparer_automatically_admits_training": False,
+                "backend_turkish_no_code_audit_required": True,
+            }
+        ):
+            raise TurkishCorpusError(
+                f"source receipt {anchor_id} preparation/admission drift"
+            )
     seen: set[str] = set()
     sources = receipt.get("sources")
     if not isinstance(sources, list) or not sources:
@@ -3867,6 +4233,17 @@ def _tokenizer_holdout(
     return output_rows, receipt
 
 
+def _tokenizer_sample_seed_for_policy(policy: Mapping[str, Any]) -> str:
+    explicit = policy["tokenizer_training"].get("sampling_seed")
+    if explicit is not None:
+        return str(explicit)
+    return (
+        TOKENIZER_SAMPLE_SEED_V3
+        if policy.get("name") == CORPUS_NAME_V3
+        else TOKENIZER_SAMPLE_SEED_V2
+    )
+
+
 def representative_sample(
     pool_dir: str | Path,
     policy: Mapping[str, Any],
@@ -3888,7 +4265,10 @@ def representative_sample(
     target = int(max_chars or policy["tokenizer_training"]["max_chars"])
     document_cap = int(policy["tokenizer_training"]["max_chars_per_document"])
     buckets = [bucket for bucket in policy["mixture"]]
-    seed = str(policy["tokenizer_training"].get("sampling_seed", TOKENIZER_SAMPLE_SEED))
+    # V1 predated an explicit policy seed and historically inherited the
+    # seed now named TOKENIZER_SAMPLE_SEED_V2.  Keep that byte-level ordering
+    # stable while the active v3 lineage uses its fresh seed.
+    seed = _tokenizer_sample_seed_for_policy(policy)
     traversal_by_mixture: dict[str, Counter[str]] = {
         bucket["id"]: Counter() for bucket in buckets
     }
@@ -4826,10 +5206,35 @@ def build_packing_preflight_report(
     }
     recommended_weights = _normalized_measured_weights(raw_adjusted)
     source_cost_per_retained_position = sum(raw_adjusted.values())
-    required_steps_with_margin = math.ceil(
-        int(capacity_policy["required_optimizer_steps"])
-        * (1.0 + float(capacity_policy["safety_margin_fraction"]))
-    )
+    if policy["name"] == CORPUS_NAME_V3:
+        # v3 intentionally repeats the complete, fixed corpus.  The report
+        # therefore records the full 40x+margin training horizon while sizing
+        # the unique first-epoch pool to the preferred (at-most-two-epoch)
+        # repetition tier.  Projecting the whole horizon as unique source data
+        # would silently restore the retired v2 no-wrap requirement.
+        required_steps_with_margin = int(
+            capacity_policy["horizon_optimizer_steps"]["s40_margin"]
+        )
+        source_pool_planning_positions = int(
+            capacity_policy["preferred_min_first_epoch_packed_positions"]
+        )
+        capacity_planning = {
+            "semantics": "whole_pool_repeat_preferred_first_epoch_floor_v3",
+            "full_horizon_optimizer_steps": required_steps_with_margin,
+            "unique_pool_packed_position_target": source_pool_planning_positions,
+            "whole_pool_repetition_only": True,
+            "source_specific_repetition": False,
+        }
+    else:
+        required_steps_with_margin = math.ceil(
+            int(capacity_policy["required_optimizer_steps"])
+            * (1.0 + float(capacity_policy["safety_margin_fraction"]))
+        )
+        source_pool_planning_positions = (
+            required_steps_with_margin
+            * int(capacity_policy["global_batch_tokens"])
+        )
+        capacity_planning = None
     required_positions = required_steps_with_margin * int(
         capacity_policy["global_batch_tokens"]
     )
@@ -4839,7 +5244,7 @@ def build_packing_preflight_report(
         * max(int(value) for value in capacity_policy["world_sizes"])
     )
     projected = math.ceil(
-        required_positions
+        source_pool_planning_positions
         * source_cost_per_retained_position
         * projection_safety_factor
         + terminal_buffer_reserve
@@ -4882,6 +5287,11 @@ def build_packing_preflight_report(
             "source_cost_per_retained_position": source_cost_per_retained_position,
             "projection_safety_factor": projection_safety_factor,
             "required_positions_with_capacity_margin": required_positions,
+            **(
+                {"repeat_capacity_planning": capacity_planning}
+                if capacity_planning is not None
+                else {}
+            ),
             "terminal_buffer_reserve_source_tokens": terminal_buffer_reserve,
             "recommended_source_token_target": recommended_target,
             "planning_estimate_only_final_exact_gate_required": True,
@@ -5371,6 +5781,21 @@ def materialize_final_corpus(
         f"{parent_hash}:{package['canonical_sha256']}:{target_tokens}".encode("ascii"),
         usedforsecurity=False,
     ).hexdigest()
+    v3_selection_lineage = (
+        {
+            "raw_fineweb2_acquisition": "all_30_pinned_turkish_objects",
+            "strict_candidate_admission": (
+                "only_rows_passing_the_bound_strict_policy_are_training_eligible"
+            ),
+            "final_train_selection": (
+                "deterministic_weighted_token_quota_from_the_eligible_filtered_pool"
+            ),
+            "all_passing_rows_guaranteed_selected": False,
+            "raw_fineweb2_direct_training_fallback": False,
+        }
+        if policy["name"] == CORPUS_NAME_V3
+        else None
+    )
     dataset_manifest = seal_manifest(
         {
             "schema_version": "1.0",
@@ -5412,6 +5837,11 @@ def materialize_final_corpus(
                     sorted(approved_source_weights.items())
                 ),
                 "validation_policy": validation_no_crop,
+                **(
+                    {"training_lineage_selection": v3_selection_lineage}
+                    if v3_selection_lineage is not None
+                    else {}
+                ),
             },
             "canonical_sha256": None,
         }
@@ -5421,37 +5851,92 @@ def materialize_final_corpus(
     # A source-token sum is not a capacity proof because the pinned upstream
     # loader discards cropped document tails.  Simulate the exact finite epoch
     # after materialization and fail closed for either supported topology.
-    from nanochat.packing_capacity import (
-        seal_capacity_receipt,
-        simulate_final_corpus_capacity,
-    )
-
     capacity_policy = policy["materialization"]["packing_capacity_gate"]
-    capacity_simulation = simulate_final_corpus_capacity(
-        destination,
-        train_files,
-        tokenizer,
-        world_sizes=capacity_policy["world_sizes"],
-        B=int(capacity_policy["device_batch_sequences"]),
-        T=int(capacity_policy["max_seq_len"]),
-        buffer_size=int(capacity_policy["buffer_size"]),
-        tokenizer_batch_size=int(capacity_policy["tokenizer_batch_size"]),
-        global_batch_tokens=int(capacity_policy["global_batch_tokens"]),
-        required_optimizer_steps=int(capacity_policy["required_optimizer_steps"]),
-        safety_margin_fraction=float(capacity_policy["safety_margin_fraction"]),
-    )
-    capacity_receipt = seal_capacity_receipt(
-        destination / "packing_capacity_receipt.json",
-        simulation=capacity_simulation,
-        dataset_manifest_sha256=dataset_manifest["canonical_sha256"],
-        tokenizer_package_sha256=package["canonical_sha256"],
-        intended_weights={
-            bucket["id"]: float(bucket["weight"]) for bucket in policy["mixture"]
-        },
-        current_source_token_target=target_tokens,
-        mix_absolute_tolerance=float(capacity_policy["mix_absolute_tolerance"]),
-    )
+    intended_capacity_weights = {
+        bucket["id"]: float(bucket["weight"]) for bucket in policy["mixture"]
+    }
+    if policy["name"] == CORPUS_NAME_V3:
+        from nanochat.packing_capacity import (
+            seal_repetition_capacity_receipt,
+            simulate_final_corpus_repetition_capacity,
+        )
+
+        capacity_simulation = simulate_final_corpus_repetition_capacity(
+            destination,
+            train_files,
+            tokenizer,
+            world_sizes=capacity_policy["world_sizes"],
+            B=int(capacity_policy["device_batch_sequences"]),
+            T=int(capacity_policy["max_seq_len"]),
+            buffer_size=int(capacity_policy["buffer_size"]),
+            tokenizer_batch_size=int(capacity_policy["tokenizer_batch_size"]),
+            global_batch_tokens=int(capacity_policy["global_batch_tokens"]),
+            horizon_optimizer_steps=capacity_policy["horizon_optimizer_steps"],
+            preferred_min_first_epoch_packed_positions=int(
+                capacity_policy["preferred_min_first_epoch_packed_positions"]
+            ),
+            hard_min_first_epoch_packed_positions=int(
+                capacity_policy["hard_min_first_epoch_packed_positions"]
+            ),
+            preferred_max_loaded_epoch=int(
+                capacity_policy["preferred_max_loaded_epoch"]
+            ),
+            preferred_max_consumed_epoch=int(
+                capacity_policy["preferred_max_consumed_epoch"]
+            ),
+            hard_max_loaded_epoch=int(capacity_policy["hard_max_loaded_epoch"]),
+            hard_max_consumed_epoch=int(
+                capacity_policy["hard_max_consumed_epoch"]
+            ),
+        )
+        # A manual-risk tier must be authorized by a separately sealed review
+        # artifact.  Until that artifact is wired here, false is deliberately
+        # fixed: preferred passes, manual-risk fails closed.
+        capacity_receipt = seal_repetition_capacity_receipt(
+            destination / "packing_capacity_receipt.json",
+            simulation=capacity_simulation,
+            dataset_manifest_sha256=dataset_manifest["canonical_sha256"],
+            tokenizer_package_sha256=package["canonical_sha256"],
+            intended_weights=intended_capacity_weights,
+            manual_repetition_risk_approval=None,
+            mix_absolute_tolerance=float(capacity_policy["mix_absolute_tolerance"]),
+        )
+    else:
+        from nanochat.packing_capacity import (
+            seal_capacity_receipt,
+            simulate_final_corpus_capacity,
+        )
+
+        capacity_simulation = simulate_final_corpus_capacity(
+            destination,
+            train_files,
+            tokenizer,
+            world_sizes=capacity_policy["world_sizes"],
+            B=int(capacity_policy["device_batch_sequences"]),
+            T=int(capacity_policy["max_seq_len"]),
+            buffer_size=int(capacity_policy["buffer_size"]),
+            tokenizer_batch_size=int(capacity_policy["tokenizer_batch_size"]),
+            global_batch_tokens=int(capacity_policy["global_batch_tokens"]),
+            required_optimizer_steps=int(capacity_policy["required_optimizer_steps"]),
+            safety_margin_fraction=float(capacity_policy["safety_margin_fraction"]),
+        )
+        capacity_receipt = seal_capacity_receipt(
+            destination / "packing_capacity_receipt.json",
+            simulation=capacity_simulation,
+            dataset_manifest_sha256=dataset_manifest["canonical_sha256"],
+            tokenizer_package_sha256=package["canonical_sha256"],
+            intended_weights=intended_capacity_weights,
+            current_source_token_target=target_tokens,
+            mix_absolute_tolerance=float(capacity_policy["mix_absolute_tolerance"]),
+        )
     if capacity_receipt["gate_passed"] is not True:
+        if policy["name"] == CORPUS_NAME_V3:
+            raise TurkishCorpusError(
+                "exact whole-pool repeat capacity/mix/approval gate failed; "
+                "pool retained and cleanup forbidden; repetition tier="
+                f"{capacity_receipt['repetition_tier']} approval_required="
+                f"{capacity_receipt['approval_required']}"
+            )
         raise TurkishCorpusError(
             "exact best-fit capacity/mix gate failed; pool retained and cleanup forbidden; "
             "retry source target recommendation="
@@ -5615,20 +6100,53 @@ def cleanup_verified_pool(
         or promotion.get("packing_capacity_receipt_sha256") != capacity_hash
     ):
         raise TurkishCorpusError("final promotion/capacity binding drift")
-    worlds = capacity.get("simulation", {}).get("worlds", {})
-    if (
-        capacity.get("kind") != "turkish_bestfit_capacity_receipt"
-        or capacity.get("dataset_manifest_sha256") != dataset_hash
+    simulation = capacity.get("simulation", {})
+    worlds = simulation.get("worlds", {})
+    common_capacity_failure = (
+        capacity.get("dataset_manifest_sha256") != dataset_hash
         or capacity.get("tokenizer_package_sha256")
         != final_manifest.get("tokenizer", {}).get("package_sha256")
         or capacity.get("gate_passed") is not True
         or capacity.get("cleanup_authorized") is not True
         or set(worlds) != {"8", "16"}
-        or any(
-            metrics.get("passes_40x_no_wrap_with_margin") is not True
-            for metrics in worlds.values()
+    )
+    if final_manifest.get("name") == CORPUS_NAME_V3:
+        margin_steps = V3_REPEAT_CAPACITY_GATE["horizon_optimizer_steps"][
+            "s40_margin"
+        ]
+        capacity_failure = (
+            common_capacity_failure
+            or capacity.get("kind")
+            != "turkish_bestfit_repeat_capacity_receipt"
+            or simulation.get("implementation")
+            != V3_REPEAT_CAPACITY_GATE["implementation"]
+            or simulation.get("whole_pool_repetition_only") is not True
+            or simulation.get("source_specific_repetition") is not False
+            or capacity.get("repetition_tier") not in {"preferred", "manual_risk"}
+            or capacity.get("approval_satisfied") is not True
+            or any(
+                metrics.get("capacity_floor_passed") is not True
+                or metrics.get("horizons", {})
+                .get("s40_margin", {})
+                .get("optimizer_steps")
+                != margin_steps
+                or metrics.get("horizons", {})
+                .get("s40_margin", {})
+                .get("capacity_floor_passed")
+                is not True
+                for metrics in worlds.values()
+            )
         )
-    ):
+    else:
+        capacity_failure = (
+            common_capacity_failure
+            or capacity.get("kind") != "turkish_bestfit_capacity_receipt"
+            or any(
+                metrics.get("passes_40x_no_wrap_with_margin") is not True
+                for metrics in worlds.values()
+            )
+        )
+    if capacity_failure:
         raise TurkishCorpusError(
             "pool cleanup requires passing ws8 and ws16 exact capacity receipts"
         )
@@ -5998,14 +6516,19 @@ __all__ = [
     "AuditDecision",
     "CORPUS_NAME",
     "CORPUS_NAME_V2",
+    "CORPUS_NAME_V3",
     "DedupDecision",
     "D32_EXPOSURE_MATRIX_V1",
     "D32_GLOBAL_BATCH_TOKENS",
+    "FINEWEB2_STRICT_SOURCE_ID",
     "SQLiteMinHashDeduper",
     "TOKENIZER_NAME",
     "TOKENIZER_NAME_V1",
     "TOKENIZER_NAME_V2",
+    "TOKENIZER_NAME_V3",
     "MACOCU_SOURCE_ID",
+    "MOT_SOURCE_ID",
+    "PARLAMINT_SOURCE_ID",
     "TurkishCorpusError",
     "VOCAB_SIZE",
     "assign_split",

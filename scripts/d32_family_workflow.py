@@ -43,11 +43,19 @@ from nanochat.experiment_manifest import (
     verify_manifest_hash,
     write_json_atomic,
 )
-from nanochat.strict_runtime import FAMILY_ARTIFACT_CONTRACTS, family_artifact_contract
+from nanochat.strict_runtime import (
+    FAMILY_ARTIFACT_CONTRACTS,
+    FAMILY_ID_V3,
+    StrictTrainingError,
+    capacity_authorized_positions,
+    capacity_world_gate_record,
+    family_artifact_contract,
+)
 from nanochat.training_log import read_training_log
 
 
-DEFAULT_RECIPE = Path("configs/pretrain/tr_d32_turkish_general_wsd_v2.json")
+DEFAULT_RECIPE = Path("configs/pretrain/tr_d32_turkish_general_wsd_v3.json")
+DEFAULT_POLICY = Path("configs/pretrain/tr_d32_turkish_general_v3.json")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 SAFE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
@@ -1039,12 +1047,23 @@ def _preflight_capacity_world(
         _fail("preflight packing-capacity gate did not pass")
     worlds = _mapping(capacity.get("worlds"), "preflight packing-capacity worlds")
     world = _mapping(worlds.get(str(world_size)), f"preflight packing capacity ws{world_size}")
-    if world.get("passes_40x_no_wrap_with_margin") is not True:
+    repeat_mode = world.get("capacity_mode") == "whole_pool_repeat_v3"
+    if repeat_mode:
+        if (
+            world.get("repetition_tier") != "preferred"
+            or world.get("whole_pool_repetition_only") is not True
+            or world.get("source_specific_repetition") is not False
+            or world.get("epoch5_loaded_including_prefetch") is not False
+        ):
+            _fail(f"preflight repetition capacity did not pass for ws{world_size}")
+    elif world.get("passes_40x_no_wrap_with_margin") is not True:
         _fail(f"preflight packing capacity did not pass for ws{world_size}")
-    safe = _positive_int(
-        world.get("safe_global_scheduled_positions"),
-        f"preflight packing capacity ws{world_size} safe positions",
-    )
+    try:
+        safe = capacity_authorized_positions(world)
+    except StrictTrainingError as exc:
+        raise FamilyWorkflowError(
+            f"preflight packing capacity ws{world_size} lacks an authorized horizon"
+        ) from exc
     required = _positive_int(
         world.get("required_positions_with_margin"),
         f"preflight packing capacity ws{world_size} required positions",
@@ -1323,6 +1342,16 @@ def _resolved_artifact_paths(recipe: Mapping[str, Any], base_dir: Path) -> dict[
         resolved["macocu_preparation"] = base_dir / str(
             artifacts["macocu_preparation_manifest"]
         )
+    for source_id, artifact_key, resolved_key in (
+        ("mot_tr_v1_11", "mot_preparation_manifest", "mot_preparation"),
+        (
+            "parlamint_tr_v5_0",
+            "parlamint_preparation_manifest",
+            "parlamint_preparation",
+        ),
+    ):
+        if artifact_key in artifacts:
+            resolved[resolved_key] = base_dir / str(artifacts[artifact_key])
     for key, relative in _mapping(
         artifacts["training_exposure_manifests"],
         "artifacts.training_exposure_manifests",
@@ -1331,14 +1360,134 @@ def _resolved_artifact_paths(recipe: Mapping[str, Any], base_dir: Path) -> dict[
     return resolved
 
 
+def _verify_anchor_preparation_binding(
+    path: Path,
+    *,
+    source_id: str,
+    derived_sources: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Verify one accepted native-text preparation and its source provenance."""
+
+    if path.name != "manifest.json" or path.is_symlink() or not path.is_file():
+        _fail(f"{source_id} preparation manifest is missing or unsafe")
+    try:
+        from nanochat.turkish_anchor_preparation import validate_anchor_preparation
+
+        manifest = validate_anchor_preparation(path.parent, verify_files=True)
+        digest = verify_manifest_hash(manifest)
+    except (OSError, ValueError) as exc:
+        raise FamilyWorkflowError(
+            f"invalid accepted preparation for {source_id}: {exc}"
+        ) from exc
+    acceptance = _mapping(
+        _mapping(
+            manifest.get("production_acceptance"),
+            f"{source_id} production acceptance",
+        ).get("receipt"),
+        f"{source_id} production acceptance receipt",
+    )
+    data = _mapping(
+        _mapping(manifest.get("artifacts"), f"{source_id} artifacts").get("data"),
+        f"{source_id} data artifact",
+    )
+    expected_provenance = {
+        "manifest_uri": path.resolve().as_uri(),
+        "manifest_sha256": digest,
+        "source_id": source_id,
+        "preparer_version": manifest.get("preparer_version"),
+        "production_acceptance": {
+            "stage": "accepted_production",
+            "receipt_sha256": acceptance.get("canonical_sha256"),
+        },
+        "acquisition_receipt_sha256": _mapping(
+            manifest.get("acquisition_receipt"),
+            f"{source_id} acquisition receipt",
+        ).get("canonical_sha256"),
+        "clean": manifest.get("clean"),
+        "data_artifact": {
+            "logical_jsonl_sha256": data.get("logical_jsonl_sha256"),
+            "totals": data.get("totals"),
+        },
+        "downstream_admission": {
+            "preparer_automatically_admits_training": False,
+            "backend_turkish_no_code_audit_required": True,
+        },
+    }
+    if manifest.get("source_id") != source_id:
+        _fail(f"{source_id} preparation manifest names another source")
+    if derived_sources.get(source_id) != expected_provenance:
+        _fail(f"{source_id} preparation/source-receipt binding drifted")
+    return {"path": str(path.resolve()), "sha256": digest}
+
+
 def _verify_packing_capacity_receipt(
     path: Path,
     *,
     dataset_sha256: str,
     tokenizer_sha256: str,
     implementation_path: Path,
+    family_id: str,
 ) -> tuple[dict[str, Any], str]:
-    """Verify the finite no-wrap proof for both selectable topologies."""
+    """Verify the family-specific capacity proof for both topologies."""
+
+    if family_id == FAMILY_ID_V3:
+        receipt, digest = _load_receipt(
+            path, "turkish_bestfit_repeat_capacity_receipt"
+        )
+        if not implementation_path.is_file() or implementation_path.is_symlink():
+            _fail("packing-capacity simulator implementation is missing or unsafe")
+        try:
+            from nanochat.packing_capacity import (
+                validate_repetition_capacity_receipt,
+            )
+
+            summary = validate_repetition_capacity_receipt(
+                receipt,
+                dataset_manifest_sha256=dataset_sha256,
+                tokenizer_package_sha256=tokenizer_sha256,
+                # The v3 production family currently accepts the preferred
+                # tier only. A manual-risk receipt therefore remains closed
+                # until a separate sealed approval is added to the contract.
+                manual_repetition_risk_approval=None,
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise FamilyWorkflowError(
+                f"invalid v3 repetition capacity receipt: {exc}"
+            ) from exc
+        if (
+            summary.get("canonical_sha256") != digest
+            or summary.get("repetition_tier") != "preferred"
+            or summary.get("gate_passed") is not True
+            or summary.get("cleanup_authorized") is not True
+            or summary.get("approval_required") is not False
+            or summary.get("approval_satisfied") is not True
+        ):
+            _fail("v3 repetition capacity gate did not pass at the preferred tier")
+        simulation = _mapping(
+            receipt.get("simulation"), "repetition packing-capacity simulation"
+        )
+        if simulation.get("implementation_file_sha256") != file_sha256(
+            implementation_path
+        ):
+            _fail("packing-capacity simulator source differs from the receipt")
+        worlds = _mapping(
+            simulation.get("worlds"), "repetition packing-capacity worlds"
+        )
+        if set(worlds) != {"8", "16"}:
+            _fail("repetition capacity receipt must cover exactly ws8 and ws16")
+        for world_size in (8, 16):
+            selected = capacity_world_gate_record(receipt, world_size)
+            if (
+                selected.get("world_size") != world_size
+                or selected.get("device_batch_sequences") != 4
+                or selected.get("max_seq_len") != 2048
+                or selected.get("gradient_accumulation_steps")
+                != 2_097_152 // (world_size * 4 * 2048)
+                or capacity_authorized_positions(selected)
+                < 32_640 * 2_097_152
+            ):
+                _fail(f"repetition capacity ws{world_size} topology drifted")
+        return receipt, digest
 
     receipt, digest = _load_receipt(path, "turkish_bestfit_capacity_receipt")
     expected_top = {
@@ -1452,6 +1601,19 @@ def _data_prep_policy_sha256(policy: Mapping[str, Any]) -> str:
     return hashlib.sha256(canonical_json(policy).encode("utf-8")).hexdigest()
 
 
+def _validate_recipe_policy_identity(
+    recipe: Mapping[str, Any], policy: Mapping[str, Any]
+) -> None:
+    artifacts = _mapping(recipe.get("artifacts"), "recipe artifacts")
+    tokenizer = _mapping(policy.get("tokenizer_training"), "policy tokenizer_training")
+    if policy.get("name") != artifacts.get("corpus_id"):
+        _fail("corpus policy name differs from the selected family recipe")
+    if tokenizer.get("name") != artifacts.get("tokenizer_name"):
+        _fail("corpus policy tokenizer name differs from the selected family recipe")
+    if tokenizer.get("vocab_size") != recipe.get("model", {}).get("vocab_size"):
+        _fail("corpus policy tokenizer vocabulary differs from the family model")
+
+
 def _load_data_prep_inputs(
     *,
     recipe_path: Path,
@@ -1479,6 +1641,7 @@ def _load_data_prep_inputs(
         from nanochat.turkish_corpus import load_corpus_policy
 
         policy = load_corpus_policy(policy_path)
+        _validate_recipe_policy_identity(recipe, policy)
         source_plan = _load_object(source_plan_path, "source plan")
         calibration = _load_object(calibration_path, "backend calibration")
         validate_source_plan(source_plan, policy)
@@ -4154,6 +4317,7 @@ def command_preflight(args: argparse.Namespace) -> None:
         from nanochat.turkish_corpus import load_corpus_policy
 
         policy = load_corpus_policy(args.policy)
+        _validate_recipe_policy_identity(recipe, policy)
         source_plan = _load_object(args.source_plan, "source plan")
         calibration = _load_object(args.calibration, "backend calibration")
         validate_source_plan(source_plan, policy)
@@ -4515,11 +4679,32 @@ def command_preflight(args: argparse.Namespace) -> None:
             _fail("source receipt is not bound to the exact MaCoCu preparation")
         macocu_record = {"path": str(macocu_path.resolve()), "sha256": macocu_sha}
 
+    anchor_records: dict[str, dict[str, Any]] = {}
+    for source_id, path_key, artifact_key in (
+        ("mot_tr_v1_11", "mot_preparation", "mot_preparation_manifest"),
+        (
+            "parlamint_tr_v5_0",
+            "parlamint_preparation",
+            "parlamint_preparation_manifest",
+        ),
+    ):
+        anchor_path = paths.get(path_key)
+        if anchor_path is None:
+            if source_id in derived_sources:
+                _fail(f"family without {artifact_key} unexpectedly binds {source_id}")
+            continue
+        anchor_records[artifact_key] = _verify_anchor_preparation_binding(
+            anchor_path,
+            source_id=source_id,
+            derived_sources=derived_sources,
+        )
+
     packing_capacity, packing_capacity_sha = _verify_packing_capacity_receipt(
         paths["packing_capacity"],
         dataset_sha256=dataset_sha,
         tokenizer_sha256=package_sha,
         implementation_path=args.repo_root / "nanochat" / "packing_capacity.py",
+        family_id=recipe["family_id"],
     )
     expected_corpus_capacity = {
         "path": paths["packing_capacity"].relative_to(paths["corpus_root"]).as_posix(),
@@ -4833,15 +5018,9 @@ def command_preflight(args: argparse.Namespace) -> None:
                     "sha256": packing_capacity_sha,
                     "gate_passed": True,
                     "worlds": {
-                        world: {
-                            "safe_global_scheduled_positions": packing_capacity[
-                                "simulation"
-                            ]["worlds"][world]["safe_global_scheduled_positions"],
-                            "required_positions_with_margin": packing_capacity[
-                                "simulation"
-                            ]["worlds"][world]["required_positions_with_margin"],
-                            "passes_40x_no_wrap_with_margin": True,
-                        }
+                        world: capacity_world_gate_record(
+                            packing_capacity, int(world)
+                        )
                         for world in ("8", "16")
                     },
                 },
@@ -4854,6 +5033,7 @@ def command_preflight(args: argparse.Namespace) -> None:
                     if macocu_record is not None
                     else {}
                 ),
+                **anchor_records,
             },
             "tokenizer": {
                 "root": str(paths["tokenizer_root"]),
@@ -5283,17 +5463,24 @@ def _verify_frozen_protocol(
             preflight["corpus"].get("packing_capacity_receipt"),
             f"{label} preflight packing capacity",
         )
+        expected_capacity_kind = (
+            "turkish_bestfit_repeat_capacity_receipt"
+            if recipe["family_id"] == FAMILY_ID_V3
+            else "turkish_bestfit_capacity_receipt"
+        )
         capacity_receipt, capacity_sha = _load_receipt(
-            Path(str(capacity_record["path"])), "turkish_bestfit_capacity_receipt"
+            Path(str(capacity_record["path"])), expected_capacity_kind
         )
         if capacity_sha != capacity_record.get("sha256"):
             _fail(f"{label} packing-capacity file differs from preflight")
-        selected_capacity = _mapping(
-            _mapping(
-                capacity_receipt.get("simulation"), f"{label} capacity simulation"
-            ).get("worlds"),
-            f"{label} capacity worlds",
-        ).get(str(world_size))
+        try:
+            selected_capacity = capacity_world_gate_record(
+                capacity_receipt, world_size
+            )
+        except StrictTrainingError as exc:
+            raise FamilyWorkflowError(
+                f"{label} packing-capacity topology is invalid: {exc}"
+            ) from exc
         if packing_capacity != {
             "receipt_sha256": capacity_sha,
             "selected_topology": selected_capacity,
@@ -6832,7 +7019,7 @@ def command_seal_smoke(args: argparse.Namespace) -> None:
         int(recipe["distributed_gate"]["smoke_updates"])
         * int(recipe["training"]["global_batch_tokens"])
     )
-    if int(packing_capacity_world["safe_global_scheduled_positions"]) < smoke_horizon_positions:
+    if capacity_authorized_positions(packing_capacity_world) < smoke_horizon_positions:
         _fail(f"ws{gpus} packing capacity is below the smoke horizon")
     run_id = f"{recipe['family_id']}_smoke_ws{gpus}"
     slurm_completion = _live_slurm_completed_job(
@@ -7040,7 +7227,7 @@ def command_seal_smoke(args: argparse.Namespace) -> None:
             "packing_capacity_receipt_sha256": packing_capacity_sha,
             "packing_capacity_world_size": gpus,
             "packing_capacity_safe_global_scheduled_positions": int(
-                packing_capacity_world["safe_global_scheduled_positions"]
+                capacity_authorized_positions(packing_capacity_world)
             ),
             "static_srun_launches": launch_inventory,
             "nodes": args.nodes,
@@ -7486,7 +7673,7 @@ def _verify_gate_and_preflight(
         _fail("production topology gate used a different packing-capacity receipt")
     if gate.get("authorized_packing_capacity_world_size") != selected_world_size:
         _fail("production topology gate selected a different capacity world")
-    safe_positions = int(capacity_world["safe_global_scheduled_positions"])
+    safe_positions = capacity_authorized_positions(capacity_world)
     if gate.get("authorized_safe_global_scheduled_positions") != safe_positions:
         _fail("production topology gate safe-position bound differs from preflight")
     maximum_horizon = max(
@@ -8159,7 +8346,7 @@ def build_parser() -> argparse.ArgumentParser:
     quality_approval.add_argument(
         "--policy",
         type=Path,
-        default=Path("configs/pretrain/tr_d32_turkish_general_v2.json"),
+        default=DEFAULT_POLICY,
     )
     quality_approval.add_argument("--source-plan", type=Path, required=True)
     quality_approval.add_argument("--calibration", type=Path, required=True)
@@ -8178,7 +8365,7 @@ def build_parser() -> argparse.ArgumentParser:
     pack_plan.add_argument(
         "--policy",
         type=Path,
-        default=Path("configs/pretrain/tr_d32_turkish_general_v2.json"),
+        default=DEFAULT_POLICY,
     )
     pack_plan.add_argument("--source-plan", type=Path, required=True)
     pack_plan.add_argument("--calibration", type=Path, required=True)
@@ -8191,7 +8378,7 @@ def build_parser() -> argparse.ArgumentParser:
     writer_probe.add_argument(
         "--policy",
         type=Path,
-        default=Path("configs/pretrain/tr_d32_turkish_general_v2.json"),
+        default=DEFAULT_POLICY,
     )
     writer_probe.add_argument("--source-plan", type=Path, required=True)
     writer_probe.add_argument("--calibration", type=Path, required=True)
@@ -8206,7 +8393,7 @@ def build_parser() -> argparse.ArgumentParser:
     data_prep_sample.add_argument(
         "--policy",
         type=Path,
-        default=Path("configs/pretrain/tr_d32_turkish_general_v2.json"),
+        default=DEFAULT_POLICY,
     )
     data_prep_sample.add_argument("--source-plan", type=Path, required=True)
     data_prep_sample.add_argument("--calibration", type=Path, required=True)
@@ -8244,7 +8431,7 @@ def build_parser() -> argparse.ArgumentParser:
     data_prep.add_argument(
         "--policy",
         type=Path,
-        default=Path("configs/pretrain/tr_d32_turkish_general_v2.json"),
+        default=DEFAULT_POLICY,
     )
     data_prep.add_argument("--sample-measurement", type=Path, required=True)
     data_prep.add_argument("--work-dir", type=Path, required=True)
@@ -8260,7 +8447,7 @@ def build_parser() -> argparse.ArgumentParser:
     preflight.add_argument(
         "--policy",
         type=Path,
-        default=Path("configs/pretrain/tr_d32_turkish_general_v2.json"),
+        default=DEFAULT_POLICY,
     )
     preflight.add_argument("--source-plan", type=Path, required=True)
     preflight.add_argument("--calibration", type=Path, required=True)

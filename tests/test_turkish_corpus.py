@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 from pathlib import Path
 
@@ -16,13 +17,29 @@ from nanochat.turkish_corpus import (
     MACOCU_SOURCE_ID,
     MACOCU_SOURCE_URL,
     SOURCE_RECEIPT_KIND,
+    TOKENIZER_SAMPLE_SEED_V2,
+    TOKENIZER_SAMPLE_SEED_V3,
     TurkishCorpusError,
+    _tokenizer_sample_seed_for_policy,
     _write_eval_split,
     allocate_fallback_quotas,
     archive_source_receipt,
     iter_input_records,
     load_corpus_policy,
+    validate_corpus_policy,
+    validate_source_receipt,
 )
+
+
+def test_historical_v1_tokenizer_sample_fallback_seed_is_stable():
+    v1 = load_corpus_policy("configs/pretrain/tr_d32_turkish_general_v1.json")
+    v2 = load_corpus_policy("configs/pretrain/tr_d32_turkish_general_v2.json")
+    v3 = load_corpus_policy("configs/pretrain/tr_d32_turkish_general_v3.json")
+
+    assert "sampling_seed" not in v1["tokenizer_training"]
+    assert _tokenizer_sample_seed_for_policy(v1) == TOKENIZER_SAMPLE_SEED_V2
+    assert _tokenizer_sample_seed_for_policy(v2) == TOKENIZER_SAMPLE_SEED_V2
+    assert _tokenizer_sample_seed_for_policy(v3) == TOKENIZER_SAMPLE_SEED_V3
 
 
 class _CharacterTokenizer:
@@ -191,3 +208,185 @@ def test_source_receipt_archive_rejects_parent_hash_mismatch(tmp_path: Path):
         )
 
     assert not (tmp_path / "source_receipt.json").exists()
+
+
+def test_v3_policy_freezes_pdf_ocr_free_sources_mix_and_tokenizer():
+    policy = load_corpus_policy("configs/pretrain/tr_d32_turkish_general_v3.json")
+    sources = {source["id"]: source for source in policy["sources"]}
+    assert set(sources) == {
+        "hplt3_tr",
+        "fineweb2_hq_tr",
+        "fineweb2_strict_tr_v3",
+        "macocu_genre_tr",
+        "finewiki_tr",
+        "mot_tr_v1_11",
+        "parlamint_tr_v5_0",
+    }
+    assert "fineweb2_tr" not in sources
+    assert "finepdfs_edu_tr" not in sources
+    assert {source["text_origin"] for source in sources.values()} <= {
+        "born_digital_text",
+        "structured_text",
+    }
+    assert sources["hplt3_tr"]["selected_wds_bins"] == [8, 9]
+    strict = sources["fineweb2_strict_tr_v3"]["derivation"]
+    assert strict["expected_object_count"] == 30
+    assert strict["expected_total_bytes"] == 134_789_283_815
+    assert strict["raw_fallback_allowed"] is False
+    assert policy["tokenizer_training"]["name"] == "tr_general_raw_bpe_32k_v3"
+    assert sum(bucket["weight"] for bucket in policy["mixture"]) == pytest.approx(1.0)
+    capacity = policy["materialization"]["packing_capacity_gate"]
+    assert (
+        capacity["horizon_optimizer_steps"]["s40_margin"]
+        * capacity["global_batch_tokens"]
+        == 68_451_041_280
+    )
+    assert capacity["preferred_min_first_epoch_packed_positions"] == 34_225_520_640
+    assert capacity["hard_min_first_epoch_packed_positions"] == 17_112_760_320
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        (lambda policy: policy["sources"][0].__setitem__("text_origin", "ocr_text"), "text_origin"),
+        (
+            lambda policy: next(
+                source
+                for source in policy["sources"]
+                if source["id"] == "hplt3_tr"
+            ).__setitem__("selected_wds_bins", [8, 9, 10]),
+            "WDS 8 and 9",
+        ),
+        (
+            lambda policy: next(
+                source
+                for source in policy["sources"]
+                if source["id"] == "fineweb2_strict_tr_v3"
+            )["derivation"].__setitem__("raw_fallback_allowed", True),
+            "derivation contract",
+        ),
+        (
+            lambda policy: policy["content_policy"].__setitem__(
+                "max_mojibake_sequence_hits", 1
+            ),
+            "integer zero",
+        ),
+    ],
+)
+def test_v3_policy_safety_contracts_fail_closed(mutation, message):
+    policy = load_corpus_policy("configs/pretrain/tr_d32_turkish_general_v3.json")
+    mutated = copy.deepcopy(policy)
+    mutation(mutated)
+    with pytest.raises(TurkishCorpusError, match=message):
+        validate_corpus_policy(mutated)
+
+
+def test_v3_source_receipt_binds_strict_fineweb_and_native_anchor_admission(
+    tmp_path: Path, monkeypatch
+):
+    policy = load_corpus_policy("configs/pretrain/tr_d32_turkish_general_v3.json")
+    strict_source = next(
+        source
+        for source in policy["sources"]
+        if source["id"] == "fineweb2_strict_tr_v3"
+    )
+    derived = {
+        MACOCU_SOURCE_ID: {
+            "manifest_sha256": "d" * 64,
+            "upstream": {
+                "uri": MACOCU_SOURCE_URL,
+                "md5": MACOCU_MD5,
+                "size_bytes": MACOCU_SIZE_BYTES,
+            },
+        },
+        "fineweb2_strict_tr_v3": {
+            "contract": strict_source["derivation"],
+            "resolved_inventory": {
+                "object_count": 30,
+                "total_bytes": 134_789_283_815,
+                "sha256": "e2f10096b18e2329ddad230e99fbcf77e0294ebe6d1f9f652b077b57fb04adca",
+                "hash_semantics": "canonical_json_uri_sorted_uri_size_bytes_expected_checksums_v1",
+            },
+            "admission": {
+                "candidate_source_id": "fineweb2_strict_tr_v3",
+                "raw_source_id": "fineweb2_tr",
+                "only_passing_rows_enter_candidates": True,
+                "direct_raw_fallback": False,
+                "processing_binding_sha256": strict_source["derivation"][
+                    "processing_binding_sha256"
+                ],
+                "audit_policy_binding_sha256": strict_source["derivation"][
+                    "audit_policy_binding_sha256"
+                ],
+            },
+        },
+    }
+    manifests = {}
+    for index, anchor_id in enumerate(("mot_tr_v1_11", "parlamint_tr_v5_0"), 1):
+        root = tmp_path / anchor_id
+        root.mkdir()
+        manifest_path = root / "manifest.json"
+        manifest_path.write_text("{}\n")
+        manifest = {
+            "source_id": anchor_id,
+            "canonical_sha256": str(index) * 64,
+            "production_acceptance": {
+                "stage": "accepted_production",
+                "eligible_for_production": True,
+            },
+        }
+        manifests[root] = manifest
+        derived[anchor_id] = {
+            "manifest_uri": manifest_path.resolve().as_uri(),
+            "manifest_sha256": manifest["canonical_sha256"],
+            "downstream_admission": {
+                "preparer_automatically_admits_training": False,
+                "backend_turkish_no_code_audit_required": True,
+            },
+        }
+
+    import nanochat.turkish_anchor_preparation as anchors
+
+    monkeypatch.setattr(
+        anchors,
+        "validate_anchor_preparation",
+        lambda root, **_kwargs: manifests[Path(root)],
+    )
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": SOURCE_RECEIPT_KIND,
+            "policy_sha256": hashlib.sha256(
+                canonical_json(policy).encode("utf-8")
+            ).hexdigest(),
+            "derived_sources": derived,
+            "sources": [
+                {
+                    "id": source["id"],
+                    "repo_id": source["repo_id"],
+                    "resolved_revision": source["resolved_revision"],
+                    "license_id": source["license_id"],
+                    "files": [
+                        {
+                            "uri": f"https://example.invalid/{source['id']}",
+                            "checksum": {
+                                "algorithm": "sha256",
+                                "value": "f" * 64,
+                            },
+                            "size_bytes": 1,
+                        }
+                    ],
+                }
+                for source in policy["sources"]
+            ],
+            "canonical_sha256": None,
+        }
+    )
+    validate_source_receipt(receipt, policy)
+    tampered = copy.deepcopy(receipt)
+    tampered["derived_sources"]["fineweb2_strict_tr_v3"]["admission"][
+        "direct_raw_fallback"
+    ] = True
+    tampered = seal_manifest(tampered)
+    with pytest.raises(TurkishCorpusError, match="admission drift"):
+        validate_source_receipt(tampered, policy)

@@ -33,11 +33,11 @@ set -u
 : "${CLUSTER_LAUNCH_RECEIPT:?}"
 
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
-NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v2}"
-POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v2.json}"
-FAMILY_RECIPE="${FAMILY_RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v2.json}"
+NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
+POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v3.json}"
+FAMILY_RECIPE="${FAMILY_RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v3.json}"
 PYTHON_BIN="${PYTHON_BIN:-$CODE_DIR/.venv/bin/python}"
-CONTROL_DIR="${CONTROL_DIR:-$NANOCHAT_BASE_DIR/control/data_v2}"
+CONTROL_DIR="${CONTROL_DIR:-$NANOCHAT_BASE_DIR/control/data_v3}"
 SOURCE_PLAN="${SOURCE_PLAN:-$CONTROL_DIR/source_plan.json}"
 CALIBRATION="${CALIBRATION:-$CONTROL_DIR/backend_calibration.json}"
 PACK_PLAN="${PACK_PLAN:-$CONTROL_DIR/production_source_pack_plan.json}"
@@ -72,7 +72,7 @@ export PYTHONPATH="$CODE_DIR${PYTHONPATH:+:$PYTHONPATH}"
     --quota-headroom-bytes "$QUOTA_HEADROOM_BYTES"
 
 # Resolve all exposure-index identities from the sealed artifacts just written;
-# never let a v2 corpus silently inherit the historical v1 family default.
+# never let a v3 corpus silently inherit an older family default.
 FAMILY_ID="$("$PYTHON_BIN" -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["family_id"])' "$FAMILY_RECIPE")"
 FAMILY_RECIPE_SHA256="$("$PYTHON_BIN" -c 'import sys; from nanochat.experiment_manifest import load_json_strict, verify_manifest_hash; print(verify_manifest_hash(load_json_strict(sys.argv[1])))' "$FAMILY_RECIPE")"
 TOKENIZER_ARTIFACT_SHA256="$("$PYTHON_BIN" -c 'import sys; from nanochat.experiment_manifest import load_json_strict, verify_manifest_hash; print(verify_manifest_hash(load_json_strict(sys.argv[1])))' "$TOKENIZER_DIR/package_manifest.json")"

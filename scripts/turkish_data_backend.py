@@ -26,8 +26,9 @@ from nanochat.turkish_backend import (
 from nanochat.turkish_corpus import load_corpus_policy
 
 
-DEFAULT_POLICY = Path("configs/pretrain/tr_d32_turkish_general_v2.json")
+DEFAULT_POLICY = Path("configs/pretrain/tr_d32_turkish_general_v3.json")
 DEFAULT_CALIBRATION_FIXTURE = Path("configs/pretrain/glotlid_calibration_tr_v1.jsonl")
+PREPARED_SOURCE_IDS = frozenset({"mot_tr_v1_11", "parlamint_tr_v5_0"})
 
 
 def _rank(value: int | None) -> int:
@@ -37,6 +38,21 @@ def _rank(value: int | None) -> int:
     if raw is None:
         raise ValueError("--rank or SLURM_ARRAY_TASK_ID is required")
     return int(raw)
+
+
+def _prepared_source_manifests(values: list[str]) -> dict[str, Path]:
+    manifests: dict[str, Path] = {}
+    for value in values:
+        source_id, separator, raw_path = value.partition("=")
+        if not separator or source_id not in PREPARED_SOURCE_IDS or not raw_path:
+            raise ValueError(
+                "--prepared-source-manifest must be "
+                "mot_tr_v1_11=PATH or parlamint_tr_v5_0=PATH"
+            )
+        if source_id in manifests:
+            raise ValueError(f"duplicate prepared-source manifest: {source_id}")
+        manifests[source_id] = Path(raw_path)
+    return manifests
 
 
 def _common(parser: argparse.ArgumentParser) -> None:
@@ -60,12 +76,30 @@ def build_parser() -> argparse.ArgumentParser:
     _common(resolve)
     resolve.add_argument("--output", type=Path, required=True)
     resolve.add_argument("--macocu-manifest", type=Path)
+    resolve.add_argument(
+        "--prepared-source-manifest",
+        action="append",
+        default=[],
+        metavar="SOURCE_ID=PATH",
+        help=(
+            "repeat once per native-text prepared source; v3 requires exact "
+            "mot_tr_v1_11 and parlamint_tr_v5_0 manifests"
+        ),
+    )
 
     macocu = sub.add_parser(
         "prepare-macocu", help="verify the official gzip and create sealed zstd shards"
     )
     _common(macocu)
     macocu.add_argument("--output-dir", type=Path, required=True)
+    macocu.add_argument(
+        "--upstream-file",
+        type=Path,
+        help=(
+            "reuse an existing official MaCoCu gzip after exact regular-file, "
+            "size, MD5, and SHA-256 verification"
+        ),
+    )
     macocu.add_argument(
         "--target-uncompressed-bytes", type=int, default=512 * 1024 * 1024
     )
@@ -156,12 +190,16 @@ def main(argv: list[str] | None = None) -> int:
                     policy,
                     args.output_dir,
                     target_uncompressed_bytes=args.target_uncompressed_bytes,
+                    upstream_path=args.upstream_file,
                 )
             elif args.command == "resolve":
                 result = resolve_source_plan(
                     policy,
                     args.output,
                     macocu_manifest_path=args.macocu_manifest,
+                    prepared_source_manifests=_prepared_source_manifests(
+                        args.prepared_source_manifest
+                    ),
                 )
             elif args.command == "fetch-glotlid":
                 result = fetch_glotlid_model(policy, args.output_dir)

@@ -54,6 +54,7 @@ from nanochat.experiment_manifest import (
 )
 from nanochat.turkish_corpus import (
     BACKEND_RECEIPT_KIND,
+    FINEWEB2_STRICT_SOURCE_ID,
     MACOCU_CONVERSATION_GENRES,
     MACOCU_EXPECTED_ROWS,
     MACOCU_GENERAL_GENRES,
@@ -64,8 +65,15 @@ from nanochat.turkish_corpus import (
     MACOCU_SIZE_BYTES,
     MACOCU_SOURCE_ID,
     MACOCU_SOURCE_URL,
+    MOT_SOURCE_ID,
+    PARLAMINT_SOURCE_ID,
     SOURCE_RECEIPT_KIND,
     TurkishCorpusError,
+    V3_FINEWEB2_INVENTORY_SEMANTICS,
+    V3_FINEWEB2_INVENTORY_SHA256,
+    V3_FINEWEB2_OBJECT_COUNT,
+    V3_FINEWEB2_TOTAL_BYTES,
+    V3_FINEWEB2_UPSTREAM_COMMIT,
     VerifiedStagedArtifact,
     _qa_document_metrics,
     audit_policy_binding,
@@ -448,6 +456,52 @@ def _file_sha256_md5(path: Path) -> tuple[str, str]:
     return sha256.hexdigest(), md5.hexdigest()
 
 
+def _verify_local_macocu_upstream(path: str | Path) -> dict[str, Any]:
+    """Seal a stable local official gzip identity before preparation starts."""
+
+    source = Path(path)
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(source, flags)
+    except OSError as exc:
+        raise TurkishCorpusError(
+            f"local MaCoCu upstream is missing, symlinked, or unsafe: {source}"
+        ) from exc
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            raise TurkishCorpusError("local MaCoCu upstream must be a regular file")
+        if before.st_size != MACOCU_SIZE_BYTES:
+            raise TurkishCorpusError(
+                "local MaCoCu upstream size drift: "
+                f"expected {MACOCU_SIZE_BYTES}, got {before.st_size}"
+            )
+        _assert_descriptor_path_binding(source, descriptor, "local MaCoCu upstream")
+        sha256 = hashlib.sha256()
+        md5 = hashlib.md5()  # noqa: S324 - official upstream integrity checksum
+        with os.fdopen(os.dup(descriptor), "rb") as handle:
+            for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
+                sha256.update(chunk)
+                md5.update(chunk)
+        after = os.fstat(descriptor)
+        _assert_descriptor_path_binding(source, descriptor, "local MaCoCu upstream")
+        if _stat_fingerprint(after) != _stat_fingerprint(before):
+            raise TurkishCorpusError(
+                "local MaCoCu upstream changed during checksum verification"
+            )
+        observed_md5 = md5.hexdigest()
+        if observed_md5 != MACOCU_MD5:
+            raise TurkishCorpusError("local MaCoCu upstream MD5 drift")
+        return {
+            "path": source.resolve(strict=True),
+            "size_bytes": before.st_size,
+            "md5": observed_md5,
+            "sha256": sha256.hexdigest(),
+        }
+    finally:
+        os.close(descriptor)
+
+
 def _elapsed(start_wall: float, start_cpu: float) -> dict[str, float]:
     return {
         "wall_seconds": max(0.0, time.monotonic() - start_wall),
@@ -485,6 +539,19 @@ def _parse_hplt_objects(
     request_get: Any = requests.get,
     request_head: Any = requests.head,
 ) -> list[dict[str, Any]]:
+    configured_bins = source.get("selected_wds_bins", [8, 9, 10])
+    if (
+        not isinstance(configured_bins, list)
+        or not configured_bins
+        or any(
+            isinstance(value, bool) or not isinstance(value, int)
+            for value in configured_bins
+        )
+        or len(configured_bins) != len(set(configured_bins))
+        or not set(configured_bins) <= {8, 9, 10}
+    ):
+        raise TurkishCorpusError("HPLT selected_wds_bins contract is malformed")
+    selected_bins = set(configured_bins)
     map_bytes = _http_bytes(str(source["source_url"]), request_get=request_get)
     if hashlib.sha256(map_bytes).hexdigest() != HPLT_MAP_SHA256:
         raise TurkishCorpusError("HPLT tur_Latn map hash drift")
@@ -507,7 +574,7 @@ def _parse_hplt_objects(
         if match is None:
             raise TurkishCorpusError(f"unexpected HPLT map object: {uri}")
         wds_bin = int(match.group(1))
-        if wds_bin not in {8, 9, 10}:
+        if wds_bin not in selected_bins:
             continue
         expected_md5 = md5_by_name.get(name)
         if expected_md5 is None:
@@ -523,8 +590,84 @@ def _parse_hplt_objects(
             }
         )
     if not objects:
-        raise TurkishCorpusError("HPLT plan resolved no WDS 8-10 objects")
+        raise TurkishCorpusError(
+            f"HPLT plan resolved no selected WDS objects: {sorted(selected_bins)}"
+        )
     return sorted(objects, key=lambda item: item["uri"])
+
+
+def _fineweb2_inventory_projection(
+    objects: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Return the receipt-bound immutable raw inventory for strict FineWeb v3."""
+
+    return [
+        {
+            "uri": str(item["uri"]),
+            "size_bytes": int(item["size_bytes"]),
+            "expected_checksums": list(item["expected_checksums"]),
+        }
+        for item in sorted(objects, key=lambda item: str(item["uri"]))
+    ]
+
+
+def _strict_fineweb_derivation(
+    source: Mapping[str, Any],
+    policy: Mapping[str, Any],
+    objects: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Seal raw acquisition separately from strict candidate admission."""
+
+    if source.get("id") != FINEWEB2_STRICT_SOURCE_ID:
+        raise TurkishCorpusError("strict FineWeb derivation received another source")
+    configured = _require_mapping(source.get("derivation"), "strict FineWeb derivation")
+    projection = _fineweb2_inventory_projection(objects)
+    inventory_sha256 = hashlib.sha256(
+        canonical_json(projection).encode("utf-8")
+    ).hexdigest()
+    total_bytes = sum(item["size_bytes"] for item in projection)
+    processing_sha256 = production_processing_binding(policy)["binding_sha256"]
+    audit_sha256 = audit_policy_binding(policy["content_policy"])["binding_sha256"]
+    expected = {
+        "expected_object_count": V3_FINEWEB2_OBJECT_COUNT,
+        "expected_total_bytes": V3_FINEWEB2_TOTAL_BYTES,
+        "expected_inventory_sha256": V3_FINEWEB2_INVENTORY_SHA256,
+        "inventory_hash_semantics": V3_FINEWEB2_INVENTORY_SEMANTICS,
+        "processing_binding_sha256": processing_sha256,
+        "audit_policy_binding_sha256": audit_sha256,
+    }
+    if any(configured.get(key) != value for key, value in expected.items()):
+        raise TurkishCorpusError("strict FineWeb configured derivation hash/size drift")
+    if (
+        len(projection) != V3_FINEWEB2_OBJECT_COUNT
+        or total_bytes != V3_FINEWEB2_TOTAL_BYTES
+        or inventory_sha256 != V3_FINEWEB2_INVENTORY_SHA256
+    ):
+        raise TurkishCorpusError(
+            "strict FineWeb must resolve the complete frozen 30-object inventory"
+        )
+    if (
+        source.get("resolved_revision") != V3_FINEWEB2_UPSTREAM_COMMIT
+        or configured.get("raw_fallback_allowed") is not False
+    ):
+        raise TurkishCorpusError("strict FineWeb upstream/fallback contract drift")
+    return {
+        "contract": dict(configured),
+        "resolved_inventory": {
+            "object_count": len(projection),
+            "total_bytes": total_bytes,
+            "sha256": inventory_sha256,
+            "hash_semantics": V3_FINEWEB2_INVENTORY_SEMANTICS,
+        },
+        "admission": {
+            "candidate_source_id": FINEWEB2_STRICT_SOURCE_ID,
+            "raw_source_id": "fineweb2_tr",
+            "only_passing_rows_enter_candidates": True,
+            "direct_raw_fallback": False,
+            "processing_binding_sha256": processing_sha256,
+            "audit_policy_binding_sha256": audit_sha256,
+        },
+    }
 
 
 def _hub_prefix(source: Mapping[str, Any]) -> str:
@@ -710,8 +853,15 @@ def prepare_macocu_genre(
     *,
     target_uncompressed_bytes: int = 512 * 1024 * 1024,
     request_get: Any = requests.get,
+    upstream_path: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Download/verify MaCoCu once and atomically create deterministic shards."""
+    """Verify MaCoCu once and atomically create deterministic shards.
+
+    ``upstream_path`` reuses an existing official gzip.  It is accepted only
+    after stable-descriptor regular-file, size, MD5, and SHA-256 verification;
+    the staged copy must then reproduce both checksums before any gzip row is
+    parsed.  Omitting it preserves the pinned HTTPS acquisition path.
+    """
 
     validate_corpus_policy(policy)
     _macocu_source(policy)
@@ -741,14 +891,28 @@ def prepare_macocu_genre(
         shards_dir = build / "shards"
         upstream_dir.mkdir()
         shards_dir.mkdir()
-        upstream_path = upstream_dir / "MaCoCu-Genre.tr.jsonl.gz"
-        staged, staged_artifact = _stage_source_object(
-            {
+        staged_upstream_path = upstream_dir / "MaCoCu-Genre.tr.jsonl.gz"
+        if upstream_path is None:
+            source_object = {
                 "uri": MACOCU_SOURCE_URL,
                 "size_bytes": MACOCU_SIZE_BYTES,
-                "expected_checksums": [{"algorithm": "md5", "value": MACOCU_MD5}],
-            },
-            upstream_path,
+                "expected_checksums": [
+                    {"algorithm": "md5", "value": MACOCU_MD5}
+                ],
+            }
+        else:
+            local_identity = _verify_local_macocu_upstream(upstream_path)
+            source_object = {
+                "uri": local_identity["path"].as_uri(),
+                "size_bytes": local_identity["size_bytes"],
+                "expected_checksums": [
+                    {"algorithm": "md5", "value": local_identity["md5"]},
+                    {"algorithm": "sha256", "value": local_identity["sha256"]},
+                ],
+            }
+        staged, staged_artifact = _stage_source_object(
+            source_object,
+            staged_upstream_path,
             request_get=request_get,
         )
 
@@ -835,7 +999,7 @@ def prepare_macocu_genre(
                     "source_id": MACOCU_SOURCE_ID,
                     "persistent_handle": MACOCU_HANDLE,
                     "uri": MACOCU_SOURCE_URL,
-                    "path": upstream_path.relative_to(build).as_posix(),
+                    "path": staged_upstream_path.relative_to(build).as_posix(),
                     "size_bytes": staged["size_bytes"],
                     "md5": MACOCU_MD5,
                     "sha256": staged["sha256"],
@@ -910,6 +1074,108 @@ def _parse_macocu_objects(
     return objects, provenance
 
 
+def _parse_anchor_objects(
+    source: Mapping[str, Any], manifest_path: str | Path
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Resolve a fully accepted native-text anchor through its sealed manifest."""
+
+    from nanochat.turkish_anchor_preparation import validate_anchor_preparation
+
+    supplied = Path(manifest_path).expanduser()
+    if supplied.is_symlink():
+        raise TurkishCorpusError("anchor preparation path must not be a symlink")
+    if supplied.is_dir():
+        root = supplied
+    else:
+        if supplied.name != "manifest.json" or not supplied.is_file():
+            raise TurkishCorpusError(
+                "anchor preparation must be an existing directory or manifest.json"
+            )
+        root = supplied.parent
+    try:
+        manifest = validate_anchor_preparation(root, verify_files=True)
+    except (OSError, ValueError) as exc:
+        raise TurkishCorpusError(
+            f"invalid sealed anchor preparation for {source['id']}"
+        ) from exc
+    manifest_file = root / "manifest.json"
+    if (
+        manifest.get("source_id") != source["id"]
+        or manifest.get("canonical_sha256") is None
+        or manifest.get("production_acceptance", {}).get("stage")
+        != "accepted_production"
+        or manifest.get("production_acceptance", {}).get(
+            "eligible_for_production"
+        )
+        is not True
+    ):
+        raise TurkishCorpusError(
+            f"{source['id']} requires an accepted-production preparation manifest"
+        )
+    configured = _require_mapping(
+        source.get("prepared_source"), f"{source['id']}.prepared_source"
+    )
+    if (
+        configured.get("manifest_kind") != manifest.get("kind")
+        or configured.get("required_source_id") != manifest.get("source_id")
+        or configured.get("required_preparer_version")
+        != manifest.get("preparer_version")
+        or configured.get("required_production_acceptance_stage")
+        != manifest["production_acceptance"]["stage"]
+        or configured.get("downstream_turkish_no_code_audit_required") is not True
+    ):
+        raise TurkishCorpusError(f"{source['id']} prepared-source contract drift")
+    data = _require_mapping(
+        _require_mapping(manifest.get("artifacts"), "anchor artifacts").get("data"),
+        "anchor data artifact",
+    )
+    objects: list[dict[str, Any]] = []
+    for shard in data.get("shards", []):
+        shard_path = root / str(shard.get("path", ""))
+        objects.append(
+            {
+                "source_id": source["id"],
+                "uri": shard_path.resolve().as_uri(),
+                "size_bytes": shard.get("size_bytes"),
+                "expected_checksums": [
+                    {"algorithm": "sha256", "value": shard.get("sha256")}
+                ],
+                "adapter": source["adapter"],
+                "wds_bin": None,
+                "preparation_manifest_sha256": manifest["canonical_sha256"],
+            }
+        )
+    if not objects:
+        raise TurkishCorpusError(f"{source['id']} preparation contains no data shards")
+    acceptance = _require_mapping(
+        manifest["production_acceptance"].get("receipt"),
+        "anchor production acceptance receipt",
+    )
+    provenance = {
+        "manifest_uri": manifest_file.resolve().as_uri(),
+        "manifest_sha256": manifest["canonical_sha256"],
+        "source_id": manifest["source_id"],
+        "preparer_version": manifest["preparer_version"],
+        "production_acceptance": {
+            "stage": "accepted_production",
+            "receipt_sha256": acceptance.get("canonical_sha256"),
+        },
+        "acquisition_receipt_sha256": manifest["acquisition_receipt"].get(
+            "canonical_sha256"
+        ),
+        "clean": manifest["clean"],
+        "data_artifact": {
+            "logical_jsonl_sha256": data.get("logical_jsonl_sha256"),
+            "totals": data.get("totals"),
+        },
+        "downstream_admission": {
+            "preparer_automatically_admits_training": False,
+            "backend_turkish_no_code_audit_required": True,
+        },
+    }
+    return sorted(objects, key=lambda item: item["uri"]), provenance
+
+
 def validate_source_plan(plan: Mapping[str, Any], policy: Mapping[str, Any]) -> None:
     verify_manifest_hash(plan)
     if plan.get("schema_version") != "1.0" or plan.get("kind") != SOURCE_PLAN_KIND:
@@ -923,7 +1189,16 @@ def validate_source_plan(plan: Mapping[str, Any], policy: Mapping[str, Any]) -> 
     derived_sources = _require_mapping(
         plan.get("derived_sources", {}), "derived_sources"
     )
-    expected_derived = {MACOCU_SOURCE_ID} if MACOCU_SOURCE_ID in expected_sources else set()
+    expected_derived = {
+        source_id
+        for source_id in (
+            MACOCU_SOURCE_ID,
+            FINEWEB2_STRICT_SOURCE_ID,
+            MOT_SOURCE_ID,
+            PARLAMINT_SOURCE_ID,
+        )
+        if source_id in expected_sources
+    }
     if set(derived_sources) != expected_derived:
         raise TurkishCorpusError("source-plan derived-source inventory drift")
     macocu_manifest_sha256 = None
@@ -955,6 +1230,70 @@ def validate_source_plan(plan: Mapping[str, Any], policy: Mapping[str, Any]) -> 
         upstream = _require_mapping(macocu_derived.get("upstream"), "MaCoCu upstream")
         if upstream.get("uri") != MACOCU_SOURCE_URL or upstream.get("md5") != MACOCU_MD5:
             raise TurkishCorpusError("MaCoCu plan upstream binding drift")
+    strict_derivation = None
+    if FINEWEB2_STRICT_SOURCE_ID in derived_sources:
+        strict_source = next(
+            source
+            for source in policy["sources"]
+            if source["id"] == FINEWEB2_STRICT_SOURCE_ID
+        )
+        strict_derivation = _require_mapping(
+            derived_sources[FINEWEB2_STRICT_SOURCE_ID],
+            "derived_sources.fineweb2_strict_tr_v3",
+        )
+        if strict_derivation.get("contract") != strict_source.get("derivation"):
+            raise TurkishCorpusError("strict FineWeb plan derivation contract drift")
+        admission = _require_mapping(
+            strict_derivation.get("admission"), "strict FineWeb admission"
+        )
+        expected_processing = production_processing_binding(policy)["binding_sha256"]
+        expected_audit = audit_policy_binding(policy["content_policy"])[
+            "binding_sha256"
+        ]
+        if admission != {
+            "candidate_source_id": FINEWEB2_STRICT_SOURCE_ID,
+            "raw_source_id": "fineweb2_tr",
+            "only_passing_rows_enter_candidates": True,
+            "direct_raw_fallback": False,
+            "processing_binding_sha256": expected_processing,
+            "audit_policy_binding_sha256": expected_audit,
+        }:
+            raise TurkishCorpusError("strict FineWeb admission contract drift")
+    anchor_manifest_objects: dict[str, dict[str, Mapping[str, Any]]] = {}
+    for anchor_id in (MOT_SOURCE_ID, PARLAMINT_SOURCE_ID):
+        if anchor_id not in derived_sources:
+            continue
+        derived = _require_mapping(
+            derived_sources[anchor_id], f"derived_sources.{anchor_id}"
+        )
+        manifest_uri = str(derived.get("manifest_uri", ""))
+        parsed_manifest = urllib.parse.urlparse(manifest_uri)
+        if parsed_manifest.scheme != "file":
+            raise TurkishCorpusError("anchor preparation manifest must be local")
+        manifest_path = Path(urllib.parse.unquote(parsed_manifest.path))
+        source = next(item for item in policy["sources"] if item["id"] == anchor_id)
+        resolved, expected_provenance = _parse_anchor_objects(source, manifest_path)
+        if derived != expected_provenance:
+            raise TurkishCorpusError(f"{anchor_id} derived provenance drift")
+        anchor_manifest_objects[anchor_id] = {
+            item["uri"]: item for item in resolved
+        }
+    hplt_source = next(
+        (source for source in policy["sources"] if source["id"] == "hplt3_tr"),
+        None,
+    )
+    expected_hplt_bins = (
+        list(hplt_source.get("selected_wds_bins", [8, 9, 10]))
+        if hplt_source is not None
+        else []
+    )
+    if plan.get("hplt_control") != {
+        "map_sha256": HPLT_MAP_SHA256,
+        "md5_list_url": HPLT_MD5_LIST_URL,
+        "md5_list_sha256": HPLT_MD5_LIST_SHA256,
+        "selected_wds_bins": expected_hplt_bins,
+    }:
+        raise TurkishCorpusError("source-plan HPLT control/bin contract drift")
     seen_sources: set[str] = set()
     seen_uris: set[str] = set()
     for rank, raw in enumerate(objects):
@@ -967,7 +1306,11 @@ def validate_source_plan(plan: Mapping[str, Any], policy: Mapping[str, Any]) -> 
         seen_sources.add(str(source_id))
         uri = str(item.get("uri", ""))
         scheme = urllib.parse.urlparse(uri).scheme
-        allowed_scheme = "file" if source_id == MACOCU_SOURCE_ID else "https"
+        allowed_scheme = (
+            "file"
+            if source_id in {MACOCU_SOURCE_ID, MOT_SOURCE_ID, PARLAMINT_SOURCE_ID}
+            else "https"
+        )
         if uri in seen_uris or scheme != allowed_scheme:
             raise TurkishCorpusError("source plan has duplicate/unsupported object URI")
         seen_uris.add(uri)
@@ -1000,12 +1343,51 @@ def validate_source_plan(plan: Mapping[str, Any], policy: Mapping[str, Any]) -> 
             local_path = Path(urllib.parse.unquote(urllib.parse.urlparse(uri).path))
             if local_path.is_symlink() or not local_path.is_file():
                 raise TurkishCorpusError("MaCoCu source-plan object is unsafe or missing")
+        if source_id in {MOT_SOURCE_ID, PARLAMINT_SOURCE_ID}:
+            expected_anchor = anchor_manifest_objects.get(str(source_id), {}).get(uri)
+            if (
+                expected_anchor is None
+                or item.get("preparation_manifest_sha256")
+                != derived_sources[str(source_id)].get("manifest_sha256")
+                or item.get("size_bytes") != expected_anchor.get("size_bytes")
+                or item.get("expected_checksums")
+                != expected_anchor.get("expected_checksums")
+            ):
+                raise TurkishCorpusError("anchor source-plan shard inventory drift")
     if seen_sources != expected_sources:
         raise TurkishCorpusError("source plan does not cover every configured source")
     if macocu_manifest_objects and {
         uri for uri in seen_uris if uri in macocu_manifest_objects
     } != set(macocu_manifest_objects):
         raise TurkishCorpusError("source plan does not cover every prepared MaCoCu shard")
+    for anchor_id, expected_objects_by_uri in anchor_manifest_objects.items():
+        observed_anchor_uris = {
+            str(item["uri"])
+            for item in objects
+            if item["source_id"] == anchor_id
+        }
+        if observed_anchor_uris != set(expected_objects_by_uri):
+            raise TurkishCorpusError("source plan does not cover every anchor shard")
+    if strict_derivation is not None:
+        strict_objects = [
+            item for item in objects if item["source_id"] == FINEWEB2_STRICT_SOURCE_ID
+        ]
+        projection = _fineweb2_inventory_projection(strict_objects)
+        observed = {
+            "object_count": len(projection),
+            "total_bytes": sum(item["size_bytes"] for item in projection),
+            "sha256": hashlib.sha256(
+                canonical_json(projection).encode("utf-8")
+            ).hexdigest(),
+            "hash_semantics": V3_FINEWEB2_INVENTORY_SEMANTICS,
+        }
+        if observed != strict_derivation.get("resolved_inventory") or observed != {
+            "object_count": V3_FINEWEB2_OBJECT_COUNT,
+            "total_bytes": V3_FINEWEB2_TOTAL_BYTES,
+            "sha256": V3_FINEWEB2_INVENTORY_SHA256,
+            "hash_semantics": V3_FINEWEB2_INVENTORY_SEMANTICS,
+        }:
+            raise TurkishCorpusError("strict FineWeb source-plan inventory drift")
     totals = {
         "objects": len(objects),
         "size_bytes": sum(item["size_bytes"] for item in objects),
@@ -1023,6 +1405,7 @@ def resolve_source_plan(
     request_head: Any = requests.head,
     hub_api: Any | None = None,
     macocu_manifest_path: str | Path | None = None,
+    prepared_source_manifests: Mapping[str, str | Path] | None = None,
 ) -> dict[str, Any]:
     """Resolve every configured source to immutable object identities."""
 
@@ -1032,6 +1415,10 @@ def resolve_source_plan(
         raise FileExistsError(f"refusing to overwrite source plan: {destination}")
     objects: list[dict[str, Any]] = []
     derived_sources: dict[str, Any] = {}
+    prepared_manifests = dict(prepared_source_manifests or {})
+    allowed_prepared_ids = {MOT_SOURCE_ID, PARLAMINT_SOURCE_ID}
+    if set(prepared_manifests) - allowed_prepared_ids:
+        raise TurkishCorpusError("unknown prepared-source manifest id")
     for source in policy["sources"]:
         if source["id"] == "hplt3_tr":
             resolved = _parse_hplt_objects(
@@ -1046,9 +1433,29 @@ def resolve_source_plan(
                 source, policy, macocu_manifest_path
             )
             derived_sources[MACOCU_SOURCE_ID] = provenance
+        elif source["id"] == FINEWEB2_STRICT_SOURCE_ID:
+            resolved = _parse_hub_objects(source, api=hub_api)
+            derived_sources[FINEWEB2_STRICT_SOURCE_ID] = _strict_fineweb_derivation(
+                source, policy, resolved
+            )
+        elif source["id"] in allowed_prepared_ids:
+            manifest_path = prepared_manifests.get(source["id"])
+            if manifest_path is None:
+                raise TurkishCorpusError(
+                    f"{source['id']} requires an accepted prepared-source manifest"
+                )
+            resolved, provenance = _parse_anchor_objects(source, manifest_path)
+            derived_sources[source["id"]] = provenance
         else:
             resolved = _parse_hub_objects(source, api=hub_api)
         objects.extend(resolved)
+    expected_prepared_ids = {
+        source["id"]
+        for source in policy["sources"]
+        if source["id"] in allowed_prepared_ids
+    }
+    if set(prepared_manifests) != expected_prepared_ids:
+        raise TurkishCorpusError("prepared-source manifest inventory drift")
     objects.sort(key=lambda item: (item["source_id"], item["uri"]))
     for rank, item in enumerate(objects):
         item["rank"] = rank
@@ -1061,7 +1468,14 @@ def resolve_source_plan(
                 "map_sha256": HPLT_MAP_SHA256,
                 "md5_list_url": HPLT_MD5_LIST_URL,
                 "md5_list_sha256": HPLT_MD5_LIST_SHA256,
-                "selected_wds_bins": [8, 9, 10],
+                "selected_wds_bins": next(
+                    (
+                        list(source.get("selected_wds_bins", [8, 9, 10]))
+                        for source in policy["sources"]
+                        if source["id"] == "hplt3_tr"
+                    ),
+                    [],
+                ),
             },
             "derived_sources": derived_sources,
             "objects": objects,

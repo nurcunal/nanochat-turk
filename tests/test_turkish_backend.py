@@ -49,6 +49,7 @@ from scripts.turkish_data_backend import build_parser
 
 POLICY = Path("configs/pretrain/tr_d32_turkish_general_v1.json")
 POLICY_V2 = Path("configs/pretrain/tr_d32_turkish_general_v2.json")
+POLICY_V3 = Path("configs/pretrain/tr_d32_turkish_general_v3.json")
 
 
 def _resource_accounting():
@@ -137,6 +138,140 @@ def _hplt_adapter():
     return next(item for item in policy["sources"] if item["id"] == "hplt3_tr")[
         "adapter"
     ]
+
+
+def test_v3_hplt_resolver_fetches_only_wds8_and_wds9(monkeypatch):
+    policy = load_corpus_policy(POLICY_V3)
+    source = next(item for item in policy["sources"] if item["id"] == "hplt3_tr")
+    map_payload = b"\n".join(
+        f"https://example.invalid/{wds}_0.jsonl.zst".encode()
+        for wds in (8, 9, 10)
+    ) + b"\n"
+    md5_payload = b"\n".join(
+        f"{digit * 32}  {wds}_0.jsonl.zst".encode()
+        for digit, wds in zip("123", (8, 9, 10), strict=True)
+    ) + b"\n"
+    monkeypatch.setattr(backend, "HPLT_MAP_SHA256", hashlib.sha256(map_payload).hexdigest())
+    monkeypatch.setattr(
+        backend, "HPLT_MD5_LIST_SHA256", hashlib.sha256(md5_payload).hexdigest()
+    )
+
+    class Response:
+        def __init__(self, content=b"", headers=None):
+            self.content = content
+            self.headers = headers or {}
+
+        def raise_for_status(self):
+            return None
+
+    def request_get(uri, **_kwargs):
+        return Response(map_payload if uri == source["source_url"] else md5_payload)
+
+    def request_head(_uri, **_kwargs):
+        return Response(headers={"Content-Length": "123"})
+
+    objects = backend._parse_hplt_objects(
+        source, request_get=request_get, request_head=request_head
+    )
+    assert [item["wds_bin"] for item in objects] == [8, 9]
+
+
+def test_strict_fineweb_derivation_binds_complete_inventory(monkeypatch):
+    policy = load_corpus_policy(POLICY_V3)
+    source = copy.deepcopy(
+        next(
+            item
+            for item in policy["sources"]
+            if item["id"] == "fineweb2_strict_tr_v3"
+        )
+    )
+    objects = [
+        {
+            "uri": f"https://example.invalid/{letter}.parquet",
+            "size_bytes": size,
+            "expected_checksums": [
+                {"algorithm": "sha256", "value": letter * 64}
+            ],
+        }
+        for letter, size in (("a", 11), ("b", 13))
+    ]
+    projection = backend._fineweb2_inventory_projection(objects)
+    inventory_hash = hashlib.sha256(canonical_json(projection).encode()).hexdigest()
+    monkeypatch.setattr(backend, "V3_FINEWEB2_OBJECT_COUNT", 2)
+    monkeypatch.setattr(backend, "V3_FINEWEB2_TOTAL_BYTES", 24)
+    monkeypatch.setattr(backend, "V3_FINEWEB2_INVENTORY_SHA256", inventory_hash)
+    source["derivation"].update(
+        expected_object_count=2,
+        expected_total_bytes=24,
+        expected_inventory_sha256=inventory_hash,
+    )
+    provenance = backend._strict_fineweb_derivation(source, policy, objects)
+    assert provenance["resolved_inventory"]["sha256"] == inventory_hash
+    assert provenance["admission"]["direct_raw_fallback"] is False
+
+    mutated = copy.deepcopy(objects)
+    mutated[0]["size_bytes"] += 1
+    with pytest.raises(TurkishCorpusError, match="complete frozen"):
+        backend._strict_fineweb_derivation(source, policy, mutated)
+
+
+def test_anchor_resolver_requires_sealed_accepted_production_manifest(
+    tmp_path: Path, monkeypatch
+):
+    policy = load_corpus_policy(POLICY_V3)
+    source = next(
+        item for item in policy["sources"] if item["id"] == "mot_tr_v1_11"
+    )
+    root = tmp_path / "mot"
+    shard = root / "data" / "part-00000.jsonl.zst"
+    shard.parent.mkdir(parents=True)
+    shard.write_bytes(b"fixture")
+    (root / "manifest.json").write_text("{}\n")
+    manifest = {
+        "kind": "turkish_high_trust_anchor_preparation",
+        "preparer_version": "turkish_anchor_preparation_v2",
+        "source_id": "mot_tr_v1_11",
+        "canonical_sha256": "a" * 64,
+        "production_acceptance": {
+            "stage": "accepted_production",
+            "eligible_for_production": True,
+            "receipt": {"canonical_sha256": "b" * 64},
+        },
+        "acquisition_receipt": {"canonical_sha256": "c" * 64},
+        "clean": {"documents": 1, "logical_jsonl_sha256": "d" * 64},
+        "artifacts": {
+            "data": {
+                "logical_jsonl_sha256": "d" * 64,
+                "totals": {"shards": 1, "rows": 1, "size_bytes": 7},
+                "shards": [
+                    {
+                        "path": "data/part-00000.jsonl.zst",
+                        "size_bytes": 7,
+                        "sha256": "e" * 64,
+                    }
+                ],
+            }
+        },
+    }
+    import nanochat.turkish_anchor_preparation as anchors
+
+    monkeypatch.setattr(
+        anchors, "validate_anchor_preparation", lambda *_args, **_kwargs: manifest
+    )
+    objects, provenance = backend._parse_anchor_objects(source, root / "manifest.json")
+    assert len(objects) == 1
+    assert objects[0]["preparation_manifest_sha256"] == "a" * 64
+    assert provenance["downstream_admission"] == {
+        "preparer_automatically_admits_training": False,
+        "backend_turkish_no_code_audit_required": True,
+    }
+
+    manifest["production_acceptance"] = {
+        "stage": "discovery_unaccepted",
+        "eligible_for_production": False,
+    }
+    with pytest.raises(TurkishCorpusError, match="accepted-production"):
+        backend._parse_anchor_objects(source, root / "manifest.json")
 
 
 def test_hplt_parallel_language_probability_pairing_is_index_exact():
@@ -282,6 +417,19 @@ def test_macocu_preparation_is_deterministic_and_round_trips(
         target_uncompressed_bytes=10_000,
         request_get=request_get,
     )
+    local_upstream = tmp_path / "MaCoCu-Genre.tr.jsonl.gz"
+    local_upstream.write_bytes(compressed)
+
+    def no_network(*_args, **_kwargs):
+        raise AssertionError("local MaCoCu reuse must not access the network")
+
+    local = backend.prepare_macocu_genre(
+        policy,
+        tmp_path / "local",
+        target_uncompressed_bytes=10_000,
+        request_get=no_network,
+        upstream_path=local_upstream,
+    )
     # All fixture records deliberately share one shard so this catches missing
     # JSONL framing between adjacent canonical objects.
     assert len(first["shards"]) == 1
@@ -289,6 +437,30 @@ def test_macocu_preparation_is_deterministic_and_round_trips(
     assert [item["sha256"] for item in first["shards"]] == [
         item["sha256"] for item in second["shards"]
     ]
+    assert local == first
+    assert local["upstream"]["sha256"] == hashlib.sha256(compressed).hexdigest()
+    symlink = tmp_path / "macocu-symlink.gz"
+    symlink.symlink_to(local_upstream)
+    with pytest.raises(TurkishCorpusError, match="symlinked, or unsafe"):
+        backend.prepare_macocu_genre(
+            policy,
+            tmp_path / "unsafe-local",
+            target_uncompressed_bytes=10_000,
+            request_get=no_network,
+            upstream_path=symlink,
+        )
+    corrupted = tmp_path / "macocu-corrupted.gz"
+    corrupted_bytes = bytearray(compressed)
+    corrupted_bytes[-1] ^= 1
+    corrupted.write_bytes(corrupted_bytes)
+    with pytest.raises(TurkishCorpusError, match="MD5 drift"):
+        backend.prepare_macocu_genre(
+            policy,
+            tmp_path / "corrupt-local",
+            target_uncompressed_bytes=10_000,
+            request_get=no_network,
+            upstream_path=corrupted,
+        )
     observed = []
     for item in first["shards"]:
         shard_path = tmp_path / "first" / item["path"]
@@ -299,6 +471,20 @@ def test_macocu_preparation_is_deterministic_and_round_trips(
         assert len(framed.splitlines()) == item["rows"]
         observed.extend(iter_input_records(shard_path))
     assert [{key: row[key] for key in corpus.MACOCU_SCHEMA} for row in observed] == rows
+
+
+def test_prepare_macocu_cli_accepts_optional_verified_upstream_file(tmp_path: Path):
+    upstream = tmp_path / "official.jsonl.gz"
+    parsed = build_parser().parse_args(
+        [
+            "prepare-macocu",
+            "--output-dir",
+            str(tmp_path / "prepared"),
+            "--upstream-file",
+            str(upstream),
+        ]
+    )
+    assert parsed.upstream_file == upstream
 
 
 def test_local_source_checksum_drift_fails_closed(tmp_path: Path):

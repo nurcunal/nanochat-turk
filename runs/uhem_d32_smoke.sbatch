@@ -26,8 +26,8 @@ module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
 set -u
 
 export CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
-export NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v2}"
-export RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v2.json}"
+export NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
+export RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v3.json}"
 export PREFLIGHT_RECEIPT="${PREFLIGHT_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/preflight.json}"
 export ATTENTION_PROBE_RECEIPT="${ATTENTION_PROBE_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/attention_probe.json}"
 export WSD_PROXY_APPROVAL="${WSD_PROXY_APPROVAL:-$NANOCHAT_BASE_DIR/control/d32/wd_proxy_approval.json}"
@@ -56,7 +56,7 @@ if [ "${SLURM_NTASKS:-0}" -ne "$WORLD_SIZE" ]; then
     echo "Smoke allocation must start four static tasks per node" >&2
     exit 2
 fi
-export FAMILY_ID=tr_d32_general_bpe32k_v2
+export FAMILY_ID="${FAMILY_ID:-$(.venv/bin/python -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["family_id"])' "$RECIPE")}"
 export RUN_KIND=smoke
 export RUN_ID="${FAMILY_ID}_smoke_ws${WORLD_SIZE}"
 export MODEL_TAG="$RUN_ID"
@@ -70,9 +70,9 @@ export EVAL_EVERY=250
 export LR_SCHEDULE=wsd
 export WSD_COOLDOWN_START_STEP=-1
 export STUDY_MANIFEST="$RECIPE"
-export DATA_DIR="$NANOCHAT_BASE_DIR/pretrain_data/tr_general_clean_v2"
+export DATA_DIR="${DATA_DIR:-$NANOCHAT_BASE_DIR/pretrain_data/tr_general_clean_v3}"
 export PACKING_CAPACITY_RECEIPT="$DATA_DIR/packing_capacity_receipt.json"
-export TOKENIZER_MANIFEST="$NANOCHAT_BASE_DIR/tokenizers/tr_general_raw_bpe_32k_v2/package_manifest.json"
+export TOKENIZER_MANIFEST="${TOKENIZER_MANIFEST:-$NANOCHAT_BASE_DIR/tokenizers/tr_general_raw_bpe_32k_v3/package_manifest.json}"
 export VALIDATION_MANIFEST="$DATA_DIR/validation_exposure_manifest.json"
 export EXPOSURE_PLAN="$DATA_DIR/training_exposure_smoke_ws${WORLD_SIZE}.json"
 export METRICS_DIR="$NANOCHAT_BASE_DIR/metrics/d32_smoke/ws${WORLD_SIZE}"

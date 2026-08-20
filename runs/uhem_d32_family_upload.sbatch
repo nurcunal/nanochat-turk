@@ -31,9 +31,9 @@ if [ "$FINAL_OPTIMIZER_POLICY" != include ] && [ "$FINAL_OPTIMIZER_POLICY" != om
 fi
 
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
-NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v2}"
-RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v2.json}"
-CONTROL_DIR="$NANOCHAT_BASE_DIR/control/d32"
+NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
+RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v3.json}"
+CONTROL_DIR="${CONTROL_DIR:-$NANOCHAT_BASE_DIR/control/d32}"
 DRY_RUN="${DRY_RUN:-1}"
 if [ "$DRY_RUN" != 0 ] && [ "$DRY_RUN" != 1 ]; then
     echo "DRY_RUN must equal 0 or 1" >&2

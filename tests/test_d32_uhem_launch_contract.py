@@ -146,6 +146,8 @@ def test_family_upload_retains_end_to_end_reproduction_sources() -> None:
         '"runs/uhem_turkish_data_buckets_packed_production.sbatch"',
         '"runs/uhem_turkish_sample_quality_audit.sbatch"',
         '"runs/uhem_turkish_data_bootstrap.sbatch"',
+        '"runs/uhem_turkish_anchor_fetch_v3.sbatch"',
+        '"runs/uhem_turkish_anchor_prepare_v3.sbatch"',
         '"runs/uhem_turkish_prepare_data_env.sbatch"',
         '"runs/uhem_turkish_packing_preflight.sbatch"',
         '"runs/uhem_turkish_production_pool.sbatch"',
@@ -246,6 +248,12 @@ def test_operator_runbook_names_all_data_and_tokenizer_gates() -> None:
     )
     for fragment in (
         "runs/uhem_turkish_sample_quality_audit.sbatch",
+        "runs/uhem_turkish_anchor_fetch_v3.sbatch",
+        "MODE=discovery",
+        "accept-counts",
+        "MOT_COUNT_ACCEPTANCE",
+        "PARLAMINT_COUNT_ACCEPTANCE",
+        "MODE=production",
         "manual mixture-quality approval",
         "resource approval",
         "PRODUCTION_DATA_NODES",
@@ -254,6 +262,8 @@ def test_operator_runbook_names_all_data_and_tokenizer_gates() -> None:
         "tokenizer.tiktoken",
         "APPROVED_SOURCE_TOKENS",
         "QUOTA_HEADROOM_BYTES",
+        "tr_general_raw_bpe_32k_v3",
+        "cannot authorize this production run",
         "Any mixture weight, source selector, or accepted-source policy change invalidates",
     ):
         assert fragment in source
@@ -276,7 +286,7 @@ def test_family_preflight_and_upload_require_exact_cluster_launch() -> None:
     assert '--cluster-launch-receipt="$CLUSTER_LAUNCH_RECEIPT"' in upload_wrapper
 
 
-def test_v2_exposure_index_requires_and_launches_with_family_identity() -> None:
+def test_exposure_index_requires_and_launches_with_family_identity() -> None:
     parser = build_corpus_parser()
     index_parser = next(
         action
@@ -367,9 +377,101 @@ def test_turkish_data_bootstrap_pins_and_seals_prerequisites() -> None:
     assert "scripts/turkish_data_backend.py fetch-glotlid" in source
     assert "scripts/turkish_data_backend.py calibrate" in source
     assert "scripts/turkish_data_backend.py sample-ranks" in source
+    assert 'MOT_MANIFEST="${MOT_MANIFEST-' in source
+    assert 'PARLAMINT_MANIFEST="${PARLAMINT_MANIFEST-' in source
+    assert 'PREPARED_SOURCE_ARGS+=(--prepared-source-manifest "mot_tr_v1_11=$MOT_MANIFEST")' in source
+    assert 'PREPARED_SOURCE_ARGS+=(--prepared-source-manifest "parlamint_tr_v5_0=$PARLAMINT_MANIFEST")' in source
+    assert '"${PREPARED_SOURCE_ARGS[@]}"' in source
     assert "--locked" in source
     assert 'export PYTHONPATH="$CODE_DIR${PYTHONPATH:+:$PYTHONPATH}"' in source
     assert 'mv "$sample_tmp" "$SAMPLE_RANKS"' in source
+
+
+def test_v3_anchor_and_macocu_preparation_launchers_are_audited() -> None:
+    fetch = (ROOT / "runs" / "uhem_turkish_anchor_fetch_v3.sbatch").read_text(
+        encoding="utf-8"
+    )
+    prepare = (
+        ROOT / "runs" / "uhem_turkish_anchor_prepare_v3.sbatch"
+    ).read_text(encoding="utf-8")
+    macocu = (
+        ROOT / "runs" / "uhem_turkish_data_prepare_macocu.sbatch"
+    ).read_text(encoding="utf-8")
+    for source in (fetch, prepare, macocu):
+        assert "/ari/users/nunal/nanochat-turk-d32-general-v3" in source
+    for fragment in (
+        "tur_amerikaninsesi.tgz",
+        "tur_voaturkce.tgz",
+        "ParlaMint-TR.tgz",
+        "219280046",
+        "264239626",
+        "297184431",
+        "9b0f2d5588c689e648555957f2668ff1",
+    ):
+        assert fragment in fetch
+    for fragment in (
+        "MODE=discovery",
+        'if [ "$MODE" = production ]',
+        "MOT_COUNT_ACCEPTANCE",
+        "PARLAMINT_COUNT_ACCEPTANCE",
+        "scripts/prepare_turkish_anchors.py",
+        'test -f "$MOT_OUTPUT/manifest.json"',
+        'test -f "$PARLAMINT_OUTPUT/manifest.json"',
+    ):
+        assert fragment in prepare
+    assert 'MACOCU_UPSTREAM_FILE="${MACOCU_UPSTREAM_FILE:-}"' in macocu
+    assert 'MACOCU_SOURCE_ARGS+=(--upstream-file "$MACOCU_UPSTREAM_FILE")' in macocu
+    assert '"${MACOCU_SOURCE_ARGS[@]}"' in macocu
+
+
+def test_active_uhem_launchers_default_only_to_v3_lineage() -> None:
+    active = sorted((ROOT / "runs").glob("uhem_d32_*")) + sorted(
+        (ROOT / "runs").glob("uhem_turkish_*")
+    ) + [ROOT / "runs" / "uhem_submit_d32_family.sh"]
+    stale_literals = (
+        "/ari/users/nunal/nanochat-turk-d32-general-v2",
+        "tr_d32_turkish_general_v2.json",
+        "tr_d32_turkish_general_wsd_v2.json",
+        "tr_d32_general_bpe32k_v2",
+        "pretrain_data/tr_general_clean_v2",
+        "tokenizers/tr_general_raw_bpe_32k_v2",
+        "control/data_v2",
+        "data_backend/resource_sample_v2",
+        "data_backend/production_v2",
+        "data_v2/filtered_pool",
+    )
+    for path in active:
+        if not path.is_file():
+            continue
+        source = path.read_text(encoding="utf-8")
+        assert not [literal for literal in stale_literals if literal in source], path
+
+    coherent_defaults = {
+        "runs/uhem_d32_production.sbatch": (
+            "nanochat-turk-d32-general-v3",
+            "tr_d32_turkish_general_wsd_v3.json",
+            "pretrain_data/tr_general_clean_v3",
+            "tokenizers/tr_general_raw_bpe_32k_v3/package_manifest.json",
+        ),
+        "runs/uhem_d32_smoke.sbatch": (
+            "nanochat-turk-d32-general-v3",
+            "tr_d32_turkish_general_wsd_v3.json",
+            'DATA_DIR="${DATA_DIR:-',
+            'TOKENIZER_MANIFEST="${TOKENIZER_MANIFEST:-',
+        ),
+        "runs/uhem_turkish_data_bootstrap.sbatch": (
+            "nanochat-turk-d32-general-v3",
+            "tr_d32_turkish_general_v3.json",
+            "control/data_v3",
+        ),
+        "runs/uhem_turkish_production_pool.sbatch": (
+            "data_backend/production_v3",
+            "data_v3/filtered_pool",
+        ),
+    }
+    for relative, required in coherent_defaults.items():
+        source = (ROOT / relative).read_text(encoding="utf-8")
+        assert all(fragment in source for fragment in required), relative
 
 
 def test_turkish_data_jobs_use_the_pinned_uv_binary() -> None:

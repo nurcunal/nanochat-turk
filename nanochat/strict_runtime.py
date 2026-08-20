@@ -28,6 +28,7 @@ from nanochat.wsd import validate_weight_decay_proxy_candidates
 PINNED_UPSTREAM_REVISION = "92d63d4e8bb4df75c3b71618f31ddde2378b2bcd"
 FAMILY_ID = "tr_d32_general_bpe32k_v1"  # Backwards-compatible v1 alias.
 FAMILY_ID_V2 = "tr_d32_general_bpe32k_v2"
+FAMILY_ID_V3 = "tr_d32_general_bpe32k_v3"
 
 _TRAINING_EXPOSURE_ARTIFACTS = {
     "proxy_d12_seed42_ws1": "training_exposure_proxy_d12_seed42_ws1.json",
@@ -66,9 +67,20 @@ def _artifact_contract(*, version: str) -> dict[str, Any]:
         "tokenizer_root": f"tokenizers/tr_general_raw_bpe_32k_{version}",
         "tokenizer_package_manifest": "package_manifest.json",
     }
-    if version == "v2":
+    if version in {"v2", "v3"}:
         artifacts["macocu_preparation_manifest"] = (
             "source_data/macocu_genre_tr_v1/manifest.json"
+        )
+    if version == "v3":
+        artifacts.update(
+            {
+                "mot_preparation_manifest": (
+                    "source_data/mot_tr_v1_11/manifest.json"
+                ),
+                "parlamint_preparation_manifest": (
+                    "source_data/parlamint_tr_v5_0/manifest.json"
+                ),
+            }
         )
     return artifacts
 
@@ -76,6 +88,7 @@ def _artifact_contract(*, version: str) -> dict[str, Any]:
 FAMILY_ARTIFACT_CONTRACTS = {
     FAMILY_ID: _artifact_contract(version="v1"),
     FAMILY_ID_V2: _artifact_contract(version="v2"),
+    FAMILY_ID_V3: _artifact_contract(version="v3"),
 }
 
 
@@ -126,6 +139,75 @@ class ArtifactBindings:
     exposure_plan_sha256: str
     validation_manifest: dict[str, Any]
     validation_sha256: str
+
+
+def _validate_anchor_preflight_binding(
+    path: Path,
+    *,
+    source_id: str,
+    derived_sources: Mapping[str, Any],
+    preflight_record: Any,
+) -> None:
+    """Revalidate an accepted native-text preparation before GPU construction."""
+
+    if path.name != "manifest.json" or path.is_symlink() or not path.is_file():
+        raise StrictTrainingError(
+            f"{source_id} preparation manifest is missing or unsafe"
+        )
+    if not isinstance(preflight_record, Mapping):
+        raise StrictTrainingError(
+            f"preflight lacks the {source_id} preparation manifest"
+        )
+    try:
+        from nanochat.turkish_anchor_preparation import validate_anchor_preparation
+
+        manifest = validate_anchor_preparation(path.parent, verify_files=True)
+        digest = verify_manifest_hash(manifest)
+    except (OSError, ValueError) as exc:
+        raise StrictTrainingError(
+            f"invalid accepted preparation for {source_id}: {exc}"
+        ) from exc
+    production = manifest.get("production_acceptance")
+    artifacts = manifest.get("artifacts")
+    acquisition = manifest.get("acquisition_receipt")
+    if not all(
+        isinstance(value, Mapping)
+        for value in (production, artifacts, acquisition)
+    ):
+        raise StrictTrainingError(f"{source_id} preparation provenance is malformed")
+    acceptance = production.get("receipt")
+    data = artifacts.get("data")
+    if not isinstance(acceptance, Mapping) or not isinstance(data, Mapping):
+        raise StrictTrainingError(f"{source_id} preparation evidence is malformed")
+    expected_provenance = {
+        "manifest_uri": path.resolve().as_uri(),
+        "manifest_sha256": digest,
+        "source_id": source_id,
+        "preparer_version": manifest.get("preparer_version"),
+        "production_acceptance": {
+            "stage": "accepted_production",
+            "receipt_sha256": acceptance.get("canonical_sha256"),
+        },
+        "acquisition_receipt_sha256": acquisition.get("canonical_sha256"),
+        "clean": manifest.get("clean"),
+        "data_artifact": {
+            "logical_jsonl_sha256": data.get("logical_jsonl_sha256"),
+            "totals": data.get("totals"),
+        },
+        "downstream_admission": {
+            "preparer_automatically_admits_training": False,
+            "backend_turkish_no_code_audit_required": True,
+        },
+    }
+    if (
+        manifest.get("source_id") != source_id
+        or derived_sources.get(source_id) != expected_provenance
+        or Path(str(preflight_record.get("path", ""))).resolve() != path.resolve()
+        or preflight_record.get("sha256") != digest
+    ):
+        raise StrictTrainingError(
+            f"{source_id} preparation/source/preflight binding drifted"
+        )
 
 
 def derive_seed_plan(study_seed: int, *, rank: int = 0) -> SeedPlan:
@@ -575,6 +657,15 @@ def validate_preflight_artifact_bindings(
         or source_receipt.get("policy_sha256") != policy_sha
     ):
         raise StrictTrainingError("runtime source-receipt policy binding drifted")
+    if recipe["family_id"] == FAMILY_ID_V3:
+        try:
+            from nanochat.turkish_corpus import validate_source_receipt
+
+            validate_source_receipt(source_receipt, mixture)
+        except (OSError, ValueError) as exc:
+            raise StrictTrainingError(
+                f"runtime source receipt failed full policy validation: {exc}"
+            ) from exc
 
     derived_sources = source_receipt.get("derived_sources")
     if not isinstance(derived_sources, Mapping):
@@ -586,7 +677,9 @@ def validate_preflight_artifact_bindings(
             raise StrictTrainingError("v1 family unexpectedly binds derived MaCoCu data")
     else:
         if not isinstance(macocu_record, Mapping):
-            raise StrictTrainingError("v2 preflight lacks its MaCoCu preparation manifest")
+            raise StrictTrainingError(
+                "derived-data family preflight lacks its MaCoCu preparation manifest"
+            )
         base_dir = Path(str(preflight.get("base_dir", ""))).resolve()
         expected_macocu_path = (base_dir / macocu_relative).resolve()
         actual_macocu_path = Path(str(macocu_record.get("path", ""))).resolve()
@@ -613,6 +706,26 @@ def validate_preflight_artifact_bindings(
             or source_macocu.get("manifest_uri") != actual_macocu_path.as_uri()
         ):
             raise StrictTrainingError("MaCoCu preparation/source receipt binding drifted")
+
+    base_dir = Path(str(preflight.get("base_dir", ""))).resolve()
+    for source_id, artifact_key in (
+        ("mot_tr_v1_11", "mot_preparation_manifest"),
+        ("parlamint_tr_v5_0", "parlamint_preparation_manifest"),
+    ):
+        relative = artifacts.get(artifact_key)
+        preflight_record = corpus_record.get(artifact_key)
+        if relative is None:
+            if source_id in derived_sources or preflight_record is not None:
+                raise StrictTrainingError(
+                    f"family unexpectedly binds {source_id} prepared data"
+                )
+            continue
+        _validate_anchor_preflight_binding(
+            (base_dir / str(relative)).resolve(),
+            source_id=source_id,
+            derived_sources=derived_sources,
+            preflight_record=preflight_record,
+        )
 
     capacity_path = (root / "packing_capacity_receipt.json").resolve()
     capacity = load_json_strict(capacity_path)
@@ -828,6 +941,63 @@ def validate_attention_probe_receipt(
     return probe, probe_sha
 
 
+def capacity_world_gate_record(
+    receipt: Mapping[str, Any], world_size: int
+) -> dict[str, Any]:
+    """Return compact, protocol-safe evidence for one capacity topology."""
+
+    simulation = receipt.get("simulation")
+    if not isinstance(simulation, Mapping):
+        raise StrictTrainingError("capacity receipt lacks simulation evidence")
+    worlds = simulation.get("worlds")
+    if not isinstance(worlds, Mapping):
+        raise StrictTrainingError("capacity receipt lacks topology evidence")
+    world = worlds.get(str(world_size))
+    if not isinstance(world, Mapping):
+        raise StrictTrainingError(
+            f"capacity receipt lacks ws{world_size} evidence"
+        )
+    if receipt.get("kind") != "turkish_bestfit_repeat_capacity_receipt":
+        return dict(world)
+    horizons = world.get("horizons")
+    if not isinstance(horizons, Mapping):
+        raise StrictTrainingError("repetition capacity lacks horizon evidence")
+    margin = horizons.get("s40_margin")
+    if not isinstance(margin, Mapping):
+        raise StrictTrainingError("repetition capacity lacks the s40 margin")
+    authorized = margin.get("scheduled_token_positions")
+    if isinstance(authorized, bool) or not isinstance(authorized, int) or authorized <= 0:
+        raise StrictTrainingError("repetition capacity has an invalid authorized horizon")
+    return {
+        "capacity_mode": "whole_pool_repeat_v3",
+        "world_size": world_size,
+        "device_batch_sequences": world.get("device_batch_sequences"),
+        "max_seq_len": world.get("max_seq_len"),
+        "gradient_accumulation_steps": world.get("gradient_accumulation_steps"),
+        "authorized_global_scheduled_positions": authorized,
+        "required_positions_with_margin": authorized,
+        "repetition_tier": world.get("repetition_tier"),
+        "max_loaded_epoch": margin.get("max_loaded_epoch"),
+        "max_consumed_epoch": margin.get("max_consumed_epoch"),
+        "epoch5_loaded_including_prefetch": margin.get(
+            "epoch5_loaded_including_prefetch"
+        ),
+        "whole_pool_repetition_only": world.get("whole_pool_repetition_only"),
+        "source_specific_repetition": world.get("source_specific_repetition"),
+    }
+
+
+def capacity_authorized_positions(selected_capacity: Mapping[str, Any]) -> int:
+    """Read the generic authorized horizon while preserving v1/v2 receipts."""
+
+    value = selected_capacity.get("authorized_global_scheduled_positions")
+    if value is None:
+        value = selected_capacity.get("safe_global_scheduled_positions")
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise StrictTrainingError("selected capacity has no valid authorized horizon")
+    return value
+
+
 def validate_bestfit_capacity_receipt(
     receipt_path: str | Path,
     *,
@@ -844,7 +1014,7 @@ def validate_bestfit_capacity_receipt(
     sequence_length: int,
     global_batch_tokens: int,
 ) -> tuple[dict[str, Any], str, dict[str, Any]]:
-    """Verify exact no-wrap capacity for the selected production topology."""
+    """Verify the family-specific exact capacity gate for one topology."""
 
     family_artifact_contract(family_id)
     root = Path(data_dir).resolve()
@@ -861,6 +1031,113 @@ def validate_bestfit_capacity_receipt(
         receipt_sha = verify_manifest_hash(receipt)
     except ValueError as exc:
         raise StrictTrainingError(f"invalid packing capacity receipt: {exc}") from exc
+    if family_id == FAMILY_ID_V3:
+        try:
+            from nanochat.packing_capacity import (
+                validate_repetition_capacity_receipt,
+            )
+
+            summary = validate_repetition_capacity_receipt(
+                receipt,
+                dataset_manifest_sha256=dataset_sha256,
+                tokenizer_package_sha256=tokenizer_sha256,
+                # Manual-risk production remains fail-closed until the exact
+                # separately sealed approval is added to the family artifact
+                # contract and preflight inventory.
+                manual_repetition_risk_approval=None,
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise StrictTrainingError(
+                f"invalid v3 repetition capacity receipt: {exc}"
+            ) from exc
+        if (
+            summary.get("canonical_sha256") != receipt_sha
+            or summary.get("gate_passed") is not True
+            or summary.get("cleanup_authorized") is not True
+            or summary.get("approval_satisfied") is not True
+        ):
+            raise StrictTrainingError("v3 repetition capacity gate did not pass")
+        final_manifest = load_json_strict(root / "corpus_manifest.json")
+        if not isinstance(final_manifest, dict):
+            raise StrictTrainingError("final corpus manifest must contain an object")
+        try:
+            verify_manifest_hash(final_manifest)
+        except ValueError as exc:
+            raise StrictTrainingError(
+                f"invalid final corpus manifest: {exc}"
+            ) from exc
+        if (
+            final_manifest.get("nanochat_dataset_manifest_sha256") != dataset_sha256
+            or final_manifest.get("tokenizer", {}).get("package_sha256")
+            != tokenizer_sha256
+            or final_manifest.get("packing_capacity", {}).get("sha256")
+            != receipt_sha
+            or final_manifest.get("packing_capacity", {}).get("all_worlds_pass")
+            is not True
+            or final_manifest.get("packing_capacity", {}).get("cleanup_authorized")
+            is not True
+        ):
+            raise StrictTrainingError(
+                "final corpus does not bind the passing repetition capacity receipt"
+            )
+        validation_policy = dataset_manifest.get("metadata", {}).get(
+            "validation_policy"
+        )
+        final_validation_policy = final_manifest.get(
+            "validation_whole_document_no_crop"
+        )
+        for label, policy in (
+            ("dataset", validation_policy),
+            ("final corpus", final_validation_policy),
+        ):
+            if (
+                not isinstance(policy, Mapping)
+                or policy.get("policy") != "whole_document_no_crop"
+                or policy.get("max_payload_tokens") != sequence_length
+                or policy.get("max_encoded_tokens_with_bos") != sequence_length + 1
+                or policy.get("oversized_document_action")
+                != "excluded_before_exposure_selection"
+            ):
+                raise StrictTrainingError(
+                    f"{label} validation no-crop policy mismatch"
+                )
+        selected = capacity_world_gate_record(receipt, world_size)
+        if (
+            selected.get("device_batch_sequences") != batch_sequences
+            or selected.get("max_seq_len") != sequence_length
+            or selected.get("authorized_global_scheduled_positions", 0)
+            < required_token_positions
+        ):
+            raise StrictTrainingError(
+                "selected repetition capacity does not cover this runtime horizon"
+            )
+        index = load_json_strict(root / "exposure_plan_index.json")
+        if not isinstance(index, dict):
+            raise StrictTrainingError("exposure plan index must contain an object")
+        try:
+            verify_manifest_hash(index)
+        except ValueError as exc:
+            raise StrictTrainingError(
+                f"invalid exposure plan index: {exc}"
+            ) from exc
+        if (
+            index.get("schema_version") != "1.0"
+            or index.get("kind") != "d32_exposure_plan_index"
+            or index.get("family_id") != family_id
+            or index.get("study_manifest_sha256") != recipe_sha256
+            or index.get("source_dataset_manifest_sha256") != dataset_sha256
+            or index.get("tokenizer_artifact_sha256") != tokenizer_sha256
+            or index.get("packing_capacity_receipt_sha256") != receipt_sha
+            or not any(
+                isinstance(record, Mapping)
+                and record.get("sha256") == exposure_plan_sha256
+                for record in index.get("plans", [])
+            )
+        ):
+            raise StrictTrainingError(
+                "exposure plan index does not bind capacity/current plan"
+            )
+        return receipt, receipt_sha, selected
     expected_receipt = {
         "kind": "turkish_bestfit_capacity_receipt",
         "dataset_manifest_sha256": dataset_sha256,
@@ -1342,14 +1619,34 @@ def validate_production_topology_gate(
         if isinstance(preflight_worlds, Mapping)
         else None
     )
-    safe_positions = selected_capacity.get("safe_global_scheduled_positions")
+    try:
+        safe_positions = capacity_authorized_positions(selected_capacity)
+        preflight_safe_positions = (
+            capacity_authorized_positions(preflight_world)
+            if isinstance(preflight_world, Mapping)
+            else None
+        )
+    except StrictTrainingError as exc:
+        raise StrictTrainingError(
+            "production topology gate capacity differs from the sealed preflight"
+        ) from exc
+    if recipe["family_id"] == FAMILY_ID_V3:
+        selected_capacity_matches_preflight = (
+            preflight_world == selected_capacity
+            and selected_capacity.get("capacity_mode") == "whole_pool_repeat_v3"
+        )
+    else:
+        selected_capacity_matches_preflight = (
+            isinstance(preflight_world, Mapping)
+            and preflight_world.get("passes_40x_no_wrap_with_margin") is True
+            and preflight_safe_positions == safe_positions
+        )
     if (
         not isinstance(packing_capacity_receipt_sha256, str)
         or len(packing_capacity_receipt_sha256) != 64
         or not isinstance(preflight_world, Mapping)
         or preflight_capacity.get("sha256") != packing_capacity_receipt_sha256
-        or preflight_world.get("passes_40x_no_wrap_with_margin") is not True
-        or preflight_world.get("safe_global_scheduled_positions") != safe_positions
+        or not selected_capacity_matches_preflight
     ):
         raise StrictTrainingError(
             "production topology gate capacity differs from the sealed preflight"
@@ -1470,10 +1767,13 @@ __all__ = [
     "FAMILY_ARTIFACT_CONTRACTS",
     "FAMILY_ID",
     "FAMILY_ID_V2",
+    "FAMILY_ID_V3",
     "PINNED_UPSTREAM_REVISION",
     "PREEMPTION_EXIT_CODE",
     "SeedPlan",
     "StrictTrainingError",
+    "capacity_authorized_positions",
+    "capacity_world_gate_record",
     "derive_seed_plan",
     "file_sha256",
     "family_artifact_contract",

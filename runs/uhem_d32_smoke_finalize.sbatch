@@ -24,8 +24,8 @@ set -u
 : "${SMOKE_JOB_ID:?Set the completed parent GPU smoke job ID}"
 : "${SMOKE_NODES:?Set SMOKE_NODES to 2 or 4}"
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
-NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v2}"
-RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v2.json}"
+NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
+RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v3.json}"
 PREFLIGHT_RECEIPT="${PREFLIGHT_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/preflight.json}"
 ATTENTION_PROBE_RECEIPT="${ATTENTION_PROBE_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/attention_probe.json}"
 WSD_PROXY_APPROVAL="${WSD_PROXY_APPROVAL:-$NANOCHAT_BASE_DIR/control/d32/wd_proxy_approval.json}"
@@ -38,7 +38,8 @@ if [ "$SMOKE_NODES" -ne 2 ] && [ "$SMOKE_NODES" -ne 4 ]; then
     exit 2
 fi
 WORLD_SIZE=$((SMOKE_NODES * 4))
-RUN_ID="tr_d32_general_bpe32k_v2_smoke_ws${WORLD_SIZE}"
+FAMILY_ID="${FAMILY_ID:-$(.venv/bin/python -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["family_id"])' "$RECIPE")}"
+RUN_ID="${FAMILY_ID}_smoke_ws${WORLD_SIZE}"
 CONTROL_ROOT="$NANOCHAT_BASE_DIR/control/d32/launcher/job${SMOKE_JOB_ID}"
 
 .venv/bin/python scripts/d32_family_workflow.py seal-smoke \

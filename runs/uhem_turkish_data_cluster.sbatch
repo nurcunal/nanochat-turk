@@ -26,7 +26,7 @@ set -u
 
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
 UV_BIN="${UV_BIN:-$HOME/.local/bin/uv}"
-POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v2.json}"
+POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v3.json}"
 SAMPLE="${SAMPLE:-0}"
 cd "$CODE_DIR"
 export PYTHONPATH="$CODE_DIR${PYTHONPATH:+:$PYTHONPATH}"
@@ -46,7 +46,7 @@ else
     : "${PACK_PLAN:?Set sealed production pack plan}"
     : "${OBJECT_NODE_RECEIPT_DIR:?Set packed production object node receipts}"
     : "${BUCKET_LAUNCH_RECEIPT:?Set packed production bucket launch receipt}"
-    RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v2.json}"
+    RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v3.json}"
     CLUSTER_LAUNCH_ROOT="${CLUSTER_LAUNCH_ROOT:-$DATA_RUN_DIR/packed_production_cluster/job${SLURM_JOB_ID:?}}"
     CLUSTER_INPUT_RECEIPT="$CLUSTER_LAUNCH_ROOT/input_receipt.json"
     CLUSTER_LAUNCH_RECEIPT="$CLUSTER_LAUNCH_ROOT/launch_receipt.json"
