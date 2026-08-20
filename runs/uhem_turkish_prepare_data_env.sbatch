@@ -34,11 +34,11 @@ if [ "$("$UV_BIN" --version | awk '{print $2}')" != 0.11.29 ]; then
     echo "The Turkish-data environment requires uv 0.11.29" >&2
     exit 2
 fi
-if [ "$(sha256sum "$PROJECT_DIR/pyproject.toml" | awk '{print $1}')" != e93ae5c2474870bc94e6bda12496bbbac2ee25c8189aef0bbcc69273fb41a25f ]; then
+if [ "$(sha256sum "$PROJECT_DIR/pyproject.toml" | awk '{print $1}')" != 7ba5aecacc2720a71307c3e033baf53feeb382cf9eabb483146ca504a2ecce63 ]; then
     echo "Turkish-data pyproject.toml hash mismatch" >&2
     exit 2
 fi
-if [ "$(sha256sum "$PROJECT_DIR/uv.lock" | awk '{print $1}')" != a5fa81e681f32696d1d659499da9f490bc28326c44c24c9d223e04f5b2c6bfb4 ]; then
+if [ "$(sha256sum "$PROJECT_DIR/uv.lock" | awk '{print $1}')" != 7c53680fb9f85fbb117f29e611bb2a08294f3b539426b72df3295bc7959010a7 ]; then
     echo "Turkish-data uv.lock hash mismatch" >&2
     exit 2
 fi
@@ -56,6 +56,13 @@ assert platform.python_version() == "3.12.4"
 assert metadata.version("datatrove") == "0.10.0"
 assert metadata.version("fasttext-numpy2-wheel") == "0.9.2"
 assert metadata.version("pyarrow") == "23.0.1"
+assert metadata.version("spacy") == "3.8.15"
+try:
+    metadata.version("fasttext-wheel")
+except metadata.PackageNotFoundError:
+    pass
+else:
+    raise AssertionError("legacy fasttext-wheel must not be installed")
 predict_source = inspect.getsource(fasttext.FastText._FastText.predict)
 assert "np.asarray(probs)" in predict_source
 assert "copy=False" not in predict_source
@@ -65,6 +72,7 @@ print({
     "fasttext-numpy2-wheel": metadata.version("fasttext-numpy2-wheel"),
     "fasttext_numpy2_predict": True,
     "pyarrow": metadata.version("pyarrow"),
+    "spacy": metadata.version("spacy"),
 })'
 
 echo "Pinned Turkish-data environment is ready: $PROJECT_DIR/.venv"

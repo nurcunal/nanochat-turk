@@ -147,9 +147,12 @@ def test_turkish_data_environment_setup_is_frozen_and_version_pinned() -> None:
     assert '"$UV_BIN" sync --project "$PROJECT_DIR" --locked' in source
     assert "--reinstall-package fasttext-numpy2-wheel" in source
     assert '!= 0.11.29' in source
-    assert "e93ae5c2474870bc94e6bda12496bbbac2ee25c8189aef0bbcc69273fb41a25f" in source
-    assert "a5fa81e681f32696d1d659499da9f490bc28326c44c24c9d223e04f5b2c6bfb4" in source
+    assert "7ba5aecacc2720a71307c3e033baf53feeb382cf9eabb483146ca504a2ecce63" in source
+    assert "7c53680fb9f85fbb117f29e611bb2a08294f3b539426b72df3295bc7959010a7" in source
     assert 'metadata.version("fasttext-numpy2-wheel") == "0.9.2"' in source
+    assert 'metadata.version("spacy") == "3.8.15"' in source
+    assert 'metadata.version("fasttext-wheel")' in source
+    assert "legacy fasttext-wheel must not be installed" in source
     assert 'assert "np.asarray(probs)" in predict_source' in source
     project = (ROOT / "environments" / "turkish-data" / "pyproject.toml").read_text(
         encoding="utf-8"

@@ -9,6 +9,7 @@ dependencies = [
     "huggingface-hub>=1.6,<2",
     "pyarrow>=21,<24",
     "requests>=2.32,<3",
+    "spacy==3.8.15",
 ]
 
 [tool.uv]
