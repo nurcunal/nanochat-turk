@@ -551,9 +551,10 @@ def prepare_macocu_genre(
                 if record["title"] is not None and not isinstance(record["title"], str):
                     raise TurkishCorpusError(f"MaCoCu row {line_number} title type drift")
                 genre = strict_macocu_genre(record)
-                # Keep the prepared artifact as actual JSONL: every canonical
-                # object is framed by exactly one LF, including the final row.
-                encoded = canonical_json(record).encode("utf-8") + b"\n"
+                # canonical_json already emits exactly one terminal LF. Keep
+                # that framing byte-for-byte so adjacent rows remain JSONL
+                # without introducing blank records between documents.
+                encoded = canonical_json(record).encode("utf-8")
                 if stream is not None and shard_rows and shard_bytes + len(encoded) > target_uncompressed_bytes:
                     close_shard()
                 if stream is None:

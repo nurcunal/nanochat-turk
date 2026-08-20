@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 import pytest
+import pyarrow as pa
 
 import nanochat.turkish_backend as backend
 import nanochat.turkish_corpus as corpus
@@ -246,7 +247,13 @@ def test_macocu_preparation_is_deterministic_and_round_trips(
     ]
     observed = []
     for item in first["shards"]:
-        observed.extend(iter_input_records(tmp_path / "first" / item["path"]))
+        shard_path = tmp_path / "first" / item["path"]
+        with pa.input_stream(str(shard_path), compression="zstd") as stream:
+            framed = stream.read()
+        assert framed.endswith(b"\n")
+        assert b"\n\n" not in framed
+        assert len(framed.splitlines()) == item["rows"]
+        observed.extend(iter_input_records(shard_path))
     assert [{key: row[key] for key in corpus.MACOCU_SCHEMA} for row in observed] == rows
 
 
