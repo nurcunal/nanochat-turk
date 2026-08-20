@@ -3272,7 +3272,7 @@ def _mot_database(connection: sqlite3.Connection) -> None:
             text TEXT NOT NULL,
             paragraphs_json TEXT NOT NULL,
             title_included INTEGER NOT NULL CHECK(title_included IN (0, 1)),
-            PRIMARY KEY (site, article_id)
+            PRIMARY KEY (site, article_id, member)
         ) WITHOUT ROWID;
         CREATE INDEX candidates_article_id ON candidates(article_id);
         CREATE TABLE paragraph_stats (

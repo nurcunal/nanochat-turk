@@ -1031,7 +1031,9 @@ def test_mot_bounds_total_decompressed_tar_stream(tmp_path: Path) -> None:
         )
 
 
-def test_mot_rejects_same_site_id_collision_and_url_identity_drift(tmp_path: Path) -> None:
+def test_mot_resolves_same_site_id_aliases_and_rejects_url_identity_drift(
+    tmp_path: Path,
+) -> None:
     old_path = tmp_path / "tur_amerikaninsesi.tgz"
     new_path = tmp_path / "tur_voaturkce.tgz"
     _write_tgz(
@@ -1043,7 +1045,13 @@ def test_mot_rejects_same_site_id_collision_and_url_identity_drift(tmp_path: Pat
             ),
             (
                 "tur_amerikaninsesi/article/baska_700.json",
-                _json_bytes(_mot_record("baska_700.json", paragraphs=["ikinci"])),
+                _json_bytes(
+                    _mot_record(
+                        "baska_700.json",
+                        paragraphs=["ikinci"],
+                        modified="2020-02-01T00:00:00Z",
+                    )
+                ),
             ),
         ],
     )
@@ -1060,15 +1068,23 @@ def test_mot_rejects_same_site_id_collision_and_url_identity_drift(tmp_path: Pat
     acquisition = _seal_acquisition(
         tmp_path, MOT_SOURCE_ID, [old_path, new_path], contract, name="collision.json"
     )
-    with pytest.raises(AnchorPreparationError, match="same-site MOT article ID collision"):
-        prepare_mot_v1_11(
-            old_path,
-            new_path,
-            tmp_path / "collision-output",
-            acquisition_receipt_path=acquisition,
-            discovery=True,
-            contract=contract,
-        )
+    collision_output = tmp_path / "collision-output"
+    collision_manifest = prepare_mot_v1_11(
+        old_path,
+        new_path,
+        collision_output,
+        acquisition_receipt_path=acquisition,
+        discovery=True,
+        contract=contract,
+    )
+    collision_rows = _read_artifact(
+        collision_output, collision_manifest["artifacts"]["data"]
+    )
+    collision = next(row for row in collision_rows if row["id"] == "mot:v1.11:700")
+    assert collision["text"].endswith("ikinci")
+    assert collision["provenance"]["selected_member"].endswith("baska_700.json")
+    assert len(collision["provenance"]["aliases"]) == 2
+    assert collision_manifest["counts"]["resolution"]["conflicting_article_ids"] == 1
 
     identity_dir = tmp_path / "identity"
     identity_dir.mkdir()
