@@ -133,6 +133,32 @@ _XML_LANG = "{http://www.w3.org/XML/1998/namespace}lang"
 _PARLAMINT_XINCLUDE_RE = re.compile(
     r"^(\d{4})/(ParlaMint-TR_(\d{4}-\d{2}-\d{2})-.+)\.xml$"
 )
+_PARLAMINT_SCHEMA_SUPPORT_FILES = frozenset(
+    {
+        "ParlaMint-TEI.ana.rnc",
+        "ParlaMint-TEI.ana.rng",
+        "ParlaMint-TEI.rnc",
+        "ParlaMint-TEI.rng",
+        "ParlaMint-listOrg.rnc",
+        "ParlaMint-listOrg.rng",
+        "ParlaMint-listPerson.rnc",
+        "ParlaMint-listPerson.rng",
+        "ParlaMint-schemaSpecs.odd.xml",
+        "ParlaMint-taxonomy.rnc",
+        "ParlaMint-taxonomy.rng",
+        "ParlaMint-teiCorpus.ana.rnc",
+        "ParlaMint-teiCorpus.ana.rng",
+        "ParlaMint-teiCorpus.rnc",
+        "ParlaMint-teiCorpus.rng",
+        "ParlaMint.odd.rnc",
+        "ParlaMint.odd.rng",
+        "ParlaMint.rnc",
+        "ParlaMint.rng",
+        "README.md",
+        "parla-clarin.rnc",
+        "parla-clarin.rng",
+    }
+)
 
 PARLAMINT_NATIVE_META_HEADER = (
     "Text_ID",
@@ -2251,6 +2277,9 @@ def _parlamint_archive_policy(contract: ParlaMintContract) -> dict[str, Any]:
         "inventoried_ignored_files": [
             "ParlaMint-TR.txt/<year>/ParlaMint-TR_<date>-*-meta-en.tsv",
             "README-TR.md",
+            "ParlaMint-TR.TEI/00README.txt",
+            "ParlaMint-TR.txt/00README.txt",
+            "ParlaMint-TR.TEI/Schema/<frozen release schema support allowlist>",
         ],
         "tei_validation": (
             "bounded_stream_parse_all_XML; exact_session_native_text_native_meta_"
@@ -3351,15 +3380,19 @@ def _agency_provenance(record: Mapping[str, Any]) -> dict[str, str] | None:
     return None
 
 
+def _path_has_token(path: PurePosixPath, token: str) -> bool:
+    return token.casefold() in {
+        item
+        for item in re.split(r"[_\W]+", path.as_posix().casefold())
+        if item
+    }
+
+
 def _mot_member_disposition(
     path: PurePosixPath, *, asset: MotAssetContract, kind: str
 ) -> str:
     parts = path.parts
-    ocr_marker = "ocr" in {
-        token
-        for token in re.split(r"[_\W]+", path.as_posix().casefold())
-        if token
-    }
+    ocr_marker = _path_has_token(path, "ocr")
     if kind != "directory" and (
         path.suffix.casefold() == ".pdf" or ocr_marker
     ):
@@ -4053,7 +4086,11 @@ def _parlamint_member_disposition(
 ) -> str:
     parts = path.parts
     if kind == "directory":
-        if parts in {("ParlaMint-TR.TEI",), ("ParlaMint-TR.txt",)}:
+        if parts in {
+            ("ParlaMint-TR.TEI",),
+            ("ParlaMint-TR.TEI", "Schema"),
+            ("ParlaMint-TR.txt",),
+        }:
             return "structural_directory"
         if (
             len(parts) == 2
@@ -4067,11 +4104,19 @@ def _parlamint_member_disposition(
     name = path.as_posix()
     if name == "README-TR.md":
         return "readme"
-    if path.suffix.casefold() == ".pdf" or "ocr" in name.casefold():
+    if path.suffix.casefold() == ".pdf" or _path_has_token(path, "ocr"):
         raise AnchorPreparationError(
             f"ParlaMint PDF/OCR fallback members are forbidden: {name!r}"
         )
     if parts[0] == "ParlaMint-TR.TEI":
+        if len(parts) == 2 and parts[1] == "00README.txt":
+            return "readme"
+        if (
+            len(parts) == 3
+            and parts[1] == "Schema"
+            and parts[2] in _PARLAMINT_SCHEMA_SUPPORT_FILES
+        ):
+            return "schema_support"
         if (
             len(parts) == 2
             and parts[1].endswith(".xml")
@@ -4090,6 +4135,8 @@ def _parlamint_member_disposition(
             return "tei_session_xml"
         raise AnchorPreparationError(f"unexpected ParlaMint TEI member: {name!r}")
     if parts[0] == "ParlaMint-TR.txt":
+        if len(parts) == 2 and parts[1] == "00README.txt":
+            return "readme"
         text_match = _PARLAMINT_TEXT_RE.fullmatch(name)
         if text_match:
             text_date = _validate_parlamint_date(

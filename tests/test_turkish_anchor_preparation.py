@@ -1261,6 +1261,14 @@ def _parlamint_fixture(
     members: list[tuple[str, bytes | None]] = [
         ("README-TR.md", b"ParlaMint-TR test release"),
         ("ParlaMint-TR.TEI/", None),
+        ("ParlaMint-TR.TEI/00README.txt", b"TEI release notes"),
+        ("ParlaMint-TR.TEI/Schema/", None),
+        ("ParlaMint-TR.TEI/Schema/README.md", b"schema notes"),
+        ("ParlaMint-TR.TEI/Schema/ParlaMint.rng", b"schema support"),
+        (
+            "ParlaMint-TR.TEI/Schema/ParlaMint-schemaSpecs.odd.xml",
+            b"schema specification support",
+        ),
         (f"ParlaMint-TR.TEI/{first_directory_year}/", None),
         ("ParlaMint-TR.TEI/2022/", None),
         (
@@ -1287,6 +1295,7 @@ def _parlamint_fixture(
         ),
         (f"ParlaMint-TR.TEI/2022/{last_text_id}.xml", _tei()),
         ("ParlaMint-TR.txt/", None),
+        ("ParlaMint-TR.txt/00README.txt", b"native text release notes"),
         (f"ParlaMint-TR.txt/{first_directory_year}/", None),
         ("ParlaMint-TR.txt/2022/", None),
         (
@@ -1456,6 +1465,24 @@ def test_parlamint_has_no_pdf_or_ocr_fallback(
         prepare_parlamint_tr_v5(
             archive,
             tmp_path / "fallback-output",
+            acquisition_receipt_path=receipt,
+            discovery=True,
+            contract=contract,
+        )
+
+
+def test_parlamint_schema_support_is_an_exact_allowlist(tmp_path: Path) -> None:
+    archive, contract = _parlamint_fixture(
+        tmp_path,
+        extra_member_name="ParlaMint-TR.TEI/Schema/unexpected-schema.bin",
+    )
+    receipt = _seal_acquisition(
+        tmp_path, PARLAMINT_SOURCE_ID, [archive], contract, name="acquisition.json"
+    )
+    with pytest.raises(AnchorPreparationError, match="unexpected ParlaMint TEI member"):
+        prepare_parlamint_tr_v5(
+            archive,
+            tmp_path / "schema-output",
             acquisition_receipt_path=receipt,
             discovery=True,
             contract=contract,
