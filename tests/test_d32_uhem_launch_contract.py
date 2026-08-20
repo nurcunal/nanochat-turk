@@ -133,9 +133,20 @@ def test_family_upload_retains_end_to_end_reproduction_sources() -> None:
         '"schemas/dataset-manifest.schema.json"',
         '"runs/uhem_d32_prepare_training_env.sh"',
         '"runs/uhem_turkish_data_objects.sbatch"',
+        '"runs/uhem_turkish_prepare_data_env.sbatch"',
         '"runs/uhem_turkish_packing_preflight.sbatch"',
     )
     assert all(path in source for path in required)
+
+
+def test_turkish_data_environment_setup_is_frozen_and_version_pinned() -> None:
+    source = (ROOT / "runs" / "uhem_turkish_prepare_data_env.sbatch").read_text(
+        encoding="utf-8"
+    )
+    assert '"$UV_BIN" sync --project "$PROJECT_DIR" --locked' in source
+    assert '!= 0.11.29' in source
+    assert "78c149b8bfa7773b0d180296e8bf3b82fb9cab130da5f0dec1ca6d4c667a3dfa" in source
+    assert "a5ecf95e9d4aa45bf2273dcbb063f173b3a0f30208df7214c307c59d2bcb0a54" in source
 
 
 def test_signal_path_targets_the_srun_step_on_slurm_20() -> None:
