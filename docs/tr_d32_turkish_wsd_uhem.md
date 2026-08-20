@@ -83,6 +83,8 @@ checkpoint writes, queueing, and the prerequisite gates add elapsed time.
 Prepare the isolated CPU corpus environment with
 `sbatch runs/uhem_turkish_prepare_data_env.sbatch`; it accepts only uv 0.11.29
 and the reviewed Turkish-data project and lock hashes.
+Then run `sbatch runs/uhem_turkish_data_bootstrap.sbatch` to seal the immutable
+source plan, pinned GlotLID model/calibration, and deterministic sample ranks.
 
 Before creating the family preflight, run
 `bash runs/uhem_d32_prepare_training_env.sh`. It requires uv 0.11.29 and

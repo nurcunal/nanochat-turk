@@ -566,6 +566,7 @@ def main_family(args):
             "runs/uhem_turkish_data_objects.sbatch",
             "runs/uhem_turkish_data_buckets.sbatch",
             "runs/uhem_turkish_data_cluster.sbatch",
+            "runs/uhem_turkish_data_bootstrap.sbatch",
             "runs/uhem_turkish_prepare_data_env.sbatch",
             "runs/uhem_turkish_corpus_finalize.sbatch",
             "runs/uhem_turkish_packing_preflight.sbatch",

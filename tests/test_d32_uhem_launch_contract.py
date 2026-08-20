@@ -133,6 +133,7 @@ def test_family_upload_retains_end_to_end_reproduction_sources() -> None:
         '"schemas/dataset-manifest.schema.json"',
         '"runs/uhem_d32_prepare_training_env.sh"',
         '"runs/uhem_turkish_data_objects.sbatch"',
+        '"runs/uhem_turkish_data_bootstrap.sbatch"',
         '"runs/uhem_turkish_prepare_data_env.sbatch"',
         '"runs/uhem_turkish_packing_preflight.sbatch"',
     )
@@ -165,6 +166,18 @@ def test_uhem_module_initialization_precedes_bash_nounset() -> None:
         assert source.index(marker) < source.index("\nset -u\n"), path
         assert source.index(marker) > source.index("set -eo pipefail"), path
     assert checked >= 15
+
+
+def test_turkish_data_bootstrap_pins_and_seals_prerequisites() -> None:
+    source = (ROOT / "runs" / "uhem_turkish_data_bootstrap.sbatch").read_text(
+        encoding="utf-8"
+    )
+    assert "scripts/turkish_data_backend.py resolve" in source
+    assert "scripts/turkish_data_backend.py fetch-glotlid" in source
+    assert "scripts/turkish_data_backend.py calibrate" in source
+    assert "scripts/turkish_data_backend.py sample-ranks" in source
+    assert "--locked" in source
+    assert 'mv "$sample_tmp" "$SAMPLE_RANKS"' in source
 
 
 def test_signal_path_targets_the_srun_step_on_slurm_20() -> None:
