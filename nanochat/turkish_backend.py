@@ -826,33 +826,40 @@ def resolve_source_plan(
 
 
 def select_resource_sample_ranks(plan: Mapping[str, Any]) -> list[int]:
-    """Cover every source, HPLT quality bin, and selected MaCoCu genre."""
+    """Select representative spread points for every source and quality stratum.
+
+    Source inventories commonly end with a much smaller tail shard. Selecting
+    the smallest object therefore biases both retained-yield and throughput
+    estimates. URI order is part of the sealed source plan, so fixed 25/50/75
+    percent stream positions give deterministic interior coverage without
+    inspecting mutable file contents.
+    """
+
+    def spread(items: list[Mapping[str, Any]]) -> set[int]:
+        ordered = sorted(items, key=lambda item: str(item["uri"]))
+        if not ordered:
+            return set()
+        last = len(ordered) - 1
+        return {
+            int(ordered[(last * numerator) // 4]["rank"])
+            for numerator in (1, 2, 3)
+        }
 
     by_source: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
     for item in plan["objects"]:
         by_source[str(item["source_id"])].append(item)
-    selected = {
-        min(items, key=lambda item: (item["size_bytes"], item["uri"]))["rank"]
-        for source_id, items in by_source.items()
-        if source_id != MACOCU_SOURCE_ID
-    }
+    selected: set[int] = set()
+    for source_id, items in by_source.items():
+        if source_id != "hplt3_tr":
+            selected.update(spread(items))
     hplt_objects = by_source.get("hplt3_tr", [])
     hplt_bins = {item.get("wds_bin") for item in hplt_objects}
     if any(not isinstance(value, int) or isinstance(value, bool) for value in hplt_bins):
         raise TurkishCorpusError("HPLT resource-sample objects require integer WDS bins")
     for wds_bin in sorted(hplt_bins):
         in_bin = [item for item in hplt_objects if item.get("wds_bin") == wds_bin]
-        selected.add(
-            min(in_bin, key=lambda item: (item["size_bytes"], item["uri"]))["rank"]
-        )
+        selected.update(spread(in_bin))
     macocu_objects = by_source.get(MACOCU_SOURCE_ID, [])
-    ordered_macocu = sorted(macocu_objects, key=lambda item: item["uri"])
-    if ordered_macocu:
-        # Sample the interior of the prepared stream, never just the usually
-        # tiny tail shard. Three spread points bound source/genre yield skew.
-        for numerator in (1, 2, 3):
-            index = ((len(ordered_macocu) - 1) * numerator) // 4
-            selected.add(ordered_macocu[index]["rank"])
     for genre in sorted(MACOCU_CONVERSATION_GENRES | MACOCU_GENERAL_GENRES):
         candidates = [
             item
@@ -3101,10 +3108,18 @@ def build_resource_projection(
             "sample_cluster_receipt_sha256": cluster["canonical_sha256"],
             "billing_contract": dict(RESOURCE_BILLING_CONTRACT),
             "sample_selection": {
-                "algorithm": "per_source_hplt_bins_plus_macocu_interior_quartiles_and_genres_v3",
+                "algorithm": "uri_ordered_interior_quartiles_per_source_and_hplt_bin_plus_macocu_genres_v4",
                 "ranks": select_resource_sample_ranks(plan),
                 "covers_every_source": True,
+                "object_order": "source_plan_uri_ascending",
+                "size_based_selection": False,
+                "per_source_stream_spread_quantiles": [0.25, 0.5, 0.75],
                 "covers_hplt_wds_bins": [8, 9, 10],
+                "hplt_per_wds_bin_spread_quantiles": (
+                    [0.25, 0.5, 0.75]
+                    if any(item["source_id"] == "hplt3_tr" for item in plan["objects"])
+                    else []
+                ),
                 "covers_macocu_selected_genres": (
                     sorted(MACOCU_CONVERSATION_GENRES | MACOCU_GENERAL_GENRES)
                     if any(item["source_id"] == MACOCU_SOURCE_ID for item in plan["objects"])

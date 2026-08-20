@@ -277,7 +277,59 @@ def test_resource_sample_covers_every_source_and_hplt_quality_bin():
         ]
     }
 
-    assert select_resource_sample_ranks(plan) == [1, 2, 3, 5]
+    assert select_resource_sample_ranks(plan) == [1, 2, 3, 4]
+
+
+def test_resource_sample_uses_interior_spread_and_avoids_tiny_tail():
+    objects = []
+    rank = 0
+    expected = set()
+    for source_id in ("fineweb2_hq_tr", "finewiki_tr"):
+        for index in range(9):
+            objects.append(
+                {
+                    "rank": rank,
+                    "source_id": source_id,
+                    "size_bytes": 1 if index == 8 else 1_000,
+                    "uri": f"https://example.test/{source_id}/part-{index:05d}.parquet",
+                }
+            )
+            if index in (2, 4, 6):
+                expected.add(rank)
+            rank += 1
+
+    selected = set(select_resource_sample_ranks({"objects": objects}))
+
+    assert selected == expected
+    assert all(objects[item]["size_bytes"] != 1 for item in selected)
+
+
+def test_resource_sample_spreads_within_each_hplt_wds_bin():
+    objects = []
+    expected = set()
+    rank = 0
+    for wds_bin in (8, 9, 10):
+        for index in range(9):
+            objects.append(
+                {
+                    "rank": rank,
+                    "source_id": "hplt3_tr",
+                    "wds_bin": wds_bin,
+                    "size_bytes": 1 if index == 8 else 1_000,
+                    "uri": (
+                        f"https://example.test/hplt/wds-{wds_bin}/"
+                        f"part-{index:05d}.jsonl.zst"
+                    ),
+                }
+            )
+            if index in (2, 4, 6):
+                expected.add(rank)
+            rank += 1
+
+    selected = set(select_resource_sample_ranks({"objects": objects}))
+
+    assert selected == expected
+    assert all(objects[item]["size_bytes"] != 1 for item in selected)
 
 
 def test_resource_sample_spreads_across_macocu_and_avoids_tiny_tail():
@@ -397,6 +449,19 @@ def test_resource_projection_uses_stage_wall_not_process_cpu(
     assert report["projection"]["billed_cpu_saat_with_safety_factor"] == pytest.approx(
         sum(stage_wall.values()) * 1.5 * 128 / 3600
     )
+    assert report["sample_selection"]["algorithm"] == (
+        "uri_ordered_interior_quartiles_per_source_and_hplt_bin_plus_macocu_genres_v4"
+    )
+    assert report["sample_selection"]["object_order"] == (
+        "source_plan_uri_ascending"
+    )
+    assert report["sample_selection"]["size_based_selection"] is False
+    assert report["sample_selection"]["per_source_stream_spread_quantiles"] == [
+        0.25,
+        0.5,
+        0.75,
+    ]
+    assert report["sample_selection"]["hplt_per_wds_bin_spread_quantiles"] == []
     diagnostic_cpu = report["projection"]["diagnostic_process_cpu"][
         "stage_process_cpu_seconds_before_safety_factor"
     ]
