@@ -1,0 +1,5480 @@
+"""Fail-closed operational controls for the Turkish d32 WSD model family.
+
+This module does not submit jobs and does not train models.  It validates the
+sealed family recipe and immutable local artifacts, measures the production-
+identical 8/16-GPU smokes, authorizes 16-GPU execution only after the declared
+speedup gate, and seals checkpoint-lineage receipts after each stage.
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import hashlib
+import hmac
+import io
+import json
+import math
+import os
+import re
+import shutil
+import shlex
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Mapping, Sequence
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from nanochat.experiment_manifest import (
+    ManifestValidationError,
+    file_sha256,
+    load_json_strict,
+    seal_manifest,
+    validate_dataset_manifest,
+    verify_file_inventory,
+    verify_manifest_hash,
+    write_json_atomic,
+)
+from nanochat.training_log import read_training_log
+
+
+DEFAULT_RECIPE = Path("configs/pretrain/tr_d32_turkish_general_wsd_v1.json")
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+SAFE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+
+
+class FamilyWorkflowError(ValueError):
+    """Raised when an operational prerequisite is missing or inconsistent."""
+
+
+def _fail(message: str) -> None:
+    raise FamilyWorkflowError(message)
+
+
+def _mapping(value: Any, name: str) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping):
+        _fail(f"{name} must be an object")
+    return value
+
+
+def _sequence(value: Any, name: str) -> Sequence[Any]:
+    if not isinstance(value, list):
+        _fail(f"{name} must be an array")
+    return value
+
+
+def _positive_int(value: Any, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        _fail(f"{name} must be a positive integer")
+    return value
+
+
+def _positive_number(value: Any, name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+        _fail(f"{name} must be a positive finite number")
+    result = float(value)
+    if not math.isfinite(result):
+        _fail(f"{name} must be a positive finite number")
+    return result
+
+
+def _nonnegative_number(value: Any, name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+        _fail(f"{name} must be a non-negative finite number")
+    result = float(value)
+    if not math.isfinite(result):
+        _fail(f"{name} must be a non-negative finite number")
+    return result
+
+
+def _sha256(value: Any, name: str) -> str:
+    if not isinstance(value, str) or SHA256_RE.fullmatch(value) is None:
+        _fail(f"{name} must be a lowercase SHA-256")
+    return value
+
+
+def _git_commit(value: Any, name: str) -> str:
+    if not isinstance(value, str) or re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", value) is None:
+        _fail(f"{name} must be a full lowercase Git object ID")
+    return value
+
+
+def _safe_id(value: Any, name: str) -> str:
+    if not isinstance(value, str) or SAFE_ID_RE.fullmatch(value) is None:
+        _fail(f"{name} must match {SAFE_ID_RE.pattern}")
+    return value
+
+
+def _require_exact_keys(value: Mapping[str, Any], expected: set[str], name: str) -> None:
+    actual = set(value)
+    if actual != expected:
+        _fail(
+            f"{name} keys drifted; missing={sorted(expected - actual)}, "
+            f"unexpected={sorted(actual - expected)}"
+        )
+
+
+def _load_object(path: Path, label: str) -> dict[str, Any]:
+    try:
+        value = load_json_strict(path)
+    except (ManifestValidationError, OSError, ValueError) as exc:
+        raise FamilyWorkflowError(f"cannot load {label} {path}: {exc}") from exc
+    if not isinstance(value, dict):
+        _fail(f"{label} must contain a JSON object: {path}")
+    return value
+
+
+def _verify_sealed(path: Path, label: str, expected_sha256: str | None = None) -> tuple[dict[str, Any], str]:
+    value = _load_object(path, label)
+    try:
+        actual = verify_manifest_hash(value)
+    except ValueError as exc:
+        raise FamilyWorkflowError(f"{label} is not correctly self-hashed: {path}: {exc}") from exc
+    if expected_sha256 is not None and not hmac.compare_digest(
+        actual, _sha256(expected_sha256, f"expected {label} SHA-256")
+    ):
+        _fail(f"{label} SHA-256 mismatch: expected {expected_sha256}, found {actual}")
+    return value, actual
+
+
+def validate_recipe(recipe: Mapping[str, Any]) -> None:
+    """Check the exact agreed d32 family invariants, not just JSON shape."""
+
+    if recipe.get("schema_version") != "1.0":
+        _fail("recipe schema_version must equal '1.0'")
+    if recipe.get("family_id") != "tr_d32_general_bpe32k_v1":
+        _fail("unexpected family_id")
+
+    code = _mapping(recipe.get("code_provenance"), "code_provenance")
+    _git_commit(code.get("upstream_base_revision"), "code_provenance.upstream_base_revision")
+    if code.get("require_clean_git") is not True:
+        _fail("code provenance must require a clean Git worktree")
+    if code.get("require_upstream_base_ancestor") is not True:
+        _fail("code provenance must require the pinned upstream base as an ancestor")
+    scope = _sequence(code.get("core_scope"), "core_scope")
+    exact_files = _mapping(code.get("exact_file_sha256"), "exact_file_sha256")
+    expected_exact_files = {
+        "nanochat/gpt.py": "8cdedc2e418b9d4dc45884e07f59904fcdec066bb3d76664b2adf2d415f704e3",
+        "nanochat/optim.py": "7c9b714c6f76e3a9d50fc530044b2767d0cd89391237e609548f1cd730afed8f",
+        "nanochat/flash_attention.py": "a10b0b10ad91893fcf9c9b19c96bd3468a2721cf156dcdbeeeecf05f97f22c2f",
+        "nanochat/engine.py": "76636fc24228e72afdafe4747ff8e52a6cc60a5ec61c97205061f3bfed0a86fd",
+        "nanochat/common.py": "b843db6e769db18d3364e42cb3742a9537a3d4cf43e5f098293babc7ddeb44bf",
+        "nanochat/checkpoint_manager.py": "aa63399ddaf2a0412dc099287bf0dc879f9cb0cce00f861db50eeec58746f3ba",
+        "nanochat/dataloader.py": "5cc72d7207931f112d685ba8e04c112e1a4ab7756dbbb29b95bdb4908a21864d",
+        "nanochat/dataset.py": "3ec2ad5987875e3d7f3ec72f08d78089fe8a3b20090448b798c21c4efb93d18a",
+        "nanochat/loss_eval.py": "00faad1e0ae8912022f79ee4bf583c4f9b4c058e4523c5674144648c49229fd6",
+        "nanochat/tokenizer.py": "e6f12cb88fead3e6d0d45a7dd2af4192280712d92bfde83e2399cc4b3a0860fb",
+        "scripts/base_train.py": "87395b8078491d5088e7e8100866162b494638097215759b46d8ceb5d2f0fdcc",
+    }
+    if exact_files != expected_exact_files:
+        _fail("exact training-core file hashes drifted from the reviewed revision")
+    if set(scope) != set(exact_files):
+        _fail("core_scope must exactly equal the immutable upstream file-hash set")
+    if "core_patch_allowlist" in code:
+        _fail("broad core patch allowlists are forbidden; strict extensions must be additive")
+    expected_training_environment = {
+        "manager": "uv",
+        "uv_version": "0.11.29",
+        "python_version": "3.12.4",
+        "uhem_python_module": "Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0",
+        "sync_mode": "uv_sync_frozen_extra_gpu",
+        "sync_command": "uv sync --frozen --extra gpu --python $(command -v python3)",
+        "pyproject_sha256": "c91fdd03ae9705565572eee31924d4c0bca24bf5431a8eabff4c061882f94929",
+        "uv_lock_sha256": "de7891b832854162111208644ddb72685069ce8128e2bed9dbb7993aa6af5861",
+        "relative_exclude_newer_lock_requires_frozen": True,
+    }
+    if code.get("training_environment") != expected_training_environment:
+        _fail("training environment drifted from the pinned upstream frozen lock")
+
+    language = _mapping(recipe.get("language_policy"), "language_policy")
+    if language.get("allowed_languages") != ["tr"]:
+        _fail("the family recipe must allow Turkish only")
+    for forbidden in (
+        "allow_code_corpora",
+        "allow_synthetic_instruction_data",
+        "allow_translated_filler",
+    ):
+        if language.get(forbidden) is not False:
+            _fail(f"language_policy.{forbidden} must be false")
+
+    artifacts = _mapping(recipe.get("artifacts"), "artifacts")
+    if artifacts.get("tokenizer_name") != "tr_general_raw_bpe_32k_v1":
+        _fail("unexpected tokenizer name")
+    if artifacts.get("corpus_id") != "tr_general_clean_v1":
+        _fail("unexpected corpus id")
+    if artifacts.get("packing_capacity_receipt") != "packing_capacity_receipt.json":
+        _fail("unexpected best-fit packing-capacity receipt path")
+
+    model = _mapping(recipe.get("model"), "model")
+    _require_exact_keys(
+        model,
+        {
+            "depth",
+            "aspect_ratio",
+            "model_dim",
+            "head_dim",
+            "num_heads",
+            "num_kv_heads",
+            "max_seq_len",
+            "window_pattern",
+            "attention_backend",
+            "vocab_size",
+            "total_parameters",
+            "scaling_parameters",
+            "parameter_ratio_convention",
+        },
+        "model",
+    )
+    expected_model = {
+        "depth": 32,
+        "aspect_ratio": 64,
+        "model_dim": 2048,
+        "head_dim": 128,
+        "num_heads": 16,
+        "num_kv_heads": 16,
+        "max_seq_len": 2048,
+        "window_pattern": "selected_by_a100_probe",
+        "attention_backend": "selected_by_a100_probe",
+        "vocab_size": 32768,
+        "total_parameters": 2818575450,
+        "scaling_parameters": 1677724672,
+        "parameter_ratio_convention": "nanochat_scaling",
+    }
+    for key, expected in expected_model.items():
+        if model.get(key) != expected:
+            _fail(f"model.{key} must equal {expected!r}")
+
+    training = _mapping(recipe.get("training"), "training")
+    _require_exact_keys(
+        training,
+        {
+            "optimizer",
+            "precision",
+            "fp8_enabled",
+            "global_batch_tokens",
+            "device_batch_sequences",
+            "warmup_steps",
+            "gradient_clip_norm",
+            "lr_schedule",
+            "cooldown_fraction",
+            "cooldown_final_lr_fraction",
+            "optimizer_hyperparameters",
+            "seed",
+            "data_order",
+            "target_param_count",
+            "target_param_data_ratio",
+            "evaluation",
+            "strict_transactional_checkpoints",
+            "fixed_validation",
+            "save_every_steps",
+        },
+        "training",
+    )
+    exact_training = {
+        "optimizer": "muon_adamw",
+        "precision": "bfloat16",
+        "fp8_enabled": False,
+        "global_batch_tokens": 2_097_152,
+        "device_batch_sequences": 4,
+        "warmup_steps": 40,
+        "gradient_clip_norm": 0.0,
+        "lr_schedule": "wsd",
+        "cooldown_fraction": 0.1,
+        "cooldown_final_lr_fraction": 0.0,
+        "seed": 42,
+        "data_order": "bestfit",
+        "target_param_count": "scaling",
+        "target_param_data_ratio": -1.0,
+        "strict_transactional_checkpoints": True,
+        "fixed_validation": True,
+        "save_every_steps": -1,
+    }
+    for key, expected in exact_training.items():
+        if training.get(key) != expected:
+            _fail(f"training.{key} must equal {expected!r}")
+    evaluation = _mapping(training.get("evaluation"), "training.evaluation")
+    expected_evaluation = {
+        "eval_every_updates": 250,
+        "eval_tokens_cli_unused": -1,
+        "fixed_validation_full_manifest": True,
+        "core_metric_every_updates": -1,
+        "core_metric_max_per_task": 500,
+        "sample_every_updates": -1,
+    }
+    if evaluation != expected_evaluation:
+        _fail("training.evaluation drifted from the frozen full-manifest validation policy")
+    optimizer = _mapping(
+        training.get("optimizer_hyperparameters"),
+        "training.optimizer_hyperparameters",
+    )
+    _require_exact_keys(
+        optimizer,
+        {
+            "embedding_lr",
+            "unembedding_lr",
+            "matrix_lr",
+            "scalar_lr",
+            "global_batch_lr_multiplier",
+            "adam_model_width_multiplier",
+            "derived_initial_group_lrs",
+            "stable_weight_decay",
+            "weight_decay_derivation",
+            "weight_decay_status",
+            "momentum_warmup_start",
+            "momentum_warmup_end",
+            "momentum_warmup_steps",
+            "stable_muon_momentum",
+            "cooldown_final_muon_momentum",
+            "weight_decay_cooldown_policy",
+        },
+        "training.optimizer_hyperparameters",
+    )
+    exact_optimizer = {
+        "embedding_lr": 0.3,
+        "unembedding_lr": 0.008,
+        "matrix_lr": 0.02,
+        "scalar_lr": 0.5,
+        "global_batch_lr_multiplier": 2.0,
+        "adam_model_width_multiplier": 0.6123724356957945,
+        "stable_weight_decay": 0.03675007690415606,
+        "weight_decay_derivation": "legacy_d12_update_normalized_proxy_for_d32_scaling_params_and_2097152_token_batch",
+        "weight_decay_status": "proxy_ablation_required_before_production",
+        "momentum_warmup_start": 0.85,
+        "momentum_warmup_end": 0.97,
+        "momentum_warmup_steps": 400,
+        "stable_muon_momentum": 0.97,
+        "cooldown_final_muon_momentum": 0.9,
+        "weight_decay_cooldown_policy": "selected_by_proxy_acceptance",
+    }
+    for key, expected in exact_optimizer.items():
+        if optimizer.get(key) != expected:
+            _fail(f"optimizer_hyperparameters.{key} must equal {expected!r}")
+    exact_group_lrs = {
+        "lm_head": 0.009797959,
+        "token_embedding": 0.367423461,
+        "value_embeddings": 0.1837117305,
+        "residual_scalars": 0.01,
+        "x0_scalars": 1.0,
+        "smear": 0.2,
+        "muon_matrices": 0.04,
+    }
+    if optimizer.get("derived_initial_group_lrs") != exact_group_lrs:
+        _fail("optimizer_hyperparameters.derived_initial_group_lrs drifted")
+
+    checkpoints = _mapping(recipe.get("checkpoints"), "checkpoints")
+    forks = _sequence(checkpoints.get("stable_forks"), "checkpoints.stable_forks")
+    finals = _sequence(checkpoints.get("finals"), "checkpoints.finals")
+    if checkpoints.get("trunk_model_tag") != "tr_d32_general_bpe32k_v1_trunk":
+        _fail("checkpoints.trunk_model_tag drifted")
+    expected_forks = (
+        {
+            "scale": 10.8,
+            "step": 8640,
+            "scheduled_tokens": 8640 * training["global_batch_tokens"],
+            "retention": "full_resumable",
+        },
+        {
+            "scale": 18.0,
+            "step": 14400,
+            "scheduled_tokens": 14400 * training["global_batch_tokens"],
+            "retention": "full_resumable",
+        },
+        {
+            "scale": 36.0,
+            "step": 28800,
+            "scheduled_tokens": 28800 * training["global_batch_tokens"],
+            "retention": "full_resumable",
+        },
+    )
+    expected_finals = (
+        {
+            "label": "s12",
+            "model_tag": "tr_d32_general_bpe32k_v1_s12",
+            "parent_step": 8640,
+            "cooldown_start_step": 8640,
+            "final_step": 9600,
+            "cooldown_steps": 960,
+            "scheduled_tokens": 9600 * training["global_batch_tokens"],
+            "retention": "model_metadata_provenance_required_optimizer_explicit",
+        },
+        {
+            "label": "s20",
+            "model_tag": "tr_d32_general_bpe32k_v1_s20",
+            "parent_step": 14400,
+            "cooldown_start_step": 14400,
+            "final_step": 16000,
+            "cooldown_steps": 1600,
+            "scheduled_tokens": 16000 * training["global_batch_tokens"],
+            "retention": "model_metadata_provenance_required_optimizer_explicit",
+        },
+        {
+            "label": "s40",
+            "model_tag": "tr_d32_general_bpe32k_v1_s40",
+            "parent_step": 28800,
+            "cooldown_start_step": 28800,
+            "final_step": 32000,
+            "cooldown_steps": 3200,
+            "scheduled_tokens": 32000 * training["global_batch_tokens"],
+            "retention": "model_metadata_provenance_required_optimizer_explicit",
+        },
+    )
+    if len(forks) != len(expected_forks) or len(finals) != len(expected_finals):
+        _fail("the recipe must contain exactly three stable forks and three finals")
+    for index, expected in enumerate(expected_forks):
+        fork = _mapping(forks[index], f"stable_forks[{index}]")
+        if dict(fork) != expected:
+            _fail(f"stable_forks[{index}] drifted from the reviewed boundary")
+    for index, expected in enumerate(expected_finals):
+        final = _mapping(finals[index], f"finals[{index}]")
+        if dict(final) != expected:
+            _fail(f"finals[{index}] drifted from the reviewed cooldown boundary")
+
+    stages = _sequence(recipe.get("stages"), "stages")
+    expected_stages = (
+        {
+            "id": "trunk_to_s12_fork",
+            "kind": "trunk",
+            "model_tag": "tr_d32_general_bpe32k_v1_trunk",
+            "exposure_plan_family": "trunk",
+            "source_step": None,
+            "target_step": 8640,
+            "num_iterations": 28800,
+            "cooldown_start_step": -1,
+        },
+        {
+            "id": "s12_cooldown",
+            "kind": "cooldown_fork",
+            "model_tag": "tr_d32_general_bpe32k_v1_s12",
+            "exposure_plan_family": "s12",
+            "source_model_tag": "tr_d32_general_bpe32k_v1_trunk",
+            "source_step": 8640,
+            "target_step": 9600,
+            "num_iterations": 9600,
+            "cooldown_start_step": 8640,
+        },
+        {
+            "id": "trunk_to_s20_fork",
+            "kind": "trunk",
+            "model_tag": "tr_d32_general_bpe32k_v1_trunk",
+            "exposure_plan_family": "trunk",
+            "source_step": 8640,
+            "target_step": 14400,
+            "num_iterations": 28800,
+            "cooldown_start_step": -1,
+        },
+        {
+            "id": "s20_cooldown",
+            "kind": "cooldown_fork",
+            "model_tag": "tr_d32_general_bpe32k_v1_s20",
+            "exposure_plan_family": "s20",
+            "source_model_tag": "tr_d32_general_bpe32k_v1_trunk",
+            "source_step": 14400,
+            "target_step": 16000,
+            "num_iterations": 16000,
+            "cooldown_start_step": 14400,
+        },
+        {
+            "id": "trunk_to_s40_fork",
+            "kind": "trunk",
+            "model_tag": "tr_d32_general_bpe32k_v1_trunk",
+            "exposure_plan_family": "trunk",
+            "source_step": 14400,
+            "target_step": 28800,
+            "num_iterations": 28800,
+            "cooldown_start_step": -1,
+        },
+        {
+            "id": "s40_cooldown",
+            "kind": "cooldown_fork",
+            "model_tag": "tr_d32_general_bpe32k_v1_s40",
+            "exposure_plan_family": "s40",
+            "source_model_tag": "tr_d32_general_bpe32k_v1_trunk",
+            "source_step": 28800,
+            "target_step": 32000,
+            "num_iterations": 32000,
+            "cooldown_start_step": 28800,
+        },
+    )
+    if len(stages) != len(expected_stages):
+        _fail("stages must contain exactly the six reviewed lineage stages")
+    for index, expected in enumerate(expected_stages):
+        stage = _mapping(stages[index], f"stages[{index}]")
+        if dict(stage) != expected:
+            _fail(f"stages[{index}] drifted from the reviewed sequential lineage")
+
+    gate = _mapping(recipe.get("distributed_gate"), "distributed_gate")
+    if gate.get("smoke_node_order") != [2, 4]:
+        _fail("smoke_node_order must be [2, 4]")
+    if gate.get("minimum_8_to_16_gpu_speedup") != 1.7:
+        _fail("minimum 8-to-16-GPU speedup must equal 1.7")
+    expected_topology_gate = {
+        "partition": "a100x4q",
+        "gpus_per_node": 4,
+        "static_launcher": "slurm_srun_direct_python_env_v1",
+        "static_launcher_probe_nodes": 1,
+        "static_launcher_probe_world_size": 4,
+        "require_clean_static_launcher_probe_before_distributed_smokes": True,
+        "signal_resume_probe_world_size": 4,
+        "signal_resume_probe_updates": 6,
+        "signal_resume_probe_after_completed_update": 1,
+        "require_signal_resume_gate_before_distributed_smokes": True,
+        "smoke_node_order": [2, 4],
+        "smoke_updates": 100,
+        "forced_resume_step": 50,
+        "benchmark_first_update": 21,
+        "benchmark_last_update": 100,
+        "maximum_aggregate_loader_fraction": 0.35,
+        "maximum_p95_loader_fraction": 0.6,
+        "minimum_8_to_16_gpu_speedup": 1.7,
+        "minimum_parallel_efficiency": 0.85,
+        "preferred_production_nodes": 4,
+        "preferred_production_world_size": 16,
+        "fallback_production_nodes": 2,
+        "fallback_production_world_size": 8,
+        "selection_policy": (
+            "use_16_only_when_clean_8_and_16_gpu_smokes_exist_and_speedup_is_at_least_1.7_"
+            "otherwise_use_8"
+        ),
+        "require_single_world_size_for_entire_lineage": True,
+    }
+    if gate != expected_topology_gate:
+        _fail("distributed topology gate drifted from the reviewed 8-GPU fallback policy")
+
+    attention_gate = _mapping(
+        recipe.get("attention_backend_gate"), "attention_backend_gate"
+    )
+    expected_attention_gate = {
+        "required_before_proxy_and_production": True,
+        "probe_world_size": 1,
+        "required_gpu_family": "A100",
+        "selection_policy": (
+            "use_pinned_upstream_auto_fa3_with_SSSL_after_actual_d32_bf16_finite_smoke_"
+            "else_sdpa_with_L"
+        ),
+        "preferred_backend": "fa3",
+        "preferred_window_pattern": "SSSL",
+        "fallback_backend": "sdpa",
+        "fallback_window_pattern": "L",
+        "require_forward_backward_finite": True,
+        "require_upstream_auto_detection_for_fa3": True,
+        "require_actual_d32_model_forward_backward": True,
+        "diagnostic_fa3_sdpa_comparison_is_non_decisional": True,
+        "fallback_reason_required": True,
+        "benchmark_both_window_patterns": True,
+        "record_kernel_cache_inventory": True,
+    }
+    if attention_gate != expected_attention_gate:
+        _fail("attention backend gate drifted from the reviewed SDPA-on-A100 policy")
+
+    proxy = _mapping(
+        recipe.get("weight_decay_proxy_ablation"),
+        "weight_decay_proxy_ablation",
+    )
+    if proxy.get("required_before_production") is not True:
+        _fail("weight-decay proxy acceptance must be required before production")
+    if proxy.get("recipe_version") != "tr_d32_wsd_wd_proxy_v1":
+        _fail("unexpected weight-decay proxy recipe version")
+    if proxy.get("weight_decay_transfer_rule") != "nanochat_width_batch_v1":
+        _fail("unexpected weight-decay scale-transfer rule")
+    if proxy.get("production_scaling_parameters") != 1_677_724_672:
+        _fail("proxy production scaling-parameter binding drifted")
+    if proxy.get("production_global_batch_tokens") != 2_097_152:
+        _fail("proxy production batch binding drifted")
+    if proxy.get("two_stage_transfer_gate") is not True:
+        _fail("weight-decay proxy must use the d12-to-d20 transfer gate")
+    screen = _mapping(proxy.get("screen_stage"), "weight_decay_proxy_ablation.screen_stage")
+    confirmation = _mapping(
+        proxy.get("confirmation_stage"),
+        "weight_decay_proxy_ablation.confirmation_stage",
+    )
+    expected_screen = {
+        "model_depth": 12,
+        "model_dim": 768,
+        "world_size": 1,
+        "device_batch_sequences": 16,
+        "global_batch_tokens": 524_288,
+        "target_scaling_ratio": 20,
+        "scaling_parameters": 110_100_912,
+        "scheduled_tokens": 2_202_009_600,
+        "updates": 4200,
+        "validation_every_updates": 100,
+        "eval_tokens_cli_unused": -1,
+        "fixed_validation_full_manifest": True,
+        "final_validation_points": 5,
+        "seeds": [42, 314159],
+        "advance_top_wsd_recipes": 2,
+    }
+    for key, expected in expected_screen.items():
+        if screen.get(key) != expected:
+            _fail(f"weight_decay_proxy_ablation.screen_stage.{key} must equal {expected!r}")
+    expected_confirmation = {
+        "model_depth": 20,
+        "model_dim": 1280,
+        "world_size": 1,
+        "device_batch_sequences": 4,
+        "global_batch_tokens": 1_048_576,
+        "target_scaling_ratio": 12,
+        "scaling_parameters": 435_160_240,
+        "scheduled_tokens": 5_221_908_480,
+        "updates": 4980,
+        "validation_every_updates": 100,
+        "eval_tokens_cli_unused": -1,
+        "fixed_validation_full_manifest": True,
+        "final_validation_points": 5,
+        "seeds": [42],
+        "arms": "pinned_upstream_control_plus_two_wsd_screen_winners",
+    }
+    for key, expected in expected_confirmation.items():
+        if confirmation.get(key) != expected:
+            _fail(
+                f"weight_decay_proxy_ablation.confirmation_stage.{key} "
+                f"must equal {expected!r}"
+            )
+    candidates = _sequence(proxy.get("candidates"), "weight_decay_proxy_ablation.candidates")
+    expected_candidates = {
+        "upstream_92d63d4e_control": (0.03675007690415606, 1.0, "nanochat_linear", "cosine_full_horizon", False),
+        "legacy_transferred": (0.03675007690415606, 1.0, "wsd", "linear_to_zero", True),
+        "half_transferred_constant_cooldown_wd": (0.01837503845207803, 0.5, "wsd", "constant", True),
+        "half_transferred_linear_cooldown_wd": (0.01837503845207803, 0.5, "wsd", "linear_to_zero", True),
+        "no_weight_decay": (0.0, 0.0, "wsd", "linear_to_zero", True),
+    }
+    candidate_map = {
+        candidate.get("id"): candidate
+        for candidate in candidates
+        if isinstance(candidate, Mapping)
+    }
+    if set(candidate_map) != set(expected_candidates):
+        _fail("weight-decay proxy candidate ID set drifted")
+    stage_specs = {"d12": screen, "d20": confirmation}
+    for candidate_id, expected in expected_candidates.items():
+        candidate = _mapping(candidate_map[candidate_id], f"candidate {candidate_id}")
+        production_wd, ratio, schedule_name, cooldown_policy, eligible = expected
+        expected_fields = {
+            "production_base_weight_decay": production_wd,
+            "proxy_ratio_to_upstream_effective_weight_decay": ratio,
+            "proxy_scale_rule": "nanochat_width_batch_v1",
+            "schedule": schedule_name,
+            "cooldown_weight_decay": cooldown_policy,
+            "eligible_for_production": eligible,
+        }
+        for key, value in expected_fields.items():
+            if candidate.get(key) != value:
+                _fail(f"candidate {candidate_id}.{key} must equal {value!r}")
+        if candidate_id == "upstream_92d63d4e_control":
+            if candidate.get("input_weight_decay") != 0.28:
+                _fail("upstream proxy control must bind input_weight_decay=0.28")
+        elif "input_weight_decay" in candidate:
+            _fail(f"WSD candidate {candidate_id} must not use legacy input_weight_decay")
+        stage_values = _mapping(
+            candidate.get("stage_effective_weight_decay"),
+            f"candidate {candidate_id}.stage_effective_weight_decay",
+        )
+        if set(stage_values) != set(stage_specs):
+            _fail(f"candidate {candidate_id} stage-effective WD keys drifted")
+        for stage_id, stage_spec in stage_specs.items():
+            derived = production_wd * math.sqrt(
+                stage_spec["global_batch_tokens"]
+                / proxy["production_global_batch_tokens"]
+            ) * (
+                proxy["production_scaling_parameters"]
+                / stage_spec["scaling_parameters"]
+            )
+            if not math.isclose(
+                float(stage_values[stage_id]), derived, rel_tol=0.0, abs_tol=1e-15
+            ):
+                _fail(
+                    f"candidate {candidate_id} {stage_id} effective WD is not "
+                    "the exact nanochat_width_batch_v1 transfer"
+                )
+    acceptance = _mapping(proxy.get("acceptance_rule"), "proxy acceptance_rule")
+    if acceptance.get("maximum_wsd_vs_upstream_control_bpb") != 0.002:
+        _fail("proxy acceptance must reject WSD recipes materially worse than upstream")
+
+    storage = _mapping(recipe.get("storage"), "storage")
+    if storage.get("never_auto_delete_existing_artifacts") is not True:
+        _fail("the storage policy must never auto-delete existing artifacts")
+    expected_live_storage = {
+        "uid": 4500,
+        "storage_pool_id": 1,
+        "query": "beegfs-ctl_--getquota_--uid_4500_--storagepoolid=1_--csv",
+        "allow_unlimited_hard_quota": True,
+        "effective_free_policy": "minimum_of_physical_free_and_finite_user_quota_remaining",
+    }
+    if storage.get("uhem_live_quota") != expected_live_storage:
+        _fail("UHeM live storage quota policy drifted")
+    data_prep_gate = _mapping(
+        storage.get("data_preparation_peak_gate"),
+        "storage.data_preparation_peak_gate",
+    )
+    expected_data_prep_gate = {
+        "required": True,
+        "minimum_sample_documents": 100_000,
+        "extrapolation_safety_factor": 1.35,
+        "required_measured_components": [
+            "source_downloads",
+            "filtered_text",
+            "minhash_signatures",
+            "minhash_buckets",
+            "cluster_assignments",
+            "tokenized_output",
+            "temporary_merge_space",
+        ],
+        "allow_verified_uhem_scratch": True,
+        "never_assume_intermediate_bytes_are_negligible": True,
+        "require_billed_cpu_sample_extrapolation": True,
+        "never_auto_delete_existing_artifacts": True,
+    }
+    if data_prep_gate != expected_data_prep_gate:
+        _fail("data-preparation storage gate drifted")
+    if storage.get("estimated_cooled_final_model_bundle_bytes") != 12 * 1024**3:
+        _fail("cooled-final estimate must leave room above raw d32 model weights")
+    if storage.get("smoke_measurement_safety_factor") != 1.25:
+        _fail("smoke checkpoint storage safety factor must equal 1.25")
+    required = _positive_int(
+        storage.get("required_free_bytes_at_training_preflight"),
+        "storage.required_free_bytes_at_training_preflight",
+    )
+    recomputed = (
+        _positive_int(
+            storage.get("estimated_full_resumable_transaction_bytes"),
+            "estimated_full_resumable_transaction_bytes",
+        )
+        * (
+            _positive_int(
+                storage.get("full_resumable_stable_forks_retained"),
+                "full_resumable_stable_forks_retained",
+            )
+            + _positive_int(
+                storage.get("full_cooled_final_transactions_at_peak"),
+                "full_cooled_final_transactions_at_peak",
+            )
+            + _positive_int(
+                storage.get("atomic_write_transient_transactions"),
+                "atomic_write_transient_transactions",
+            )
+            + _positive_int(
+                storage.get("maximum_retained_preemption_transactions"),
+                "maximum_retained_preemption_transactions",
+            )
+        )
+        + _positive_int(
+            storage.get("estimated_cooled_final_model_bundle_bytes"),
+            "estimated_cooled_final_model_bundle_bytes",
+        )
+        * _positive_int(
+            storage.get("cooled_final_model_bundles_retained"),
+            "cooled_final_model_bundles_retained",
+        )
+        + _positive_int(storage.get("estimated_logs_and_evaluations_bytes"), "estimated_logs_and_evaluations_bytes")
+        + _positive_int(
+            storage.get("estimated_proxy_and_smoke_retained_bytes"),
+            "estimated_proxy_and_smoke_retained_bytes",
+        )
+        + _positive_int(storage.get("minimum_free_headroom_bytes"), "minimum_free_headroom_bytes")
+    )
+    if required != recomputed:
+        _fail("storage.required_free_bytes_at_training_preflight arithmetic mismatch")
+    end_to_end = (
+        required
+        + _positive_int(storage.get("estimated_corpus_bytes"), "estimated_corpus_bytes")
+        + _positive_int(
+            storage.get("estimated_tokenizer_and_receipts_bytes"),
+            "estimated_tokenizer_and_receipts_bytes",
+        )
+    )
+    if storage.get("estimated_end_to_end_peak_project_bytes") != end_to_end:
+        _fail("storage.estimated_end_to_end_peak_project_bytes arithmetic mismatch")
+
+    budget = _mapping(recipe.get("uhem_budget"), "uhem_budget")
+    if budget.get("account") != "nakane" or budget.get("user") != "nunal":
+        _fail("UHeM account/user binding drifted")
+    if budget.get("quota_query") != (
+        "sshare_-n_-P_-A_nakane_-u_nunal_-o_"
+        "Account,User,GrpTRESMins,GrpTRESRaw,TRESRunMins,RawUsage"
+    ):
+        _fail("UHeM quota query must read limit, raw use, and running reservation")
+    expected_rates = {
+        "cpu_saat_per_4gpu_node_hour": 64,
+        "cpu_saat_per_fully_utilized_a100_gpu_hour": 16,
+        "cpu_saat_per_4node_wall_hour": 256,
+    }
+    for key, expected in expected_rates.items():
+        if budget.get(key) != expected:
+            _fail(f"uhem_budget.{key} must equal {expected}")
+    exact_physical_tokens = 34_560 * 2_097_152
+    if budget.get("shared_lineage_scheduled_token_work") != exact_physical_tokens:
+        _fail("UHeM cost must be based on exact batch-aligned shared-lineage work")
+    exact_scaling_work = exact_physical_tokens / 1_677_724_672
+    if abs(float(budget.get("shared_lineage_scaling_work", -1)) - exact_scaling_work) > 1e-12:
+        _fail("shared-lineage scaling work arithmetic mismatch")
+    calibration = _mapping(budget.get("calibration"), "uhem_budget.calibration")
+    expected_flops = {"d20_flops_per_token": 3_240_107_184, "d32_flops_per_token": 11_676_960_912}
+    for key, expected in expected_flops.items():
+        if calibration.get(key) != expected:
+            _fail(f"uhem_budget.calibration.{key} must equal {expected}")
+    flops_ratio = expected_flops["d32_flops_per_token"] / expected_flops["d20_flops_per_token"]
+    if abs(float(calibration.get("d32_to_d20_scaling_compute_ratio", -1)) - flops_ratio) > 1e-9:
+        _fail("d32/d20 FLOP-per-token calibration ratio mismatch")
+    projected = float(calibration.get("source_sustained_tokens_per_second", -1)) / flops_ratio
+    if abs(float(calibration.get("projected_d32_8gpu_tokens_per_second", -1)) - projected) > 1:
+        _fail("projected d32 throughput is inconsistent with exact FLOP/token ratio")
+    proxy_cost = _mapping(budget.get("proxy_cost_model"), "uhem_budget.proxy_cost_model")
+    expected_proxy_cost = {
+        "allocation": "one_4xa100_node_with_up_to_four_concurrent_single_gpu_arms",
+        "partition": "a100x4q",
+        "allocated_a100_gpus": 4,
+        "screen_packed_waves": 3,
+        "confirmation_packed_waves": 1,
+        "forbid_single_gpu_partition_fallback": True,
+        "d12_flops_per_token": 887_098_032,
+        "screen_runs": 10,
+        "screen_aggregate_tokens": 22_020_096_000,
+        "screen_projected_raw_cpu_saat": 621,
+        "confirmation_runs": 3,
+        "confirmation_aggregate_tokens": 15_665_725_440,
+        "confirmation_projected_raw_cpu_saat": 1794,
+        "full_manifest_evaluation_overhead_allowance_cpu_saat": 1000,
+        "kernel_and_distributed_smokes_projected_raw_cpu_saat": 200,
+        "estimated_total_cpu_saat_range_with_queue_runtime_overhead": [3000, 4000],
+        "single_gpu_partition_fallback_estimate_cpu_saat": 7456,
+        "require_four_way_packing": True,
+    }
+    if proxy_cost != expected_proxy_cost:
+        _fail("proxy/smoke cost model drifted from the reviewed four-way-packed estimate")
+    gpu_hour_range = budget.get("raw_estimated_aggregate_a100_hours_range")
+    cpu_range = budget.get("raw_estimated_cpu_saat_range")
+    planned_range = budget.get("estimated_cpu_saat_range_with_15_percent_reserve")
+    for name, value in (
+        ("raw_estimated_aggregate_a100_hours_range", gpu_hour_range),
+        ("raw_estimated_cpu_saat_range", cpu_range),
+        ("estimated_cpu_saat_range_with_15_percent_reserve", planned_range),
+    ):
+        if (
+            not isinstance(value, list)
+            or len(value) != 2
+            or any(isinstance(item, bool) or not isinstance(item, (int, float)) for item in value)
+            or value[0] <= 0
+            or value[1] < value[0]
+        ):
+            _fail(f"uhem_budget.{name} must be an increasing positive two-value range")
+    throughput_range = calibration.get("projected_d32_8gpu_tokens_per_second_range")
+    if throughput_range != [97_300, 131_600]:
+        _fail("d32 ws8 throughput envelope drifted from the reviewed calibration")
+    shared_positions = int(budget["shared_lineage_scheduled_token_work"])
+    minimum_speedup = float(
+        recipe["distributed_gate"]["minimum_8_to_16_gpu_speedup"]
+    )
+    expected_gpu_hours = [
+        math.ceil(shared_positions / throughput_range[1] / 3600 * 8),
+        math.ceil(
+            shared_positions
+            / (throughput_range[0] * minimum_speedup)
+            / 3600
+            * 16
+        ),
+    ]
+    expected_cpu_saat = [value * 16 for value in expected_gpu_hours]
+    expected_reserved_cpu_saat = [
+        math.ceil(value * 1.15) for value in expected_cpu_saat
+    ]
+    if gpu_hour_range != expected_gpu_hours:
+        _fail("aggregate A100-hour envelope is not derived from tokens/throughput")
+    if cpu_range != expected_cpu_saat:
+        _fail("CPU-saat envelope is not exact aggregate A100-hours times 16")
+    if planned_range != expected_reserved_cpu_saat:
+        _fail("reserved CPU-saat envelope is not the exact 15% rounded-up plan")
+    for index in range(2):
+        if abs(float(gpu_hour_range[index]) * 16 - float(cpu_range[index])) > 20:
+            _fail("UHeM CPU-saat range must equal aggregate A100-hour range times 16")
+        if float(planned_range[index]) < float(cpu_range[index]) * 1.15 - 1:
+            _fail("planned UHeM CPU-saat range does not include a full 15% reserve")
+    ceiling = int(budget.get("operational_ceiling_cpu_saat", -1))
+    expected_ceiling_scope = (
+        "training_plus_weight_decay_proxy_plus_kernel_and_distributed_smokes_only; "
+        "data_preparation_is_separately_sample_extrapolated_and_added"
+    )
+    if budget.get("operational_ceiling_scope") != expected_ceiling_scope:
+        _fail("UHeM operational ceiling scope must explicitly exclude data preparation")
+    if ceiling < float(planned_range[1]) + int(budget.get("proxy_and_smoke_reserve_cpu_saat", -1)):
+        _fail("operational CPU-saat ceiling does not cover training, proxy, and smokes")
+
+
+def load_recipe(path: Path, *, require_sealed: bool = True) -> tuple[dict[str, Any], str]:
+    recipe = _load_object(path, "family recipe")
+    validate_recipe(recipe)
+    try:
+        digest = verify_manifest_hash(recipe, required=require_sealed)
+    except ValueError as exc:
+        raise FamilyWorkflowError(f"family recipe hash is invalid: {exc}") from exc
+    return recipe, digest
+
+
+def _git_output(repo_root: Path, *args: str) -> str:
+    try:
+        return subprocess.check_output(
+            ["git", *args], cwd=repo_root, text=True, stderr=subprocess.STDOUT
+        ).strip()
+    except subprocess.CalledProcessError as exc:
+        raise FamilyWorkflowError(f"git {' '.join(args)} failed: {exc.output.strip()}") from exc
+
+
+def _manifest_inventory_if_present(root: Path, manifest: Mapping[str, Any], label: str) -> None:
+    records = manifest.get("ordered_files")
+    location = "ordered_files"
+    if records is None:
+        records = manifest.get("files")
+        location = "files"
+    if records is None:
+        return
+    if not isinstance(records, list) or not records:
+        _fail(f"{label}.{location} must be a non-empty array")
+    require_role = all(isinstance(record, Mapping) and "role" in record for record in records)
+    try:
+        verify_file_inventory(
+            root,
+            records,
+            require_exact=False,
+            require_role=require_role,
+            location=location,
+        )
+    except (ManifestValidationError, OSError, ValueError) as exc:
+        raise FamilyWorkflowError(f"{label} file inventory failed: {exc}") from exc
+
+
+def _directory_size(root: Path) -> int:
+    total = 0
+    for path in root.rglob("*"):
+        if path.is_symlink():
+            _fail(f"artifact directories must not contain symlinks: {path}")
+        if path.is_file():
+            total += path.stat().st_size
+    return total
+
+
+def _checkpoint_storage_observation(
+    manifest: Mapping[str, Any], step_dir: Path
+) -> dict[str, int]:
+    records = _sequence(manifest.get("files"), "strict checkpoint files")
+    declared_payload = 0
+    model_bundle = 0
+    for index, value in enumerate(records):
+        record = _mapping(value, f"strict checkpoint files[{index}]")
+        size = _positive_int(record.get("size_bytes"), f"strict checkpoint files[{index}].size_bytes")
+        declared_payload += size
+        if record.get("role") in {"model", "meta"}:
+            model_bundle += size
+    completion = step_dir / "completion.json"
+    if not completion.is_file() or completion.is_symlink():
+        _fail(f"strict checkpoint completion manifest is missing or unsafe: {completion}")
+    completion_bytes = completion.stat().st_size
+    actual = _directory_size(step_dir)
+    if actual != declared_payload + completion_bytes:
+        _fail("strict checkpoint storage inventory does not match on-disk bytes")
+    return {
+        "full_transaction_bytes": actual,
+        "declared_payload_bytes": declared_payload,
+        "model_metadata_completion_bytes": model_bundle + completion_bytes,
+    }
+
+
+def _preflight_capacity_world(
+    preflight: Mapping[str, Any], world_size: int
+) -> tuple[str, Mapping[str, Any]]:
+    capacity = _mapping(
+        _mapping(preflight.get("corpus"), "preflight corpus").get(
+            "packing_capacity_receipt"
+        ),
+        "preflight packing capacity",
+    )
+    digest = _sha256(capacity.get("sha256"), "preflight packing-capacity SHA-256")
+    if capacity.get("gate_passed") is not True:
+        _fail("preflight packing-capacity gate did not pass")
+    worlds = _mapping(capacity.get("worlds"), "preflight packing-capacity worlds")
+    world = _mapping(worlds.get(str(world_size)), f"preflight packing capacity ws{world_size}")
+    if world.get("passes_40x_no_wrap_with_margin") is not True:
+        _fail(f"preflight packing capacity did not pass for ws{world_size}")
+    safe = _positive_int(
+        world.get("safe_global_scheduled_positions"),
+        f"preflight packing capacity ws{world_size} safe positions",
+    )
+    required = _positive_int(
+        world.get("required_positions_with_margin"),
+        f"preflight packing capacity ws{world_size} required positions",
+    )
+    if safe < required:
+        _fail(f"preflight packing capacity ws{world_size} is below its required margin")
+    return digest, world
+
+
+def _disk_free_bytes(path: Path) -> int:
+    probe = path
+    while not probe.exists() and probe != probe.parent:
+        probe = probe.parent
+    if not probe.exists():
+        _fail(f"cannot find an existing filesystem ancestor for {path}")
+    return shutil.disk_usage(probe).free
+
+
+def _parse_storage_bytes(value: str, name: str) -> int | None:
+    cleaned = value.strip().replace(",", "")
+    if cleaned.lower() == "unlimited":
+        return None
+    match = re.fullmatch(r"([0-9]+(?:\.[0-9]+)?)\s*([KMGTPE]?i?B)?", cleaned, re.I)
+    if match is None:
+        _fail(f"cannot parse {name} from BeeGFS quota output: {value!r}")
+    number = float(match.group(1))
+    unit = (match.group(2) or "B").upper()
+    powers = {
+        "B": 0,
+        "KB": 1,
+        "MB": 2,
+        "GB": 3,
+        "TB": 4,
+        "PB": 5,
+        "EB": 6,
+        "KIB": 1,
+        "MIB": 2,
+        "GIB": 3,
+        "TIB": 4,
+        "PIB": 5,
+        "EIB": 6,
+    }
+    base = 1024 if "I" in unit else 1000
+    return int(number * base ** powers[unit])
+
+
+def _live_beegfs_storage(
+    repo_root: Path, *, uid: int, storage_pool_id: int, path: Path
+) -> tuple[int, dict[str, Any]]:
+    command = [
+        "beegfs-ctl",
+        "--getquota",
+        "--uid",
+        str(uid),
+        f"--storagepoolid={storage_pool_id}",
+        "--csv",
+    ]
+    try:
+        output = subprocess.check_output(
+            command, cwd=repo_root, text=True, stderr=subprocess.STDOUT
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        details = getattr(exc, "output", "")
+        raise FamilyWorkflowError(
+            "cannot query live UHeM BeeGFS user quota"
+            + (f": {str(details).strip()}" if details else "")
+        ) from exc
+    rows = list(csv.reader(io.StringIO(output)))
+    if len(rows) < 2:
+        _fail("BeeGFS quota CSV has no data row")
+    header = [re.sub(r"[^a-z0-9]+", "_", cell.strip().lower()).strip("_") for cell in rows[0]]
+    candidates = []
+    for row in rows[1:]:
+        if not row or all(not cell.strip() for cell in row):
+            continue
+        padded = row + [""] * max(0, len(header) - len(row))
+        candidates.append(dict(zip(header, padded, strict=False)))
+    if not candidates:
+        _fail("BeeGFS quota CSV has no usable data row")
+    selected = next(
+        (
+            row
+            for row in candidates
+            if str(uid) in {value.strip() for value in row.values()}
+        ),
+        candidates[0],
+    )
+
+    def find_field(*needles: str) -> str:
+        matches = [
+            value
+            for key, value in selected.items()
+            if all(needle in key for needle in needles)
+            and "inode" not in key
+        ]
+        if len(matches) != 1:
+            _fail(
+                "BeeGFS quota CSV does not expose exactly one "
+                + "/".join(needles)
+                + " size field"
+            )
+        return matches[0]
+
+    used = _parse_storage_bytes(find_field("used"), "BeeGFS used bytes")
+    hard = _parse_storage_bytes(find_field("hard"), "BeeGFS hard quota")
+    if used is None:
+        _fail("BeeGFS used-byte value cannot be unlimited")
+    physical_free = _disk_free_bytes(path)
+    finite_remaining = None if hard is None else max(0, hard - used)
+    effective_free = (
+        physical_free
+        if finite_remaining is None
+        else min(physical_free, finite_remaining)
+    )
+    return effective_free, {
+        "uid": uid,
+        "storage_pool_id": storage_pool_id,
+        "used_bytes": used,
+        "hard_quota_bytes": hard,
+        "hard_quota_unlimited": hard is None,
+        "finite_user_quota_remaining_bytes": finite_remaining,
+        "physical_filesystem_free_bytes": physical_free,
+        "effective_free_bytes": effective_free,
+        "beegfs_quota_output_sha256": hashlib.sha256(output.encode("utf-8")).hexdigest(),
+    }
+
+
+def _live_uhem_cpu_saat(
+    repo_root: Path, account: str, user: str
+) -> tuple[float, str, dict[str, Any]]:
+    command = [
+        "sshare",
+        "-n",
+        "-P",
+        "-A",
+        account,
+        "-u",
+        user,
+        "-o",
+        "Account,User,GrpTRESMins,GrpTRESRaw,TRESRunMins,RawUsage",
+    ]
+    try:
+        output = subprocess.check_output(
+            command, cwd=repo_root, text=True, stderr=subprocess.STDOUT
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        details = getattr(exc, "output", "")
+        raise FamilyWorkflowError(
+            "cannot query live UHeM CPU-saat quota with sshare"
+            + (f": {str(details).strip()}" if details else "")
+        ) from exc
+    def cpu_minutes(field: str) -> int | None:
+        match = re.search(r"(?:^|,)cpu=(\d+)(?:,|$)", field)
+        return int(match.group(1)) if match else None
+
+    def raw_usage_seconds(field: str) -> float:
+        try:
+            value = float(field.strip())
+        except ValueError as exc:
+            raise FamilyWorkflowError(
+                f"cannot parse sshare RawUsage TRES-seconds: {field!r}"
+            ) from exc
+        if not math.isfinite(value) or value < 0:
+            _fail(f"invalid sshare RawUsage TRES-seconds: {field!r}")
+        return value
+
+    rows = []
+    for raw_line in output.splitlines():
+        if not raw_line.strip():
+            continue
+        fields = raw_line.split("|")
+        if len(fields) < 6:
+            _fail(f"unexpected sshare row: {raw_line!r}")
+        row_account, row_user = fields[0].strip(), fields[1].strip()
+        if row_account != account or row_user not in {"", user}:
+            continue
+        rows.append(
+            {
+                "user": row_user,
+                "limit": cpu_minutes(fields[2]),
+                "used": cpu_minutes(fields[3]),
+                "running": cpu_minutes(fields[4]),
+                "raw_usage_seconds": raw_usage_seconds(fields[5]),
+            }
+        )
+    if not rows:
+        _fail("live UHeM sshare output contains no matching account/user row")
+    limits = [int(row["limit"]) for row in rows if row["limit"] is not None]
+    if not limits:
+        _fail("live UHeM sshare output contains no inherited or direct CPU-minute limit")
+    # The user row may inherit a blank limit from its account row.  Use the
+    # smallest declared limit, and conservatively subtract the largest account
+    # or user raw/running counters so shared-account use is never understated.
+    positive_limits = [value for value in limits if value > 0]
+    if not positive_limits:
+        _fail("live UHeM CPU-minute limit is zero")
+    for row in rows:
+        if row["used"] is None:
+            _fail("live UHeM sshare row is missing GrpTRESRaw cpu minutes")
+        raw_minutes = float(row["raw_usage_seconds"]) / 60.0
+        # UHeM exposes RawUsage in TRES-seconds while GrpTRESRaw is rendered in
+        # whole CPU minutes.  Permit only the one-minute display-rounding gap;
+        # a larger disagreement means the quota cannot be interpreted safely.
+        if abs(float(row["used"]) - raw_minutes) > 1.0:
+            _fail(
+                "live UHeM GrpTRESRaw cpu minutes disagree with RawUsage/60 "
+                f"for user {row['user']!r}: {row['used']} versus {raw_minutes}"
+            )
+    limit = min(positive_limits)
+    used_row = max(rows, key=lambda row: int(row["used"]))
+    used = int(used_row["used"])
+    running = max([int(row["running"] or 0) for row in rows], default=0)
+    remaining_minutes = limit - used - running
+    if remaining_minutes <= 0:
+        _fail("live UHeM remaining CPU-minute quota is zero")
+    audit = {
+        "limit_cpu_minutes": limit,
+        "used_raw_cpu_minutes": used,
+        "raw_usage_tres_seconds": float(used_row["raw_usage_seconds"]),
+        "raw_usage_equivalent_cpu_minutes": float(used_row["raw_usage_seconds"]) / 60.0,
+        "raw_usage_rounding_delta_cpu_minutes": (
+            float(used_row["raw_usage_seconds"]) / 60.0 - used
+        ),
+        "reserved_running_cpu_minutes": running,
+        "remaining_cpu_minutes": remaining_minutes,
+    }
+    remaining = remaining_minutes / 60.0
+    return remaining, hashlib.sha256(output.encode("utf-8")).hexdigest(), audit
+
+
+def _resolved_artifact_paths(recipe: Mapping[str, Any], base_dir: Path) -> dict[str, Path]:
+    artifacts = _mapping(recipe["artifacts"], "artifacts")
+    corpus_root = base_dir / str(artifacts["corpus_root"])
+    tokenizer_root = base_dir / str(artifacts["tokenizer_root"])
+    resolved = {
+        "corpus_root": corpus_root,
+        "corpus_manifest": corpus_root / str(artifacts["corpus_manifest"]),
+        "dataset_manifest": corpus_root / str(artifacts["nanochat_dataset_manifest"]),
+        "source_receipt": corpus_root / str(artifacts["source_receipt"]),
+        "packing_capacity": corpus_root / str(artifacts["packing_capacity_receipt"]),
+        "validation_exposure": corpus_root / str(artifacts["validation_exposure_manifest"]),
+        "exposure_plan_index": corpus_root / str(artifacts["exposure_plan_index"]),
+        "tokenizer_root": tokenizer_root,
+        "tokenizer_package": tokenizer_root / str(artifacts["tokenizer_package_manifest"]),
+    }
+    for key, relative in _mapping(
+        artifacts["training_exposure_manifests"],
+        "artifacts.training_exposure_manifests",
+    ).items():
+        resolved[f"exposure:{key}"] = corpus_root / str(relative)
+    return resolved
+
+
+def _verify_packing_capacity_receipt(
+    path: Path,
+    *,
+    dataset_sha256: str,
+    tokenizer_sha256: str,
+    implementation_path: Path,
+) -> tuple[dict[str, Any], str]:
+    """Verify the finite no-wrap proof for both selectable topologies."""
+
+    receipt, digest = _load_receipt(path, "turkish_bestfit_capacity_receipt")
+    expected_top = {
+        "dataset_manifest_sha256": dataset_sha256,
+        "tokenizer_package_sha256": tokenizer_sha256,
+        "mix_gate_evaluated_on_common_horizon": True,
+        "mix_gate_passed": True,
+        "no_wrap_gate_passed": True,
+        "gate_passed": True,
+        "cleanup_authorized": True,
+    }
+    for field, expected in expected_top.items():
+        if receipt.get(field) != expected:
+            _fail(f"packing-capacity receipt {field} mismatch")
+    simulation = _mapping(receipt.get("simulation"), "packing-capacity simulation")
+    if simulation.get("implementation") != "nanochat_upstream_bos_bestfit_crop_capacity_v2":
+        _fail("packing-capacity simulator identity mismatch")
+    if not implementation_path.is_file() or implementation_path.is_symlink():
+        _fail("packing-capacity simulator implementation is missing or unsafe")
+    if simulation.get("implementation_file_sha256") != file_sha256(implementation_path):
+        _fail("packing-capacity simulator source differs from the receipt")
+    contract = _mapping(simulation.get("upstream_contract"), "packing upstream contract")
+    expected_contract = {
+        "nanochat_revision": "92d63d4e",
+        "encode_call": "tokenizer.encode(doc_batch, prepend=bos_token, num_threads=4)",
+        "tokenizer_batch_size": 128,
+        "tokenizer_threads": 4,
+        "refill_buffer_size": 1000,
+        "tie_breaks": "first_largest_fit_else_first_shortest",
+        "cropped_tail_policy": "discard",
+        "rank_sharding": "row_group_index_mod_world_size",
+    }
+    if contract != expected_contract:
+        _fail("packing-capacity upstream loader contract drifted")
+    parity = _mapping(simulation.get("fixture_parity"), "packing fixture parity")
+    if (
+        parity.get("passed") is not True
+        or parity.get("upstream_commit")
+        != "92d63d4e8bb4df75c3b71618f31ddde2378b2bcd"
+        or parity.get("upstream_loader_source_sha256")
+        != "ed1d4997e3c407f242fbbcfa627f2987f8f34a3a0c340d792c4e10a202981990"
+        or parity.get("actual_output_sha256") != parity.get("simulated_output_sha256")
+    ):
+        _fail("packing-capacity upstream fixture parity is incomplete")
+    for field in ("fixture_sha256", "actual_output_sha256", "simulated_output_sha256"):
+        _sha256(parity.get(field), f"packing fixture {field}")
+    if simulation.get("all_worlds_pass") is not True:
+        _fail("packing-capacity simulation did not pass every selectable topology")
+    worlds = _mapping(simulation.get("worlds"), "packing-capacity worlds")
+    if set(worlds) != {"8", "16"}:
+        _fail("packing-capacity receipt must cover exactly ws8 and ws16")
+    required_steps = 32_000
+    required_steps_with_margin = 32_640
+    global_batch = 2_097_152
+    required_positions = required_steps_with_margin * global_batch
+    for world_size in (8, 16):
+        world = _mapping(worlds[str(world_size)], f"packing capacity ws{world_size}")
+        expected_world = {
+            "world_size": world_size,
+            "device_batch_sequences": 4,
+            "max_seq_len": 2048,
+            "buffer_size": 1000,
+            "preserve_document_tails": False,
+            "row_capacity": 2049,
+            "rank_sharding": "parquet_row_group_index_mod_world_size",
+            "gradient_accumulation_steps": global_batch // (world_size * 4 * 2048),
+            "required_optimizer_steps": required_steps,
+            "safety_margin_fraction": 0.02,
+            "required_optimizer_steps_with_margin": required_steps_with_margin,
+            "required_positions_with_margin": required_positions,
+            "passes_40x_no_wrap_with_margin": True,
+            "first_wrap_observation": "right_censored_at_required_horizon",
+            "safe_global_scheduled_positions_semantics": (
+                "right_censored_proven_lower_bound_at_required_horizon"
+            ),
+            "aggregate_scope": "exact_common_required_horizon_all_ranks",
+        }
+        for field, expected in expected_world.items():
+            if world.get(field) != expected:
+                _fail(f"packing capacity ws{world_size}.{field} mismatch")
+        if int(world.get("safe_global_scheduled_positions", -1)) < required_positions:
+            _fail(f"packing capacity ws{world_size} is below the 40x margin")
+        completed = _sequence(
+            world.get("completed_microbatches_by_rank"),
+            f"packing capacity ws{world_size} rank completions",
+        )
+        requested = _positive_int(
+            world.get("requested_microbatches_per_rank"),
+            f"packing capacity ws{world_size} requested microbatches",
+        )
+        if len(completed) != world_size or any(
+            isinstance(value, bool) or not isinstance(value, int) or value < requested
+            for value in completed
+        ):
+            _fail(f"packing capacity ws{world_size} lacks complete per-rank coverage")
+        first_wrap = _sequence(
+            world.get("first_wrap_before_microbatch_by_rank"),
+            f"packing capacity ws{world_size} first-wrap observations",
+        )
+        if len(first_wrap) != world_size or any(value is not None for value in first_wrap):
+            _fail(f"packing capacity ws{world_size} observed an epoch wrap")
+    return receipt, digest
+
+
+def command_validate_recipe(args: argparse.Namespace) -> None:
+    recipe, digest = load_recipe(args.recipe, require_sealed=not args.allow_unsealed)
+    print(json.dumps({"family_id": recipe["family_id"], "canonical_sha256": digest}, sort_keys=True))
+
+
+def command_data_prep_storage_gate(args: argparse.Namespace) -> None:
+    """Extrapolate the measured dedup/tokenization peak before data preparation."""
+
+    recipe, recipe_sha = load_recipe(args.recipe)
+    measurement, measurement_sha = _verify_sealed(
+        args.sample_measurement, "data-preparation storage sample"
+    )
+    if measurement.get("kind") != "d32_data_prep_storage_sample":
+        _fail("sample measurement has the wrong kind")
+    policy = recipe["storage"]["data_preparation_peak_gate"]
+    sample_documents = _positive_int(
+        measurement.get("sample_documents"), "sample_documents"
+    )
+    total_documents = _positive_int(
+        measurement.get("estimated_total_documents"), "estimated_total_documents"
+    )
+    if sample_documents < int(policy["minimum_sample_documents"]):
+        _fail("data-preparation storage sample is too small")
+    if total_documents < sample_documents:
+        _fail("estimated total documents cannot be smaller than the sample")
+    components = _mapping(measurement.get("components"), "sample components")
+    expected_components = set(policy["required_measured_components"])
+    if set(components) != expected_components:
+        _fail(
+            "data-preparation sample component set mismatch; "
+            f"missing={sorted(expected_components - set(components))}, "
+            f"unexpected={sorted(set(components) - expected_components)}"
+        )
+    projections: dict[str, dict[str, Any]] = {}
+    projected_peak = 0
+    for name in sorted(expected_components):
+        record = _mapping(components[name], f"sample component {name}")
+        _require_exact_keys(record, {"measured_bytes", "projection"}, f"sample component {name}")
+        measured_bytes = _positive_int(record["measured_bytes"], f"{name}.measured_bytes")
+        projection = record["projection"]
+        if projection == "linear_by_documents":
+            projected = math.ceil(measured_bytes * total_documents / sample_documents)
+        elif projection == "fixed":
+            projected = measured_bytes
+        else:
+            _fail(f"{name}.projection must be linear_by_documents or fixed")
+        projections[name] = {
+            "measured_bytes": measured_bytes,
+            "projection": projection,
+            "projected_bytes": projected,
+        }
+        projected_peak += projected
+    resource_components = _mapping(
+        measurement.get("resource_components"), "sample resource_components"
+    )
+    if set(resource_components) != expected_components:
+        _fail(
+            "data-preparation resource component set mismatch; "
+            f"missing={sorted(expected_components - set(resource_components))}, "
+            f"unexpected={sorted(set(resource_components) - expected_components)}"
+        )
+    resource_projections: dict[str, dict[str, Any]] = {}
+    projected_cpu_saat = 0.0
+    for name in sorted(expected_components):
+        record = _mapping(resource_components[name], f"resource component {name}")
+        _require_exact_keys(
+            record,
+            {"measured_billed_cpu_saat", "projection", "sacct_job_id"},
+            f"resource component {name}",
+        )
+        measured = _nonnegative_number(
+            record["measured_billed_cpu_saat"],
+            f"{name}.measured_billed_cpu_saat",
+        )
+        if not isinstance(record["sacct_job_id"], str) or not record["sacct_job_id"]:
+            _fail(f"{name}.sacct_job_id must bind the measured UHeM sample job")
+        projection = record["projection"]
+        if projection == "linear_by_documents":
+            projected = measured * total_documents / sample_documents
+        elif projection == "fixed":
+            projected = measured
+        else:
+            _fail(f"{name}.resource projection must be linear_by_documents or fixed")
+        resource_projections[name] = {
+            "measured_billed_cpu_saat": measured,
+            "projection": projection,
+            "projected_cpu_saat": projected,
+            "sacct_job_id": record["sacct_job_id"],
+        }
+        projected_cpu_saat += projected
+    safety_factor = float(policy["extrapolation_safety_factor"])
+    projected_with_safety = math.ceil(projected_peak * safety_factor)
+    projected_cpu_saat_with_safety = math.ceil(projected_cpu_saat * safety_factor)
+    required_free = projected_with_safety + int(recipe["storage"]["minimum_free_headroom_bytes"])
+    work_dir = args.work_dir.expanduser().resolve()
+    if not work_dir.is_dir() or work_dir.is_symlink():
+        _fail(f"data-preparation work directory must already exist and not be a symlink: {work_dir}")
+    live_storage_policy = recipe["storage"]["uhem_live_quota"]
+    free, live_storage_audit = _live_beegfs_storage(
+        REPO_ROOT,
+        uid=int(live_storage_policy["uid"]),
+        storage_pool_id=int(live_storage_policy["storage_pool_id"]),
+        path=work_dir,
+    )
+    if free < required_free:
+        _fail(
+            "data-preparation peak storage gate failed: "
+            f"need {required_free} free bytes, found {free}; no existing artifact may be deleted"
+        )
+    budget = recipe["uhem_budget"]
+    remaining_cpu_saat, quota_output_sha, quota_audit = _live_uhem_cpu_saat(
+        REPO_ROOT, str(budget["account"]), str(budget["user"])
+    )
+    training_ceiling = int(budget["operational_ceiling_cpu_saat"])
+    total_project_ceiling = projected_cpu_saat_with_safety + training_ceiling
+    if remaining_cpu_saat < total_project_ceiling:
+        _fail(
+            "data-preparation plus training quota gate failed: "
+            f"need {total_project_ceiling} CPU-saat, found {remaining_cpu_saat:.2f}"
+        )
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "d32_data_prep_storage_gate",
+            "family_id": recipe["family_id"],
+            "recipe_sha256": recipe_sha,
+            "sample_measurement_sha256": measurement_sha,
+            "sample_documents": sample_documents,
+            "estimated_total_documents": total_documents,
+            "component_projections": projections,
+            "resource_component_projections": resource_projections,
+            "projected_peak_bytes_before_safety": projected_peak,
+            "safety_factor": safety_factor,
+            "projected_peak_bytes_with_safety": projected_with_safety,
+            "projected_data_preparation_cpu_saat_before_safety": projected_cpu_saat,
+            "projected_data_preparation_cpu_saat_with_safety": projected_cpu_saat_with_safety,
+            "training_proxy_smoke_operational_ceiling_cpu_saat": training_ceiling,
+            "total_project_operational_ceiling_cpu_saat": total_project_ceiling,
+            "required_free_bytes_including_headroom": required_free,
+            "work_dir": str(work_dir),
+            "work_dir_filesystem_device": work_dir.stat().st_dev,
+            "observed_free_bytes": free,
+            "live_storage": live_storage_audit,
+            "uhem_quota": {
+                "remaining_cpu_saat": remaining_cpu_saat,
+                "sshare_output_sha256": quota_output_sha,
+                **quota_audit,
+            },
+            "never_auto_delete_existing_artifacts": True,
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(args.output, receipt)
+    print(json.dumps(receipt, sort_keys=True))
+
+
+def command_preflight(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    data_prep_gate, data_prep_gate_sha = _load_receipt(
+        args.data_prep_storage_gate, "d32_data_prep_storage_gate"
+    )
+    if data_prep_gate.get("recipe_sha256") != recipe_sha:
+        _fail("data-preparation storage gate was created for a different recipe")
+    if data_prep_gate.get("never_auto_delete_existing_artifacts") is not True:
+        _fail("data-preparation storage gate does not preserve existing artifacts")
+    data_prep_cpu = _positive_int(
+        data_prep_gate.get("projected_data_preparation_cpu_saat_with_safety"),
+        "data-preparation projected CPU-saat",
+    )
+    expected_total_ceiling = (
+        data_prep_cpu + int(recipe["uhem_budget"]["operational_ceiling_cpu_saat"])
+    )
+    if data_prep_gate.get("total_project_operational_ceiling_cpu_saat") != expected_total_ceiling:
+        _fail("data-preparation gate total project CPU-saat arithmetic mismatch")
+    base_dir = args.base_dir.expanduser().resolve()
+    if not base_dir.is_dir():
+        _fail(f"base directory does not exist: {base_dir}")
+    paths = _resolved_artifact_paths(recipe, base_dir)
+
+    corpus, corpus_sha = _verify_sealed(
+        paths["corpus_manifest"], "corpus manifest", args.corpus_manifest_sha256
+    )
+    _manifest_inventory_if_present(paths["corpus_root"], corpus, "corpus manifest")
+    dataset, dataset_sha = _verify_sealed(
+        paths["dataset_manifest"], "Nanochat dataset manifest", args.dataset_manifest_sha256
+    )
+    try:
+        validate_dataset_manifest(dataset, profile="strict")
+        verify_file_inventory(
+            paths["corpus_root"], dataset["ordered_files"], require_exact=False
+        )
+    except (ManifestValidationError, OSError, ValueError) as exc:
+        raise FamilyWorkflowError(f"strict dataset manifest verification failed: {exc}") from exc
+    validation_relative = dataset.get("validation_file")
+    if not isinstance(validation_relative, str) or not validation_relative:
+        _fail("strict dataset manifest does not name a validation_file")
+    validation_path = paths["corpus_root"] / validation_relative
+    if not validation_path.is_file() or validation_path.is_symlink():
+        _fail(f"fixed validation file is missing or unsafe: {validation_path}")
+
+    source_receipt, source_sha = _verify_sealed(
+        paths["source_receipt"], "source receipt", args.source_receipt_sha256
+    )
+    del source_receipt
+
+    validation_exposure, validation_exposure_sha = _verify_sealed(
+        paths["validation_exposure"],
+        "validation exposure manifest",
+        args.validation_exposure_sha256,
+    )
+    exposure_index, exposure_index_sha = _verify_sealed(
+        paths["exposure_plan_index"],
+        "exposure plan index",
+        args.exposure_plan_index_sha256,
+    )
+
+    package, package_sha = _verify_sealed(
+        paths["tokenizer_package"], "tokenizer package", args.tokenizer_package_sha256
+    )
+    try:
+        from nanochat.strict_tokenizer import verify_tokenizer_package
+
+        verified_package = verify_tokenizer_package(
+            paths["tokenizer_package"],
+            expected_sha256=package_sha,
+            expected_name=recipe["artifacts"]["tokenizer_name"],
+            expected_vocab_size=recipe["model"]["vocab_size"],
+        )
+    except Exception as exc:
+        raise FamilyWorkflowError(f"tokenizer package verification failed: {exc}") from exc
+    if verified_package.manifest != package:
+        _fail("tokenizer package changed while it was being verified")
+
+    packing_capacity, packing_capacity_sha = _verify_packing_capacity_receipt(
+        paths["packing_capacity"],
+        dataset_sha256=dataset_sha,
+        tokenizer_sha256=package_sha,
+        implementation_path=args.repo_root / "nanochat" / "packing_capacity.py",
+    )
+    expected_corpus_capacity = {
+        "path": paths["packing_capacity"].relative_to(paths["corpus_root"]).as_posix(),
+        "sha256": packing_capacity_sha,
+        "all_worlds_pass": True,
+        "cleanup_authorized": True,
+    }
+    if corpus.get("packing_capacity") != expected_corpus_capacity:
+        _fail("corpus manifest does not bind the passing packing-capacity receipt")
+    if exposure_index.get("packing_capacity_receipt_sha256") != packing_capacity_sha:
+        _fail("exposure plan index does not bind the packing-capacity receipt")
+
+    try:
+        from nanochat.exposure import (
+            validate_exposure_manifest,
+            validate_training_exposure_plan,
+        )
+
+        validate_exposure_manifest(
+            validation_exposure, source_dataset_manifest=dataset
+        )
+    except Exception as exc:
+        raise FamilyWorkflowError(f"validation exposure verification failed: {exc}") from exc
+    if validation_exposure.get("mode") != "validation":
+        _fail("validation exposure manifest must use validation mode")
+    validation_selection = _mapping(
+        validation_exposure.get("selection"), "validation exposure selection"
+    )
+    validation_payload_bytes = _positive_int(
+        validation_selection.get("realized_payload_bytes"),
+        "validation exposure realized_payload_bytes",
+    )
+    validation_documents = _positive_int(
+        validation_selection.get("realized_documents"),
+        "validation exposure realized_documents",
+    )
+
+    expected_plan_specs = {
+        "proxy_d12_seed42_ws1": (1, 42, 4200, 524_288),
+        "proxy_d12_seed314159_ws1": (1, 314159, 4200, 524_288),
+        "proxy_d20_seed42_ws1": (1, 42, 4980, 1_048_576),
+        "signal_smoke_ws4_seed42": (4, 42, 6, 2_097_152),
+        "smoke_ws8": (8, 42, 100, 2_097_152),
+        "smoke_ws16": (16, 42, 100, 2_097_152),
+        "trunk_ws8_seed42": (8, 42, 28800, 2_097_152),
+        "s12_ws8_seed42": (8, 42, 9600, 2_097_152),
+        "s20_ws8_seed42": (8, 42, 16000, 2_097_152),
+        "s40_ws8_seed42": (8, 42, 32000, 2_097_152),
+        "trunk_ws16_seed42": (16, 42, 28800, 2_097_152),
+        "s12_ws16_seed42": (16, 42, 9600, 2_097_152),
+        "s20_ws16_seed42": (16, 42, 16000, 2_097_152),
+        "s40_ws16_seed42": (16, 42, 32000, 2_097_152),
+    }
+    index_plans = exposure_index.get("plans")
+    if not isinstance(index_plans, list):
+        _fail("exposure plan index plans must be an array")
+    by_key = {
+        record.get("key"): record
+        for record in index_plans
+        if isinstance(record, Mapping)
+    }
+    if set(by_key) != set(expected_plan_specs):
+        _fail(
+            "exposure plan index key set mismatch; "
+            f"expected={sorted(expected_plan_specs)}, found={sorted(str(key) for key in by_key)}"
+        )
+    verified_plans: dict[str, dict[str, Any]] = {}
+    for key, (world_size, seed, optimizer_steps, global_batch_tokens) in expected_plan_specs.items():
+        record = _mapping(by_key[key], f"exposure index plan {key}")
+        expected_path = paths[f"exposure:{key}"]
+        if record.get("path") != expected_path.relative_to(paths["corpus_root"]).as_posix():
+            _fail(f"exposure index path mismatch for {key}")
+        plan, plan_sha = _verify_sealed(expected_path, f"training exposure plan {key}")
+        if record.get("sha256") != plan_sha:
+            _fail(f"exposure index hash mismatch for {key}")
+        try:
+            validate_training_exposure_plan(plan)
+        except Exception as exc:
+            raise FamilyWorkflowError(f"training exposure plan {key} is invalid: {exc}") from exc
+        token_positions = optimizer_steps * global_batch_tokens
+        expected_fields = {
+            "world_size": world_size,
+            "seed": seed,
+            "optimizer_steps": optimizer_steps,
+            "token_positions": token_positions,
+            "global_batch_tokens": global_batch_tokens,
+        }
+        for field, expected in expected_fields.items():
+            if record.get(field) != expected:
+                _fail(f"exposure index {key}.{field} must equal {expected}")
+        if plan.get("world_size") != world_size or plan.get("seed") != seed:
+            _fail(f"training exposure plan {key} runtime binding mismatch")
+        if plan.get("horizon") != {"unit": "token_positions", "value": token_positions}:
+            _fail(f"training exposure plan {key} token horizon mismatch")
+        if plan.get("derived", {}).get("optimizer_steps") != optimizer_steps:
+            _fail(f"training exposure plan {key} optimizer-step mismatch")
+        if plan.get("source_dataset_manifest_sha256") != dataset_sha:
+            _fail(f"training exposure plan {key} dataset binding mismatch")
+        if plan.get("tokenizer_sha256") != package_sha:
+            _fail(f"training exposure plan {key} tokenizer binding mismatch")
+        if plan.get("study_sha256") != recipe_sha:
+            _fail(f"training exposure plan {key} recipe binding mismatch")
+        verified_plans[key] = {
+            "path": str(expected_path),
+            "sha256": plan_sha,
+            **expected_fields,
+        }
+    if exposure_index.get("study_manifest_sha256") != recipe_sha:
+        _fail("exposure plan index family-recipe binding mismatch")
+    if exposure_index.get("source_dataset_manifest_sha256") != dataset_sha:
+        _fail("exposure plan index dataset binding mismatch")
+    if exposure_index.get("tokenizer_artifact_sha256") != package_sha:
+        _fail("exposure plan index tokenizer binding mismatch")
+    expected_validation_record = {
+        "path": paths["validation_exposure"].relative_to(paths["corpus_root"]).as_posix(),
+        "sha256": validation_exposure_sha,
+    }
+    if exposure_index.get("validation") != expected_validation_record:
+        _fail("exposure plan index validation binding mismatch")
+
+    mixture_path = args.repo_root / str(recipe["artifacts"]["mixture_config"])
+    if not mixture_path.is_file():
+        _fail(f"mixture config is missing: {mixture_path}")
+    mixture = _load_object(mixture_path, "mixture config")
+    expected_mix_weights = {
+        str(item["id"]): float(item["weight"])
+        for item in _sequence(mixture.get("mixture"), "mixture config weights")
+        if isinstance(item, Mapping)
+    }
+    if packing_capacity.get("intended_mixture_weights") != expected_mix_weights:
+        _fail("packing-capacity mix gate used different intended mixture weights")
+    mixture_sha = file_sha256(mixture_path)
+    training_environment = _mapping(
+        recipe["code_provenance"].get("training_environment"),
+        "code_provenance.training_environment",
+    )
+    pyproject_path = args.repo_root / "pyproject.toml"
+    lock_path = args.repo_root / "uv.lock"
+    if not pyproject_path.is_file() or not lock_path.is_file():
+        _fail("pinned root pyproject.toml or uv.lock is missing")
+    pyproject_sha = file_sha256(pyproject_path)
+    lock_sha = file_sha256(lock_path)
+    if pyproject_sha != training_environment["pyproject_sha256"]:
+        _fail("root pyproject.toml differs from the reviewed upstream environment")
+    if lock_sha != training_environment["uv_lock_sha256"]:
+        _fail("root uv.lock differs from the reviewed upstream environment")
+    expected_python = str(training_environment["python_version"])
+    actual_python = ".".join(str(value) for value in sys.version_info[:3])
+    if actual_python != expected_python:
+        _fail(
+            f"preflight Python must be {expected_python}, found {actual_python}"
+        )
+    try:
+        uv_version_output = subprocess.check_output(
+            ["uv", "--version"],
+            cwd=args.repo_root,
+            text=True,
+            stderr=subprocess.STDOUT,
+        ).strip()
+    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        raise FamilyWorkflowError("cannot verify the pinned uv binary") from exc
+    uv_fields = uv_version_output.split()
+    actual_uv_version = uv_fields[1] if len(uv_fields) >= 2 else ""
+    if actual_uv_version != training_environment["uv_version"]:
+        _fail(
+            f"preflight uv must be {training_environment['uv_version']}, "
+            f"found {actual_uv_version or uv_version_output!r}"
+        )
+
+    commit = _git_output(args.repo_root, "rev-parse", "HEAD")
+    if SHA256_RE.fullmatch(commit) is None and re.fullmatch(r"^[0-9a-f]{40}$", commit) is None:
+        _fail("Git HEAD is not a full immutable revision")
+    dirty = bool(_git_output(args.repo_root, "status", "--porcelain"))
+    if dirty and not args.allow_dirty:
+        _fail("production/smoke preflight requires a clean Git worktree")
+    code_policy = _mapping(recipe["code_provenance"], "code_provenance")
+    upstream_revision = str(code_policy["upstream_base_revision"])
+    try:
+        subprocess.check_call(
+            ["git", "cat-file", "-e", f"{upstream_revision}^{{commit}}"],
+            cwd=args.repo_root,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise FamilyWorkflowError(
+            f"pinned upstream base revision is unavailable locally: {upstream_revision}"
+        ) from exc
+    if code_policy.get("require_upstream_base_ancestor"):
+        ancestor = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", upstream_revision, commit],
+            cwd=args.repo_root,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if ancestor.returncode != 0:
+            _fail(
+                "the production revision does not descend from pinned upstream base "
+                f"{upstream_revision}"
+            )
+    changed_core = set(
+        line
+        for line in _git_output(
+            args.repo_root,
+            "diff",
+            "--name-only",
+            upstream_revision,
+            "--",
+            *[str(path) for path in code_policy["core_scope"]],
+        ).splitlines()
+        if line
+    )
+    if changed_core:
+        _fail(
+            "production core differs from the pinned upstream base; only additive strict "
+            "modules are permitted: " + ", ".join(sorted(changed_core))
+        )
+    core_hashes: dict[str, str] = {}
+    for relative in code_policy["core_scope"]:
+        core_path = args.repo_root / str(relative)
+        if not core_path.is_file():
+            _fail(f"reviewed training-core file is missing: {core_path}")
+        core_hashes[str(relative)] = file_sha256(core_path)
+    for relative, expected_hash in code_policy["exact_file_sha256"].items():
+        actual_hash = core_hashes.get(relative)
+        if actual_hash is None:
+            _fail(f"exact-hash-pinned core file is outside core_scope: {relative}")
+        if not hmac.compare_digest(actual_hash, _sha256(expected_hash, f"exact hash for {relative}")):
+            _fail(
+                f"exact-hash-pinned core file drifted: {relative}; "
+                f"expected {expected_hash}, found {actual_hash}"
+            )
+
+    corpus_bytes = _directory_size(paths["corpus_root"])
+    tokenizer_bytes = _directory_size(paths["tokenizer_root"])
+    storage_policy = recipe["storage"]
+    live_storage = storage_policy["uhem_live_quota"]
+    free_bytes, live_storage_audit = _live_beegfs_storage(
+        args.repo_root,
+        uid=int(live_storage["uid"]),
+        storage_pool_id=int(live_storage["storage_pool_id"]),
+        path=base_dir,
+    )
+    required_free = int(storage_policy["required_free_bytes_at_training_preflight"])
+    if free_bytes < required_free:
+        _fail(
+            "insufficient free storage: "
+            f"need {required_free} bytes for retained checkpoints/transient writes/logs/headroom, "
+            f"found {free_bytes}; existing artifacts will not be deleted"
+        )
+
+    budget = recipe["uhem_budget"]
+    remaining_cpu_saat, quota_output_sha, quota_audit = _live_uhem_cpu_saat(
+        args.repo_root, str(budget["account"]), str(budget["user"])
+    )
+    required_cpu_saat = float(budget["operational_ceiling_cpu_saat"])
+    if remaining_cpu_saat < required_cpu_saat:
+        _fail(
+            "insufficient live UHeM quota: "
+            f"need at least {required_cpu_saat:.0f} CPU-saat, found {remaining_cpu_saat:.2f}"
+        )
+
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "d32_family_preflight_receipt",
+            "family_id": recipe["family_id"],
+            "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            "base_dir": str(base_dir),
+            "recipe": {"path": str(args.recipe), "canonical_sha256": recipe_sha},
+            "mixture_config": {"path": str(mixture_path), "sha256": mixture_sha},
+            "data_preparation_storage_gate_sha256": data_prep_gate_sha,
+            "data_preparation_cpu_saat_with_safety": data_prep_cpu,
+            "total_project_operational_ceiling_cpu_saat": expected_total_ceiling,
+            "corpus": {
+                "root": str(paths["corpus_root"]),
+                "manifest_sha256": corpus_sha,
+                "dataset_manifest_sha256": dataset_sha,
+                "source_receipt_sha256": source_sha,
+                "validation_exposure_manifest_sha256": validation_exposure_sha,
+                "validation_payload_bytes": validation_payload_bytes,
+                "validation_documents": validation_documents,
+                "exposure_plan_index_sha256": exposure_index_sha,
+                "training_exposure_plans": verified_plans,
+                "packing_capacity_receipt": {
+                    "path": str(paths["packing_capacity"]),
+                    "sha256": packing_capacity_sha,
+                    "gate_passed": True,
+                    "worlds": {
+                        world: {
+                            "safe_global_scheduled_positions": packing_capacity[
+                                "simulation"
+                            ]["worlds"][world]["safe_global_scheduled_positions"],
+                            "required_positions_with_margin": packing_capacity[
+                                "simulation"
+                            ]["worlds"][world]["required_positions_with_margin"],
+                            "passes_40x_no_wrap_with_margin": True,
+                        }
+                        for world in ("8", "16")
+                    },
+                },
+                "validation_file": validation_relative,
+                "validation_file_size_bytes": validation_path.stat().st_size,
+                "validation_file_sha256": file_sha256(validation_path),
+                "actual_bytes": corpus_bytes,
+            },
+            "tokenizer": {
+                "root": str(paths["tokenizer_root"]),
+                "name": recipe["artifacts"]["tokenizer_name"],
+                "vocab_size": recipe["model"]["vocab_size"],
+                "package_manifest_sha256": package_sha,
+                "actual_bytes": tokenizer_bytes,
+            },
+            "code": {
+                "git_commit": commit,
+                "git_dirty": dirty,
+                "upstream_base_revision": upstream_revision,
+                "changed_core_paths": sorted(changed_core),
+                "core_file_sha256": core_hashes,
+                "pyproject_sha256": pyproject_sha,
+                "uv_lock_sha256": lock_sha,
+                "uv_version": actual_uv_version,
+                "python_version": actual_python,
+                "environment_sync_mode": training_environment["sync_mode"],
+            },
+            "storage": {
+                **live_storage_audit,
+                "required_free_bytes": required_free,
+                "never_auto_delete_existing_artifacts": True,
+            },
+            "uhem_quota": {
+                "account": budget["account"],
+                "user": budget["user"],
+                "remaining_cpu_saat": remaining_cpu_saat,
+                "required_operational_ceiling_cpu_saat": required_cpu_saat,
+                "sshare_output_sha256": quota_output_sha,
+                **quota_audit,
+            },
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(args.output, receipt)
+    print(json.dumps(receipt, sort_keys=True))
+
+
+def _load_receipt(path: Path, expected_kind: str) -> tuple[dict[str, Any], str]:
+    value, digest = _verify_sealed(path, expected_kind)
+    if value.get("kind") != expected_kind:
+        _fail(f"{path} is not a {expected_kind}")
+    return value, digest
+
+
+def _verify_attention_probe(
+    path: Path,
+    *,
+    recipe: Mapping[str, Any],
+    recipe_sha: str,
+    preflight_sha: str,
+    code_revision: str,
+) -> tuple[dict[str, Any], str]:
+    probe, digest = _load_receipt(path, "d32_attention_backend_probe")
+    expected = {
+        "family_id": recipe["family_id"],
+        "recipe_sha256": recipe_sha,
+        "preflight_receipt_sha256": preflight_sha,
+        "code_revision": code_revision,
+        "world_size": 1,
+    }
+    for key, value in expected.items():
+        if probe.get(key) != value:
+            _fail(f"attention probe {key} mismatch")
+    gate = recipe["attention_backend_gate"]
+    gpu = _mapping(probe.get("gpu"), "attention probe GPU")
+    if str(gpu.get("name", "")).upper().find(str(gate["required_gpu_family"])) < 0:
+        _fail("attention probe did not run on the required A100 family")
+    detection = _mapping(
+        probe.get("module_detection"), "attention probe module_detection"
+    )
+    selected_backend = detection.get("selected_backend_after_probe")
+    selected_pattern = detection.get("selected_window_pattern")
+    selected_pair = (selected_backend, selected_pattern)
+    preferred_pair = (gate["preferred_backend"], gate["preferred_window_pattern"])
+    fallback_pair = (gate["fallback_backend"], gate["fallback_window_pattern"])
+    if selected_pair not in {preferred_pair, fallback_pair}:
+        _fail("attention probe selected a backend/window pair outside the recipe policy")
+    expected_flash_hash = recipe["code_provenance"]["exact_file_sha256"][
+        "nanochat/flash_attention.py"
+    ]
+    if detection.get("flash_attention_file_sha256") != expected_flash_hash:
+        _fail("attention probe used an unreviewed flash_attention.py")
+    check = _mapping(
+        probe.get("selected_d32_model_forward_backward"),
+        "attention probe selected d32 model correctness",
+    )
+    expected_d32_config = {
+        "depth": 32,
+        "model_dim": 2048,
+        "num_heads": 16,
+        "num_kv_heads": 16,
+        "head_dim": 128,
+        "max_seq_len": 2048,
+        "vocab_size": 32768,
+    }
+    expected_check = {
+        "backend": selected_backend,
+        "window_pattern": selected_pattern,
+        "config": expected_d32_config,
+        "construction": "meta_then_to_empty_cuda_then_literal_seed42_init_weights",
+        "initialization_seed": 42,
+        "batch_sequences": 1,
+        "sequence_length": 2048,
+        "compute_dtype": "torch.bfloat16",
+    }
+    for field, value in expected_check.items():
+        if check.get(field) != value:
+            _fail(f"selected d32 attention smoke {field} mismatch")
+    for field in ("output_finite", "loss_finite", "gradients_present", "gradients_finite"):
+        if check.get(field) is not True:
+            _fail(f"selected d32 attention smoke failed {field}")
+    if not isinstance(check.get("gradient_tensor_count"), int) or check[
+        "gradient_tensor_count"
+    ] <= 0:
+        _fail("selected d32 attention smoke did not record gradient tensors")
+    if not isinstance(check.get("peak_cuda_memory_bytes"), int) or check[
+        "peak_cuda_memory_bytes"
+    ] <= 0:
+        _fail("selected d32 attention smoke did not record peak CUDA memory")
+    parameter_dtypes = _mapping(
+        check.get("parameter_dtype_inventory"),
+        "selected d32 attention parameter dtype inventory",
+    )
+    if not {"torch.bfloat16", "torch.float32"}.issubset(parameter_dtypes):
+        _fail("selected d32 attention smoke lacks the expected BF16/FP32 parameters")
+    parameter_elements = 0
+    for dtype, raw_record in parameter_dtypes.items():
+        record = _mapping(raw_record, f"selected d32 parameter dtype {dtype}")
+        _positive_int(record.get("tensor_count"), f"selected d32 {dtype} tensor count")
+        parameter_elements += _positive_int(
+            record.get("element_count"), f"selected d32 {dtype} element count"
+        )
+    if parameter_elements != recipe["model"]["total_parameters"]:
+        _fail("selected d32 attention parameter inventory has the wrong total")
+    buffer_dtypes = _mapping(
+        check.get("buffer_dtype_inventory"),
+        "selected d32 attention buffer dtype inventory",
+    )
+    if "torch.bfloat16" not in buffer_dtypes:
+        _fail("selected d32 attention smoke lacks BF16 rotary-buffer evidence")
+    reason = probe.get("selection_reason")
+    if not isinstance(reason, str) or not reason:
+        _fail("attention probe does not record a selection/fallback reason")
+    if selected_pair == preferred_pair:
+        if probe.get("decision") != "accepted_fa3_SSSL":
+            _fail("preferred FA3+SSSL selection has the wrong decision")
+        if detection.get("HAS_FA3_at_import") is not True or detection.get(
+            "USE_FA3_at_import"
+        ) is not True:
+            _fail("FA3 may be selected only when pinned upstream auto-detection selected it")
+        if probe.get("fa3_actual_d32_smoke_passed") is not True:
+            _fail("FA3+SSSL did not pass the actual-d32 finite smoke")
+    else:
+        if probe.get("decision") != "accepted_sdpa_L_fallback":
+            _fail("SDPA+L fallback selection has the wrong decision")
+        if probe.get("fa3_actual_d32_smoke_passed") is True:
+            _fail("probe fell back to SDPA despite a passing upstream-auto FA3 d32 smoke")
+    if probe.get("fa3_sdpa_comparison_decisional") is not False:
+        _fail("diagnostic FA3-vs-SDPA comparisons must not decide production selection")
+    benchmarks = _mapping(probe.get("pattern_benchmarks"), "pattern benchmarks")
+    if set(benchmarks) != {"L", "SSSL"}:
+        _fail("attention probe lacks the L-versus-SSSL comparison")
+    for pattern, result in benchmarks.items():
+        record = _mapping(result, f"pattern benchmark {pattern}")
+        if record.get("pattern") != pattern or float(record.get("median_seconds", 0)) <= 0:
+            _fail(f"attention probe benchmark {pattern} is invalid")
+    return probe, digest
+
+
+def _production_identity(
+    recipe_sha: str,
+    preflight: Mapping[str, Any],
+    *,
+    attention_probe_sha256: str,
+    proxy_approval_sha256: str,
+    accepted_base_weight_decay: float,
+    accepted_weight_decay_cooldown_policy: str,
+) -> dict[str, Any]:
+    return {
+        "recipe_sha256": recipe_sha,
+        "mixture_config_sha256": preflight["mixture_config"]["sha256"],
+        "corpus_manifest_sha256": preflight["corpus"]["manifest_sha256"],
+        "dataset_manifest_sha256": preflight["corpus"]["dataset_manifest_sha256"],
+        "validation_file_sha256": preflight["corpus"]["validation_file_sha256"],
+        "tokenizer_package_sha256": preflight["tokenizer"]["package_manifest_sha256"],
+        "code_revision": preflight["code"]["git_commit"],
+        "attention_probe_sha256": attention_probe_sha256,
+        "wsd_proxy_approval_sha256": proxy_approval_sha256,
+        "wsd_base_weight_decay": accepted_base_weight_decay,
+        "wsd_weight_decay_cooldown": accepted_weight_decay_cooldown_policy,
+        "depth": 32,
+        "global_batch_tokens": 2_097_152,
+        "device_batch_sequences": 4,
+        "max_seq_len": 2048,
+        "optimizer": "muon_adamw",
+        "lr_schedule": "wsd",
+        "gradient_clip_norm": 0.0,
+        "target_param_count": "scaling",
+        "target_param_data_ratio": -1.0,
+    }
+
+
+def command_attention_env(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    preflight, preflight_sha = _load_receipt(
+        args.preflight_receipt, "d32_family_preflight_receipt"
+    )
+    if preflight["recipe"]["canonical_sha256"] != recipe_sha:
+        _fail("attention environment preflight recipe mismatch")
+    probe, probe_sha = _verify_attention_probe(
+        args.attention_probe,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight_sha=preflight_sha,
+        code_revision=preflight["code"]["git_commit"],
+    )
+    detection = _mapping(probe["module_detection"], "attention probe detection")
+    values = {
+        "ATTENTION_BACKEND": str(detection["selected_backend_after_probe"]),
+        "WINDOW_PATTERN": str(detection["selected_window_pattern"]),
+        "ATTENTION_PROBE_SHA256": probe_sha,
+        "CODE_REVISION": str(preflight["code"]["git_commit"]),
+    }
+    for key, value in values.items():
+        print(f"{key}={shlex.quote(value)}")
+
+
+def _verify_frozen_optimizer_protocol(
+    protocol: Mapping[str, Any],
+    *,
+    label: str,
+) -> Mapping[str, Any]:
+    """Verify settings that must never be inherited from mutable CLI defaults."""
+
+    optimizer = _mapping(protocol.get("optimizer"), f"{label} optimizer")
+    if optimizer.get("gradient_clip_norm") != 0.0:
+        _fail(f"{label} must bind gradient_clip_norm=0.0")
+    return optimizer
+
+
+def _verify_frozen_protocol(
+    protocol: Mapping[str, Any],
+    *,
+    recipe: Mapping[str, Any],
+    preflight: Mapping[str, Any],
+    attention_probe: Mapping[str, Any],
+    attention_probe_sha256: str,
+    label: str,
+    run_kind: str,
+    recipe_scope: str,
+    model_tag: str,
+    exposure_plan_sha256: str,
+    depth: int,
+    model_dim: int,
+    world_size: int,
+    device_batch_size: int,
+    total_batch_size: int,
+    num_iterations: int,
+    eval_every_updates: int,
+    seed: int,
+    production_gate: Mapping[str, Any] | None = None,
+    production_gate_sha256: str | None = None,
+) -> Mapping[str, Any]:
+    optimizer = _verify_frozen_optimizer_protocol(protocol, label=label)
+    if protocol.get("protocol_version") != "d32_wsd_strict_v1":
+        _fail(f"{label} strict protocol version mismatch")
+    exact_scalars = {
+        "run_kind": run_kind,
+        "recipe_scope": recipe_scope,
+        "model_tag": model_tag,
+        "source_dataset_manifest_sha256": preflight["corpus"]["dataset_manifest_sha256"],
+        "data_order": recipe["training"]["data_order"],
+        "data_order_authority": (
+            "sealed_dataset_manifest_materialization_order_with_"
+            "upstream_row_group_rank_sharding"
+        ),
+        "seed": seed,
+        "world_size": world_size,
+        "device_batch_size": device_batch_size,
+        "total_batch_size": total_batch_size,
+        "num_iterations": num_iterations,
+    }
+    for key, expected in exact_scalars.items():
+        if protocol.get(key) != expected:
+            _fail(f"{label} {key} must equal {expected!r}")
+    code = _mapping(protocol.get("code"), f"{label} code provenance")
+    expected_code = {
+        "git_revision": preflight["code"]["git_commit"],
+        "upstream_base_revision": recipe["code_provenance"]["upstream_base_revision"],
+        "environment_lock_sha256": preflight["code"]["uv_lock_sha256"],
+        "exact_core_sha256": preflight["code"]["core_file_sha256"],
+    }
+    if code != expected_code:
+        _fail(f"{label} code provenance differs from the sealed preflight")
+    selected = _mapping(
+        attention_probe.get("module_detection"), f"{label} attention selection"
+    )
+    selected_backend = selected.get("selected_backend_after_probe")
+    selected_pattern = selected.get("selected_window_pattern")
+    architecture = _mapping(protocol.get("architecture_cli"), f"{label} architecture")
+    expected_architecture = {
+        "depth": depth,
+        "aspect_ratio": 64,
+        "head_dim": 128,
+        "max_seq_len": 2048,
+        "window_pattern": selected_pattern,
+    }
+    for field, expected in expected_architecture.items():
+        if architecture.get(field) != expected:
+            _fail(f"{label} architecture CLI {field} differs from frozen recipe")
+    total_parameters = _positive_int(
+        architecture.get("total_parameters"), f"{label} total parameters"
+    )
+    scaling_parameters = _positive_int(
+        architecture.get("scaling_parameters"), f"{label} scaling parameters"
+    )
+    if depth == recipe["model"]["depth"]:
+        if total_parameters != recipe["model"]["total_parameters"]:
+            _fail(f"{label} total parameter count differs from the d32 recipe")
+        if scaling_parameters != recipe["model"]["scaling_parameters"]:
+            _fail(f"{label} scaling parameter count differs from the d32 recipe")
+    else:
+        proxy_stage = (
+            recipe["weight_decay_proxy_ablation"]["screen_stage"]
+            if depth == 12
+            else recipe["weight_decay_proxy_ablation"]["confirmation_stage"]
+        )
+        if scaling_parameters != proxy_stage["scaling_parameters"]:
+            _fail(f"{label} proxy scaling parameter count differs from the recipe")
+    model_config = _mapping(protocol.get("model_config"), f"{label} model_config")
+    expected_model_config = {
+        "sequence_len": 2048,
+        "vocab_size": 32768,
+        "n_layer": depth,
+        "n_head": model_dim // 128,
+        "n_kv_head": model_dim // 128,
+        "n_embd": model_dim,
+        "window_pattern": selected_pattern,
+    }
+    if model_config != expected_model_config:
+        _fail(f"{label} realized model config differs from frozen MHA architecture")
+    tokenizer = _mapping(protocol.get("tokenizer"), f"{label} tokenizer")
+    expected_tokenizer = {
+        "name": recipe["artifacts"]["tokenizer_name"],
+        "artifact_sha256": preflight["tokenizer"]["package_manifest_sha256"],
+        "vocab_size": 32768,
+    }
+    if tokenizer != expected_tokenizer:
+        _fail(f"{label} tokenizer binding mismatch")
+    precision = _mapping(protocol.get("precision"), f"{label} precision")
+    if precision != {"compute_dtype": "torch.bfloat16", "fp8_enabled": False}:
+        _fail(f"{label} must use BF16 with FP8 explicitly disabled")
+    attention = _mapping(protocol.get("attention"), f"{label} attention")
+    expected_attention = {
+        "backend": selected_backend,
+        "window_pattern": selected_pattern,
+        "probe_sha256": attention_probe_sha256,
+        "selection_reason": attention_probe["selection_reason"],
+        "decision": attention_probe["decision"],
+        "live_fa3_kernel_inventory_sha256": (
+            _mapping(
+                selected.get("fa3_kernel_inventory"),
+                f"{label} FA3 kernel inventory",
+            ).get("inventory_sha256")
+            if selected_backend == "fa3"
+            else None
+        ),
+    }
+    if attention != expected_attention:
+        _fail(f"{label} attention identity differs from the sealed A100 probe")
+    validation = _mapping(protocol.get("validation"), f"{label} validation")
+    expected_validation = {
+        "manifest_sha256": preflight["corpus"]["validation_exposure_manifest_sha256"],
+        "payload_bytes": preflight["corpus"]["validation_payload_bytes"],
+        "documents": preflight["corpus"]["validation_documents"],
+        "full_manifest": True,
+        "packing_policy": "whole_document_no_crop_rows_before_rank_sharding",
+        "bos_boundary_targets_masked": True,
+        "padding_targets_masked": True,
+        "eval_every_updates": eval_every_updates,
+        "eval_tokens_cli_unused": recipe["training"]["evaluation"][
+            "eval_tokens_cli_unused"
+        ],
+    }
+    for field, expected in expected_validation.items():
+        if validation.get(field) != expected:
+            _fail(f"{label} fixed-validation {field} mismatch")
+    target_tokens = _positive_int(
+        validation.get("target_tokens"), f"{label} validation target tokens"
+    )
+    logical_rows = _positive_int(
+        validation.get("logical_rows"), f"{label} validation logical rows"
+    )
+    padded_world1 = _positive_int(
+        validation.get("padded_token_positions_world1"),
+        f"{label} validation padded positions world1",
+    )
+    if padded_world1 != logical_rows * 2048 or target_tokens > padded_world1:
+        _fail(f"{label} validation row/token arithmetic mismatch")
+    expected_runtime_padding = (
+        math.ceil(logical_rows / (device_batch_size * world_size))
+        * device_batch_size
+        * 2048
+        * world_size
+    )
+    if validation.get("padded_token_positions_runtime_world") != expected_runtime_padding:
+        _fail(f"{label} distributed validation padding arithmetic mismatch")
+    _sha256(validation.get("row_layout_sha256"), f"{label} validation row layout")
+    if set(validation) != {
+        *expected_validation,
+        "target_tokens",
+        "logical_rows",
+        "row_layout_sha256",
+        "padded_token_positions_world1",
+        "padded_token_positions_runtime_world",
+    }:
+        _fail(f"{label} validation protocol has missing or unexpected fields")
+    packing_capacity = _mapping(
+        protocol.get("packing_capacity"), f"{label} packing capacity"
+    )
+    topology = protocol.get("topology")
+    if run_kind in {"production", "smoke"}:
+        capacity_record = _mapping(
+            preflight["corpus"].get("packing_capacity_receipt"),
+            f"{label} preflight packing capacity",
+        )
+        capacity_receipt, capacity_sha = _load_receipt(
+            Path(str(capacity_record["path"])), "turkish_bestfit_capacity_receipt"
+        )
+        if capacity_sha != capacity_record.get("sha256"):
+            _fail(f"{label} packing-capacity file differs from preflight")
+        selected_capacity = _mapping(
+            _mapping(
+                capacity_receipt.get("simulation"), f"{label} capacity simulation"
+            ).get("worlds"),
+            f"{label} capacity worlds",
+        ).get(str(world_size))
+        if packing_capacity != {
+            "receipt_sha256": capacity_sha,
+            "selected_topology": selected_capacity,
+        }:
+            _fail(f"{label} selected packing capacity differs from the sealed receipt")
+    else:
+        if packing_capacity != {"receipt_sha256": None, "selected_topology": None}:
+            _fail(f"{label} run claims an unsupported packing-capacity selection")
+
+    if run_kind == "production":
+        if production_gate is None or production_gate_sha256 is None:
+            _fail(f"{label} production protocol requires its topology gate")
+        expected_topology = {
+            "gate_sha256": production_gate_sha256,
+            "authorized_world_size": world_size,
+            "authorized_nodes": production_gate["authorized_production_nodes"],
+            "selection_reason": production_gate["selection_reason"],
+            "require_single_world_size_for_entire_lineage": True,
+        }
+        if topology != expected_topology:
+            _fail(f"{label} topology identity differs from the production gate")
+    else:
+        if topology is not None:
+            _fail(f"{label} non-production run claims a production topology gate")
+    checkpointing = _mapping(protocol.get("checkpointing"), f"{label} checkpointing")
+    if checkpointing != {"transactional": True, "save_every_updates": -1}:
+        _fail(f"{label} checkpoint policy mismatch")
+    preemption = _mapping(protocol.get("preemption"), f"{label} preemption")
+    if preemption != {
+        "signals": ["SIGUSR1", "SIGTERM"],
+        "checkpoint_boundary": "next_optimizer_safe_update",
+        "exit_code": 75,
+    }:
+        _fail(f"{label} preemption protocol mismatch")
+    exposure_plan = _mapping(protocol.get("exposure_plan"), f"{label} exposure plan")
+    try:
+        realized_exposure_sha = verify_manifest_hash(exposure_plan)
+    except ValueError as exc:
+        raise FamilyWorkflowError(f"{label} embedded exposure plan is invalid: {exc}") from exc
+    if realized_exposure_sha != exposure_plan_sha256:
+        _fail(f"{label} embedded exposure plan differs from its preflight hash")
+    if exposure_plan.get("world_size") != world_size or exposure_plan.get("seed") != seed:
+        _fail(f"{label} embedded exposure plan runtime binding mismatch")
+    if exposure_plan.get("horizon") != {
+        "unit": "token_positions",
+        "value": num_iterations * total_batch_size,
+    }:
+        _fail(f"{label} embedded exposure horizon mismatch")
+    expected_lr_scale = math.sqrt(total_batch_size / 524_288)
+    expected_lrs = {
+        "embedding": 0.3 * expected_lr_scale,
+        "unembedding": 0.008 * expected_lr_scale,
+        "matrix": 0.02 * expected_lr_scale,
+        "scalar": 0.5 * expected_lr_scale,
+    }
+    actual_lrs = _mapping(optimizer.get("learning_rates"), f"{label} learning rates")
+    if set(actual_lrs) != set(expected_lrs) or any(
+        not math.isclose(
+            float(actual_lrs[key]), expected, rel_tol=1e-15, abs_tol=1e-15
+        )
+        for key, expected in expected_lrs.items()
+    ):
+        _fail(f"{label} batch-scaled optimizer learning rates drifted")
+    return optimizer
+
+
+def _verify_proxy_acceptance(
+    path: Path,
+    *,
+    recipe: Mapping[str, Any],
+    recipe_sha: str,
+    preflight: Mapping[str, Any],
+    attention_probe_sha256: str,
+) -> tuple[dict[str, Any], str]:
+    approval, digest = _load_receipt(path, "wsd_proxy_acceptance")
+    proxy = recipe["weight_decay_proxy_ablation"]
+    expected = {
+        "decision": "accepted",
+        "recipe_version": proxy["recipe_version"],
+        "study_manifest_sha256": recipe_sha,
+        "tokenizer_artifact_sha256": preflight["tokenizer"]["package_manifest_sha256"],
+        "source_dataset_manifest_sha256": preflight["corpus"]["dataset_manifest_sha256"],
+        "trainer_code_revision": preflight["code"]["git_commit"],
+        "gradient_clip_norm": 0.0,
+        "attention_probe_sha256": attention_probe_sha256,
+        "weight_decay_transfer_rule": proxy["weight_decay_transfer_rule"],
+        "production_scaling_parameters": proxy["production_scaling_parameters"],
+        "production_global_batch_tokens": proxy["production_global_batch_tokens"],
+    }
+    for key, value in expected.items():
+        if approval.get(key) != value:
+            _fail(f"weight-decay proxy approval {key} mismatch")
+    accepted = approval.get("accepted_base_weight_decay")
+    candidates = {
+        candidate["id"]: candidate
+        for candidate in proxy["candidates"]
+    }
+    accepted_policy = approval.get("accepted_weight_decay_cooldown_policy")
+    if not any(
+        candidate["production_base_weight_decay"] == accepted
+        and candidate["cooldown_weight_decay"] == accepted_policy
+        and candidate["eligible_for_production"] is True
+        for candidate in candidates.values()
+    ):
+        _fail("proxy approval selected a weight decay outside the reviewed candidates")
+    results = approval.get("candidate_results")
+    if not isinstance(results, list) or {
+        result.get("id") for result in results if isinstance(result, Mapping)
+    } != set(candidates):
+        _fail("proxy approval candidate_results do not cover the reviewed candidates")
+    return approval, digest
+
+
+def command_seal_proxy_run(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    preflight, preflight_sha = _load_receipt(
+        args.preflight_receipt, "d32_family_preflight_receipt"
+    )
+    if preflight["recipe"]["canonical_sha256"] != recipe_sha:
+        _fail("proxy run preflight recipe mismatch")
+    _attention_probe, attention_probe_sha = _verify_attention_probe(
+        args.attention_probe,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight_sha=preflight_sha,
+        code_revision=preflight["code"]["git_commit"],
+    )
+    proxy = recipe["weight_decay_proxy_ablation"]
+    proxy_stage_name = "screen_stage" if args.model_depth == 12 else "confirmation_stage"
+    proxy_stage = _mapping(proxy[proxy_stage_name], proxy_stage_name)
+    if proxy_stage["model_depth"] != args.model_depth:
+        _fail("proxy stage/model depth mismatch")
+    candidate_map = {
+        candidate["id"]: candidate
+        for candidate in proxy["candidates"]
+    }
+    if args.candidate_id not in candidate_map:
+        _fail(f"unknown weight-decay proxy candidate: {args.candidate_id}")
+    if args.seed not in proxy_stage["seeds"]:
+        _fail(f"unreviewed weight-decay proxy seed: {args.seed}")
+    candidate = candidate_map[args.candidate_id]
+    expected_plan_key = f"proxy_d{args.model_depth}_seed{args.seed}_ws1"
+    expected_plan = preflight["corpus"]["training_exposure_plans"].get(expected_plan_key)
+    if not isinstance(expected_plan, Mapping):
+        _fail(f"preflight receipt lacks {expected_plan_key}")
+
+    final_step = int(proxy_stage["updates"])
+    from nanochat.strict_checkpoint import inspect_strict_checkpoint
+
+    try:
+        checkpoint = inspect_strict_checkpoint(args.checkpoint_root, final_step)
+    except Exception as exc:
+        raise FamilyWorkflowError(f"proxy final checkpoint verification failed: {exc}") from exc
+    checkpoint_sha = verify_manifest_hash(checkpoint)
+    if checkpoint.get("expected_world_size") != proxy_stage["world_size"]:
+        _fail("proxy checkpoint world size mismatch")
+    identity = _mapping(checkpoint.get("identity"), "proxy checkpoint identity")
+    expected_proxy_run_id = (
+        f"{recipe['family_id']}_proxy_d{args.model_depth}_"
+        f"{args.candidate_id}_seed{args.seed}"
+    )
+    rank_exit, rank_exit_sha = _load_receipt(
+        args.rank_exit_receipt, "d32_batch_direct_rank_exit"
+    )
+    expected_rank_exit = {
+        "family_id": recipe["family_id"],
+        "recipe_sha256": recipe_sha,
+        "run_id": expected_proxy_run_id,
+        "phase": "proxy_train",
+        "slurm_job_id": args.slurm_job_id,
+        "rank": 0,
+        "local_rank": 0,
+        "world_size": 1,
+        "launcher": "slurm_batch_direct_python_env_v1",
+        "child_exit_code": 0,
+        "termination": "clean",
+    }
+    for field, value in expected_rank_exit.items():
+        if rank_exit.get(field) != value:
+            _fail(f"proxy rank-exit receipt {field} mismatch")
+    if identity.get("study_id") != recipe["family_id"] or identity.get(
+        "run_id"
+    ) != expected_proxy_run_id:
+        _fail("proxy checkpoint study/run identity mismatch")
+    protocol = _mapping(identity.get("protocol"), "proxy checkpoint protocol")
+    architecture = _mapping(protocol.get("architecture_cli"), "proxy checkpoint architecture")
+    if architecture.get("depth") != args.model_depth:
+        _fail("proxy checkpoint model depth mismatch")
+    optimizer = _verify_frozen_protocol(
+        protocol,
+        recipe=recipe,
+        preflight=preflight,
+        attention_probe=_attention_probe,
+        attention_probe_sha256=attention_probe_sha,
+        label="proxy checkpoint protocol",
+        run_kind="proxy",
+        recipe_scope=f"proxy_d{args.model_depth}",
+        model_tag=expected_proxy_run_id,
+        exposure_plan_sha256=str(expected_plan["sha256"]),
+        depth=args.model_depth,
+        model_dim=int(proxy_stage["model_dim"]),
+        world_size=int(proxy_stage["world_size"]),
+        device_batch_size=int(proxy_stage["device_batch_sequences"]),
+        total_batch_size=int(proxy_stage["global_batch_tokens"]),
+        num_iterations=final_step,
+        eval_every_updates=int(proxy_stage["validation_every_updates"]),
+        seed=args.seed,
+    )
+    stage_key = f"d{args.model_depth}"
+    effective_weight_decay = float(candidate["stage_effective_weight_decay"][stage_key])
+    if not math.isclose(
+        float(optimizer.get("muon_base_weight_decay", float("nan"))),
+        effective_weight_decay,
+        rel_tol=0.0,
+        abs_tol=1e-15,
+    ):
+        _fail("proxy checkpoint effective base weight decay differs from candidate rule")
+    schedule = _mapping(protocol.get("schedule"), "proxy checkpoint schedule")
+    if schedule.get("name") != candidate["schedule"]:
+        _fail("proxy checkpoint schedule differs from candidate")
+    if candidate["schedule"] == "wsd":
+        expected_policy = candidate["cooldown_weight_decay"]
+        if schedule.get("recipe_version") != proxy["recipe_version"]:
+            _fail("proxy checkpoint WSD recipe version mismatch")
+        if schedule.get("warmup_steps") != 40 or schedule.get("momentum_warmup_steps") != 400:
+            _fail("proxy checkpoint WSD warmup policy mismatch")
+        if not math.isclose(
+            float(schedule.get("stable_muon_weight_decay", float("nan"))),
+            effective_weight_decay,
+            rel_tol=0.0,
+            abs_tol=1e-15,
+        ):
+            _fail("proxy checkpoint schedule effective WD mismatch")
+        if schedule.get("proxy_approval_sha256") is not None:
+            _fail("proxy WSD run unexpectedly claims a production approval")
+        if schedule.get("weight_decay_cooldown_policy") != expected_policy:
+            _fail("proxy checkpoint WSD cooldown policy differs from candidate")
+        if schedule.get("cooldown_start_step") != final_step - final_step // 10:
+            _fail("proxy checkpoint does not use an exact 10% WSD cooldown")
+    if identity.get("study_manifest_sha256") != recipe_sha:
+        _fail("proxy checkpoint recipe hash mismatch")
+    if identity.get("tokenizer_artifact_sha256") != preflight["tokenizer"]["package_manifest_sha256"]:
+        _fail("proxy checkpoint tokenizer hash mismatch")
+    if identity.get("exposure_plan_sha256") != expected_plan["sha256"]:
+        _fail("proxy checkpoint exposure-plan hash mismatch")
+
+    events, state = read_training_log(args.curve_log)
+    validation_points = [
+        event
+        for event in events
+        if event.get("event_type") == "validation"
+        and int(event["updates_completed"]) <= final_step
+    ]
+    count = int(proxy_stage["final_validation_points"])
+    if len(validation_points) < count:
+        _fail(f"proxy run has fewer than {count} fixed-validation points")
+    selected = validation_points[-count:]
+    every = int(proxy_stage["validation_every_updates"])
+    all_expected_steps = list(range(0, final_step + 1, every))
+    if not all_expected_steps or all_expected_steps[-1] != final_step:
+        all_expected_steps.append(final_step)
+    expected_steps = all_expected_steps[-count:]
+    actual_steps = [int(event["updates_completed"]) for event in selected]
+    if actual_steps != expected_steps:
+        _fail(
+            f"proxy final validation steps must equal {expected_steps}; found {actual_steps}"
+        )
+    bpbs = [float(event["metrics"]["val/bpb"]) for event in selected]
+    if any(not (0.0 < value < 100.0) for value in bpbs):
+        _fail("proxy validation contains a non-finite or implausible BPB")
+    maximum_range = float(proxy["acceptance_rule"]["maximum_last5_bpb_range"])
+    maximum_regression = float(
+        proxy["acceptance_rule"]["maximum_final_minus_best_bpb"]
+    )
+    if max(bpbs) - min(bpbs) > maximum_range:
+        _fail("proxy final fixed-validation BPB range exceeds the stability gate")
+    if bpbs[-1] - min(bpbs) > maximum_regression:
+        _fail("proxy final fixed-validation BPB regressed beyond the stability gate")
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "wsd_proxy_run_receipt",
+            "family_id": recipe["family_id"],
+            "recipe_version": proxy["recipe_version"],
+            "candidate_id": args.candidate_id,
+            "model_depth": args.model_depth,
+            "schedule": candidate["schedule"],
+            "input_weight_decay": candidate.get("input_weight_decay"),
+            "production_base_weight_decay": candidate["production_base_weight_decay"],
+            "effective_base_weight_decay": effective_weight_decay,
+            "weight_decay_transfer_rule": proxy["weight_decay_transfer_rule"],
+            "stage_scaling_parameters": proxy_stage["scaling_parameters"],
+            "stage_global_batch_tokens": proxy_stage["global_batch_tokens"],
+            "weight_decay_cooldown_policy": candidate["cooldown_weight_decay"],
+            "eligible_for_production": candidate["eligible_for_production"],
+            "seed": args.seed,
+            "world_size": proxy_stage["world_size"],
+            "optimizer_steps": final_step,
+            "preflight_receipt_sha256": preflight_sha,
+            "study_manifest_sha256": recipe_sha,
+            "tokenizer_artifact_sha256": preflight["tokenizer"]["package_manifest_sha256"],
+            "source_dataset_manifest_sha256": preflight["corpus"]["dataset_manifest_sha256"],
+            "trainer_code_revision": preflight["code"]["git_commit"],
+            "gradient_clip_norm": 0.0,
+            "attention_probe_sha256": attention_probe_sha,
+            "exposure_plan_sha256": expected_plan["sha256"],
+            "checkpoint_sha256": checkpoint_sha,
+            "curve_log_sha256": file_sha256(args.curve_log),
+            "rank_exit_receipt_sha256": rank_exit_sha,
+            "curve_log_terminal_event_sha256": state.last_event_sha256,
+            "final_validation_steps": actual_steps,
+            "final_validation_bpb": bpbs,
+            "mean_final_validation_bpb": sum(bpbs) / len(bpbs),
+            "slurm_job_id": args.slurm_job_id,
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(args.output, receipt)
+    print(json.dumps(receipt, sort_keys=True))
+
+
+def command_proxy_env(args: argparse.Namespace) -> None:
+    recipe, _recipe_sha = load_recipe(args.recipe)
+    proxy = recipe["weight_decay_proxy_ablation"]
+    candidates = {candidate["id"]: candidate for candidate in proxy["candidates"]}
+    candidate = candidates.get(args.candidate_id)
+    if not isinstance(candidate, Mapping):
+        _fail(f"unknown proxy candidate: {args.candidate_id}")
+    stage = proxy["screen_stage"] if args.model_depth == 12 else proxy["confirmation_stage"]
+    if args.seed not in stage["seeds"]:
+        _fail(f"seed {args.seed} is not frozen for d{args.model_depth}")
+    stage_key = f"d{args.model_depth}"
+    run_id = (
+        f"{recipe['family_id']}_proxy_{stage_key}_{args.candidate_id}_seed{args.seed}"
+    )
+    values = {
+        "RUN_ID": run_id,
+        "MODEL_TAG": run_id,
+        "DEPTH": str(args.model_depth),
+        "MODEL_DIM": str(stage["model_dim"]),
+        "DEVICE_BATCH_SIZE": str(stage["device_batch_sequences"]),
+        "TOTAL_BATCH_SIZE": str(stage["global_batch_tokens"]),
+        "NUM_ITERATIONS": str(stage["updates"]),
+        "STOP_AT_STEP": str(stage["updates"]),
+        "SEED": str(args.seed),
+        "EVAL_EVERY": str(stage["validation_every_updates"]),
+        "EXPOSURE_PLAN_KEY": f"proxy_{stage_key}_seed{args.seed}_ws1",
+        "LR_SCHEDULE": str(candidate["schedule"]),
+        "EFFECTIVE_BASE_WEIGHT_DECAY": str(
+            candidate["stage_effective_weight_decay"][stage_key]
+        ),
+        "INPUT_WEIGHT_DECAY": str(candidate.get("input_weight_decay", 0.28)),
+        "WSD_WEIGHT_DECAY_COOLDOWN": str(candidate["cooldown_weight_decay"]),
+        "WSD_COOLDOWN_START_STEP": (
+            str(int(stage["updates"]) - int(stage["updates"]) // 10)
+            if candidate["schedule"] == "wsd"
+            else "-1"
+        ),
+    }
+    for key, value in values.items():
+        print(f"{key}={shlex.quote(value)}")
+
+
+def _proxy_run_cells(
+    paths: Sequence[Path],
+    *,
+    expected_depth: int,
+    expected_cells: set[tuple[str, int]],
+    candidates: Mapping[str, Mapping[str, Any]],
+    proxy: Mapping[str, Any],
+    recipe_sha: str,
+    preflight: Mapping[str, Any],
+    preflight_sha: str,
+    attention_probe_sha: str,
+) -> dict[tuple[str, int], tuple[dict[str, Any], str]]:
+    cells: dict[tuple[str, int], tuple[dict[str, Any], str]] = {}
+    for path in paths:
+        receipt, digest = _load_receipt(path, "wsd_proxy_run_receipt")
+        key = (str(receipt.get("candidate_id")), int(receipt.get("seed", -1)))
+        if key in cells:
+            _fail(f"duplicate proxy cell receipt: {key}")
+        expected_common = {
+            "preflight_receipt_sha256": preflight_sha,
+            "study_manifest_sha256": recipe_sha,
+            "tokenizer_artifact_sha256": preflight["tokenizer"]["package_manifest_sha256"],
+            "source_dataset_manifest_sha256": preflight["corpus"]["dataset_manifest_sha256"],
+            "trainer_code_revision": preflight["code"]["git_commit"],
+            "gradient_clip_norm": 0.0,
+            "attention_probe_sha256": attention_probe_sha,
+            "recipe_version": proxy["recipe_version"],
+            "model_depth": expected_depth,
+        }
+        for field, expected in expected_common.items():
+            if receipt.get(field) != expected:
+                _fail(f"proxy cell {key} {field} mismatch")
+        candidate = candidates.get(key[0])
+        if not isinstance(candidate, Mapping):
+            _fail(f"proxy cell {key} uses an unknown candidate")
+        expected_candidate = {
+            "production_base_weight_decay": candidate["production_base_weight_decay"],
+            "effective_base_weight_decay": candidate["stage_effective_weight_decay"][f"d{expected_depth}"],
+            "weight_decay_transfer_rule": proxy["weight_decay_transfer_rule"],
+            "schedule": candidate["schedule"],
+            "weight_decay_cooldown_policy": candidate["cooldown_weight_decay"],
+        }
+        for field, expected in expected_candidate.items():
+            if receipt.get(field) != expected:
+                _fail(f"proxy cell {key} {field} mismatch")
+        cells[key] = (receipt, digest)
+    if set(cells) != expected_cells:
+        _fail(
+            "proxy receipt matrix is incomplete; "
+            f"missing={sorted(expected_cells - set(cells))}, "
+            f"extra={sorted(set(cells) - expected_cells)}"
+        )
+    return cells
+
+
+def command_screen_proxy(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    preflight, preflight_sha = _load_receipt(
+        args.preflight_receipt, "d32_family_preflight_receipt"
+    )
+    proxy = recipe["weight_decay_proxy_ablation"]
+    _attention_probe, attention_probe_sha = _verify_attention_probe(
+        args.attention_probe,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight_sha=preflight_sha,
+        code_revision=preflight["code"]["git_commit"],
+    )
+    candidates = {
+        candidate["id"]: candidate
+        for candidate in proxy["candidates"]
+    }
+    screen = proxy["screen_stage"]
+    expected_cells = {
+        (candidate_id, int(seed))
+        for candidate_id in candidates
+        for seed in screen["seeds"]
+    }
+    cells = _proxy_run_cells(
+        args.run_receipt,
+        expected_depth=12,
+        expected_cells=expected_cells,
+        candidates=candidates,
+        proxy=proxy,
+        recipe_sha=recipe_sha,
+        preflight=preflight,
+        preflight_sha=preflight_sha,
+        attention_probe_sha=attention_probe_sha,
+    )
+
+    candidate_results: list[dict[str, Any]] = []
+    for candidate_id, candidate in candidates.items():
+        seed_results = []
+        all_bpbs: list[float] = []
+        for seed in screen["seeds"]:
+            receipt, digest = cells[(candidate_id, int(seed))]
+            values = [float(value) for value in receipt["final_validation_bpb"]]
+            all_bpbs.extend(values)
+            seed_results.append(
+                {
+                    "seed": int(seed),
+                    "run_receipt_sha256": digest,
+                    "mean_final_validation_bpb": sum(values) / len(values),
+                }
+            )
+        candidate_results.append(
+            {
+                "id": candidate_id,
+                "schedule": candidate["schedule"],
+                "production_base_weight_decay": candidate["production_base_weight_decay"],
+                "weight_decay_cooldown_policy": candidate["cooldown_weight_decay"],
+                "weight_decay_transfer_rule": proxy["weight_decay_transfer_rule"],
+                "stage_effective_weight_decays": [
+                    {
+                        "stage_id": stage_id,
+                        "scaling_parameters": stage_spec["scaling_parameters"],
+                        "global_batch_tokens": stage_spec["global_batch_tokens"],
+                        "effective_base_weight_decay": candidate[
+                            "stage_effective_weight_decay"
+                        ][stage_id],
+                    }
+                    for stage_id, stage_spec in (
+                        ("d12", proxy["screen_stage"]),
+                        ("d20", proxy["confirmation_stage"]),
+                    )
+                ],
+                "eligible_for_production": candidate["eligible_for_production"],
+                "seed_results": seed_results,
+                "d12_screen_primary_metric": sum(all_bpbs) / len(all_bpbs),
+            }
+        )
+    selectable = [
+        result for result in candidate_results if result["eligible_for_production"]
+    ]
+    if not selectable:
+        _fail("proxy recipe has no production-eligible candidate")
+    ranked = sorted(
+        selectable,
+        key=lambda result: (
+            result["d12_screen_primary_metric"],
+            result["production_base_weight_decay"],
+            result["id"],
+        ),
+    )
+    advance_count = int(screen["advance_top_wsd_recipes"])
+    advanced_ids = [result["id"] for result in ranked[:advance_count]]
+    screening = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "wsd_proxy_screening",
+            "decision": "advance_to_d20",
+            "recipe_version": proxy["recipe_version"],
+            "study_manifest_sha256": recipe_sha,
+            "tokenizer_artifact_sha256": preflight["tokenizer"]["package_manifest_sha256"],
+            "source_dataset_manifest_sha256": preflight["corpus"]["dataset_manifest_sha256"],
+            "trainer_code_revision": preflight["code"]["git_commit"],
+            "gradient_clip_norm": 0.0,
+            "attention_probe_sha256": attention_probe_sha,
+            "upstream_control_id": "upstream_92d63d4e_control",
+            "advanced_candidate_ids": advanced_ids,
+            "acceptance_rule": proxy["acceptance_rule"],
+            "candidate_results": candidate_results,
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(args.output, screening)
+    print(json.dumps(screening, sort_keys=True))
+
+
+def command_accept_proxy(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    preflight, preflight_sha = _load_receipt(
+        args.preflight_receipt, "d32_family_preflight_receipt"
+    )
+    screening, screening_sha = _load_receipt(
+        args.screening_receipt, "wsd_proxy_screening"
+    )
+    proxy = recipe["weight_decay_proxy_ablation"]
+    _attention_probe, attention_probe_sha = _verify_attention_probe(
+        args.attention_probe,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight_sha=preflight_sha,
+        code_revision=preflight["code"]["git_commit"],
+    )
+    candidates = {candidate["id"]: candidate for candidate in proxy["candidates"]}
+    expected_screening = {
+        "recipe_version": proxy["recipe_version"],
+        "study_manifest_sha256": recipe_sha,
+        "tokenizer_artifact_sha256": preflight["tokenizer"]["package_manifest_sha256"],
+        "source_dataset_manifest_sha256": preflight["corpus"]["dataset_manifest_sha256"],
+        "trainer_code_revision": preflight["code"]["git_commit"],
+        "gradient_clip_norm": 0.0,
+        "attention_probe_sha256": attention_probe_sha,
+        "decision": "advance_to_d20",
+    }
+    for field, expected in expected_screening.items():
+        if screening.get(field) != expected:
+            _fail(f"d12 screening receipt {field} mismatch")
+    advanced = screening.get("advanced_candidate_ids")
+    if (
+        not isinstance(advanced, list)
+        or len(advanced) != proxy["screen_stage"]["advance_top_wsd_recipes"]
+        or len(set(advanced)) != len(advanced)
+        or any(
+            candidate_id not in candidates
+            or not candidates[candidate_id]["eligible_for_production"]
+            for candidate_id in advanced
+        )
+    ):
+        _fail("d12 screening advanced-candidate set is invalid")
+    control_id = screening.get("upstream_control_id")
+    confirmation_ids = [str(control_id), *[str(value) for value in advanced]]
+    confirmation = proxy["confirmation_stage"]
+    expected_cells = {
+        (candidate_id, int(seed))
+        for candidate_id in confirmation_ids
+        for seed in confirmation["seeds"]
+    }
+    cells = _proxy_run_cells(
+        args.run_receipt,
+        expected_depth=20,
+        expected_cells=expected_cells,
+        candidates=candidates,
+        proxy=proxy,
+        recipe_sha=recipe_sha,
+        preflight=preflight,
+        preflight_sha=preflight_sha,
+        attention_probe_sha=attention_probe_sha,
+    )
+    d20_results: dict[str, dict[str, Any]] = {}
+    for candidate_id in confirmation_ids:
+        all_bpbs: list[float] = []
+        seed_results = []
+        for seed in confirmation["seeds"]:
+            receipt, digest = cells[(candidate_id, int(seed))]
+            values = [float(value) for value in receipt["final_validation_bpb"]]
+            all_bpbs.extend(values)
+            seed_results.append(
+                {
+                    "seed": int(seed),
+                    "run_receipt_sha256": digest,
+                    "mean_final_validation_bpb": sum(values) / len(values),
+                }
+            )
+        d20_results[candidate_id] = {
+            "seed_results": seed_results,
+            "d20_confirmation_primary_metric": sum(all_bpbs) / len(all_bpbs),
+        }
+    selectable = [
+        {
+            "id": candidate_id,
+            **candidates[candidate_id],
+            **d20_results[candidate_id],
+        }
+        for candidate_id in advanced
+    ]
+    best_metric = min(
+        result["d20_confirmation_primary_metric"] for result in selectable
+    )
+    upstream_metric = d20_results[str(control_id)]["d20_confirmation_primary_metric"]
+    maximum_vs_upstream = float(
+        proxy["acceptance_rule"]["maximum_wsd_vs_upstream_control_bpb"]
+    )
+    if best_metric > upstream_metric + maximum_vs_upstream:
+        _fail(
+            "no confirmed WSD candidate matches the pinned upstream control within "
+            f"{maximum_vs_upstream:.6f} BPB"
+        )
+    tolerance = float(proxy["acceptance_rule"]["tie_tolerance_bpb"])
+    eligible = [
+        result
+        for result in selectable
+        if result["d20_confirmation_primary_metric"] <= best_metric + tolerance
+    ]
+    selected = min(
+        eligible,
+        key=lambda result: (result["production_base_weight_decay"], result["id"]),
+    )
+    candidate_results = []
+    screen_by_id = {
+        result["id"]: result for result in screening["candidate_results"]
+    }
+    for candidate_id in candidates:
+        result = dict(screen_by_id[candidate_id])
+        result["d20_confirmation"] = d20_results.get(candidate_id)
+        candidate_results.append(result)
+    acceptance = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "wsd_proxy_acceptance",
+            "decision": "accepted",
+            "recipe_version": proxy["recipe_version"],
+            "study_manifest_sha256": recipe_sha,
+            "tokenizer_artifact_sha256": preflight["tokenizer"]["package_manifest_sha256"],
+            "source_dataset_manifest_sha256": preflight["corpus"]["dataset_manifest_sha256"],
+            "trainer_code_revision": preflight["code"]["git_commit"],
+            "gradient_clip_norm": 0.0,
+            "attention_probe_sha256": attention_probe_sha,
+            "weight_decay_transfer_rule": proxy["weight_decay_transfer_rule"],
+            "production_scaling_parameters": proxy["production_scaling_parameters"],
+            "production_global_batch_tokens": proxy["production_global_batch_tokens"],
+            "screening_receipt_sha256": screening_sha,
+            "accepted_candidate_id": selected["id"],
+            "accepted_base_weight_decay": selected["production_base_weight_decay"],
+            "accepted_weight_decay_cooldown_policy": selected[
+                "cooldown_weight_decay"
+            ],
+            "acceptance_rule": proxy["acceptance_rule"],
+            "candidate_results": candidate_results,
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(args.output, acceptance)
+    print(json.dumps(acceptance, sort_keys=True))
+
+
+def command_record_rank_exit(args: argparse.Namespace) -> None:
+    """Seal one trainer child-process exit after the child has terminated."""
+
+    recipe, recipe_sha = load_recipe(args.recipe)
+    if args.world_size not in {1, 4, 8, 16}:
+        _fail("rank-exit world size must be one of 1, 4, 8, or 16")
+    if not 0 <= args.rank < args.world_size:
+        _fail("rank-exit global rank is outside the world")
+    if not 0 <= args.local_rank < 4:
+        _fail("rank-exit local rank must be in 0..3")
+    if args.world_size > 1 and args.world_size % 4:
+        _fail("multi-GPU rank-exit world size must use complete 4-GPU nodes")
+    if not args.node or any(value in args.node for value in ("/", "\n", "\r")):
+        _fail("rank-exit node name is empty or unsafe")
+    if not args.slurm_job_id or re.fullmatch(r"[0-9]+", args.slurm_job_id) is None:
+        _fail("rank-exit requires a numeric Slurm job ID")
+    if not args.slurm_step_id or any(
+        value in args.slurm_step_id for value in ("/", "\n", "\r")
+    ):
+        _fail("rank-exit requires a safe Slurm step ID")
+    _safe_id(args.run_id, "rank-exit run ID")
+    _safe_id(args.phase, "rank-exit phase")
+    if args.exit_code not in {0, 75}:
+        _fail("rank-exit records only clean exit 0 or collective preemption exit 75")
+    receipt_kind = {
+        "slurm_srun_direct_python_env_v1": "d32_static_srun_rank_exit",
+        "slurm_batch_direct_python_env_v1": "d32_batch_direct_rank_exit",
+    }[args.launcher]
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": receipt_kind,
+            "family_id": recipe["family_id"],
+            "recipe_sha256": recipe_sha,
+            "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            "launcher": args.launcher,
+            "run_id": args.run_id,
+            "phase": args.phase,
+            "slurm_job_id": args.slurm_job_id,
+            "slurm_step_id": args.slurm_step_id,
+            "node": args.node,
+            "rank": args.rank,
+            "local_rank": args.local_rank,
+            "world_size": args.world_size,
+            "child_exit_code": args.exit_code,
+            "termination": "clean" if args.exit_code == 0 else "collective_preemption",
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(args.output, receipt)
+    print(json.dumps(receipt, sort_keys=True))
+
+
+def _aggregate_rank_receipts(
+    *,
+    recipe: Mapping[str, Any],
+    recipe_sha: str,
+    receipt_dir: Path,
+    expected_kind: str,
+    run_id: str,
+    phase: str,
+    slurm_job_id: str,
+    world_size: int,
+    nodes: int,
+    expected_exit_code: int | None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    if world_size != nodes * int(recipe["distributed_gate"]["gpus_per_node"]):
+        _fail("launcher receipt world size does not equal nodes times GPUs per node")
+    expected_names = {f"rank_{rank:05d}.json" for rank in range(world_size)}
+    if not receipt_dir.is_dir() or receipt_dir.is_symlink():
+        _fail(f"launcher rank receipt directory is missing or unsafe: {receipt_dir}")
+    actual_names = {
+        path.name
+        for path in receipt_dir.iterdir()
+        if path.is_file() and path.suffix == ".json"
+    }
+    if actual_names != expected_names:
+        _fail(
+            "launcher rank receipt set is incomplete or contaminated; "
+            f"missing={sorted(expected_names - actual_names)}, "
+            f"unexpected={sorted(actual_names - expected_names)}"
+        )
+    receipts: list[dict[str, Any]] = []
+    inventory: list[dict[str, Any]] = []
+    for rank in range(world_size):
+        path = receipt_dir / f"rank_{rank:05d}.json"
+        receipt, digest = _load_receipt(path, expected_kind)
+        expected = {
+            "family_id": recipe["family_id"],
+            "recipe_sha256": recipe_sha,
+            "run_id": run_id,
+            "phase": phase,
+            "slurm_job_id": slurm_job_id,
+            "rank": rank,
+            "world_size": world_size,
+        }
+        for field, value in expected.items():
+            if receipt.get(field) != value:
+                _fail(f"launcher rank {rank} {field} mismatch")
+        local_rank = receipt.get("local_rank")
+        if isinstance(local_rank, bool) or not isinstance(local_rank, int):
+            _fail(f"launcher rank {rank} has an invalid local rank")
+        node = receipt.get("node")
+        if not isinstance(node, str) or not node:
+            _fail(f"launcher rank {rank} has an invalid node")
+        if expected_exit_code is not None and receipt.get("child_exit_code") != expected_exit_code:
+            _fail(f"launcher rank {rank} did not exit with {expected_exit_code}")
+        receipts.append(receipt)
+        inventory.append(
+            {
+                "rank": rank,
+                "local_rank": local_rank,
+                "node": node,
+                "sha256": digest,
+                "path": path.name,
+            }
+        )
+    by_node: dict[str, list[int]] = {}
+    slurm_step_ids: set[str] = set()
+    for receipt in receipts:
+        by_node.setdefault(str(receipt["node"]), []).append(int(receipt["local_rank"]))
+        slurm_step_ids.add(str(receipt.get("slurm_step_id", "")))
+    if len(slurm_step_ids) != 1 or re.fullmatch(r"[0-9]+", next(iter(slurm_step_ids))) is None:
+        _fail("launcher rank receipts do not share one numeric Slurm srun step ID")
+    if len(by_node) != nodes:
+        _fail(f"launcher receipts cover {len(by_node)} nodes, expected {nodes}")
+    expected_local_ranks = list(range(int(recipe["distributed_gate"]["gpus_per_node"])))
+    for node, local_ranks in by_node.items():
+        if sorted(local_ranks) != expected_local_ranks:
+            _fail(
+                f"launcher node {node} local-rank coverage mismatch: {sorted(local_ranks)}"
+            )
+    node_inventory = [
+        {"node": node, "local_ranks": sorted(local_ranks)}
+        for node, local_ranks in sorted(by_node.items())
+    ]
+    return inventory, node_inventory
+
+
+def command_seal_static_launch(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    inventory, node_inventory = _aggregate_rank_receipts(
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        receipt_dir=args.receipt_dir,
+        expected_kind="d32_static_srun_rank_exit",
+        run_id=args.run_id,
+        phase=args.phase,
+        slurm_job_id=args.slurm_job_id,
+        world_size=args.world_size,
+        nodes=args.nodes,
+        expected_exit_code=args.expected_exit_code,
+    )
+    if args.srun_exit_code != 0:
+        _fail("srun must exit zero after every wrapper records its direct child result")
+    clean = args.expected_exit_code == 0
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "d32_static_srun_launch_receipt",
+            "family_id": recipe["family_id"],
+            "recipe_sha256": recipe_sha,
+            "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            "launcher": "slurm_srun_direct_python_env_v1",
+            "elastic_rendezvous": False,
+            "run_id": args.run_id,
+            "phase": args.phase,
+            "slurm_job_id": args.slurm_job_id,
+            "world_size": args.world_size,
+            "nodes": args.nodes,
+            "gpus_per_node": recipe["distributed_gate"]["gpus_per_node"],
+            "srun_exit_code": args.srun_exit_code,
+            "rank_exit_code": args.expected_exit_code,
+            "termination": "clean" if clean else "collective_preemption",
+            "all_rank_exit_codes_zero": clean,
+            "rank_receipts": inventory,
+            "node_inventory": node_inventory,
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(args.output, receipt)
+    print(json.dumps(receipt, sort_keys=True))
+
+
+def command_seal_static_probe(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    inventory, node_inventory = _aggregate_rank_receipts(
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        receipt_dir=args.receipt_dir,
+        expected_kind="d32_static_srun_probe_rank",
+        run_id=args.run_id,
+        phase=args.phase,
+        slurm_job_id=args.slurm_job_id,
+        world_size=args.world_size,
+        nodes=args.nodes,
+        expected_exit_code=0,
+    )
+    if args.srun_exit_code != 0:
+        _fail("a static distributed probe cannot be sealed unless srun exited zero")
+    for item in inventory:
+        rank_receipt, _digest = _load_receipt(
+            args.receipt_dir / str(item["path"]), "d32_static_srun_probe_rank"
+        )
+        if rank_receipt.get("visible_device_count") != 1:
+            _fail("static probe rank did not see exactly its one assigned GPU")
+        if rank_receipt.get("device_index") != 0 or rank_receipt.get("torch_local_rank") != 0:
+            _fail("static probe rank did not use remapped local CUDA device zero")
+        collective = _mapping(rank_receipt.get("collective"), "static probe collective")
+        expected_sum = args.world_size * (args.world_size - 1) / 2
+        expected_collective = {
+            "backend": "nccl",
+            "all_reduce_expected": expected_sum,
+            "all_reduce_observed": expected_sum,
+            "all_gather_world_size": args.world_size,
+            "final_barrier_completed": True,
+            "process_group_destroyed_before_receipt": True,
+        }
+        if collective != expected_collective:
+            _fail("static probe collective or clean-shutdown evidence is incomplete")
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "d32_static_srun_probe_receipt",
+            "family_id": recipe["family_id"],
+            "recipe_sha256": recipe_sha,
+            "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            "launcher": "slurm_srun_direct_python_env_v1",
+            "elastic_rendezvous": False,
+            "run_id": args.run_id,
+            "phase": args.phase,
+            "slurm_job_id": args.slurm_job_id,
+            "world_size": args.world_size,
+            "nodes": args.nodes,
+            "gpus_per_node": recipe["distributed_gate"]["gpus_per_node"],
+            "srun_exit_code": args.srun_exit_code,
+            "all_rank_exit_codes_zero": True,
+            "nccl_collective_passed": True,
+            "all_process_groups_destroyed_before_rank_receipts": True,
+            "rank_receipts": inventory,
+            "node_inventory": node_inventory,
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(args.output, receipt)
+    print(json.dumps(receipt, sort_keys=True))
+
+
+def _verify_static_probe_receipt(
+    path: Path,
+    *,
+    recipe: Mapping[str, Any],
+    recipe_sha: str,
+    run_id: str,
+    slurm_job_id: str,
+    world_size: int,
+    nodes: int,
+) -> tuple[dict[str, Any], str]:
+    receipt, digest = _load_receipt(path, "d32_static_srun_probe_receipt")
+    expected = {
+        "family_id": recipe["family_id"],
+        "recipe_sha256": recipe_sha,
+        "launcher": "slurm_srun_direct_python_env_v1",
+        "elastic_rendezvous": False,
+        "run_id": run_id,
+        "phase": "static_nccl_probe",
+        "slurm_job_id": slurm_job_id,
+        "world_size": world_size,
+        "nodes": nodes,
+        "gpus_per_node": recipe["distributed_gate"]["gpus_per_node"],
+        "srun_exit_code": 0,
+        "all_rank_exit_codes_zero": True,
+        "nccl_collective_passed": True,
+        "all_process_groups_destroyed_before_rank_receipts": True,
+    }
+    for field, value in expected.items():
+        if receipt.get(field) != value:
+            _fail(f"static NCCL probe receipt {field} mismatch")
+    return receipt, digest
+
+
+def command_finalize_static_probe(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    preflight, preflight_sha = _load_receipt(
+        args.preflight_receipt, "d32_family_preflight_receipt"
+    )
+    if preflight["recipe"]["canonical_sha256"] != recipe_sha:
+        _fail("static launcher probe preflight recipe mismatch")
+    world_size = args.nodes * int(recipe["distributed_gate"]["gpus_per_node"])
+    run_id = f"{recipe['family_id']}_launcher_probe_ws{world_size}"
+    _probe, probe_sha = _verify_static_probe_receipt(
+        args.raw_probe_receipt,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        run_id=run_id,
+        slurm_job_id=args.slurm_job_id,
+        world_size=world_size,
+        nodes=args.nodes,
+    )
+    slurm_completion = _live_slurm_completed_job(
+        REPO_ROOT, job_id=args.slurm_job_id, expected_nodes=args.nodes
+    )
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "d32_static_launcher_gate",
+            "family_id": recipe["family_id"],
+            "recipe_sha256": recipe_sha,
+            "preflight_receipt_sha256": preflight_sha,
+            "code_revision": preflight["code"]["git_commit"],
+            "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            "launcher": "slurm_srun_direct_python_env_v1",
+            "elastic_rendezvous": False,
+            "probe_world_size": world_size,
+            "probe_nodes": args.nodes,
+            "raw_probe_receipt_sha256": probe_sha,
+            "slurm_completion": slurm_completion,
+            "passed": True,
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(args.output, receipt)
+    print(json.dumps(receipt, sort_keys=True))
+
+
+def _verify_static_launcher_gate(
+    path: Path,
+    *,
+    recipe: Mapping[str, Any],
+    recipe_sha: str,
+    preflight: Mapping[str, Any],
+    preflight_sha: str,
+) -> tuple[dict[str, Any], str]:
+    gate, digest = _load_receipt(path, "d32_static_launcher_gate")
+    expected = {
+        "family_id": recipe["family_id"],
+        "recipe_sha256": recipe_sha,
+        "preflight_receipt_sha256": preflight_sha,
+        "code_revision": preflight["code"]["git_commit"],
+        "launcher": "slurm_srun_direct_python_env_v1",
+        "elastic_rendezvous": False,
+        "probe_world_size": 4,
+        "probe_nodes": 1,
+        "passed": True,
+    }
+    for field, value in expected.items():
+        if gate.get(field) != value:
+            _fail(f"static launcher gate {field} mismatch")
+    completion = _mapping(gate.get("slurm_completion"), "static launcher Slurm completion")
+    if completion.get("state") != "COMPLETED" or completion.get("exit_code") != "0:0":
+        _fail("static launcher gate does not prove a clean Slurm completion")
+    return gate, digest
+
+
+def command_verify_static_launcher_gate(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    preflight, preflight_sha = _load_receipt(
+        args.preflight_receipt, "d32_family_preflight_receipt"
+    )
+    _gate, digest = _verify_static_launcher_gate(
+        args.gate,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight=preflight,
+        preflight_sha=preflight_sha,
+    )
+    print(json.dumps({"passed": True, "static_launcher_gate_sha256": digest}, sort_keys=True))
+
+
+def _signal_smoke_identity(recipe: Mapping[str, Any]) -> tuple[str, str, int]:
+    world_size = int(recipe["distributed_gate"]["signal_resume_probe_world_size"])
+    return (
+        f"{recipe['family_id']}_signal_smoke_ws{world_size}",
+        f"{recipe['family_id']}_signal_smoke_ws{world_size}",
+        world_size,
+    )
+
+
+def command_signal_smoke_env(args: argparse.Namespace) -> None:
+    recipe, _recipe_sha = load_recipe(args.recipe)
+    run_id, model_tag, _world_size = _signal_smoke_identity(recipe)
+    final_step = int(recipe["distributed_gate"]["signal_resume_probe_updates"])
+    base_dir = args.base_dir.expanduser().resolve()
+    checkpoint_root = base_dir / "base_checkpoints" / model_tag
+    candidates = []
+    if checkpoint_root.is_dir():
+        for child in checkpoint_root.glob("strict_*"):
+            match = re.fullmatch(r"strict_(\d{6,})", child.name)
+            if match is None or not (child / "completion.json").is_file():
+                continue
+            step = int(match.group(1))
+            if 0 < step < final_step:
+                checkpoint, _sha = _checkpoint_manifest(base_dir, model_tag, step)
+                if checkpoint["identity"].get("run_id") != run_id:
+                    _fail("signal-smoke checkpoint run ID mismatch")
+                candidates.append(step)
+    resume_step = max(candidates) if candidates else None
+    print(f"RUN_ID={shlex.quote(run_id)}")
+    print(f"MODEL_TAG={shlex.quote(model_tag)}")
+    print(f"RESUME_FROM_STEP={shlex.quote('' if resume_step is None else str(resume_step))}")
+
+
+def command_record_signal_request(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    run_id, _model_tag, world_size = _signal_smoke_identity(recipe)
+    events, state = read_training_log(args.curve_log)
+    threshold = int(recipe["distributed_gate"]["signal_resume_probe_after_completed_update"])
+    completed = max(
+        [
+            int(event["updates_completed"])
+            for event in events
+            if event.get("event_type") == "train_update"
+        ],
+        default=-1,
+    )
+    if completed < threshold:
+        _fail("signal request was attempted before the declared completed-update boundary")
+    if args.slurm_restart_count != 0:
+        _fail("bounded signal request must occur only on the initial Slurm attempt")
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "d32_signal_request_receipt",
+            "family_id": recipe["family_id"],
+            "recipe_sha256": recipe_sha,
+            "run_id": run_id,
+            "slurm_job_id": args.slurm_job_id,
+            "slurm_step_id": args.slurm_step_id,
+            "slurm_restart_count": args.slurm_restart_count,
+            "signal": "SIGUSR1",
+            "delivery": "scancel_signal_to_exact_srun_step",
+            "world_size": world_size,
+            "observed_updates_completed": completed,
+            "minimum_updates_completed": threshold,
+            "curve_log_sha256": file_sha256(args.curve_log),
+            "curve_log_last_event_sha256": state.last_event_sha256,
+            "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(args.output, receipt)
+    print(json.dumps(receipt, sort_keys=True))
+
+
+def command_seal_signal_preemption(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    run_id, model_tag, world_size = _signal_smoke_identity(recipe)
+    nodes = world_size // int(recipe["distributed_gate"]["gpus_per_node"])
+    signal_request, signal_request_sha = _load_receipt(
+        args.signal_request, "d32_signal_request_receipt"
+    )
+    for field, value in {
+        "family_id": recipe["family_id"],
+        "recipe_sha256": recipe_sha,
+        "run_id": run_id,
+        "slurm_job_id": args.slurm_job_id,
+        "slurm_step_id": f"{args.slurm_job_id}.0",
+        "slurm_restart_count": 0,
+        "signal": "SIGUSR1",
+        "delivery": "scancel_signal_to_exact_srun_step",
+        "world_size": world_size,
+    }.items():
+        if signal_request.get(field) != value:
+            _fail(f"signal request {field} mismatch")
+    threshold = int(recipe["distributed_gate"]["signal_resume_probe_after_completed_update"])
+    if signal_request.get("minimum_updates_completed") != threshold or int(
+        signal_request.get("observed_updates_completed", -1)
+    ) < threshold:
+        _fail("signal request does not prove the bounded completed-update threshold")
+    _launch, launch_sha = _verify_static_launch_receipt(
+        args.launch_receipt,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        run_id=run_id,
+        phase="signal_smoke_preemption",
+        slurm_job_id=args.slurm_job_id,
+        world_size=world_size,
+        nodes=nodes,
+        expected_child_exit_code=75,
+    )
+    final_step = int(recipe["distributed_gate"]["signal_resume_probe_updates"])
+    base_dir = args.base_dir.expanduser().resolve()
+    checkpoint_root = base_dir / "base_checkpoints" / model_tag
+    candidates = []
+    if checkpoint_root.is_dir():
+        for child in checkpoint_root.glob("strict_*"):
+            match = re.fullmatch(r"strict_(\d{6,})", child.name)
+            if match and (child / "completion.json").is_file():
+                step = int(match.group(1))
+                if 0 < step < final_step:
+                    candidates.append(step)
+    if not candidates:
+        _fail("signal smoke exited 75 without a new complete checkpoint")
+    checkpoint_step = max(candidates)
+    checkpoint, checkpoint_sha = _checkpoint_manifest(base_dir, model_tag, checkpoint_step)
+    if checkpoint.get("expected_world_size") != world_size:
+        _fail("signal-smoke preemption checkpoint world size mismatch")
+    identity = _mapping(checkpoint.get("identity"), "signal-smoke checkpoint identity")
+    if identity.get("run_id") != run_id or identity.get("study_manifest_sha256") != recipe_sha:
+        _fail("signal-smoke preemption checkpoint identity mismatch")
+    meta = _load_object(
+        checkpoint_root / f"strict_{checkpoint_step:06d}" / "meta.json",
+        "signal-smoke preemption metadata",
+    )
+    preemption = _mapping(meta.get("preemption"), "signal-smoke preemption metadata")
+    if preemption.get("signal") != "SIGUSR1" or preemption.get("exit_code") != 75:
+        _fail("signal-smoke checkpoint does not prove SIGUSR1/exit-75 handling")
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "d32_signal_preemption_receipt",
+            "family_id": recipe["family_id"],
+            "recipe_sha256": recipe_sha,
+            "run_id": run_id,
+            "slurm_job_id": args.slurm_job_id,
+            "world_size": world_size,
+            "signal_request_sha256": signal_request_sha,
+            "launch_receipt_sha256": launch_sha,
+            "checkpoint_step": checkpoint_step,
+            "checkpoint_sha256": checkpoint_sha,
+            "checkpoint_preemption": dict(preemption),
+            "requeue_authorized": True,
+            "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(args.output, receipt)
+    print(json.dumps(receipt, sort_keys=True))
+
+
+def command_finalize_signal_smoke(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    preflight, preflight_sha = _load_receipt(
+        args.preflight_receipt, "d32_family_preflight_receipt"
+    )
+    if preflight["recipe"]["canonical_sha256"] != recipe_sha:
+        _fail("signal-smoke preflight recipe mismatch")
+    _static_gate, static_gate_sha = _verify_static_launcher_gate(
+        args.static_launcher_gate,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight=preflight,
+        preflight_sha=preflight_sha,
+    )
+    _probe, probe_sha = _verify_attention_probe(
+        args.attention_probe,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight_sha=preflight_sha,
+        code_revision=preflight["code"]["git_commit"],
+    )
+    _approval, approval_sha = _verify_proxy_acceptance(
+        args.wd_proxy_approval,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight=preflight,
+        attention_probe_sha256=probe_sha,
+    )
+    run_id, model_tag, world_size = _signal_smoke_identity(recipe)
+    nodes = world_size // int(recipe["distributed_gate"]["gpus_per_node"])
+    slurm_completion = _live_slurm_completed_job(
+        REPO_ROOT, job_id=args.slurm_job_id, expected_nodes=nodes
+    )
+    preemption, preemption_sha = _load_receipt(
+        args.preemption_receipt, "d32_signal_preemption_receipt"
+    )
+    for field, value in {
+        "family_id": recipe["family_id"],
+        "recipe_sha256": recipe_sha,
+        "run_id": run_id,
+        "slurm_job_id": args.slurm_job_id,
+        "world_size": world_size,
+        "requeue_authorized": True,
+    }.items():
+        if preemption.get(field) != value:
+            _fail(f"signal preemption receipt {field} mismatch")
+    _launch, final_launch_sha = _verify_static_launch_receipt(
+        args.final_launch_receipt,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        run_id=run_id,
+        phase="signal_smoke_resume",
+        slurm_job_id=args.slurm_job_id,
+        world_size=world_size,
+        nodes=nodes,
+    )
+    final_step = int(recipe["distributed_gate"]["signal_resume_probe_updates"])
+    base_dir = args.base_dir.expanduser().resolve()
+    checkpoint, checkpoint_sha = _checkpoint_manifest(base_dir, model_tag, final_step)
+    if checkpoint.get("expected_world_size") != world_size:
+        _fail("signal-smoke final checkpoint world size mismatch")
+    identity = _mapping(checkpoint.get("identity"), "signal-smoke final identity")
+    plan = preflight["corpus"]["training_exposure_plans"]["signal_smoke_ws4_seed42"]
+    if (
+        identity.get("run_id") != run_id
+        or identity.get("study_manifest_sha256") != recipe_sha
+        or identity.get("exposure_plan_sha256") != plan["sha256"]
+    ):
+        _fail("signal-smoke final checkpoint identity mismatch")
+    protocol = _mapping(identity.get("protocol"), "signal-smoke final protocol")
+    optimizer = _verify_frozen_protocol(
+        protocol,
+        recipe=recipe,
+        preflight=preflight,
+        attention_probe=_probe,
+        attention_probe_sha256=probe_sha,
+        label="signal-smoke final protocol",
+        run_kind="signal_smoke",
+        recipe_scope=f"signal_smoke_ws{world_size}",
+        model_tag=model_tag,
+        exposure_plan_sha256=str(plan["sha256"]),
+        depth=32,
+        model_dim=2048,
+        world_size=world_size,
+        device_batch_size=recipe["training"]["device_batch_sequences"],
+        total_batch_size=recipe["training"]["global_batch_tokens"],
+        num_iterations=final_step,
+        eval_every_updates=recipe["training"]["evaluation"]["eval_every_updates"],
+        seed=recipe["training"]["seed"],
+    )
+    if optimizer.get("muon_base_weight_decay") != approval[
+        "accepted_base_weight_decay"
+    ]:
+        _fail("signal-smoke base weight decay differs from proxy approval")
+    schedule = _mapping(protocol.get("schedule"), "signal-smoke schedule")
+    if (
+        schedule.get("name") != "wsd"
+        or schedule.get("cooldown_start_step") is not None
+        or schedule.get("proxy_approval_sha256") != approval_sha
+        or schedule.get("weight_decay_cooldown_policy")
+        != approval["accepted_weight_decay_cooldown_policy"]
+    ):
+        _fail("signal-smoke WSD schedule differs from the approved stable phase")
+    meta = _load_object(
+        base_dir / "base_checkpoints" / model_tag / f"strict_{final_step:06d}" / "meta.json",
+        "signal-smoke final metadata",
+    )
+    resumed_from = _mapping(
+        meta.get("user_config"), "signal-smoke final user_config"
+    ).get("resume_from_step")
+    if resumed_from != preemption.get("checkpoint_step"):
+        _fail("signal-smoke final checkpoint does not prove resume from preemption")
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "d32_signal_resume_gate",
+            "family_id": recipe["family_id"],
+            "recipe_sha256": recipe_sha,
+            "preflight_receipt_sha256": preflight_sha,
+            "static_launcher_gate_sha256": static_gate_sha,
+            "attention_probe_sha256": probe_sha,
+            "wsd_proxy_approval_sha256": approval_sha,
+            "run_id": run_id,
+            "world_size": world_size,
+            "slurm_job_id": args.slurm_job_id,
+            "slurm_completion": slurm_completion,
+            "preemption_receipt_sha256": preemption_sha,
+            "resumed_from_step": resumed_from,
+            "final_step": final_step,
+            "final_checkpoint_sha256": checkpoint_sha,
+            "final_launch_receipt_sha256": final_launch_sha,
+            "passed": True,
+            "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(args.output, receipt)
+    print(json.dumps(receipt, sort_keys=True))
+
+
+def _verify_signal_resume_gate(
+    path: Path,
+    *,
+    recipe: Mapping[str, Any],
+    recipe_sha: str,
+    preflight: Mapping[str, Any],
+    preflight_sha: str,
+) -> tuple[dict[str, Any], str]:
+    gate, digest = _load_receipt(path, "d32_signal_resume_gate")
+    expected = {
+        "family_id": recipe["family_id"],
+        "recipe_sha256": recipe_sha,
+        "preflight_receipt_sha256": preflight_sha,
+        "world_size": recipe["distributed_gate"]["signal_resume_probe_world_size"],
+        "final_step": recipe["distributed_gate"]["signal_resume_probe_updates"],
+        "passed": True,
+    }
+    for field, value in expected.items():
+        if gate.get(field) != value:
+            _fail(f"signal/resume gate {field} mismatch")
+    completion = _mapping(gate.get("slurm_completion"), "signal/resume Slurm completion")
+    if completion.get("state") != "COMPLETED" or completion.get("exit_code") != "0:0":
+        _fail("signal/resume gate lacks a clean final Slurm completion")
+    return gate, digest
+
+
+def command_verify_signal_resume_gate(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    preflight, preflight_sha = _load_receipt(
+        args.preflight_receipt, "d32_family_preflight_receipt"
+    )
+    _gate, digest = _verify_signal_resume_gate(
+        args.gate,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight=preflight,
+        preflight_sha=preflight_sha,
+    )
+    print(json.dumps({"passed": True, "signal_resume_gate_sha256": digest}, sort_keys=True))
+
+
+def _verify_static_launch_receipt(
+    path: Path,
+    *,
+    recipe: Mapping[str, Any],
+    recipe_sha: str,
+    run_id: str,
+    phase: str,
+    slurm_job_id: str,
+    world_size: int,
+    nodes: int,
+    expected_child_exit_code: int = 0,
+) -> tuple[dict[str, Any], str]:
+    receipt, digest = _load_receipt(path, "d32_static_srun_launch_receipt")
+    expected = {
+        "family_id": recipe["family_id"],
+        "recipe_sha256": recipe_sha,
+        "launcher": "slurm_srun_direct_python_env_v1",
+        "elastic_rendezvous": False,
+        "run_id": run_id,
+        "phase": phase,
+        "slurm_job_id": slurm_job_id,
+        "world_size": world_size,
+        "nodes": nodes,
+        "gpus_per_node": recipe["distributed_gate"]["gpus_per_node"],
+        "srun_exit_code": 0,
+        "rank_exit_code": expected_child_exit_code,
+        "termination": (
+            "clean" if expected_child_exit_code == 0 else "collective_preemption"
+        ),
+        "all_rank_exit_codes_zero": expected_child_exit_code == 0,
+    }
+    for field, value in expected.items():
+        if receipt.get(field) != value:
+            _fail(f"static srun launch receipt {field} mismatch")
+    ranks = _sequence(receipt.get("rank_receipts"), "static launch rank receipts")
+    if [entry.get("rank") for entry in ranks if isinstance(entry, Mapping)] != list(
+        range(world_size)
+    ):
+        _fail("static launch receipt does not cover every rank exactly once")
+    nodes_seen = _sequence(receipt.get("node_inventory"), "static launch node inventory")
+    if len(nodes_seen) != nodes:
+        _fail("static launch receipt node count mismatch")
+    return receipt, digest
+
+
+def _live_slurm_completed_job(
+    repo_root: Path, *, job_id: str, expected_nodes: int
+) -> dict[str, Any]:
+    if re.fullmatch(r"[0-9]+", job_id) is None:
+        _fail("Slurm completion verification requires a numeric job ID")
+    command = [
+        "sacct",
+        "-n",
+        "-X",
+        "-P",
+        "-j",
+        job_id,
+        "-o",
+        "JobIDRaw,State,ExitCode,NNodes",
+    ]
+    try:
+        output = subprocess.check_output(
+            command, cwd=repo_root, text=True, stderr=subprocess.STDOUT
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        details = getattr(exc, "output", "")
+        raise FamilyWorkflowError(
+            "cannot verify the completed Slurm allocation with sacct"
+            + (f": {str(details).strip()}" if details else "")
+        ) from exc
+    matching = []
+    for line in output.splitlines():
+        if not line.strip():
+            continue
+        fields = line.split("|")
+        if len(fields) < 4:
+            _fail(f"unexpected sacct completion row: {line!r}")
+        if fields[0].strip() == job_id:
+            matching.append(tuple(field.strip() for field in fields[:4]))
+    if len(matching) != 1:
+        _fail(f"sacct returned {len(matching)} exact allocation rows for job {job_id}")
+    _row_job, state, exit_code, nodes_text = matching[0]
+    if state != "COMPLETED" or exit_code != "0:0":
+        _fail(
+            f"Slurm job {job_id} was not a clean success: state={state!r}, exit={exit_code!r}"
+        )
+    try:
+        nodes = int(nodes_text)
+    except ValueError as exc:
+        raise FamilyWorkflowError(f"cannot parse Slurm NNodes value: {nodes_text!r}") from exc
+    if nodes != expected_nodes:
+        _fail(f"Slurm job {job_id} used {nodes} nodes, expected {expected_nodes}")
+    return {
+        "job_id": job_id,
+        "state": state,
+        "exit_code": exit_code,
+        "nodes": nodes,
+        "sacct_output_sha256": hashlib.sha256(output.encode("utf-8")).hexdigest(),
+    }
+
+
+def command_seal_smoke(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    preflight, preflight_sha = _load_receipt(
+        args.preflight_receipt, "d32_family_preflight_receipt"
+    )
+    if preflight["recipe"]["canonical_sha256"] != recipe_sha:
+        _fail("preflight receipt was created for a different family recipe")
+    _launcher_gate, launcher_gate_sha = _verify_static_launcher_gate(
+        args.static_launcher_gate,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight=preflight,
+        preflight_sha=preflight_sha,
+    )
+    _signal_gate, signal_gate_sha = _verify_signal_resume_gate(
+        args.signal_resume_gate,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight=preflight,
+        preflight_sha=preflight_sha,
+    )
+    _attention_probe, attention_probe_sha = _verify_attention_probe(
+        args.attention_probe,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight_sha=preflight_sha,
+        code_revision=preflight["code"]["git_commit"],
+    )
+    proxy_approval, proxy_approval_sha = _verify_proxy_acceptance(
+        args.wd_proxy_approval,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight=preflight,
+        attention_probe_sha256=attention_probe_sha,
+    )
+    expected_nodes = recipe["distributed_gate"]["smoke_node_order"]
+    if args.nodes not in expected_nodes:
+        _fail(f"smoke nodes must be one of {expected_nodes}")
+    gpus = args.nodes * int(recipe["distributed_gate"]["gpus_per_node"])
+    packing_capacity_sha, packing_capacity_world = _preflight_capacity_world(
+        preflight, gpus
+    )
+    smoke_horizon_positions = (
+        int(recipe["distributed_gate"]["smoke_updates"])
+        * int(recipe["training"]["global_batch_tokens"])
+    )
+    if int(packing_capacity_world["safe_global_scheduled_positions"]) < smoke_horizon_positions:
+        _fail(f"ws{gpus} packing capacity is below the smoke horizon")
+    run_id = f"{recipe['family_id']}_smoke_ws{gpus}"
+    slurm_completion = _live_slurm_completed_job(
+        REPO_ROOT, job_id=args.slurm_job_id, expected_nodes=args.nodes
+    )
+    _static_probe, static_probe_sha = _verify_static_probe_receipt(
+        args.static_probe_receipt,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        run_id=run_id,
+        slurm_job_id=args.slurm_job_id,
+        world_size=gpus,
+        nodes=args.nodes,
+    )
+    expected_launch_phases = ("smoke_initial_50", "smoke_resume_100")
+    if len(args.launch_receipt) != len(expected_launch_phases):
+        _fail("smoke finalization requires exactly the initial and resumed launch receipts")
+    launch_inventory = []
+    for path, phase in zip(args.launch_receipt, expected_launch_phases, strict=True):
+        _launch, launch_sha = _verify_static_launch_receipt(
+            path,
+            recipe=recipe,
+            recipe_sha=recipe_sha,
+            run_id=run_id,
+            phase=phase,
+            slurm_job_id=args.slurm_job_id,
+            world_size=gpus,
+            nodes=args.nodes,
+        )
+        launch_inventory.append({"phase": phase, "sha256": launch_sha, "path": str(path)})
+
+    from nanochat.strict_checkpoint import inspect_strict_checkpoint
+
+    forced_resume_step = int(recipe["distributed_gate"]["forced_resume_step"])
+    final_step = int(recipe["distributed_gate"]["smoke_updates"])
+    try:
+        resume_checkpoint = inspect_strict_checkpoint(args.checkpoint_root, forced_resume_step)
+        final_checkpoint = inspect_strict_checkpoint(args.checkpoint_root, final_step)
+    except Exception as exc:
+        raise FamilyWorkflowError(
+            "smoke must contain verified strict checkpoints at the forced-resume and final boundaries: "
+            f"{exc}"
+        ) from exc
+    resume_checkpoint_sha = verify_manifest_hash(resume_checkpoint)
+    final_checkpoint_sha = verify_manifest_hash(final_checkpoint)
+    resume_step_dir = args.checkpoint_root / f"strict_{forced_resume_step:06d}"
+    final_step_dir = args.checkpoint_root / f"strict_{final_step:06d}"
+    storage_observations = {
+        "forced_resume": _checkpoint_storage_observation(
+            resume_checkpoint, resume_step_dir
+        ),
+        "final": _checkpoint_storage_observation(final_checkpoint, final_step_dir),
+    }
+    final_meta = _load_object(
+        args.checkpoint_root / f"strict_{final_step:06d}" / "meta.json",
+        "final smoke checkpoint metadata",
+    )
+    final_user_config = _mapping(final_meta.get("user_config"), "final smoke user_config")
+    if final_user_config.get("resume_from_step") != forced_resume_step:
+        _fail(
+            "final smoke checkpoint does not prove the required forced resume from "
+            f"step {forced_resume_step}"
+        )
+    final_identity = _mapping(final_checkpoint.get("identity"), "final smoke identity")
+    smoke_plan_key = f"smoke_ws{gpus}"
+    expected_identity_fields = {
+        "study_id": recipe["family_id"],
+        "run_id": run_id,
+        "study_manifest_sha256": recipe_sha,
+        "tokenizer_artifact_sha256": preflight["tokenizer"]["package_manifest_sha256"],
+        "exposure_plan_sha256": preflight["corpus"]["training_exposure_plans"][
+            smoke_plan_key
+        ]["sha256"],
+    }
+    for field, expected in expected_identity_fields.items():
+        if final_identity.get(field) != expected:
+            _fail(f"final smoke identity {field} mismatch")
+    final_protocol = _mapping(final_identity.get("protocol"), "final smoke protocol")
+    _verify_frozen_protocol(
+        final_protocol,
+        recipe=recipe,
+        preflight=preflight,
+        attention_probe=_attention_probe,
+        attention_probe_sha256=attention_probe_sha,
+        label="final smoke protocol",
+        run_kind="smoke",
+        recipe_scope=f"smoke_ws{gpus}",
+        model_tag=run_id,
+        exposure_plan_sha256=str(
+            preflight["corpus"]["training_exposure_plans"][smoke_plan_key]["sha256"]
+        ),
+        depth=32,
+        model_dim=2048,
+        world_size=gpus,
+        device_batch_size=recipe["training"]["device_batch_sequences"],
+        total_batch_size=recipe["training"]["global_batch_tokens"],
+        num_iterations=final_step,
+        eval_every_updates=recipe["training"]["evaluation"]["eval_every_updates"],
+        seed=recipe["training"]["seed"],
+    )
+    smoke_optimizer = _mapping(final_protocol.get("optimizer"), "final smoke optimizer")
+    if smoke_optimizer.get("muon_base_weight_decay") != proxy_approval[
+        "accepted_base_weight_decay"
+    ]:
+        _fail("smoke checkpoint base weight decay differs from proxy approval")
+    smoke_schedule = _mapping(final_protocol.get("schedule"), "final smoke schedule")
+    expected_smoke_schedule = {
+        "name": "wsd",
+        "recipe_version": recipe["weight_decay_proxy_ablation"]["recipe_version"],
+        "cooldown_start_step": None,
+        "weight_decay_cooldown_policy": proxy_approval[
+            "accepted_weight_decay_cooldown_policy"
+        ],
+        "proxy_approval_sha256": proxy_approval_sha,
+    }
+    for field, expected in expected_smoke_schedule.items():
+        if smoke_schedule.get(field) != expected:
+            _fail(f"final smoke schedule {field} differs from production contract")
+
+    events, state = read_training_log(args.curve_log)
+    first = int(recipe["distributed_gate"]["benchmark_first_update"])
+    last = int(recipe["distributed_gate"]["benchmark_last_update"])
+    selected = [
+        event
+        for event in events
+        if event.get("event_type") == "train_update"
+        and first <= int(event["updates_completed"]) <= last
+    ]
+    updates = [int(event["updates_completed"]) for event in selected]
+    if updates != list(range(first, last + 1)):
+        _fail(
+            f"smoke curve must contain contiguous measured updates {first}..{last}; found {updates}"
+        )
+    durations = [float(event["metrics"]["train/duration_seconds"]) for event in selected]
+    positions = [int(event["metrics"]["train/scheduled_positions"]) for event in selected]
+    loader_seconds = [
+        float(event["metrics"]["train/loader_seconds"]) for event in selected
+    ]
+    loader_throughputs = [
+        float(event["metrics"]["train/loader_scheduled_positions_per_second"])
+        for event in selected
+    ]
+    loader_fractions = [
+        float(event["metrics"]["train/loader_fraction_of_update"])
+        for event in selected
+    ]
+    expected_batch = int(recipe["training"]["global_batch_tokens"])
+    if any(value != expected_batch for value in positions):
+        _fail("smoke did not use the production global batch on every measured update")
+    if any(value <= 0 for value in durations):
+        _fail("smoke curve contains a non-positive update duration")
+    if any(
+        not math.isfinite(seconds)
+        or seconds < 0
+        or not math.isfinite(rate)
+        or rate <= 0
+        or not math.isfinite(fraction)
+        or fraction < 0
+        or fraction > 1
+        for seconds, rate, fraction in zip(
+            loader_seconds, loader_throughputs, loader_fractions, strict=True
+        )
+    ):
+        _fail("smoke curve contains invalid loader performance measurements")
+    total_seconds = sum(durations)
+    total_positions = sum(positions)
+    throughput = total_positions / total_seconds
+    aggregate_loader_fraction = sum(loader_seconds) / total_seconds
+    sorted_loader_fractions = sorted(loader_fractions)
+    p95_loader_fraction = sorted_loader_fractions[
+        max(0, math.ceil(0.95 * len(sorted_loader_fractions)) - 1)
+    ]
+    if aggregate_loader_fraction > float(
+        recipe["distributed_gate"]["maximum_aggregate_loader_fraction"]
+    ):
+        _fail("smoke loader occupies too much aggregate update time")
+    if p95_loader_fraction > float(
+        recipe["distributed_gate"]["maximum_p95_loader_fraction"]
+    ):
+        _fail("smoke loader p95 fraction exceeds the production gate")
+    identity = _production_identity(
+        recipe_sha,
+        preflight,
+        attention_probe_sha256=attention_probe_sha,
+        proxy_approval_sha256=proxy_approval_sha,
+        accepted_base_weight_decay=float(proxy_approval["accepted_base_weight_decay"]),
+        accepted_weight_decay_cooldown_policy=str(
+            proxy_approval["accepted_weight_decay_cooldown_policy"]
+        ),
+    )
+    identity_sha = hashlib.sha256(
+        json.dumps(identity, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "d32_distributed_smoke_receipt",
+            "family_id": recipe["family_id"],
+            "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            "slurm_job_id": args.slurm_job_id,
+            "slurm_completion": slurm_completion,
+            "static_nccl_probe_sha256": static_probe_sha,
+            "static_launcher_gate_sha256": launcher_gate_sha,
+            "signal_resume_gate_sha256": signal_gate_sha,
+            "packing_capacity_receipt_sha256": packing_capacity_sha,
+            "packing_capacity_world_size": gpus,
+            "packing_capacity_safe_global_scheduled_positions": int(
+                packing_capacity_world["safe_global_scheduled_positions"]
+            ),
+            "static_srun_launches": launch_inventory,
+            "nodes": args.nodes,
+            "gpus_per_node": recipe["distributed_gate"]["gpus_per_node"],
+            "world_size": gpus,
+            "measured_first_update": first,
+            "measured_last_update": last,
+            "measured_updates": len(selected),
+            "forced_resume": {
+                "step": forced_resume_step,
+                "checkpoint_sha256": resume_checkpoint_sha,
+                "final_step": final_step,
+                "final_checkpoint_sha256": final_checkpoint_sha,
+                "verified_from_final_metadata": True,
+            },
+            "scheduled_positions": total_positions,
+            "duration_seconds": total_seconds,
+            "scheduled_positions_per_second": throughput,
+            "loader_performance": {
+                "aggregate_loader_seconds": sum(loader_seconds),
+                "aggregate_loader_fraction": aggregate_loader_fraction,
+                "p95_loader_fraction": p95_loader_fraction,
+                "minimum_scheduled_positions_per_second": min(loader_throughputs),
+                "median_scheduled_positions_per_second": sorted(loader_throughputs)[
+                    len(loader_throughputs) // 2
+                ],
+                "maximum_aggregate_loader_fraction": recipe["distributed_gate"][
+                    "maximum_aggregate_loader_fraction"
+                ],
+                "maximum_p95_loader_fraction": recipe["distributed_gate"][
+                    "maximum_p95_loader_fraction"
+                ],
+                "passed": True,
+            },
+            "checkpoint_storage": storage_observations,
+            "curve_log": {
+                "path": str(args.curve_log),
+                "sha256": file_sha256(args.curve_log),
+                "event_count": state.event_count,
+                "last_event_sha256": state.last_event_sha256,
+            },
+            "preflight_receipt_sha256": preflight_sha,
+            "production_identity": identity,
+            "production_identity_sha256": identity_sha,
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(args.output, receipt)
+    print(json.dumps(receipt, sort_keys=True))
+
+
+def command_optimizer_env(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    preflight, preflight_sha = _load_receipt(
+        args.preflight_receipt, "d32_family_preflight_receipt"
+    )
+    if preflight["recipe"]["canonical_sha256"] != recipe_sha:
+        _fail("optimizer environment preflight recipe mismatch")
+    _probe, probe_sha = _verify_attention_probe(
+        args.attention_probe,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight_sha=preflight_sha,
+        code_revision=preflight["code"]["git_commit"],
+    )
+    approval, approval_sha = _verify_proxy_acceptance(
+        args.wd_proxy_approval,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight=preflight,
+        attention_probe_sha256=probe_sha,
+    )
+    values = {
+        "EFFECTIVE_BASE_WEIGHT_DECAY": str(approval["accepted_base_weight_decay"]),
+        "WSD_WEIGHT_DECAY_COOLDOWN": str(
+            approval["accepted_weight_decay_cooldown_policy"]
+        ),
+        "WD_PROXY_APPROVAL_SHA256": approval_sha,
+        "ATTENTION_PROBE_SHA256": probe_sha,
+        "ATTENTION_BACKEND": str(
+            _mapping(_probe["module_detection"], "attention probe detection")[
+                "selected_backend_after_probe"
+            ]
+        ),
+        "WINDOW_PATTERN": str(
+            _mapping(_probe["module_detection"], "attention probe detection")[
+                "selected_window_pattern"
+            ]
+        ),
+        "CODE_REVISION": str(preflight["code"]["git_commit"]),
+    }
+    for key, value in values.items():
+        print(f"{key}={shlex.quote(value)}")
+
+
+def _training_cost_for_positions(
+    *,
+    scheduled_positions: int,
+    measured_positions_per_second: float,
+    nodes: int,
+    cpu_saat_per_node_hour: int,
+    reserve_fraction: float,
+) -> tuple[int, int]:
+    """Return raw and reserved CPU-saat ceilings from measured throughput."""
+
+    if scheduled_positions < 0:
+        _fail("scheduled positions for cost projection cannot be negative")
+    if (
+        not math.isfinite(measured_positions_per_second)
+        or measured_positions_per_second <= 0
+    ):
+        _fail("measured throughput for cost projection must be positive and finite")
+    if nodes <= 0 or cpu_saat_per_node_hour <= 0:
+        _fail("cost projection node count and billing rate must be positive")
+    if not math.isfinite(reserve_fraction) or reserve_fraction < 0:
+        _fail("cost projection reserve fraction must be non-negative and finite")
+    raw = (
+        scheduled_positions
+        / measured_positions_per_second
+        / 3600.0
+        * nodes
+        * cpu_saat_per_node_hour
+    )
+    return math.ceil(raw), math.ceil(raw * (1.0 + reserve_fraction))
+
+
+def _measured_cost_projection(
+    recipe: Mapping[str, Any],
+    *,
+    selected_smoke_sha256: str,
+    world_size: int,
+    nodes: int,
+    measured_positions_per_second: float,
+) -> dict[str, Any]:
+    """Derive the production admission cost from the selected d32 smoke."""
+
+    _sha256(selected_smoke_sha256, "selected smoke SHA-256")
+    gpus_per_node = int(recipe["distributed_gate"]["gpus_per_node"])
+    if world_size not in {8, 16} or nodes * gpus_per_node != world_size:
+        _fail("measured cost projection topology is invalid")
+    stage_updates = sum(
+        int(stage["target_step"]) - int(stage.get("source_step") or 0)
+        for stage in recipe["stages"]
+    )
+    budget = recipe["uhem_budget"]
+    full_positions = stage_updates * int(recipe["training"]["global_batch_tokens"])
+    if (
+        stage_updates != 34_560
+        or full_positions != int(budget["shared_lineage_scheduled_token_work"])
+    ):
+        _fail("measured cost projection shared-lineage arithmetic drifted")
+    billing_rate = int(budget["cpu_saat_per_4gpu_node_hour"])
+    reserve_fraction = 0.15
+    raw_cpu_saat, reserved_cpu_saat = _training_cost_for_positions(
+        scheduled_positions=full_positions,
+        measured_positions_per_second=measured_positions_per_second,
+        nodes=nodes,
+        cpu_saat_per_node_hour=billing_rate,
+        reserve_fraction=reserve_fraction,
+    )
+    allowance = int(budget["proxy_and_smoke_reserve_cpu_saat"])
+    projected_total = reserved_cpu_saat + allowance
+    ceiling = int(budget["operational_ceiling_cpu_saat"])
+    return {
+        "version": "measured_smoke_v1",
+        "selected_smoke_sha256": selected_smoke_sha256,
+        "world_size": world_size,
+        "nodes": nodes,
+        "global_batch_tokens": int(recipe["training"]["global_batch_tokens"]),
+        "full_shared_updates": stage_updates,
+        "full_scheduled_positions": full_positions,
+        "measured_positions_per_second": measured_positions_per_second,
+        "billing_cpu_saat_per_node_hour": billing_rate,
+        "reserve_fraction": reserve_fraction,
+        "raw_training_cpu_saat_ceiling": raw_cpu_saat,
+        "reserved_training_cpu_saat": reserved_cpu_saat,
+        "proxy_smoke_allowance_cpu_saat": allowance,
+        "projected_total_package_cpu_saat": projected_total,
+        "operational_ceiling_cpu_saat": ceiling,
+        "passed": projected_total <= ceiling,
+    }
+
+
+def command_compare_smokes(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    smoke8, smoke8_sha = _load_receipt(args.smoke_8gpu, "d32_distributed_smoke_receipt")
+    if smoke8.get("world_size") != 8:
+        _fail("topology gate requires a clean 8-GPU fallback receipt")
+    smoke16 = None
+    smoke16_sha = None
+    if args.smoke_16gpu is not None:
+        smoke16, smoke16_sha = _load_receipt(
+            args.smoke_16gpu, "d32_distributed_smoke_receipt"
+        )
+        if smoke16.get("world_size") != 16:
+            _fail("the optional preferred-topology receipt must be a 16-GPU smoke")
+        if smoke8.get("production_identity_sha256") != smoke16.get(
+            "production_identity_sha256"
+        ):
+            _fail("8- and 16-GPU smokes do not have the same production identity")
+    identity = _mapping(smoke8.get("production_identity"), "production_identity")
+    if identity.get("recipe_sha256") != recipe_sha:
+        _fail("smoke receipts were produced for a different recipe")
+    if smoke16 is not None and smoke8.get("preflight_receipt_sha256") != smoke16.get(
+        "preflight_receipt_sha256"
+    ):
+        _fail("8- and 16-GPU smokes were not authorized by the same preflight receipt")
+    if smoke16 is not None and smoke8.get("signal_resume_gate_sha256") != smoke16.get(
+        "signal_resume_gate_sha256"
+    ):
+        _fail("8- and 16-GPU smokes used different signal/resume gates")
+    capacity_sha = _sha256(
+        smoke8.get("packing_capacity_receipt_sha256"),
+        "8-GPU smoke packing-capacity SHA-256",
+    )
+    if smoke8.get("packing_capacity_world_size") != 8:
+        _fail("8-GPU smoke did not bind the ws8 packing-capacity record")
+    if smoke16 is not None:
+        if smoke16.get("packing_capacity_receipt_sha256") != capacity_sha:
+            _fail("8- and 16-GPU smokes used different packing-capacity receipts")
+        if smoke16.get("packing_capacity_world_size") != 16:
+            _fail("16-GPU smoke did not bind the ws16 packing-capacity record")
+    throughput8 = float(smoke8["scheduled_positions_per_second"])
+    throughput16 = (
+        None if smoke16 is None else float(smoke16["scheduled_positions_per_second"])
+    )
+    if throughput8 <= 0 or (throughput16 is not None and throughput16 <= 0):
+        _fail("smoke throughputs must be positive")
+    speedup = None if throughput16 is None else throughput16 / throughput8
+    threshold = float(recipe["distributed_gate"]["minimum_8_to_16_gpu_speedup"])
+    preferred_accepted = speedup is not None and speedup >= threshold
+    selected_world_size = 16 if preferred_accepted else 8
+    selected_nodes = selected_world_size // int(recipe["distributed_gate"]["gpus_per_node"])
+    if smoke16 is None:
+        selection_reason = "no_clean_16gpu_smoke_receipt_supplied_use_8gpu_fallback"
+    elif preferred_accepted:
+        selection_reason = "clean_16gpu_smoke_meets_minimum_1.7_speedup"
+    else:
+        selection_reason = "clean_16gpu_smoke_below_minimum_1.7_speedup_use_8gpu_fallback"
+    selected_smoke_sha = smoke16_sha if selected_world_size == 16 else smoke8_sha
+    selected_throughput = throughput16 if selected_world_size == 16 else throughput8
+    assert selected_smoke_sha is not None and selected_throughput is not None
+    cost_projection = _measured_cost_projection(
+        recipe,
+        selected_smoke_sha256=selected_smoke_sha,
+        world_size=selected_world_size,
+        nodes=selected_nodes,
+        measured_positions_per_second=selected_throughput,
+    )
+    if cost_projection["passed"] is not True:
+        _fail(
+            "measured d32 throughput projects the training package above the "
+            "reviewed 40,000 CPU-saat ceiling"
+        )
+    smoke_storage = []
+    smoke_pairs = [("8gpu", smoke8)]
+    if smoke16 is not None:
+        smoke_pairs.append(("16gpu", smoke16))
+    for label, smoke in smoke_pairs:
+        storage_record = _mapping(smoke.get("checkpoint_storage"), f"{label} storage")
+        for boundary in ("forced_resume", "final"):
+            smoke_storage.append(
+                _mapping(storage_record.get(boundary), f"{label} {boundary} storage")
+            )
+    measured_full = max(int(record["full_transaction_bytes"]) for record in smoke_storage)
+    measured_model = max(
+        int(record["model_metadata_completion_bytes"]) for record in smoke_storage
+    )
+    storage_factor = float(recipe["storage"]["smoke_measurement_safety_factor"])
+    calibrated_full = math.ceil(measured_full * storage_factor)
+    calibrated_model = math.ceil(measured_model * storage_factor)
+    gate = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "d32_production_topology_gate",
+            "family_id": recipe["family_id"],
+            "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            "recipe_sha256": recipe_sha,
+            "preflight_receipt_sha256": smoke8["preflight_receipt_sha256"],
+            "attention_probe_sha256": identity["attention_probe_sha256"],
+            "wsd_proxy_approval_sha256": identity["wsd_proxy_approval_sha256"],
+            "signal_resume_gate_sha256": smoke8["signal_resume_gate_sha256"],
+            "packing_capacity_receipt_sha256": capacity_sha,
+            "authorized_packing_capacity_world_size": selected_world_size,
+            "authorized_safe_global_scheduled_positions": (
+                smoke8["packing_capacity_safe_global_scheduled_positions"]
+                if selected_world_size == 8
+                else smoke16["packing_capacity_safe_global_scheduled_positions"]
+            ),
+            "accepted_base_weight_decay": identity["wsd_base_weight_decay"],
+            "accepted_weight_decay_cooldown_policy": identity[
+                "wsd_weight_decay_cooldown"
+            ],
+            "smoke_8gpu_sha256": smoke8_sha,
+            "smoke_16gpu_sha256": smoke16_sha,
+            "throughput_8gpu": throughput8,
+            "throughput_16gpu": throughput16,
+            "speedup_8_to_16": speedup,
+            "parallel_efficiency": None if speedup is None else speedup / 2.0,
+            "cost_projection": cost_projection,
+            "storage_calibration": {
+                "safety_factor": storage_factor,
+                "maximum_measured_full_transaction_bytes": measured_full,
+                "maximum_measured_model_bundle_bytes": measured_model,
+                "calibrated_full_transaction_bytes": calibrated_full,
+                "calibrated_model_bundle_bytes": calibrated_model,
+            },
+            "required_speedup": threshold,
+            "preferred_topology_accepted": preferred_accepted,
+            "selection_reason": selection_reason,
+            "passed": True,
+            "authorized_production_nodes": selected_nodes,
+            "authorized_production_world_size": selected_world_size,
+            "require_single_world_size_for_entire_lineage": True,
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(args.output, gate)
+    print(json.dumps(gate, sort_keys=True))
+
+
+def _stage_by_id(recipe: Mapping[str, Any], stage_id: str) -> Mapping[str, Any]:
+    for value in recipe["stages"]:
+        if isinstance(value, Mapping) and value.get("id") == stage_id:
+            return value
+    _fail(f"unknown family stage: {stage_id}")
+
+
+def _stage_run_id(recipe: Mapping[str, Any], stage: Mapping[str, Any]) -> str:
+    return (
+        f"{recipe['family_id']}_trunk"
+        if stage["kind"] == "trunk"
+        else f"{recipe['family_id']}_{stage['id']}"
+    )
+
+
+def _verified_stage_resume_step(
+    recipe: Mapping[str, Any], base_dir: Path, stage: Mapping[str, Any]
+) -> int | None:
+    """Return the latest verified in-stage checkpoint used by env and cost gates."""
+
+    checkpoint_root = base_dir / "base_checkpoints" / str(stage["model_tag"])
+    minimum_step = int(stage.get("source_step") or 0)
+    target_step = int(stage["target_step"])
+    expected_run_id = _stage_run_id(recipe, stage)
+    candidates: list[int] = []
+    if checkpoint_root.is_dir():
+        for child in checkpoint_root.glob("strict_*"):
+            match = re.fullmatch(r"strict_(\d{6,})", child.name)
+            if match is None or not (child / "completion.json").is_file():
+                continue
+            step = int(match.group(1))
+            if minimum_step <= step < target_step:
+                checkpoint, _sha = _checkpoint_manifest(
+                    base_dir, str(stage["model_tag"]), step
+                )
+                identity = _mapping(
+                    checkpoint.get("identity"), "stage resume checkpoint identity"
+                )
+                if identity.get("run_id") != expected_run_id:
+                    _fail("stage resume checkpoint run ID differs from the recipe stage")
+                candidates.append(step)
+    return max(candidates) if candidates else None
+
+
+def _checkpoint_manifest(base_dir: Path, model_tag: str, step: int) -> tuple[dict[str, Any], str]:
+    from nanochat.strict_checkpoint import inspect_strict_checkpoint
+
+    checkpoint_root = base_dir / "base_checkpoints" / model_tag
+    try:
+        manifest = inspect_strict_checkpoint(checkpoint_root, step)
+    except Exception as exc:
+        raise FamilyWorkflowError(
+            f"strict checkpoint verification failed for {model_tag}@{step}: {exc}"
+        ) from exc
+    digest = verify_manifest_hash(manifest)
+    return manifest, digest
+
+
+def _verify_gate_and_preflight(
+    recipe: Mapping[str, Any],
+    recipe_sha: str,
+    preflight_path: Path,
+    gate_path: Path,
+    proxy_approval_path: Path,
+    attention_probe_path: Path,
+) -> tuple[dict[str, Any], str, dict[str, Any], str, dict[str, Any], str]:
+    preflight, preflight_sha = _load_receipt(
+        preflight_path, "d32_family_preflight_receipt"
+    )
+    gate, gate_sha = _load_receipt(gate_path, "d32_production_topology_gate")
+    if preflight["recipe"]["canonical_sha256"] != recipe_sha:
+        _fail("preflight receipt recipe mismatch")
+    if gate.get("recipe_sha256") != recipe_sha:
+        _fail("production topology gate recipe mismatch")
+    if gate.get("preflight_receipt_sha256") != preflight_sha:
+        _fail("production topology gate was produced from a different preflight receipt")
+    selected_world_size = gate.get("authorized_production_world_size")
+    selected_nodes = gate.get("authorized_production_nodes")
+    if gate.get("passed") is not True or selected_world_size not in {8, 16}:
+        _fail("production topology gate did not authorize 8 or 16 GPUs")
+    if selected_nodes != selected_world_size // int(recipe["distributed_gate"]["gpus_per_node"]):
+        _fail("production topology gate node/world-size arithmetic mismatch")
+    if gate.get("require_single_world_size_for_entire_lineage") is not True:
+        _fail("production topology gate does not lock one world size for the lineage")
+    if selected_world_size == 16:
+        if gate.get("preferred_topology_accepted") is not True or float(
+            gate.get("speedup_8_to_16", 0)
+        ) < float(recipe["distributed_gate"]["minimum_8_to_16_gpu_speedup"]):
+            _fail("16 GPUs were authorized without the required measured speedup")
+    elif gate.get("preferred_topology_accepted") is not False:
+        _fail("8-GPU fallback gate has an inconsistent preferred-topology decision")
+    selected_smoke_sha = (
+        gate.get("smoke_16gpu_sha256")
+        if selected_world_size == 16
+        else gate.get("smoke_8gpu_sha256")
+    )
+    selected_throughput = (
+        gate.get("throughput_16gpu")
+        if selected_world_size == 16
+        else gate.get("throughput_8gpu")
+    )
+    try:
+        expected_cost_projection = _measured_cost_projection(
+            recipe,
+            selected_smoke_sha256=str(selected_smoke_sha),
+            world_size=int(selected_world_size),
+            nodes=int(selected_nodes),
+            measured_positions_per_second=float(selected_throughput),
+        )
+    except (TypeError, ValueError) as exc:
+        raise FamilyWorkflowError(
+            f"production topology gate cost inputs are invalid: {exc}"
+        ) from exc
+    if gate.get("cost_projection") != expected_cost_projection:
+        _fail("production topology gate measured-cost projection drifted")
+    if expected_cost_projection["passed"] is not True:
+        _fail("production topology gate exceeds the reviewed CPU-saat ceiling")
+    capacity_sha, capacity_world = _preflight_capacity_world(
+        preflight, int(selected_world_size)
+    )
+    if gate.get("packing_capacity_receipt_sha256") != capacity_sha:
+        _fail("production topology gate used a different packing-capacity receipt")
+    if gate.get("authorized_packing_capacity_world_size") != selected_world_size:
+        _fail("production topology gate selected a different capacity world")
+    safe_positions = int(capacity_world["safe_global_scheduled_positions"])
+    if gate.get("authorized_safe_global_scheduled_positions") != safe_positions:
+        _fail("production topology gate safe-position bound differs from preflight")
+    maximum_horizon = max(
+        int(final["scheduled_tokens"]) for final in recipe["checkpoints"]["finals"]
+    )
+    if safe_positions < maximum_horizon:
+        _fail("selected production topology cannot reach the 40x horizon without wrap")
+    _probe, attention_probe_sha = _verify_attention_probe(
+        attention_probe_path,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight_sha=preflight_sha,
+        code_revision=preflight["code"]["git_commit"],
+    )
+    approval, approval_sha = _verify_proxy_acceptance(
+        proxy_approval_path,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight=preflight,
+        attention_probe_sha256=attention_probe_sha,
+    )
+    if gate.get("attention_probe_sha256") != attention_probe_sha:
+        _fail("production topology gate used a different attention-backend probe")
+    if gate.get("wsd_proxy_approval_sha256") != approval_sha:
+        _fail("production topology gate used a different proxy-approved optimizer")
+    if gate.get("accepted_base_weight_decay") != approval["accepted_base_weight_decay"]:
+        _fail("production topology gate base weight decay differs from proxy approval")
+    if gate.get("accepted_weight_decay_cooldown_policy") != approval[
+        "accepted_weight_decay_cooldown_policy"
+    ]:
+        _fail("production topology gate cooldown policy differs from proxy approval")
+    return preflight, preflight_sha, gate, gate_sha, approval, approval_sha
+
+
+def _completed_target_count(recipe: Mapping[str, Any], base_dir: Path) -> int:
+    count = 0
+    seen: set[tuple[str, int]] = set()
+    for stage in recipe["stages"]:
+        key = (str(stage["model_tag"]), int(stage["target_step"]))
+        if key in seen:
+            continue
+        seen.add(key)
+        path = base_dir / "base_checkpoints" / key[0] / f"strict_{key[1]:06d}" / "completion.json"
+        if path.is_file():
+            _checkpoint_manifest(base_dir, key[0], key[1])
+            count += 1
+    return count
+
+
+def command_preflight_stage(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    preflight, preflight_sha, _gate, gate_sha, _approval, _approval_sha = _verify_gate_and_preflight(
+        recipe, recipe_sha, args.preflight_receipt, args.gate, args.wd_proxy_approval,
+        args.attention_probe,
+    )
+    if args.world_size != _gate["authorized_production_world_size"]:
+        _fail("stage world size differs from the sealed production topology decision")
+    _signal_gate, signal_gate_sha = _verify_signal_resume_gate(
+        args.signal_resume_gate,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight=preflight,
+        preflight_sha=preflight_sha,
+    )
+    if _gate.get("signal_resume_gate_sha256") != signal_gate_sha:
+        _fail("production topology gate used a different signal/resume gate")
+    stage = _stage_by_id(recipe, args.stage)
+    production_world_size = int(_gate["authorized_production_world_size"])
+    stage_ids = [value["id"] for value in recipe["stages"]]
+    stage_index = stage_ids.index(args.stage)
+    for prior_id in stage_ids[:stage_index]:
+        prior_path = args.lineage_dir / f"{prior_id}.json"
+        prior, _prior_sha = _load_receipt(
+            prior_path, "d32_checkpoint_lineage_receipt"
+        )
+        expected_prior = {
+            "family_id": recipe["family_id"],
+            "stage_id": prior_id,
+            "recipe_sha256": recipe_sha,
+            "preflight_receipt_sha256": preflight_sha,
+            "production_gate_sha256": gate_sha,
+            "wsd_proxy_approval_sha256": _approval_sha,
+            "production_world_size": args.world_size,
+        }
+        for field, expected in expected_prior.items():
+            if prior.get(field) != expected:
+                _fail(f"prior lineage receipt {prior_id} {field} mismatch")
+    base_dir = args.base_dir.expanduser().resolve()
+    if str(base_dir) != preflight["base_dir"]:
+        _fail("stage base directory differs from the preflight receipt")
+    target_dir = (
+        base_dir
+        / "base_checkpoints"
+        / str(stage["model_tag"])
+        / f"strict_{int(stage['target_step']):06d}"
+    )
+    if target_dir.exists():
+        _fail(f"refusing to overwrite an existing target checkpoint: {target_dir}")
+    if stage.get("source_step") is not None:
+        source_tag = str(stage.get("source_model_tag", stage["model_tag"]))
+        _checkpoint_manifest(base_dir, source_tag, int(stage["source_step"]))
+
+    completed = _completed_target_count(recipe, base_dir)
+    storage = recipe["storage"]
+    # Free space already reflects completed artifacts.  Estimate only future
+    # retained targets, plus one full final transaction, one atomic-write copy,
+    # logs/evals and immutable safety headroom.
+    incomplete = [
+        stage_value
+        for stage_value in recipe["stages"]
+        if not (
+            base_dir
+            / "base_checkpoints"
+            / str(stage_value["model_tag"])
+            / f"strict_{int(stage_value['target_step']):06d}"
+            / "completion.json"
+        ).is_file()
+    ]
+    future_stable = sum(stage_value["kind"] == "trunk" for stage_value in incomplete)
+    future_finals = sum(stage_value["kind"] == "cooldown_fork" for stage_value in incomplete)
+    calibration = _mapping(
+        _gate.get("storage_calibration"), "production gate storage calibration"
+    )
+    if calibration.get("safety_factor") != storage["smoke_measurement_safety_factor"]:
+        _fail("production gate storage safety factor differs from recipe")
+    full_bytes = max(
+        int(storage["estimated_full_resumable_transaction_bytes"]),
+        _positive_int(
+            calibration.get("calibrated_full_transaction_bytes"),
+            "calibrated full transaction bytes",
+        ),
+    )
+    model_bytes = max(
+        int(storage["estimated_cooled_final_model_bundle_bytes"]),
+        _positive_int(
+            calibration.get("calibrated_model_bundle_bytes"),
+            "calibrated model bundle bytes",
+        ),
+    )
+    required_free = (
+        full_bytes * future_stable
+        + model_bytes * future_finals
+        + full_bytes * int(storage["full_cooled_final_transactions_at_peak"])
+        + full_bytes * int(storage["atomic_write_transient_transactions"])
+        + full_bytes * int(storage["maximum_retained_preemption_transactions"])
+        + int(storage["estimated_logs_and_evaluations_bytes"])
+        + int(storage["minimum_free_headroom_bytes"])
+    )
+    live_storage_policy = storage["uhem_live_quota"]
+    free, live_storage_audit = _live_beegfs_storage(
+        REPO_ROOT,
+        uid=int(live_storage_policy["uid"]),
+        storage_pool_id=int(live_storage_policy["storage_pool_id"]),
+        path=base_dir,
+    )
+    if free < required_free:
+        _fail(
+            f"insufficient free storage for stage {args.stage}: need {required_free}, found {free}; "
+            "the workflow never auto-deletes existing or prior-model artifacts"
+        )
+    current_resume_step = _verified_stage_resume_step(recipe, base_dir, stage)
+    current_source_step = int(stage.get("source_step") or 0)
+    current_progress_step = max(
+        current_source_step,
+        current_source_step if current_resume_step is None else current_resume_step,
+    )
+    remaining_updates = int(stage["target_step"]) - current_progress_step
+    if remaining_updates <= 0:
+        _fail("current production stage has no positive uncompleted update range")
+    for future_stage in recipe["stages"][stage_index + 1 :]:
+        future_target = (
+            base_dir
+            / "base_checkpoints"
+            / str(future_stage["model_tag"])
+            / f"strict_{int(future_stage['target_step']):06d}"
+            / "completion.json"
+        )
+        if future_target.is_file():
+            _fail("a future stage target exists before its reviewed lineage turn")
+        future_delta = int(future_stage["target_step"]) - int(
+            future_stage.get("source_step") or 0
+        )
+        if future_delta <= 0:
+            _fail("future production stage has a non-positive update range")
+        remaining_updates += future_delta
+    remaining_positions = remaining_updates * int(
+        recipe["training"]["global_batch_tokens"]
+    )
+    measured_cost = _mapping(
+        _gate.get("cost_projection"), "production gate cost projection"
+    )
+    raw_remaining_cpu_saat, reserved_remaining_cpu_saat = (
+        _training_cost_for_positions(
+            scheduled_positions=remaining_positions,
+            measured_positions_per_second=float(
+                measured_cost["measured_positions_per_second"]
+            ),
+            nodes=int(_gate["authorized_production_nodes"]),
+            cpu_saat_per_node_hour=int(
+                measured_cost["billing_cpu_saat_per_node_hour"]
+            ),
+            reserve_fraction=float(measured_cost["reserve_fraction"]),
+        )
+    )
+    budget = recipe["uhem_budget"]
+    live_cpu_saat, quota_output_sha, quota_audit = _live_uhem_cpu_saat(
+        REPO_ROOT, str(budget["account"]), str(budget["user"])
+    )
+    quota_floor = float(reserved_remaining_cpu_saat)
+    if live_cpu_saat < quota_floor:
+        _fail(
+            f"live UHeM quota fell below the measured remaining-work safety floor: "
+            f"need {quota_floor:.0f} CPU-saat, found {live_cpu_saat:.2f}"
+        )
+    result = {
+        "stage": args.stage,
+        "preflight_receipt_sha256": preflight_sha,
+        "gate_sha256": gate_sha,
+        "completed_transactions": completed,
+        "remaining_transactions_including_this_stage": len(incomplete),
+        "filesystem_free_bytes": free,
+        "live_storage": live_storage_audit,
+        "required_free_bytes": required_free,
+        "full_transaction_bytes_used": full_bytes,
+        "model_bundle_bytes_used": model_bytes,
+        "live_remaining_cpu_saat": live_cpu_saat,
+        "required_cpu_saat_safety_floor": quota_floor,
+        "remaining_cost_projection": {
+            "current_resume_step": current_resume_step,
+            "remaining_updates": remaining_updates,
+            "remaining_scheduled_positions": remaining_positions,
+            "measured_positions_per_second": measured_cost[
+                "measured_positions_per_second"
+            ],
+            "nodes": _gate["authorized_production_nodes"],
+            "billing_cpu_saat_per_node_hour": measured_cost[
+                "billing_cpu_saat_per_node_hour"
+            ],
+            "reserve_fraction": measured_cost["reserve_fraction"],
+            "raw_remaining_cpu_saat_ceiling": raw_remaining_cpu_saat,
+            "reserved_remaining_cpu_saat": reserved_remaining_cpu_saat,
+        },
+        "quota_output_sha256": quota_output_sha,
+        "live_quota": quota_audit,
+    }
+    print(json.dumps(result, sort_keys=True))
+
+
+def command_stage_env(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    gate, _gate_sha = _load_receipt(args.gate, "d32_production_topology_gate")
+    if gate.get("recipe_sha256") != recipe_sha or gate.get("passed") is not True:
+        _fail("stage environment topology gate is invalid or belongs to another recipe")
+    production_world_size = gate.get("authorized_production_world_size")
+    production_nodes = gate.get("authorized_production_nodes")
+    if production_world_size not in {8, 16} or production_nodes != production_world_size // 4:
+        _fail("stage environment topology selection is invalid")
+    stage = _stage_by_id(recipe, args.stage)
+    base_dir = args.base_dir.expanduser().resolve()
+    resume_step = _verified_stage_resume_step(recipe, base_dir, stage)
+    parent_sha = ""
+    parent_dir = ""
+    if stage["kind"] == "cooldown_fork":
+        source_tag = str(stage["source_model_tag"])
+        source_step = int(stage["source_step"])
+        _parent, parent_sha = _checkpoint_manifest(base_dir, source_tag, source_step)
+        parent_dir = str(base_dir / "base_checkpoints" / source_tag)
+    values: dict[str, str] = {
+        "FAMILY_ID": str(recipe["family_id"]),
+        "STAGE_ID": str(stage["id"]),
+        "STAGE_KIND": str(stage["kind"]),
+        "MODEL_TAG": str(stage["model_tag"]),
+        "SOURCE_MODEL_TAG": str(stage.get("source_model_tag", stage["model_tag"])),
+        "SOURCE_STEP": "" if stage.get("source_step") is None else str(stage["source_step"]),
+        "TARGET_STEP": str(stage["target_step"]),
+        "NUM_ITERATIONS": str(stage["num_iterations"]),
+        "WSD_COOLDOWN_START_STEP": str(stage["cooldown_start_step"]),
+        "EXPOSURE_PLAN_KEY": (
+            f"{stage['exposure_plan_family']}_ws{production_world_size}_seed42"
+        ),
+        "PRODUCTION_WORLD_SIZE": str(production_world_size),
+        "PRODUCTION_NODES": str(production_nodes),
+        "RESUME_FROM_STEP": "" if resume_step is None else str(resume_step),
+        "PARENT_CHECKPOINT_DIR": parent_dir,
+        "PARENT_CHECKPOINT_SHA256": parent_sha,
+        "RUN_ID": f"{recipe['family_id']}_{'trunk' if stage['kind'] == 'trunk' else stage['id']}",
+    }
+    for key, value in values.items():
+        if "\n" in value or "\r" in value:
+            _fail(f"unsafe newline in stage environment value {key}")
+        print(f"{key}={shlex.quote(value)}")
+
+
+def command_seal_preemption(args: argparse.Namespace) -> None:
+    """Authorize requeue only after unanimous rank-75 exits and a verified checkpoint."""
+
+    recipe, recipe_sha = load_recipe(args.recipe)
+    maximum_requeues = int(recipe["storage"]["maximum_retained_preemption_transactions"])
+    if args.slurm_restart_count < 0 or args.slurm_restart_count >= maximum_requeues:
+        _fail(
+            "production preemption exceeds the reviewed retained-transaction/requeue cap"
+        )
+    preflight, preflight_sha, gate, gate_sha, _approval, approval_sha = (
+        _verify_gate_and_preflight(
+            recipe,
+            recipe_sha,
+            args.preflight_receipt,
+            args.gate,
+            args.wd_proxy_approval,
+            args.attention_probe,
+        )
+    )
+    stage = _stage_by_id(recipe, args.stage)
+    _signal_gate, signal_gate_sha = _verify_signal_resume_gate(
+        args.signal_resume_gate,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight=preflight,
+        preflight_sha=preflight_sha,
+    )
+    if gate.get("signal_resume_gate_sha256") != signal_gate_sha:
+        _fail("preemption stage uses a different signal/resume gate")
+    attention_probe, attention_probe_sha = _verify_attention_probe(
+        args.attention_probe,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight_sha=preflight_sha,
+        code_revision=preflight["code"]["git_commit"],
+    )
+    world_size = int(gate["authorized_production_world_size"])
+    nodes = int(gate["authorized_production_nodes"])
+    run_id = (
+        f"{recipe['family_id']}_trunk"
+        if stage["kind"] == "trunk"
+        else f"{recipe['family_id']}_{stage['id']}"
+    )
+    _launch, launch_sha = _verify_static_launch_receipt(
+        args.launch_receipt,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        run_id=run_id,
+        phase=f"production_{stage['id']}",
+        slurm_job_id=args.slurm_job_id,
+        world_size=world_size,
+        nodes=nodes,
+        expected_child_exit_code=75,
+    )
+    base_dir = args.base_dir.expanduser().resolve()
+    checkpoint_root = base_dir / "base_checkpoints" / str(stage["model_tag"])
+    source_step = int(stage.get("source_step") or 0)
+    target_step = int(stage["target_step"])
+    candidates: list[int] = []
+    if checkpoint_root.is_dir():
+        for child in checkpoint_root.glob("strict_*"):
+            match = re.fullmatch(r"strict_(\d{6,})", child.name)
+            if match is None or not (child / "completion.json").is_file():
+                continue
+            step = int(match.group(1))
+            if source_step <= step < target_step:
+                candidates.append(step)
+    selected_tag = str(stage["model_tag"])
+    used_stage_source = False
+    if candidates:
+        checkpoint_step = max(candidates)
+        checkpoint, checkpoint_sha = _checkpoint_manifest(
+            base_dir, selected_tag, checkpoint_step
+        )
+        identity = _mapping(checkpoint.get("identity"), "preemption checkpoint identity")
+        if identity.get("run_id") != run_id:
+            _fail("preemption checkpoint run ID differs from the interrupted stage")
+    elif stage.get("source_step") is not None:
+        selected_tag = str(stage.get("source_model_tag", stage["model_tag"]))
+        checkpoint_step = int(stage["source_step"])
+        checkpoint, checkpoint_sha = _checkpoint_manifest(
+            base_dir, selected_tag, checkpoint_step
+        )
+        used_stage_source = True
+    else:
+        _fail("collective rank-75 exit has no complete checkpoint from which to requeue")
+    if int(checkpoint.get("expected_world_size", -1)) != world_size:
+        _fail("preemption checkpoint world size differs from the locked topology")
+    if checkpoint["identity"].get("study_manifest_sha256") != recipe_sha:
+        _fail("preemption checkpoint recipe hash mismatch")
+    preemption_metadata = None
+    meta_path = (
+        base_dir
+        / "base_checkpoints"
+        / selected_tag
+        / f"strict_{checkpoint_step:06d}"
+        / "meta.json"
+    )
+    meta = _load_object(meta_path, "preemption checkpoint metadata")
+    if not used_stage_source:
+        value = meta.get("preemption")
+        if value is None:
+            _fail("new preemption checkpoint lacks signal/exit metadata")
+        preemption_metadata = dict(_mapping(value, "checkpoint preemption metadata"))
+        if preemption_metadata.get("exit_code") != 75 or preemption_metadata.get(
+            "signal"
+        ) not in {"SIGUSR1", "SIGTERM"}:
+            _fail("checkpoint preemption metadata is invalid")
+        protocol = _mapping(
+            checkpoint["identity"].get("protocol"), "preemption checkpoint protocol"
+        )
+        exposure_plan_key = (
+            f"{stage['exposure_plan_family']}_ws{world_size}_seed42"
+        )
+        _verify_frozen_protocol(
+            protocol,
+            recipe=recipe,
+            preflight=preflight,
+            attention_probe=attention_probe,
+            attention_probe_sha256=attention_probe_sha,
+            label="preemption checkpoint protocol",
+            run_kind="production",
+            recipe_scope=(
+                "production_trunk" if stage["kind"] == "trunk" else str(stage["id"])
+            ),
+            model_tag=str(stage["model_tag"]),
+            exposure_plan_sha256=str(
+                preflight["corpus"]["training_exposure_plans"][exposure_plan_key][
+                    "sha256"
+                ]
+            ),
+            depth=32,
+            model_dim=2048,
+            world_size=world_size,
+            device_batch_size=recipe["training"]["device_batch_sequences"],
+            total_batch_size=recipe["training"]["global_batch_tokens"],
+            num_iterations=int(stage["num_iterations"]),
+            eval_every_updates=recipe["training"]["evaluation"][
+                "eval_every_updates"
+            ],
+            seed=recipe["training"]["seed"],
+            production_gate=gate,
+            production_gate_sha256=gate_sha,
+        )
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "d32_collective_preemption_receipt",
+            "family_id": recipe["family_id"],
+            "recipe_sha256": recipe_sha,
+            "preflight_receipt_sha256": preflight_sha,
+            "production_gate_sha256": gate_sha,
+            "wsd_proxy_approval_sha256": approval_sha,
+            "stage_id": stage["id"],
+            "run_id": run_id,
+            "slurm_job_id": args.slurm_job_id,
+            "slurm_restart_count": args.slurm_restart_count,
+            "world_size": world_size,
+            "nodes": nodes,
+            "rank_exit_code": 75,
+            "static_launch_receipt_sha256": launch_sha,
+            "resume_checkpoint": {
+                "model_tag": selected_tag,
+                "step": checkpoint_step,
+                "checkpoint_sha256": checkpoint_sha,
+                "is_declared_stage_source": used_stage_source,
+                "preemption_metadata": preemption_metadata,
+            },
+            "requeue_authorized": True,
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(args.output, receipt)
+    print(json.dumps(receipt, sort_keys=True))
+
+
+def command_seal_stage(args: argparse.Namespace) -> None:
+    recipe, recipe_sha = load_recipe(args.recipe)
+    preflight, preflight_sha, _gate, gate_sha, approval, approval_sha = _verify_gate_and_preflight(
+        recipe, recipe_sha, args.preflight_receipt, args.gate, args.wd_proxy_approval,
+        args.attention_probe,
+    )
+    production_world_size = int(_gate["authorized_production_world_size"])
+    _signal_gate, signal_gate_sha = _verify_signal_resume_gate(
+        args.signal_resume_gate,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight=preflight,
+        preflight_sha=preflight_sha,
+    )
+    if _gate.get("signal_resume_gate_sha256") != signal_gate_sha:
+        _fail("stage finalization uses a different signal/resume gate")
+    attention_probe, attention_probe_sha = _verify_attention_probe(
+        args.attention_probe,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight_sha=preflight_sha,
+        code_revision=preflight["code"]["git_commit"],
+    )
+    if _gate.get("attention_probe_sha256") != attention_probe_sha:
+        _fail("stage finalization uses a different attention probe than the topology gate")
+    stage = _stage_by_id(recipe, args.stage)
+    production_nodes = int(_gate["authorized_production_nodes"])
+    expected_run_id = (
+        f"{recipe['family_id']}_trunk"
+        if stage["kind"] == "trunk"
+        else f"{recipe['family_id']}_{stage['id']}"
+    )
+    slurm_completion = _live_slurm_completed_job(
+        REPO_ROOT, job_id=args.slurm_job_id, expected_nodes=production_nodes
+    )
+    _launch, launch_sha = _verify_static_launch_receipt(
+        args.launch_receipt,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        run_id=expected_run_id,
+        phase=f"production_{stage['id']}",
+        slurm_job_id=args.slurm_job_id,
+        world_size=production_world_size,
+        nodes=production_nodes,
+    )
+    base_dir = args.base_dir.expanduser().resolve()
+    target_manifest, target_sha = _checkpoint_manifest(
+        base_dir, str(stage["model_tag"]), int(stage["target_step"])
+    )
+    source: dict[str, Any] | None = None
+    if stage.get("source_step") is not None:
+        source_tag = str(stage.get("source_model_tag", stage["model_tag"]))
+        _source_manifest, source_sha = _checkpoint_manifest(
+            base_dir, source_tag, int(stage["source_step"])
+        )
+        source = {
+            "model_tag": source_tag,
+            "step": int(stage["source_step"]),
+            "checkpoint_sha256": source_sha,
+            "run_id": _mapping(
+                _source_manifest.get("identity"), "source checkpoint identity"
+            ).get("run_id"),
+        }
+    identity = _mapping(target_manifest.get("identity"), "target checkpoint identity")
+    if identity.get("tokenizer_artifact_sha256") != preflight["tokenizer"]["package_manifest_sha256"]:
+        _fail("target checkpoint tokenizer hash differs from preflight")
+    if identity.get("study_manifest_sha256") != recipe_sha:
+        _fail("target checkpoint family-recipe hash differs from preflight")
+    if int(target_manifest.get("expected_world_size", -1)) != production_world_size:
+        _fail("target production checkpoint world size differs from the topology gate")
+    if identity.get("run_id") != expected_run_id:
+        _fail("target checkpoint run identity differs from the stage contract")
+    exposure_plan_key = (
+        f"{stage['exposure_plan_family']}_ws{production_world_size}_seed42"
+    )
+    expected_exposure = preflight["corpus"]["training_exposure_plans"][
+        exposure_plan_key
+    ]["sha256"]
+    if identity.get("exposure_plan_sha256") != expected_exposure:
+        _fail("target checkpoint exposure-plan hash differs from the stage contract")
+    protocol = _mapping(identity.get("protocol"), "target checkpoint protocol")
+    if protocol.get("num_iterations") != int(stage["num_iterations"]):
+        _fail("target checkpoint training horizon differs from stage contract")
+    optimizer = _verify_frozen_protocol(
+        protocol,
+        recipe=recipe,
+        preflight=preflight,
+        attention_probe=attention_probe,
+        attention_probe_sha256=attention_probe_sha,
+        label="target checkpoint protocol",
+        run_kind="production",
+        recipe_scope=(
+            "production_trunk" if stage["kind"] == "trunk" else str(stage["id"])
+        ),
+        model_tag=str(stage["model_tag"]),
+        exposure_plan_sha256=str(expected_exposure),
+        depth=32,
+        model_dim=2048,
+        world_size=production_world_size,
+        device_batch_size=recipe["training"]["device_batch_sequences"],
+        total_batch_size=recipe["training"]["global_batch_tokens"],
+        num_iterations=int(stage["num_iterations"]),
+        eval_every_updates=recipe["training"]["evaluation"]["eval_every_updates"],
+        seed=recipe["training"]["seed"],
+        production_gate=_gate,
+        production_gate_sha256=gate_sha,
+    )
+    if optimizer.get("muon_base_weight_decay") != approval["accepted_base_weight_decay"]:
+        _fail("target checkpoint WSD base weight decay differs from proxy approval")
+    schedule = _mapping(protocol.get("schedule"), "target checkpoint schedule")
+    expected_cooldown = (
+        None if int(stage["cooldown_start_step"]) < 0 else int(stage["cooldown_start_step"])
+    )
+    if schedule.get("name") != "wsd" or schedule.get("cooldown_start_step") != expected_cooldown:
+        _fail("target checkpoint WSD phase differs from stage contract")
+    if schedule.get("recipe_version") != recipe["weight_decay_proxy_ablation"]["recipe_version"]:
+        _fail("target checkpoint WSD recipe version differs from family contract")
+    if schedule.get("proxy_approval_sha256") != approval_sha:
+        _fail("target checkpoint does not bind the accepted WSD proxy receipt")
+    if schedule.get("warmup_steps") != 40 or schedule.get("momentum_warmup_steps") != 400:
+        _fail("target checkpoint WSD warmup policy mismatch")
+    if schedule.get("weight_decay_cooldown_policy") != approval[
+        "accepted_weight_decay_cooldown_policy"
+    ]:
+        _fail("target checkpoint cooldown policy differs from proxy approval")
+    if schedule.get("stable_muon_weight_decay") != approval[
+        "accepted_base_weight_decay"
+    ]:
+        _fail("target checkpoint schedule base weight decay differs from approval")
+    if schedule.get("momentum") != {"initial": 0.85, "stable": 0.97, "final": 0.9}:
+        _fail("target checkpoint WSD momentum policy mismatch")
+    expected_cooldown_fraction = None if expected_cooldown is None else 0.1
+    expected_terminal_lr = 1.0 if expected_cooldown is None else 0.0
+    if (
+        schedule.get("cooldown_fraction") != expected_cooldown_fraction
+        or schedule.get("terminal_lr_multiplier") != expected_terminal_lr
+    ):
+        _fail("target checkpoint WSD cooldown/terminal-LR policy mismatch")
+    checkpoint_parent = protocol.get("parent")
+    if source is None:
+        if checkpoint_parent is not None:
+            _fail("fresh trunk checkpoint unexpectedly records a parent")
+    elif stage["kind"] == "cooldown_fork":
+        expected_parent = {
+            "checkpoint_sha256": source["checkpoint_sha256"],
+            "run_id": source["run_id"],
+            "step": source["step"],
+        }
+        if checkpoint_parent != expected_parent:
+            _fail("cooldown checkpoint parent lineage differs from stable fork")
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "d32_checkpoint_lineage_receipt",
+            "family_id": recipe["family_id"],
+            "stage_id": stage["id"],
+            "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            "recipe_sha256": recipe_sha,
+            "preflight_receipt_sha256": preflight_sha,
+            "production_gate_sha256": gate_sha,
+            "production_world_size": production_world_size,
+            "exposure_plan_key": exposure_plan_key,
+            "wsd_proxy_approval_sha256": approval_sha,
+            "wsd_base_weight_decay": approval["accepted_base_weight_decay"],
+            "wsd_weight_decay_cooldown_policy": approval[
+                "accepted_weight_decay_cooldown_policy"
+            ],
+            "source": source,
+            "target": {
+                "model_tag": stage["model_tag"],
+                "step": int(stage["target_step"]),
+                "checkpoint_sha256": target_sha,
+                "retention_class": (
+                    "full_resumable_stable_fork"
+                    if stage["kind"] == "trunk"
+                    else "cooled_final_full_transaction_pending_explicit_export_policy"
+                ),
+            },
+            "slurm_job_id": args.slurm_job_id,
+            "slurm_completion": slurm_completion,
+            "static_srun_launch_receipt_sha256": launch_sha,
+            "signal_resume_gate_sha256": signal_gate_sha,
+            "code_revision": preflight["code"]["git_commit"],
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(args.output, receipt)
+    print(json.dumps(receipt, sort_keys=True))
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    validate = subparsers.add_parser("validate-recipe")
+    validate.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    validate.add_argument("--allow-unsealed", action="store_true")
+    validate.set_defaults(func=command_validate_recipe)
+
+    data_prep = subparsers.add_parser("data-prep-storage-gate")
+    data_prep.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    data_prep.add_argument("--sample-measurement", type=Path, required=True)
+    data_prep.add_argument("--work-dir", type=Path, required=True)
+    data_prep.add_argument("--output", type=Path, required=True)
+    data_prep.set_defaults(func=command_data_prep_storage_gate)
+
+    preflight = subparsers.add_parser("preflight")
+    preflight.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    preflight.add_argument("--repo-root", type=Path, default=Path.cwd())
+    preflight.add_argument("--base-dir", type=Path, required=True)
+    preflight.add_argument("--data-prep-storage-gate", type=Path, required=True)
+    preflight.add_argument("--corpus-manifest-sha256", required=True)
+    preflight.add_argument("--dataset-manifest-sha256", required=True)
+    preflight.add_argument("--source-receipt-sha256", required=True)
+    preflight.add_argument("--tokenizer-package-sha256", required=True)
+    preflight.add_argument("--validation-exposure-sha256", required=True)
+    preflight.add_argument("--exposure-plan-index-sha256", required=True)
+    preflight.add_argument("--output", type=Path, required=True)
+    preflight.add_argument("--allow-dirty", action="store_true")
+    preflight.set_defaults(func=command_preflight)
+
+    proxy_run = subparsers.add_parser("seal-proxy-run")
+    proxy_run.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    proxy_run.add_argument("--preflight-receipt", type=Path, required=True)
+    proxy_run.add_argument("--attention-probe", type=Path, required=True)
+    proxy_run.add_argument("--model-depth", type=int, choices=(12, 20), required=True)
+    proxy_run.add_argument("--candidate-id", required=True)
+    proxy_run.add_argument("--seed", type=int, required=True)
+    proxy_run.add_argument("--curve-log", type=Path, required=True)
+    proxy_run.add_argument("--checkpoint-root", type=Path, required=True)
+    proxy_run.add_argument("--rank-exit-receipt", type=Path, required=True)
+    proxy_run.add_argument("--slurm-job-id", default="")
+    proxy_run.add_argument("--output", type=Path, required=True)
+    proxy_run.set_defaults(func=command_seal_proxy_run)
+
+    proxy_env = subparsers.add_parser("proxy-env")
+    proxy_env.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    proxy_env.add_argument("--model-depth", type=int, choices=(12, 20), required=True)
+    proxy_env.add_argument("--candidate-id", required=True)
+    proxy_env.add_argument("--seed", type=int, required=True)
+    proxy_env.set_defaults(func=command_proxy_env)
+
+    proxy_screen = subparsers.add_parser("screen-proxy")
+    proxy_screen.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    proxy_screen.add_argument("--preflight-receipt", type=Path, required=True)
+    proxy_screen.add_argument("--attention-probe", type=Path, required=True)
+    proxy_screen.add_argument(
+        "--run-receipt", type=Path, action="append", required=True
+    )
+    proxy_screen.add_argument("--output", type=Path, required=True)
+    proxy_screen.set_defaults(func=command_screen_proxy)
+
+    proxy_accept = subparsers.add_parser("accept-proxy")
+    proxy_accept.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    proxy_accept.add_argument("--preflight-receipt", type=Path, required=True)
+    proxy_accept.add_argument("--attention-probe", type=Path, required=True)
+    proxy_accept.add_argument("--screening-receipt", type=Path, required=True)
+    proxy_accept.add_argument(
+        "--run-receipt", type=Path, action="append", required=True
+    )
+    proxy_accept.add_argument("--output", type=Path, required=True)
+    proxy_accept.set_defaults(func=command_accept_proxy)
+
+    smoke = subparsers.add_parser("seal-smoke")
+    smoke.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    smoke.add_argument("--preflight-receipt", type=Path, required=True)
+    smoke.add_argument("--attention-probe", type=Path, required=True)
+    smoke.add_argument("--nodes", type=int, choices=(2, 4), required=True)
+    smoke.add_argument("--curve-log", type=Path, required=True)
+    smoke.add_argument("--checkpoint-root", type=Path, required=True)
+    smoke.add_argument("--static-probe-receipt", type=Path, required=True)
+    smoke.add_argument("--static-launcher-gate", type=Path, required=True)
+    smoke.add_argument("--signal-resume-gate", type=Path, required=True)
+    smoke.add_argument("--launch-receipt", type=Path, action="append", required=True)
+    smoke.add_argument("--wd-proxy-approval", type=Path, required=True)
+    smoke.add_argument("--slurm-job-id", default="")
+    smoke.add_argument("--output", type=Path, required=True)
+    smoke.set_defaults(func=command_seal_smoke)
+
+    optimizer_env = subparsers.add_parser("optimizer-env")
+    optimizer_env.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    optimizer_env.add_argument("--preflight-receipt", type=Path, required=True)
+    optimizer_env.add_argument("--attention-probe", type=Path, required=True)
+    optimizer_env.add_argument("--wd-proxy-approval", type=Path, required=True)
+    optimizer_env.set_defaults(func=command_optimizer_env)
+
+    attention_env = subparsers.add_parser("attention-env")
+    attention_env.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    attention_env.add_argument("--preflight-receipt", type=Path, required=True)
+    attention_env.add_argument("--attention-probe", type=Path, required=True)
+    attention_env.set_defaults(func=command_attention_env)
+
+    rank_exit = subparsers.add_parser("record-rank-exit")
+    rank_exit.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    rank_exit.add_argument("--run-id", required=True)
+    rank_exit.add_argument("--phase", required=True)
+    rank_exit.add_argument("--slurm-job-id", required=True)
+    rank_exit.add_argument("--slurm-step-id", required=True)
+    rank_exit.add_argument("--node", required=True)
+    rank_exit.add_argument("--rank", type=int, required=True)
+    rank_exit.add_argument("--local-rank", type=int, required=True)
+    rank_exit.add_argument("--world-size", type=int, required=True)
+    rank_exit.add_argument("--exit-code", type=int, required=True)
+    rank_exit.add_argument(
+        "--launcher",
+        choices=(
+            "slurm_srun_direct_python_env_v1",
+            "slurm_batch_direct_python_env_v1",
+        ),
+        required=True,
+    )
+    rank_exit.add_argument("--output", type=Path, required=True)
+    rank_exit.set_defaults(func=command_record_rank_exit)
+
+    static_launch = subparsers.add_parser("seal-static-launch")
+    static_launch.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    static_launch.add_argument("--receipt-dir", type=Path, required=True)
+    static_launch.add_argument("--run-id", required=True)
+    static_launch.add_argument("--phase", required=True)
+    static_launch.add_argument("--slurm-job-id", required=True)
+    static_launch.add_argument("--world-size", type=int, required=True)
+    static_launch.add_argument("--nodes", type=int, required=True)
+    static_launch.add_argument("--srun-exit-code", type=int, required=True)
+    static_launch.add_argument("--expected-exit-code", type=int, choices=(0, 75), required=True)
+    static_launch.add_argument("--output", type=Path, required=True)
+    static_launch.set_defaults(func=command_seal_static_launch)
+
+    static_probe = subparsers.add_parser("seal-static-probe")
+    static_probe.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    static_probe.add_argument("--receipt-dir", type=Path, required=True)
+    static_probe.add_argument("--run-id", required=True)
+    static_probe.add_argument("--phase", required=True)
+    static_probe.add_argument("--slurm-job-id", required=True)
+    static_probe.add_argument("--world-size", type=int, required=True)
+    static_probe.add_argument("--nodes", type=int, required=True)
+    static_probe.add_argument("--srun-exit-code", type=int, required=True)
+    static_probe.add_argument("--output", type=Path, required=True)
+    static_probe.set_defaults(func=command_seal_static_probe)
+
+    finalize_static_probe = subparsers.add_parser("finalize-static-probe")
+    finalize_static_probe.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    finalize_static_probe.add_argument("--preflight-receipt", type=Path, required=True)
+    finalize_static_probe.add_argument("--raw-probe-receipt", type=Path, required=True)
+    finalize_static_probe.add_argument("--slurm-job-id", required=True)
+    finalize_static_probe.add_argument("--nodes", type=int, choices=(1,), required=True)
+    finalize_static_probe.add_argument("--output", type=Path, required=True)
+    finalize_static_probe.set_defaults(func=command_finalize_static_probe)
+
+    verify_static_probe = subparsers.add_parser("verify-static-launcher-gate")
+    verify_static_probe.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    verify_static_probe.add_argument("--preflight-receipt", type=Path, required=True)
+    verify_static_probe.add_argument("--gate", type=Path, required=True)
+    verify_static_probe.set_defaults(func=command_verify_static_launcher_gate)
+
+    signal_env = subparsers.add_parser("signal-smoke-env")
+    signal_env.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    signal_env.add_argument("--base-dir", type=Path, required=True)
+    signal_env.set_defaults(func=command_signal_smoke_env)
+
+    signal_request = subparsers.add_parser("record-signal-request")
+    signal_request.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    signal_request.add_argument("--curve-log", type=Path, required=True)
+    signal_request.add_argument("--slurm-job-id", required=True)
+    signal_request.add_argument("--slurm-step-id", required=True)
+    signal_request.add_argument("--slurm-restart-count", type=int, required=True)
+    signal_request.add_argument("--output", type=Path, required=True)
+    signal_request.set_defaults(func=command_record_signal_request)
+
+    signal_preemption = subparsers.add_parser("seal-signal-preemption")
+    signal_preemption.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    signal_preemption.add_argument("--base-dir", type=Path, required=True)
+    signal_preemption.add_argument("--signal-request", type=Path, required=True)
+    signal_preemption.add_argument("--launch-receipt", type=Path, required=True)
+    signal_preemption.add_argument("--slurm-job-id", required=True)
+    signal_preemption.add_argument("--output", type=Path, required=True)
+    signal_preemption.set_defaults(func=command_seal_signal_preemption)
+
+    finalize_signal = subparsers.add_parser("finalize-signal-smoke")
+    finalize_signal.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    finalize_signal.add_argument("--preflight-receipt", type=Path, required=True)
+    finalize_signal.add_argument("--static-launcher-gate", type=Path, required=True)
+    finalize_signal.add_argument("--attention-probe", type=Path, required=True)
+    finalize_signal.add_argument("--wd-proxy-approval", type=Path, required=True)
+    finalize_signal.add_argument("--base-dir", type=Path, required=True)
+    finalize_signal.add_argument("--preemption-receipt", type=Path, required=True)
+    finalize_signal.add_argument("--final-launch-receipt", type=Path, required=True)
+    finalize_signal.add_argument("--slurm-job-id", required=True)
+    finalize_signal.add_argument("--output", type=Path, required=True)
+    finalize_signal.set_defaults(func=command_finalize_signal_smoke)
+
+    verify_signal = subparsers.add_parser("verify-signal-resume-gate")
+    verify_signal.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    verify_signal.add_argument("--preflight-receipt", type=Path, required=True)
+    verify_signal.add_argument("--gate", type=Path, required=True)
+    verify_signal.set_defaults(func=command_verify_signal_resume_gate)
+
+    compare = subparsers.add_parser("compare-smokes")
+    compare.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    compare.add_argument("--smoke-8gpu", type=Path, required=True)
+    compare.add_argument("--smoke-16gpu", type=Path)
+    compare.add_argument("--output", type=Path, required=True)
+    compare.set_defaults(func=command_compare_smokes)
+
+    stage_env = subparsers.add_parser("stage-env")
+    stage_env.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    stage_env.add_argument("--stage", required=True)
+    stage_env.add_argument("--base-dir", type=Path, required=True)
+    stage_env.add_argument("--gate", type=Path, required=True)
+    stage_env.set_defaults(func=command_stage_env)
+
+    preemption = subparsers.add_parser("seal-preemption")
+    preemption.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    preemption.add_argument("--preflight-receipt", type=Path, required=True)
+    preemption.add_argument("--gate", type=Path, required=True)
+    preemption.add_argument("--wd-proxy-approval", type=Path, required=True)
+    preemption.add_argument("--attention-probe", type=Path, required=True)
+    preemption.add_argument("--signal-resume-gate", type=Path, required=True)
+    preemption.add_argument("--base-dir", type=Path, required=True)
+    preemption.add_argument("--stage", required=True)
+    preemption.add_argument("--launch-receipt", type=Path, required=True)
+    preemption.add_argument("--slurm-job-id", required=True)
+    preemption.add_argument("--slurm-restart-count", type=int, required=True)
+    preemption.add_argument("--output", type=Path, required=True)
+    preemption.set_defaults(func=command_seal_preemption)
+
+    preflight_stage = subparsers.add_parser("preflight-stage")
+    preflight_stage.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    preflight_stage.add_argument("--preflight-receipt", type=Path, required=True)
+    preflight_stage.add_argument("--gate", type=Path, required=True)
+    preflight_stage.add_argument("--wd-proxy-approval", type=Path, required=True)
+    preflight_stage.add_argument("--attention-probe", type=Path, required=True)
+    preflight_stage.add_argument("--signal-resume-gate", type=Path, required=True)
+    preflight_stage.add_argument("--base-dir", type=Path, required=True)
+    preflight_stage.add_argument("--lineage-dir", type=Path, required=True)
+    preflight_stage.add_argument("--stage", required=True)
+    preflight_stage.add_argument("--world-size", type=int, required=True)
+    preflight_stage.set_defaults(func=command_preflight_stage)
+
+    seal_stage = subparsers.add_parser("seal-stage")
+    seal_stage.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    seal_stage.add_argument("--preflight-receipt", type=Path, required=True)
+    seal_stage.add_argument("--gate", type=Path, required=True)
+    seal_stage.add_argument("--wd-proxy-approval", type=Path, required=True)
+    seal_stage.add_argument("--attention-probe", type=Path, required=True)
+    seal_stage.add_argument("--signal-resume-gate", type=Path, required=True)
+    seal_stage.add_argument("--base-dir", type=Path, required=True)
+    seal_stage.add_argument("--stage", required=True)
+    seal_stage.add_argument("--slurm-job-id", default="")
+    seal_stage.add_argument("--launch-receipt", type=Path, required=True)
+    seal_stage.add_argument("--output", type=Path, required=True)
+    seal_stage.set_defaults(func=command_seal_stage)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    args.func(args)
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except FamilyWorkflowError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        raise SystemExit(2) from exc

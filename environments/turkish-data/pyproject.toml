@@ -1,0 +1,15 @@
+[project]
+name = "nanochat-turkish-data-environment"
+version = "0.1.0"
+description = "Isolated CPU preprocessing environment for the Turkish d32 corpus"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "datatrove[io,processing] @ git+https://github.com/huggingface/datatrove.git@a649de79c14a550dc90f48a15c025f2dd3fd3b57",
+    "fasttext-wheel==0.9.2",
+    "huggingface-hub>=1.6,<2",
+    "pyarrow>=21,<24",
+    "requests>=2.32,<3",
+]
+
+[tool.uv]
+package = false

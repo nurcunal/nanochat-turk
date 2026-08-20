@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "environment_id": "nanochat-turkish-data-v1",
+  "python_requires": ">=3.12,<3.13",
+  "datatrove": {
+    "repository": "https://github.com/huggingface/datatrove.git",
+    "revision": "a649de79c14a550dc90f48a15c025f2dd3fd3b57",
+    "version": "0.10.0"
+  },
+  "glotlid": {
+    "repo_id": "cis-lmu/glotlid",
+    "revision": "85cd6716494360367b75f642b5bc78667605d0b4",
+    "path": "model_v3.bin",
+    "size_bytes": 1687094687,
+    "sha256": "a818b6bd42a628ab47d3dfc1578c7ea615c45381f3494c42535e31e8c4cafc9e"
+  },
+  "project_file": {
+    "path": "pyproject.toml",
+    "sha256": "78c149b8bfa7773b0d180296e8bf3b82fb9cab130da5f0dec1ca6d4c667a3dfa"
+  },
+  "lock_file": {
+    "path": "uv.lock",
+    "sha256": "a5ecf95e9d4aa45bf2273dcbb063f173b3a0f30208df7214c307c59d2bcb0a54"
+  }
+}

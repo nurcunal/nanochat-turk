@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/nurcunal/nanochat-turk/schemas/artifact-manifest.schema.json",
+  "title": "Nanochat Turkish artifact manifest",
+  "description": "A versioned, content-addressed artifact inventory with the provenance sections frozen by the MorphBPE alignment plan. Array order is significant.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_origin",
+    "packaging_provenance",
+    "data_provenance",
+    "segmenter_provenance",
+    "metric_environment",
+    "publication_target",
+    "files"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "$ref": "#/$defs/nonEmptyText"
+    },
+    "schema_version": {
+      "const": "1.0"
+    },
+    "manifest_type": {
+      "const": "artifact"
+    },
+    "profile": {
+      "enum": [
+        "strict",
+        "legacy-partial"
+      ]
+    },
+    "artifact_origin": {
+      "$ref": "#/$defs/provenanceObject"
+    },
+    "packaging_provenance": {
+      "type": "object",
+      "required": [
+        "git_commit"
+      ],
+      "properties": {
+        "git_commit": {},
+        "environment_lock_sha256": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_date_epoch": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "data_provenance": {
+      "$ref": "#/$defs/provenanceObject"
+    },
+    "segmenter_provenance": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/provenanceObject"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "metric_environment": {
+      "$ref": "#/$defs/provenanceObject"
+    },
+    "publication_target": {
+      "$ref": "#/$defs/provenanceObject"
+    },
+    "files": {
+      "description": "Ordered logical payload paths. Local source-machine paths are never valid inventory paths.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/artifactFileRecord"
+      }
+    },
+    "canonical_sha256": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "profile"
+        ],
+        "properties": {
+          "profile": {
+            "const": "legacy-partial"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "packaging_provenance": {
+            "properties": {
+              "git_commit": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/nonEmptyText"
+                  },
+                  {
+                    "type": "string",
+                    "maxLength": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "packaging_provenance": {
+            "properties": {
+              "git_commit": {
+                "$ref": "#/$defs/gitCommit"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "gitCommit": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "nonEmptyText": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!\\s)(?!.*\\s$)[^\\u0000-\\u001f\\u007f]+$"
+    },
+    "safeRelativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*//)[^\\u0000-\\u001f\\u007f]+$"
+    },
+    "role": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
+    "artifactFileRecord": {
+      "type": "object",
+      "required": [
+        "path",
+        "role",
+        "size_bytes",
+        "sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/safeRelativePath"
+        },
+        "role": {
+          "$ref": "#/$defs/role"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "provenanceObject": {
+      "type": "object"
+    }
+  }
+}

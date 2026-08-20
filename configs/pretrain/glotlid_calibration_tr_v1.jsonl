@@ -1,0 +1,40 @@
+{"id":"tr-01","expected_label":"tur_Latn","text":"Bugün arkadaşlarımla mahalledeki pazara gittik. Taze sebzelerin fiyatlarını karşılaştırdık, sonra eve dönüp birlikte akşam yemeği hazırladık."}
+{"id":"tr-02","expected_label":"tur_Latn","text":"İstanbul'da sabah trafiği yoğun olsa da vapur yolculuğu insanı rahatlatıyor. Deniz havası ve martıların sesi güne güzel başlamamı sağlıyor."}
+{"id":"tr-03","expected_label":"tur_Latn","text":"Bir işi öğrenmenin en iyi yolu düzenli olarak denemek, hata yaptığında nedenini anlamak ve ertesi gün yeniden çalışmaktır."}
+{"id":"tr-04","expected_label":"tur_Latn","text":"Annem çayı demledi, babam da balkondaki sandalyeleri hazırladı. Hepimiz oturup gün içinde yaşadıklarımızı uzun uzun konuştuk."}
+{"id":"tr-05","expected_label":"tur_Latn","text":"Kütüphaneden aldığım romanı dün gece bitirdim. Karakterlerin değişimi inandırıcıydı, fakat son bölüm bana biraz aceleye gelmiş gibi göründü."}
+{"id":"tr-06","expected_label":"tur_Latn","text":"Yağmur başlamadan önce çamaşırları toplamak iyi oldu. Hava birden serinlediği için pencereleri kapatıp üzerime kalın bir kazak giydim."}
+{"id":"tr-07","expected_label":"tur_Latn","text":"Otobüsü kaçırınca toplantıya yürüyerek gitmek zorunda kaldım. Yol beklediğimden uzun sürdü ama tam zamanında yetişebildim."}
+{"id":"tr-08","expected_label":"tur_Latn","text":"Komşumuz yeni taşındığı için ona çevredeki fırını, eczaneyi ve çocukların oynayabileceği parkı tarif ettik."}
+{"id":"az-01","expected_label":"azj_Latn","text":"Bu gün dostlarımla şəhərin mərkəzinə getdik. Hava sərin idi, amma günəş çıxdığı üçün parkda uzun müddət gəzdik."}
+{"id":"az-02","expected_label":"azj_Latn","text":"Anam səhər çay hazırladı, sonra hamımız mətbəxdə oturub həftə sonu üçün planlarımızı danışdıq."}
+{"id":"az-03","expected_label":"azj_Latn","text":"Kitabı dünən axşam bitirdim. Hadisələr maraqlı idi və müəllif qəhrəmanların hisslərini aydın şəkildə təsvir etmişdi."}
+{"id":"az-04","expected_label":"azj_Latn","text":"Avtobus gecikdiyinə görə işə piyada getdim. Yol bir az uzun olsa da, görüşə vaxtında çatdım."}
+{"id":"az-05","expected_label":"azj_Latn","text":"Bazardan təzə tərəvəz və meyvə aldıq. Evə qayıdanda birlikdə şam yeməyi hazırlamağa başladıq."}
+{"id":"az-06","expected_label":"azj_Latn","text":"Yeni bir bacarıq öyrənmək üçün hər gün məşq etmək və səhvlərin səbəbini diqqətlə araşdırmaq lazımdır."}
+{"id":"az-07","expected_label":"azj_Latn","text":"Yağış başlamazdan əvvəl pəncərələri bağladım və balkondakı paltarları içəri gətirdim."}
+{"id":"az-08","expected_label":"azj_Latn","text":"Qonşumuz məhəlləyə yeni köçmüşdü, ona yaxınlıqdakı aptekin və çörək dükanının yerini göstərdik."}
+{"id":"tk-01","expected_label":"tuk_Latn","text":"Şu gün dostlarym bilen şäher merkezine gitdik. Howa salkyndy, ýöne gün çykansoň seýilgähde uzak wagt gezelenç etdik."}
+{"id":"tk-02","expected_label":"tuk_Latn","text":"Ejem irden çaý taýýarlady, soň hemmämiz aşhanada oturyp dynç günleri üçin meýilnamalarymyzy gürrüň berdik."}
+{"id":"tk-03","expected_label":"tuk_Latn","text":"Kitaby düýn agşam okap gutardym. Wakalar gyzyklydy we awtor gahrymanlaryň duýgularyny düşnükli beýan edipdir."}
+{"id":"tk-04","expected_label":"tuk_Latn","text":"Awtobus gijä galansoň işe pyýada gitdim. Ýol uzagrak bolsa-da, duşuşyga wagtynda ýetdim."}
+{"id":"tk-05","expected_label":"tuk_Latn","text":"Bazardan täze gök önümler bilen miwe satyn aldyk. Öýe gaýdanymyzda agşamlyk naharyny bile taýýarladyk."}
+{"id":"tk-06","expected_label":"tuk_Latn","text":"Täze bir zady öwrenmek üçin her gün yzygiderli türgenleşmek we ýalňyşlaryň sebäbini düşünmek gerek."}
+{"id":"tk-07","expected_label":"tuk_Latn","text":"Ýagyş başlamazdan öň penjireleri ýapdym we balkondaky eşikleri içeri getirdim."}
+{"id":"tk-08","expected_label":"tuk_Latn","text":"Goňşymyz bu ýere ýaňy göçüp geldi, şonuň üçin oňa golaýdaky dükanyň we dermanyň ýerini görkezdik."}
+{"id":"crh-01","expected_label":"crh_Latn","text":"Bugün dostlarımnen şeer merkezine bardıq. Ava serin edi, amma küneş çıqqanı içün parkta uzun vaqıt kezindik."}
+{"id":"crh-02","expected_label":"crh_Latn","text":"Anam saba çay azırladı, soñ epimiz aşhanede oturıp afta soñu planlarımıznı laf ettik."}
+{"id":"crh-03","expected_label":"crh_Latn","text":"Kitapnı tünevin aqşam oqup bitirdim. Vaqialar meraqlı edi ve müellif qahramanlarnıñ duyğularını yahşı añlattı."}
+{"id":"crh-04","expected_label":"crh_Latn","text":"Avtobus keç qalğanı içün işke piyada bardım. Yol biraz uzun olsa da, körüşüvge vaqtında yetiştim."}
+{"id":"crh-05","expected_label":"crh_Latn","text":"Bazardan taze sebze ve meyva aldıq. Evge qaytqanda aqşam aşını beraber azırladıq."}
+{"id":"crh-06","expected_label":"crh_Latn","text":"Yañı bir hüner ögrenmek içün er kün çalışmaq ve yapılğan hatalarnıñ sebebini añlamaq kerek."}
+{"id":"crh-07","expected_label":"crh_Latn","text":"Yağmur başlamazdan evel pencerelerni qapattım ve balkondaki kiyimlerni içeri aldım."}
+{"id":"crh-08","expected_label":"crh_Latn","text":"Qomşumız maallemizge yañı köçip keldi, oña yaqındaki mağaza ve eczanenıñ yerini kösterttik."}
+{"id":"en-01","expected_label":"eng_Latn","text":"This morning I walked to the neighborhood market with my friends. We compared the prices of fresh vegetables and cooked dinner together."}
+{"id":"en-02","expected_label":"eng_Latn","text":"The bus arrived late, so I walked to the meeting. The route was longer than expected, but I still reached the office on time."}
+{"id":"en-03","expected_label":"eng_Latn","text":"My mother made tea while my father arranged the chairs on the balcony. We sat down and talked about our day."}
+{"id":"en-04","expected_label":"eng_Latn","text":"I finished the novel last night. The characters changed in a convincing way, although the final chapter felt slightly rushed."}
+{"id":"en-05","expected_label":"eng_Latn","text":"Learning a new skill takes regular practice, careful attention to mistakes, and enough patience to try again the next day."}
+{"id":"en-06","expected_label":"eng_Latn","text":"We closed the windows and brought the clothes inside before the rain began. The air suddenly became much colder."}
+{"id":"en-07","expected_label":"eng_Latn","text":"Our new neighbor asked where to find the nearest bakery, pharmacy, and park, so we showed her the way."}
+{"id":"en-08","expected_label":"eng_Latn","text":"The library was quiet in the afternoon, and I found a comfortable table where I could read and take notes for several hours."}
