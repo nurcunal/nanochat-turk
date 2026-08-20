@@ -33,6 +33,7 @@ CALIBRATION="$CONTROL_DIR/backend_calibration.json"
 SAMPLE_RANKS="$CONTROL_DIR/resource_sample_ranks.json"
 
 cd "$CODE_DIR"
+export PYTHONPATH="$CODE_DIR${PYTHONPATH:+:$PYTHONPATH}"
 test -x "$UV_BIN"
 test -x environments/turkish-data/.venv/bin/python
 mkdir -p "$CONTROL_DIR" "$MODEL_DIR"

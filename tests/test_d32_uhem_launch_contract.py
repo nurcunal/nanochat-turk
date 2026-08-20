@@ -177,6 +177,7 @@ def test_turkish_data_bootstrap_pins_and_seals_prerequisites() -> None:
     assert "scripts/turkish_data_backend.py calibrate" in source
     assert "scripts/turkish_data_backend.py sample-ranks" in source
     assert "--locked" in source
+    assert 'export PYTHONPATH="$CODE_DIR${PYTHONPATH:+:$PYTHONPATH}"' in source
     assert 'mv "$sample_tmp" "$SAMPLE_RANKS"' in source
 
 
