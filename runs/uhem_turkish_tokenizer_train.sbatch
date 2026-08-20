@@ -25,6 +25,7 @@ set -u
 : "${POOL_DIR:?}"
 : "${TOKENIZER_DIR:?Set a new tokenizer output directory}"
 : "${TOKENIZER_QUALITY_DIR:?Set a new tokenizer quality directory}"
+BASELINE_TOKENIZER_DIR="${BASELINE_TOKENIZER_DIR:-/ari/users/nunal/nanochat-turk-d20-bpe32k/tokenizers/bpe_32768}"
 : "${RESOURCE_APPROVAL:?}"
 : "${MIXTURE_QUALITY_APPROVAL:?}"
 : "${DATA_PREP_STORAGE_GATE:?}"
@@ -42,6 +43,11 @@ PYTHON="${PYTHON:-$CODE_DIR/.venv/bin/python}"
 
 cd "$CODE_DIR"
 export PYTHONPATH="$CODE_DIR${PYTHONPATH:+:$PYTHONPATH}"
+train_args=(--policy "$POLICY" --sample-dir "$TOKENIZER_SAMPLE_DIR"
+    --output-dir "$TOKENIZER_DIR" --quality-output-dir "$TOKENIZER_QUALITY_DIR"
+    --baseline-tokenizer-dir "$BASELINE_TOKENIZER_DIR")
+"$PYTHON" scripts/train_turkish_raw_bpe.py "${train_args[@]}" \
+    --baseline-preflight-only
 test ! -e "$TOKENIZER_DIR"
 test ! -e "$TOKENIZER_QUALITY_DIR"
 mkdir -p "$TOKENIZER_DIR" "$TOKENIZER_QUALITY_DIR"
@@ -56,11 +62,7 @@ common=(--recipe="$RECIPE" --policy="$POLICY" --source-plan="$SOURCE_PLAN"
     --cluster-launch-receipt="$CLUSTER_LAUNCH_RECEIPT" \
     --pool-dir="$POOL_DIR" \
     --tokenizer-sample-dir="$TOKENIZER_SAMPLE_DIR"
-train_args=(--policy "$POLICY" --sample-dir "$TOKENIZER_SAMPLE_DIR"
-    --output-dir "$TOKENIZER_DIR" --quality-output-dir "$TOKENIZER_QUALITY_DIR")
-if [ -n "${BASELINE_TOKENIZER_DIR:-}" ]; then
-    train_args+=(--baseline-tokenizer-dir "$BASELINE_TOKENIZER_DIR")
-fi
 "$PYTHON" scripts/train_turkish_raw_bpe.py "${train_args[@]}"
 test -f "$TOKENIZER_DIR/package_manifest.json"
+test -f "$TOKENIZER_DIR/tokenizer.tiktoken"
 test -f "$TOKENIZER_QUALITY_DIR/quality_report.json"

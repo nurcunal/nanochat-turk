@@ -56,7 +56,7 @@ export NUM_ITERATIONS=6 STOP_AT_STEP=6 SEED=42 EVAL_EVERY=250
 export LR_SCHEDULE=wsd WSD_COOLDOWN_START_STEP=-1
 export STUDY_MANIFEST="$RECIPE"
 export DATA_DIR="$NANOCHAT_BASE_DIR/pretrain_data/tr_general_clean_v2"
-export TOKENIZER_MANIFEST="$NANOCHAT_BASE_DIR/tokenizers/tr_general_raw_bpe_32k_v1/package_manifest.json"
+export TOKENIZER_MANIFEST="$NANOCHAT_BASE_DIR/tokenizers/tr_general_raw_bpe_32k_v2/package_manifest.json"
 export VALIDATION_MANIFEST="$DATA_DIR/validation_exposure_manifest.json"
 export EXPOSURE_PLAN="$DATA_DIR/training_exposure_signal_smoke_ws4_seed42.json"
 export METRICS_DIR="$NANOCHAT_BASE_DIR/metrics/d32_signal_smoke/ws4"

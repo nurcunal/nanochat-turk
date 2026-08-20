@@ -81,8 +81,8 @@
       "s20_ws16_seed42": "training_exposure_s20_ws16_seed42.json",
       "s40_ws16_seed42": "training_exposure_s40_ws16_seed42.json"
     },
-    "tokenizer_name": "tr_general_raw_bpe_32k_v1",
-    "tokenizer_root": "tokenizers/tr_general_raw_bpe_32k_v1",
+    "tokenizer_name": "tr_general_raw_bpe_32k_v2",
+    "tokenizer_root": "tokenizers/tr_general_raw_bpe_32k_v2",
     "tokenizer_package_manifest": "package_manifest.json"
   },
   "model": {
@@ -575,5 +575,5 @@
     "require_code_revision": true,
     "final_optimizer_policy": "explicit_include_or_explicit_omit_with_retention_class"
   },
-  "canonical_sha256": "ada97b37319e5308612c574bedbad46076127c1a6d81d4444abe05a4384e4c30"
+  "canonical_sha256": "457ce373dd6bd95082625f620a83cc470028d9c896cea6bdd0ea834876c9158a"
 }

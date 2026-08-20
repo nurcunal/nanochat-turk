@@ -10,6 +10,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 import torch
+import tiktoken
 
 import nanochat.strict_checkpoint as strict_checkpoints
 from nanochat.experiment_manifest import (
@@ -46,14 +47,23 @@ from nanochat.strict_runtime import (
     validate_recipe_invocation,
 )
 from nanochat.strict_tokenizer import (
+    EXPECTED_FILES,
     TokenizerPackageError,
     verify_tokenizer_package,
 )
-from nanochat.tokenizer import SPECIAL_TOKENS, SPLIT_PATTERN
+from nanochat.tokenizer import RustBPETokenizer, SPECIAL_TOKENS, SPLIT_PATTERN
 from scripts.d32_wsd_train import (
     _parse_args,
     _restore_and_release_checkpoint_payload,
     validate_cli,
+)
+from scripts.train_turkish_raw_bpe import (
+    _export_and_verify_canonical_tiktoken,
+    _token_byte_lengths,
+)
+from scripts.upload_base_checkpoint_to_hf import (
+    _select_verified_tokenizer_uploads,
+    _snapshot_verified_tokenizer_uploads,
 )
 from strict_loader_fixtures import (
     STUDY_HASH,
@@ -1127,8 +1137,31 @@ def test_validation_rows_and_context_loss_are_topology_invariant(
 
 def _write_production_tokenizer_package(root: Path) -> tuple[Path, dict]:
     root.mkdir()
-    (root / "tokenizer.pkl").write_bytes(b"fixture")
-    torch.save(torch.ones(32768, dtype=torch.int16), root / "token_bytes.pt")
+    lexical = 32768 - len(SPECIAL_TOKENS)
+    lexical_tokens = [bytes([value]) for value in range(256)]
+    for first in range(256):
+        for second in range(256):
+            if len(lexical_tokens) >= lexical:
+                break
+            lexical_tokens.append(bytes((first, second)))
+        if len(lexical_tokens) >= lexical:
+            break
+    mergeable_ranks = {value: rank for rank, value in enumerate(lexical_tokens)}
+    encoding = tiktoken.Encoding(
+        name="fixture_tr_raw_bpe",
+        pat_str=SPLIT_PATTERN,
+        mergeable_ranks=mergeable_ranks,
+        special_tokens={
+            token: lexical + index for index, token in enumerate(SPECIAL_TOKENS)
+        },
+    )
+    tokenizer = RustBPETokenizer(encoding, "<|bos|>")
+    tokenizer.save(str(root))
+    token_byte_lengths = _token_byte_lengths(tokenizer)
+    torch.save(token_byte_lengths, root / "token_bytes.pt")
+    canonical_export = _export_and_verify_canonical_tiktoken(
+        tokenizer, root, token_byte_lengths
+    )
     parity = {
         "passed": True,
         "upstream_commit": "92d63d4e8bb4df75c3b71618f31ddde2378b2bcd",
@@ -1166,6 +1199,7 @@ def _write_production_tokenizer_package(root: Path) -> tuple[Path, dict]:
         "iterator_stats": {"documents": documents, "characters": realized},
         "nanochat_upstream_revision": "92d63d4e",
         "pinned_iterator_parity": parity,
+        "canonical_export": canonical_export,
     }
     write_json_atomic(root / "tokenizer_config.json", config)
     receipt = seal_manifest(
@@ -1189,6 +1223,7 @@ def _write_production_tokenizer_package(root: Path) -> tuple[Path, dict]:
                 "exact_vocab_size": config["vocab_size"],
                 "all_256_bytes_representable": True,
                 "unicode_roundtrip_probes": 8,
+                "canonical_export": canonical_export,
             },
             "canonical_sha256": None,
         }
@@ -1196,6 +1231,7 @@ def _write_production_tokenizer_package(root: Path) -> tuple[Path, dict]:
     write_json_atomic(root / "training_receipt.json", receipt)
     roles = {
         "tokenizer.pkl": "tokenizer",
+        "tokenizer.tiktoken": "canonical_tiktoken_export",
         "tokenizer_config.json": "runtime_config",
         "token_bytes.pt": "token_byte_lengths",
         "training_receipt.json": "training_receipt",
@@ -1225,6 +1261,18 @@ def _write_production_tokenizer_package(root: Path) -> tuple[Path, dict]:
     return path, manifest
 
 
+def _reseal_tokenizer_package(path: Path) -> dict:
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    for record in manifest["files"]:
+        payload = path.parent / record["path"]
+        record["size_bytes"] = payload.stat().st_size
+        record["sha256"] = file_sha256(payload)
+    manifest["canonical_sha256"] = None
+    manifest = seal_manifest(manifest)
+    write_json_atomic(path, manifest)
+    return manifest
+
+
 def test_narrow_tokenizer_verifier_accepts_only_exact_production_package(
     tmp_path: Path,
 ) -> None:
@@ -1239,6 +1287,132 @@ def test_narrow_tokenizer_verifier_accepts_only_exact_production_package(
     (path.parent / "tokenizer.pkl").write_bytes(b"tampered")
     with pytest.raises(TokenizerPackageError, match="inventory"):
         verify_tokenizer_package(path)
+
+
+def test_tokenizer_verifier_reconstructs_pickle_policy_and_token_bytes(
+    tmp_path: Path,
+) -> None:
+    path, _manifest = _write_production_tokenizer_package(tmp_path / "tokenizer")
+    root = path.parent
+    original_pickle = (root / "tokenizer.pkl").read_bytes()
+    original_token_bytes = (root / "token_bytes.pt").read_bytes()
+    tokenizer = RustBPETokenizer.from_directory(str(root))
+    lexical = 32768 - len(SPECIAL_TOKENS)
+    wrong_pattern = tiktoken.Encoding(
+        name="wrong_pattern",
+        pat_str=r"(?s).+",
+        mergeable_ranks=dict(tokenizer.enc._mergeable_ranks),
+        special_tokens={
+            token: lexical + index for index, token in enumerate(SPECIAL_TOKENS)
+        },
+    )
+    RustBPETokenizer(wrong_pattern, "<|bos|>").save(str(root))
+    _reseal_tokenizer_package(path)
+    with pytest.raises(TokenizerPackageError, match="split"):
+        verify_tokenizer_package(path)
+
+    (root / "tokenizer.pkl").write_bytes(original_pickle)
+    _reseal_tokenizer_package(path)
+    lengths = torch.load(root / "token_bytes.pt", map_location="cpu", weights_only=True)
+    torch.save(lengths.to(torch.int64), root / "token_bytes.pt")
+    _reseal_tokenizer_package(path)
+    with pytest.raises(TokenizerPackageError, match="dtype/content"):
+        verify_tokenizer_package(path)
+
+    (root / "token_bytes.pt").write_bytes(original_token_bytes)
+    _reseal_tokenizer_package(path)
+    lengths = torch.load(root / "token_bytes.pt", map_location="cpu", weights_only=True)
+    lengths[0] += 1
+    torch.save(lengths, root / "token_bytes.pt")
+    _reseal_tokenizer_package(path)
+    with pytest.raises(TokenizerPackageError, match="dtype/content"):
+        verify_tokenizer_package(path)
+
+
+def test_family_tokenizer_upload_allowlist_rejects_extra_file(tmp_path: Path) -> None:
+    path, manifest = _write_production_tokenizer_package(tmp_path / "tokenizer")
+    tokenizer_config = json.loads(
+        (path.parent / "tokenizer_config.json").read_text(encoding="utf-8")
+    )
+    verified, selected = _select_verified_tokenizer_uploads(
+        path.parent,
+        expected_sha256=manifest["canonical_sha256"],
+        expected_name=tokenizer_config["name"],
+        expected_vocab_size=tokenizer_config["vocab_size"],
+    )
+    assert verified.canonical_sha256 == manifest["canonical_sha256"]
+    assert {local.name for local, _remote in selected} == {
+        "package_manifest.json",
+        *EXPECTED_FILES,
+    }
+    (path.parent / "operator-notes.txt").write_text("must not upload\n", encoding="utf-8")
+    with pytest.raises(TokenizerPackageError, match="unrecorded files"):
+        _select_verified_tokenizer_uploads(
+            path.parent,
+            expected_sha256=manifest["canonical_sha256"],
+            expected_name=tokenizer_config["name"],
+            expected_vocab_size=tokenizer_config["vocab_size"],
+        )
+
+
+def test_family_tokenizer_upload_reverification_rejects_payload_drift(
+    tmp_path: Path,
+) -> None:
+    path, manifest = _write_production_tokenizer_package(tmp_path / "tokenizer")
+    tokenizer_config = json.loads(
+        (path.parent / "tokenizer_config.json").read_text(encoding="utf-8")
+    )
+    _select_verified_tokenizer_uploads(
+        path.parent,
+        expected_sha256=manifest["canonical_sha256"],
+        expected_name=tokenizer_config["name"],
+        expected_vocab_size=tokenizer_config["vocab_size"],
+    )
+    with (path.parent / "tokenizer.tiktoken").open("ab") as handle:
+        handle.write(b"tampered\n")
+    with pytest.raises(TokenizerPackageError, match="inventory"):
+        _select_verified_tokenizer_uploads(
+            path.parent,
+            expected_sha256=manifest["canonical_sha256"],
+            expected_name=tokenizer_config["name"],
+            expected_vocab_size=tokenizer_config["vocab_size"],
+        )
+
+
+def test_family_tokenizer_upload_snapshot_isolated_from_late_source_drift(
+    tmp_path: Path,
+) -> None:
+    path, manifest = _write_production_tokenizer_package(tmp_path / "tokenizer")
+    tokenizer_config = json.loads(
+        (path.parent / "tokenizer_config.json").read_text(encoding="utf-8")
+    )
+    snapshot_package, snapshot_files = _snapshot_verified_tokenizer_uploads(
+        path.parent,
+        tmp_path / "snapshot",
+        expected_sha256=manifest["canonical_sha256"],
+        expected_name=tokenizer_config["name"],
+        expected_vocab_size=tokenizer_config["vocab_size"],
+    )
+    snapshot_payload = {
+        remote: local.read_bytes() for local, remote in snapshot_files
+    }
+    with (path.parent / "tokenizer.tiktoken").open("ab") as handle:
+        handle.write(b"late-source-drift\n")
+    assert {
+        remote: local.read_bytes() for local, remote in snapshot_files
+    } == snapshot_payload
+    verify_tokenizer_package(
+        snapshot_package.manifest_path,
+        expected_sha256=manifest["canonical_sha256"],
+        expected_name=tokenizer_config["name"],
+        expected_vocab_size=tokenizer_config["vocab_size"],
+    )
+    snapshot_tokenizer = next(
+        local for local, remote in snapshot_files if remote.endswith("tokenizer.tiktoken")
+    )
+    with pytest.raises(PermissionError):
+        with snapshot_tokenizer.open("ab") as handle:
+            handle.write(b"snapshot-drift\n")
 
 
 def test_recipe_proxy_control_is_bound_to_exact_upstream_schedule() -> None:

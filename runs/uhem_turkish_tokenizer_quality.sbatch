@@ -57,6 +57,7 @@ common=(--recipe="$RECIPE" --policy="$POLICY" --source-plan="$SOURCE_PLAN"
     --tokenizer-quality-dir="$TOKENIZER_QUALITY_DIR"
 "$PYTHON" scripts/review_turkish_tokenizer_quality.py \
     --quality-dir "$TOKENIZER_QUALITY_DIR" \
+    --tokenizer-dir "$TOKENIZER_DIR" \
     --reviewer "$TOKENIZER_REVIEWER" \
     --reviewed-at-utc "$TOKENIZER_REVIEWED_AT_UTC" \
     --decision "$TOKENIZER_DECISION" \

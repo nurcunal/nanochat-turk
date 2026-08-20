@@ -47,8 +47,73 @@ from nanochat.experiment_manifest import (
 CORPUS_NAME = "tr_general_clean_v1"
 CORPUS_NAME_V2 = "tr_general_clean_v2"
 SUPPORTED_CORPUS_NAMES = frozenset({CORPUS_NAME, CORPUS_NAME_V2})
-TOKENIZER_NAME = "tr_general_raw_bpe_32k_v1"
+TOKENIZER_NAME_V1 = "tr_general_raw_bpe_32k_v1"
+TOKENIZER_NAME_V2 = "tr_general_raw_bpe_32k_v2"
+TOKENIZER_NAME = TOKENIZER_NAME_V2
 VOCAB_SIZE = 32_768
+TOKENIZER_SAMPLE_SEED = "tr-general-raw-bpe-rowgroups-2026-08-20"
+TOKENIZER_HOLDOUT_SEED = "tr-general-raw-bpe-val-holdout-2026-08-20"
+TOKENIZER_HOLDOUT_MIN_DOCUMENTS = 50_000
+TOKENIZER_HOLDOUT_MIN_UTF8_BYTES = 128 * 1024 * 1024
+TOKENIZER_HOLDOUT_DOCUMENTS_PER_STRATUM = 32
+TOKENIZER_BASELINE_V1 = {
+    "name": "bpe_32768",
+    "vocab_size": 32_768,
+    "split_pattern": "nanochat_gpt4_style_numbers_1_or_2_v1",
+    "special_token_policy": "nanochat_9_v1",
+    "token_byte_table_semantics": "legacy_decoded_utf8_replacement_v1",
+    "raw_byte_length_mismatch_count": 159,
+    "payload_inventory_sha256": (
+        "03445f0b5e300c806c305e44029ea48753886eae4048f8805fb9d3f57f83eb52"
+    ),
+    "files": [
+        {
+            "path": "token_bytes.pt",
+            "size_bytes": 132_649,
+            "sha256": "ba345dc7eea5f07b3200f213ccf61ea6e9990d15d81d25e2e323009f4fba502e",
+        },
+        {
+            "path": "tokenizer.pkl",
+            "size_bytes": 436_874,
+            "sha256": "3b7f00d8697a303bb0ac7379b497fec6b76a61bd5bb694825264eecd4cb62a20",
+        },
+        {
+            "path": "tokenizer_config.json",
+            "size_bytes": 122,
+            "sha256": "b381631bad8ca489b85dbab686d63f0691b6455300f2ae43f8af43ad3b80a916",
+        },
+    ],
+}
+TOKENIZER_HOLDOUT_CONTRACT_V1 = {
+    "split": "val",
+    "selection": "smallest_sha256_stratified_prefix_v1",
+    "seed": TOKENIZER_HOLDOUT_SEED,
+    "min_documents": TOKENIZER_HOLDOUT_MIN_DOCUMENTS,
+    "min_utf8_bytes": TOKENIZER_HOLDOUT_MIN_UTF8_BYTES,
+    "threshold_semantics": "documents_gte_min_or_utf8_bytes_gte_min",
+    "strata_fields": ["mixture_id", "source_id", "register_bucket"],
+    "require_every_available_stratum": True,
+    "target_documents_per_available_stratum": TOKENIZER_HOLDOUT_DOCUMENTS_PER_STRATUM,
+}
+TOKENIZER_QUALITY_GATE_V1 = {
+    "schema_version": "1.0",
+    "baseline_required": True,
+    "max_roundtrip_failures": 0,
+    "min_vocab_utilization_fraction": 0.75,
+    "max_overall_efficiency_regression_fraction": 0.02,
+    "max_per_stratum_efficiency_regression_fraction": 0.25,
+    "max_overall_fertility_regression_fraction": 0.05,
+    "max_per_stratum_fertility_regression_fraction": 0.30,
+    "max_single_byte_token_use_fraction": 0.65,
+    "min_non_ascii_token_use_fraction": 0.005,
+    "max_invalid_utf8_token_use_fraction": 0.10,
+    "max_probe_efficiency_regression_fraction": 0.25,
+    "max_probe_fertility_regression_fraction": 0.30,
+    "fixed_probe_suite": "turkish_apostrophe_casing_long_suffix_v1",
+    "fixed_probe_suite_sha256": (
+        "60c963ff62721a24f1a88064f2354a47420e87385c61d81fb8e4869e48d70593"
+    ),
+}
 D32_GLOBAL_BATCH_TOKENS = 2_097_152
 D32_EVAL_MAX_PAYLOAD_TOKENS = 2_048
 D32_EVAL_ROW_CAPACITY = D32_EVAL_MAX_PAYLOAD_TOKENS + 1
@@ -568,8 +633,16 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
             )
 
     tokenizer = _require_mapping(policy["tokenizer_training"], "tokenizer_training")
-    if tokenizer.get("name") != TOKENIZER_NAME or tokenizer.get("vocab_size") != VOCAB_SIZE:
-        raise TurkishCorpusError("tokenizer identity must be tr_general_raw_bpe_32k_v1/32768")
+    expected_tokenizer_name = (
+        TOKENIZER_NAME_V2 if policy["name"] == CORPUS_NAME_V2 else TOKENIZER_NAME_V1
+    )
+    if (
+        tokenizer.get("name") != expected_tokenizer_name
+        or tokenizer.get("vocab_size") != VOCAB_SIZE
+    ):
+        raise TurkishCorpusError(
+            f"tokenizer identity must be {expected_tokenizer_name}/32768"
+        )
     if tokenizer.get("algorithm") != "raw_byte_bpe":
         raise TurkishCorpusError("tokenizer algorithm must be raw_byte_bpe")
     if tokenizer.get("sample_scope") != "post_filter_train_only":
@@ -582,6 +655,88 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
         "yield_full_capped_document_then_stop_when_cumulative_characters_strictly_exceed_threshold"
     ):
         raise TurkishCorpusError("tokenizer sample must retain pinned upstream stop semantics")
+    if policy["name"] == CORPUS_NAME:
+        if tokenizer.get("sampling") != "weighted_deficit_stable_shuffle_v1":
+            raise TurkishCorpusError("legacy tokenizer sampling contract drift")
+    else:
+        if tokenizer.get("sampling") != "weighted_deficit_stable_rowgroup_shuffle_v2":
+            raise TurkishCorpusError(
+                "tokenizer sampling must use the full-pool row-group shuffle"
+            )
+        if tokenizer.get("sampling_seed") != TOKENIZER_SAMPLE_SEED:
+            raise TurkishCorpusError("tokenizer sampling seed drift")
+        holdout = _require_mapping(
+            tokenizer.get("holdout"), "tokenizer_training.holdout"
+        )
+        for key in ("min_documents", "min_utf8_bytes"):
+            if isinstance(holdout.get(key), bool) or not isinstance(
+                holdout.get(key), int
+            ):
+                raise TurkishCorpusError(f"tokenizer holdout {key} must be an integer")
+            if holdout[key] <= 0:
+                raise TurkishCorpusError(f"tokenizer holdout {key} must be positive")
+        expected_holdout_shape = {
+            "split": "val",
+            "selection": "smallest_sha256_stratified_prefix_v1",
+            "threshold_semantics": "documents_gte_min_or_utf8_bytes_gte_min",
+            "strata_fields": ["mixture_id", "source_id", "register_bucket"],
+            "require_every_available_stratum": True,
+            "target_documents_per_available_stratum": (
+                TOKENIZER_HOLDOUT_DOCUMENTS_PER_STRATUM
+            ),
+        }
+        if any(
+            holdout.get(key) != value
+            for key, value in expected_holdout_shape.items()
+        ):
+            raise TurkishCorpusError("tokenizer holdout selection contract drift")
+        if not isinstance(holdout.get("seed"), str) or not holdout["seed"]:
+            raise TurkishCorpusError("tokenizer holdout seed must be non-empty")
+        quality_gate = _require_mapping(
+            tokenizer.get("quality_gate"), "tokenizer_training.quality_gate"
+        )
+        if quality_gate.get("schema_version") != "1.0":
+            raise TurkishCorpusError("tokenizer quality gate schema must be 1.0")
+        if quality_gate.get("baseline_required") is not True:
+            raise TurkishCorpusError("tokenizer quality gate must require a baseline")
+        if quality_gate.get("max_roundtrip_failures") != 0:
+            raise TurkishCorpusError(
+                "tokenizer quality gate must permit zero round-trip failures"
+            )
+        for key in (
+            "min_vocab_utilization_fraction",
+            "max_overall_efficiency_regression_fraction",
+            "max_per_stratum_efficiency_regression_fraction",
+            "max_overall_fertility_regression_fraction",
+            "max_per_stratum_fertility_regression_fraction",
+            "max_single_byte_token_use_fraction",
+            "min_non_ascii_token_use_fraction",
+            "max_invalid_utf8_token_use_fraction",
+            "max_probe_efficiency_regression_fraction",
+            "max_probe_fertility_regression_fraction",
+        ):
+            value = quality_gate.get(key)
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not 0 <= value <= 1
+            ):
+                raise TurkishCorpusError(
+                    f"tokenizer quality gate {key} must be within [0,1]"
+                )
+        if quality_gate.get("fixed_probe_suite") != (
+            "turkish_apostrophe_casing_long_suffix_v1"
+        ):
+            raise TurkishCorpusError("tokenizer quality probe suite drift")
+        baseline = _require_mapping(
+            tokenizer.get("baseline"), "tokenizer_training.baseline"
+        )
+        if dict(baseline) != TOKENIZER_BASELINE_V1:
+            raise TurkishCorpusError("v2 production tokenizer baseline inventory drift")
+        if dict(holdout) != TOKENIZER_HOLDOUT_CONTRACT_V1:
+            raise TurkishCorpusError("v2 production tokenizer holdout constants drift")
+        if dict(quality_gate) != TOKENIZER_QUALITY_GATE_V1:
+            raise TurkishCorpusError("v2 production tokenizer quality constants drift")
 
     qa = _require_mapping(policy["quality_assurance"], "quality_assurance")
     if qa.get("schema_version") != "1.0":
@@ -2844,13 +2999,358 @@ def iter_pool_rows(
             yield from rows
 
 
+def _stable_row_group_schedule(
+    pool_dir: str | Path,
+    manifest: Mapping[str, Any],
+    *,
+    split: str,
+    mixture_id: str,
+    seed: str,
+) -> tuple[list[tuple[str, int, str]], dict[str, int]]:
+    """Describe every eligible row group in a stable full-pool hash order."""
+
+    root = Path(pool_dir)
+    records = sorted(
+        (
+            item
+            for item in manifest["files"]
+            if item["split"] == split and item["mixture_id"] == mixture_id
+        ),
+        key=lambda item: item["path"],
+    )
+    schedule: list[tuple[str, int, str]] = []
+    total_rows = 0
+    for item in records:
+        path = root / item["path"]
+        if path.is_symlink() or path.stat().st_size != item["size_bytes"]:
+            raise TurkishCorpusError(f"filtered pool size/symlink drift: {item['path']}")
+        parquet = pq.ParquetFile(path)
+        if parquet.num_row_groups != item["row_groups"]:
+            raise TurkishCorpusError(f"filtered pool row-group drift: {item['path']}")
+        if parquet.metadata.num_rows != item["rows"]:
+            raise TurkishCorpusError(f"filtered pool row-count drift: {item['path']}")
+        total_rows += int(item["rows"])
+        for row_group_index in range(parquet.num_row_groups):
+            identity = (
+                f"{seed}\0{manifest['canonical_sha256']}\0{split}\0{mixture_id}"
+                f"\0{item['path']}\0{row_group_index}"
+            )
+            schedule.append(
+                (
+                    hashlib.sha256(identity.encode("utf-8")).hexdigest(),
+                    row_group_index,
+                    item["path"],
+                )
+            )
+    schedule.sort()
+    return schedule, {
+        "eligible_files": len(records),
+        "eligible_row_groups": len(schedule),
+        "eligible_rows": total_rows,
+    }
+
+
+def _iter_stably_shuffled_pool_rows(
+    pool_dir: str | Path,
+    manifest: Mapping[str, Any],
+    *,
+    split: str,
+    mixture_id: str,
+    seed: str,
+    traversal: Counter[str],
+) -> Iterator[dict[str, Any]]:
+    """Traverse the full-pool row-group schedule with row-group-bounded memory."""
+
+    root = Path(pool_dir)
+    schedule, eligible = _stable_row_group_schedule(
+        root,
+        manifest,
+        split=split,
+        mixture_id=mixture_id,
+        seed=seed,
+    )
+    traversal.update(eligible)
+    records_by_path = {item["path"]: item for item in manifest["files"]}
+    verified_paths: set[str] = set()
+    for _rank, row_group_index, relative_path in schedule:
+        path = root / relative_path
+        if relative_path not in verified_paths:
+            record = records_by_path[relative_path]
+            if file_sha256(path) != record["sha256"]:
+                raise TurkishCorpusError(f"filtered pool hash drift: {relative_path}")
+            verified_paths.add(relative_path)
+            traversal["visited_files"] += 1
+        parquet = pq.ParquetFile(path)
+        rows = parquet.read_row_group(row_group_index).to_pylist()
+        rows.sort(key=lambda row: (row["shuffle_key"], row["document_id"]))
+        traversal["visited_row_groups"] += 1
+        traversal["visited_rows"] += len(rows)
+        for row in rows:
+            if row["mixture_id"] != mixture_id:
+                raise TurkishCorpusError(f"mixture drift inside {relative_path}")
+            yield row
+
+
+def _sample_distribution(
+    documents: Mapping[str, int],
+    characters: Mapping[str, int],
+    *,
+    id_field: str,
+) -> list[dict[str, Any]]:
+    total_documents = sum(documents.values())
+    total_characters = sum(characters.values())
+    return [
+        {
+            id_field: key,
+            "documents": int(documents[key]),
+            "characters": int(characters[key]),
+            "document_share": documents[key] / total_documents,
+            "character_share": characters[key] / total_characters,
+        }
+        for key in sorted(set(documents) | set(characters))
+    ]
+
+
+def _tokenizer_holdout(
+    pool_dir: str | Path,
+    manifest: Mapping[str, Any],
+    holdout_policy: Mapping[str, Any],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Select a deterministic, val-only, fully stratified tokenizer holdout.
+
+    The first pass scans every val row while retaining only the globally lowest
+    ``min_documents`` hashes and a bounded lowest-hash floor per observed
+    combined stratum.  The second pass rereads only selected row groups.
+    """
+
+    root = Path(pool_dir)
+    minimum_documents = int(holdout_policy["min_documents"])
+    minimum_bytes = int(holdout_policy["min_utf8_bytes"])
+    per_stratum_target = int(
+        holdout_policy["target_documents_per_available_stratum"]
+    )
+    seed = str(holdout_policy["seed"])
+    records = sorted(
+        (item for item in manifest["files"] if item["split"] == "val"),
+        key=lambda item: item["path"],
+    )
+    if not records:
+        raise TurkishCorpusError("tokenizer quality holdout requires val pool rows")
+    # (-rank, locator, compact candidate). The heap root is the worst retained
+    # global candidate, which bounds memory to at most 50k production records.
+    global_heap: list[tuple[int, str, dict[str, Any]]] = []
+    by_stratum_heaps: dict[
+        tuple[str, str, str], list[tuple[int, str, dict[str, Any]]]
+    ] = defaultdict(list)
+    eligible_documents = 0
+    eligible_bytes = 0
+    eligible_by_stratum: dict[tuple[str, str, str], Counter[str]] = defaultdict(Counter)
+    scanned_row_groups = 0
+    for item in records:
+        path = root / item["path"]
+        if path.is_symlink() or path.stat().st_size != item["size_bytes"]:
+            raise TurkishCorpusError(f"filtered pool size/symlink drift: {item['path']}")
+        if file_sha256(path) != item["sha256"]:
+            raise TurkishCorpusError(f"filtered pool hash drift: {item['path']}")
+        parquet = pq.ParquetFile(path)
+        if (
+            parquet.num_row_groups != item["row_groups"]
+            or parquet.metadata.num_rows != item["rows"]
+        ):
+            raise TurkishCorpusError(f"filtered pool metadata drift: {item['path']}")
+        for row_group_index in range(parquet.num_row_groups):
+            scanned_row_groups += 1
+            rows = parquet.read_row_group(
+                row_group_index,
+                columns=[
+                    "text",
+                    "source_id",
+                    "mixture_id",
+                    "document_id",
+                    "register_bucket",
+                ],
+            ).to_pylist()
+            for row_index, row in enumerate(rows):
+                text = "" if row["text"] is None else str(row["text"])
+                if not text:
+                    continue
+                source_id = str(row["source_id"])
+                mixture_id = str(row["mixture_id"])
+                register = str(row.get("register_bucket") or "not_applicable")
+                if mixture_id != item["mixture_id"]:
+                    raise TurkishCorpusError(f"mixture drift inside {item['path']}")
+                stratum = (mixture_id, source_id, register)
+                utf8_bytes = len(text.encode("utf-8"))
+                locator = f"{item['path']}:{row_group_index}:{row_index}"
+                rank = int.from_bytes(
+                    hashlib.sha256(
+                        f"{seed}\0{manifest['canonical_sha256']}\0{locator}\0{row['document_id']}".encode(
+                            "utf-8"
+                        )
+                    ).digest(),
+                    "big",
+                )
+                candidate = {
+                    "rank": f"{rank:064x}",
+                    "locator": locator,
+                    "path": item["path"],
+                    "row_group": row_group_index,
+                    "row_index": row_index,
+                    "document_id": str(row["document_id"]),
+                    "mixture_id": mixture_id,
+                    "source_id": source_id,
+                    "register_bucket": register,
+                    "utf8_bytes": utf8_bytes,
+                }
+                eligible_documents += 1
+                eligible_bytes += utf8_bytes
+                eligible_by_stratum[stratum]["documents"] += 1
+                eligible_by_stratum[stratum]["utf8_bytes"] += utf8_bytes
+                stratum_heap = by_stratum_heaps[stratum]
+                stratum_item = (-rank, locator, candidate)
+                if len(stratum_heap) < per_stratum_target:
+                    heapq.heappush(stratum_heap, stratum_item)
+                elif rank < -stratum_heap[0][0]:
+                    heapq.heapreplace(stratum_heap, stratum_item)
+                heap_item = (-rank, locator, candidate)
+                if len(global_heap) < minimum_documents:
+                    heapq.heappush(global_heap, heap_item)
+                elif rank < -global_heap[0][0]:
+                    heapq.heapreplace(global_heap, heap_item)
+    candidates = sorted(
+        (item[2] for item in global_heap),
+        key=lambda item: (item["rank"], item["locator"]),
+    )
+    selected: dict[str, dict[str, Any]] = {}
+    selected_bytes = 0
+    for candidate in candidates:
+        selected[candidate["locator"]] = candidate
+        selected_bytes += int(candidate["utf8_bytes"])
+        if len(selected) >= minimum_documents or selected_bytes >= minimum_bytes:
+            break
+    for stratum_heap in by_stratum_heaps.values():
+        for _negative_rank, _locator, candidate in stratum_heap:
+            if candidate["locator"] not in selected:
+                selected[candidate["locator"]] = candidate
+                selected_bytes += int(candidate["utf8_bytes"])
+    if len(selected) < minimum_documents and selected_bytes < minimum_bytes:
+        raise TurkishCorpusError(
+            "val-only tokenizer holdout cannot reach its frozen size floor: "
+            f"documents={len(selected)}/{minimum_documents}, "
+            f"utf8_bytes={selected_bytes}/{minimum_bytes}"
+        )
+    selected_order = sorted(
+        selected.values(), key=lambda item: (item["rank"], item["locator"])
+    )
+    by_row_group: dict[tuple[str, int], set[int]] = defaultdict(set)
+    for candidate in selected_order:
+        by_row_group[(candidate["path"], candidate["row_group"])].add(
+            candidate["row_index"]
+        )
+    selected_rows: dict[str, dict[str, Any]] = {}
+    for (relative_path, row_group_index), row_indexes in sorted(by_row_group.items()):
+        rows = pq.ParquetFile(root / relative_path).read_row_group(row_group_index).to_pylist()
+        for row_index in sorted(row_indexes):
+            locator = f"{relative_path}:{row_group_index}:{row_index}"
+            selected_rows[locator] = rows[row_index]
+    output_rows = [selected_rows[candidate["locator"]] for candidate in selected_order]
+    observed_strata = set(by_stratum_heaps)
+    selected_strata = {
+        (
+            str(row["mixture_id"]),
+            str(row["source_id"]),
+            str(row.get("register_bucket") or "not_applicable"),
+        )
+        for row in output_rows
+    }
+    if selected_strata != observed_strata:
+        raise TurkishCorpusError("tokenizer holdout failed complete available-stratum coverage")
+    selected_counts: dict[tuple[str, str, str], Counter[str]] = defaultdict(Counter)
+    for row in output_rows:
+        stratum = (
+            str(row["mixture_id"]),
+            str(row["source_id"]),
+            str(row.get("register_bucket") or "not_applicable"),
+        )
+        selected_counts[stratum]["documents"] += 1
+        selected_counts[stratum]["utf8_bytes"] += len(str(row["text"]).encode("utf-8"))
+    selection_identity = [
+        {
+            key: candidate[key]
+            for key in (
+                "rank",
+                "locator",
+                "document_id",
+                "mixture_id",
+                "source_id",
+                "register_bucket",
+                "utf8_bytes",
+            )
+        }
+        for candidate in selected_order
+    ]
+    receipt = {
+        "split": "val",
+        "algorithm": holdout_policy["selection"],
+        "seed": seed,
+        "threshold_semantics": holdout_policy["threshold_semantics"],
+        "minimum_documents": minimum_documents,
+        "minimum_utf8_bytes": minimum_bytes,
+        "eligible_documents": eligible_documents,
+        "eligible_utf8_bytes": eligible_bytes,
+        "eligible_files": len(records),
+        "eligible_row_groups": scanned_row_groups,
+        "selected_documents": len(output_rows),
+        "selected_utf8_bytes": sum(
+            len(str(row["text"]).encode("utf-8")) for row in output_rows
+        ),
+        "available_strata": len(observed_strata),
+        "selected_strata": len(selected_strata),
+        "complete_available_stratum_coverage": True,
+        "target_documents_per_available_stratum": per_stratum_target,
+        "strata_fields": list(holdout_policy["strata_fields"]),
+        "strata": [
+            {
+                "mixture_id": stratum[0],
+                "source_id": stratum[1],
+                "register_bucket": stratum[2],
+                "eligible_documents": eligible_by_stratum[stratum]["documents"],
+                "eligible_utf8_bytes": eligible_by_stratum[stratum]["utf8_bytes"],
+                "target_documents": per_stratum_target,
+                "coverage_floor_documents": min(
+                    eligible_by_stratum[stratum]["documents"], per_stratum_target
+                ),
+                "selected_documents": selected_counts[stratum]["documents"],
+                "selected_utf8_bytes": selected_counts[stratum]["utf8_bytes"],
+            }
+            for stratum in sorted(observed_strata)
+        ],
+        "strata_below_target_due_to_availability": [
+            {
+                "mixture_id": stratum[0],
+                "source_id": stratum[1],
+                "register_bucket": stratum[2],
+                "eligible_documents": eligible_by_stratum[stratum]["documents"],
+                "target_documents": per_stratum_target,
+            }
+            for stratum in sorted(observed_strata)
+            if eligible_by_stratum[stratum]["documents"] < per_stratum_target
+        ],
+        "selection_sequence_sha256": hashlib.sha256(
+            canonical_json(selection_identity).encode("utf-8")
+        ).hexdigest(),
+    }
+    return output_rows, receipt
+
+
 def representative_sample(
     pool_dir: str | Path,
     policy: Mapping[str, Any],
     *,
     max_chars: int | None = None,
+    traversal_receipt: dict[str, Any] | None = None,
 ) -> Iterator[dict[str, Any]]:
-    """Yield a deterministic train-only tokenizer sample with mixture deficits."""
+    """Yield a deterministic train-only sample from full-pool row-group schedules."""
 
     manifest = load_json_strict(Path(pool_dir) / "corpus_manifest.json")
     verify_manifest_hash(manifest)
@@ -2864,8 +3364,19 @@ def representative_sample(
     target = int(max_chars or policy["tokenizer_training"]["max_chars"])
     document_cap = int(policy["tokenizer_training"]["max_chars_per_document"])
     buckets = [bucket for bucket in policy["mixture"]]
+    seed = str(policy["tokenizer_training"].get("sampling_seed", TOKENIZER_SAMPLE_SEED))
+    traversal_by_mixture: dict[str, Counter[str]] = {
+        bucket["id"]: Counter() for bucket in buckets
+    }
     iterators = {
-        bucket["id"]: iter_pool_rows(pool_dir, manifest, split="train", mixture_id=bucket["id"])
+        bucket["id"]: _iter_stably_shuffled_pool_rows(
+            pool_dir,
+            manifest,
+            split="train",
+            mixture_id=bucket["id"],
+            seed=seed,
+            traversal=traversal_by_mixture[bucket["id"]],
+        )
         for bucket in buckets
     }
     active = set(iterators)
@@ -2895,7 +3406,42 @@ def representative_sample(
         total += len(text)
         # Pinned upstream checks only after yielding the complete capped doc.
         if total > target:
+            if traversal_receipt is not None:
+                traversal_receipt.update(
+                    {
+                        "algorithm": "weighted_deficit_stable_rowgroup_shuffle_v2",
+                        "seed": seed,
+                        "pool_manifest_sha256": manifest["canonical_sha256"],
+                        "split": "train",
+                        "row_group_schedule_covers_full_pool": True,
+                        "bounded_memory_unit": "one_parquet_row_group_per_active_mixture",
+                        "by_mixture": [
+                            {
+                                "mixture_id": mixture_id,
+                                **dict(sorted(stats.items())),
+                            }
+                            for mixture_id, stats in sorted(
+                                traversal_by_mixture.items()
+                            )
+                        ],
+                    }
+                )
             return
+    if traversal_receipt is not None:
+        traversal_receipt.update(
+            {
+                "algorithm": "weighted_deficit_stable_rowgroup_shuffle_v2",
+                "seed": seed,
+                "pool_manifest_sha256": manifest["canonical_sha256"],
+                "split": "train",
+                "row_group_schedule_covers_full_pool": True,
+                "bounded_memory_unit": "one_parquet_row_group_per_active_mixture",
+                "by_mixture": [
+                    {"mixture_id": mixture_id, **dict(sorted(stats.items()))}
+                    for mixture_id, stats in sorted(traversal_by_mixture.items())
+                ],
+            }
+        )
 
 
 def write_tokenizer_sample(
@@ -2935,11 +3481,33 @@ def write_tokenizer_sample(
     sample_buffer: list[dict[str, Any]] = []
     sample_documents = 0
     sample_characters = 0
+    traversal_receipt: dict[str, Any] = {}
+    documents_by_mixture: Counter[str] = Counter()
+    characters_by_mixture: Counter[str] = Counter()
+    documents_by_source: Counter[str] = Counter()
+    characters_by_source: Counter[str] = Counter()
+    documents_by_register: Counter[str] = Counter()
+    characters_by_register: Counter[str] = Counter()
     try:
-        for row in representative_sample(pool_dir, policy, max_chars=max_chars):
+        for row in representative_sample(
+            pool_dir,
+            policy,
+            max_chars=max_chars,
+            traversal_receipt=traversal_receipt,
+        ):
             sample_buffer.append(row)
             sample_documents += 1
-            sample_characters += len(row["text"])
+            characters = len(row["text"])
+            sample_characters += characters
+            mixture_id = str(row["mixture_id"])
+            source_id = str(row["source_id"])
+            register = str(row.get("register_bucket") or "not_applicable")
+            documents_by_mixture[mixture_id] += 1
+            characters_by_mixture[mixture_id] += characters
+            documents_by_source[source_id] += 1
+            characters_by_source[source_id] += characters
+            documents_by_register[register] += 1
+            characters_by_register[register] += characters
             if len(sample_buffer) >= 4_096:
                 sample_writer.write_table(
                     pa.Table.from_pylist(sample_buffer, schema=FragmentWriter._schema)
@@ -2967,25 +3535,28 @@ def write_tokenizer_sample(
             "production train-only pool cannot cover pinned tokenizer threshold semantics: "
             f"requested={requested_characters}, realized={sample_characters}"
         )
-    # A fixed validation file is required by nanochat's strict loader, but the
-    # tokenizer trainer reads only train.  Copy deterministic val rows without
-    # contaminating tokenizer training.
-    val_rows: list[dict[str, Any]] = []
-    for bucket in policy["mixture"]:
-        iterator = iter_pool_rows(pool_dir, pool_manifest, split="val", mixture_id=bucket["id"])
-        for _ in range(16):
-            try:
-                val_rows.append(next(iterator))
-            except StopIteration:
-                break
-    if not val_rows:
-        # Tiny synthetic fixtures can legitimately hash no row into val.  Emit a
-        # schema-compatible empty file; production preflight rejects empty val.
-        val_table = pa.Table.from_pylist([], schema=FragmentWriter._schema)
-    else:
-        val_table = pa.Table.from_pylist(val_rows, schema=FragmentWriter._schema)
+    # The quality set is selected exclusively from the immutable val split. It
+    # is never exposed to the BPE trainer and covers every available combined
+    # mixture/source/register stratum before a human can approve the tokenizer.
+    holdout_policy = policy["tokenizer_training"].get("holdout")
+    if not isinstance(holdout_policy, Mapping):
+        raise TurkishCorpusError("tokenizer holdout policy is required")
+    val_rows, holdout_receipt = _tokenizer_holdout(
+        pool_dir, pool_manifest, holdout_policy
+    )
     val_path = destination / "validation.parquet"
-    pq.write_table(val_table, val_path, compression="zstd")
+    val_writer = pq.ParquetWriter(
+        val_path, FragmentWriter._schema, compression="zstd", use_dictionary=True
+    )
+    try:
+        for offset in range(0, len(val_rows), 4_096):
+            val_writer.write_table(
+                pa.Table.from_pylist(
+                    val_rows[offset : offset + 4_096], schema=FragmentWriter._schema
+                )
+            )
+    finally:
+        val_writer.close()
     ordered = [
         {"path": path.name, "size_bytes": path.stat().st_size, "sha256": file_sha256(path)}
         for path in (sample_path, val_path)
@@ -3015,6 +3586,8 @@ def write_tokenizer_sample(
                 "policy_sha256": policy_sha,
                 "production_chain": production_chain,
                 "sample_scope": "post_filter_train_only",
+                "quality_holdout_scope": "post_filter_val_only",
+                "quality_holdout": holdout_receipt,
                 "max_chars_per_document": policy["tokenizer_training"][
                     "max_chars_per_document"
                 ],
@@ -3030,7 +3603,7 @@ def write_tokenizer_sample(
         {
             "schema_version": "1.0",
             "kind": "turkish_raw_bpe_training_sample",
-            "name": TOKENIZER_NAME,
+            "name": policy["tokenizer_training"]["name"],
             "vocab_size": VOCAB_SIZE,
             "parent_corpus_manifest_sha256": pool_manifest["canonical_sha256"],
             "policy_sha256": policy_sha,
@@ -3043,6 +3616,29 @@ def write_tokenizer_sample(
             - requested_characters,
             "stop_rule": policy["tokenizer_training"]["stop_rule"],
             "documents": sample_documents,
+            "representative_traversal": traversal_receipt,
+            "sample_distribution": {
+                "documents": sample_documents,
+                "characters": sample_characters,
+                "by_mixture": _sample_distribution(
+                    documents_by_mixture,
+                    characters_by_mixture,
+                    id_field="mixture_id",
+                ),
+                "by_source": _sample_distribution(
+                    documents_by_source,
+                    characters_by_source,
+                    id_field="source_id",
+                ),
+                "by_register": _sample_distribution(
+                    documents_by_register,
+                    characters_by_register,
+                    id_field="register_bucket",
+                ),
+            },
+            "quality_holdout": holdout_receipt,
+            "quality_gate_policy": policy["tokenizer_training"]["quality_gate"],
+            "baseline_tokenizer": policy["tokenizer_training"]["baseline"],
             "max_chars_per_document": policy["tokenizer_training"][
                 "max_chars_per_document"
             ],
@@ -3584,7 +4180,7 @@ def build_packing_preflight_report(
     tokenizer_root = Path(tokenizer_dir)
     package = verify_tokenizer_package(
         tokenizer_root / "package_manifest.json",
-        expected_name=TOKENIZER_NAME,
+        expected_name=policy["tokenizer_training"]["name"],
         expected_vocab_size=VOCAB_SIZE,
     ).manifest
     if (
@@ -3908,7 +4504,7 @@ def materialize_final_corpus(
     tokenizer_root = Path(tokenizer_dir)
     verified_package = verify_tokenizer_package(
         tokenizer_root / "package_manifest.json",
-        expected_name=TOKENIZER_NAME,
+        expected_name=policy["tokenizer_training"]["name"],
         expected_vocab_size=VOCAB_SIZE,
     )
     package = verified_package.manifest
@@ -3925,6 +4521,7 @@ def materialize_final_corpus(
     tokenizer_quality_report, tokenizer_quality_approval = validate_tokenizer_quality_gate(
         tokenizer_quality_dir,
         expected_package_sha256=package["canonical_sha256"],
+        expected_training_receipt_sha256=package["training_receipt_sha256"],
         expected_production_chain=production_chain,
     )
     if (
@@ -4348,7 +4945,7 @@ def materialize_final_corpus(
             "production_chain": production_chain,
             "source_receipt_sha256": pool_manifest["source_receipt_sha256"],
             "tokenizer": {
-                "name": TOKENIZER_NAME,
+                "name": policy["tokenizer_training"]["name"],
                 "vocab_size": VOCAB_SIZE,
                 "package_sha256": package["canonical_sha256"],
                 "training_receipt_sha256": tokenizer_receipt["canonical_sha256"],
@@ -4882,6 +5479,8 @@ __all__ = [
     "D32_GLOBAL_BATCH_TOKENS",
     "SQLiteMinHashDeduper",
     "TOKENIZER_NAME",
+    "TOKENIZER_NAME_V1",
+    "TOKENIZER_NAME_V2",
     "MACOCU_SOURCE_ID",
     "TurkishCorpusError",
     "VOCAB_SIZE",

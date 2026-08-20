@@ -92,6 +92,77 @@ def add_tree(files, local_dir, path_in_repo):
             files.append((path, repo_path(path_in_repo, path.relative_to(local_dir))))
 
 
+def _select_verified_tokenizer_uploads(
+    tokenizer_root,
+    *,
+    expected_sha256,
+    expected_name,
+    expected_vocab_size,
+    path_in_repo="tokenizer",
+):
+    """Verify and select only the sealed production-tokenizer inventory."""
+
+    from nanochat.strict_tokenizer import EXPECTED_FILES, verify_tokenizer_package
+
+    root = Path(tokenizer_root)
+    manifest_path = root / "package_manifest.json"
+    package = verify_tokenizer_package(
+        manifest_path,
+        expected_sha256=expected_sha256,
+        expected_name=expected_name,
+        expected_vocab_size=expected_vocab_size,
+    )
+    # verify_tokenizer_package requires an exact on-disk inventory (apart from
+    # package_manifest.json) and validates every expected path/role. Build the
+    # upload list from that closed allowlist instead of recursively walking the
+    # directory, so an operator note, stale package, or secret can never become
+    # an accidental Hub payload.
+    selected = [(manifest_path, repo_path(path_in_repo, manifest_path.name))]
+    selected.extend(
+        (root / name, repo_path(path_in_repo, name))
+        for name in sorted(EXPECTED_FILES)
+    )
+    return package, selected
+
+
+def _snapshot_verified_tokenizer_uploads(
+    tokenizer_root,
+    snapshot_root,
+    *,
+    expected_sha256,
+    expected_name,
+    expected_vocab_size,
+    path_in_repo="tokenizer",
+):
+    """Copy the six verified small files into a private upload snapshot."""
+
+    source_package, source_files = _select_verified_tokenizer_uploads(
+        tokenizer_root,
+        expected_sha256=expected_sha256,
+        expected_name=expected_name,
+        expected_vocab_size=expected_vocab_size,
+        path_in_repo=path_in_repo,
+    )
+    destination = Path(snapshot_root)
+    if destination.exists():
+        raise FileExistsError(f"tokenizer upload snapshot already exists: {destination}")
+    destination.mkdir(parents=True)
+    for source, _remote in source_files:
+        target = destination / source.name
+        target.write_bytes(source.read_bytes())
+        target.chmod(0o400)
+    snapshot_package, snapshot_files = _select_verified_tokenizer_uploads(
+        destination,
+        expected_sha256=expected_sha256,
+        expected_name=expected_name,
+        expected_vocab_size=expected_vocab_size,
+        path_in_repo=path_in_repo,
+    )
+    if snapshot_package.canonical_sha256 != source_package.canonical_sha256:
+        raise ValueError("tokenizer upload snapshot differs from verified source package")
+    return snapshot_package, snapshot_files
+
+
 def sha256_file(path):
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -635,14 +706,23 @@ def main_family(args):
     ):
         raise ValueError("final corpus differs from exact preflight pool/QA lineage")
 
-    tokenizer_root = Path(preflight["tokenizer"]["root"])
-    add_tree(files, tokenizer_root, repo_path("tokenizer"))
     tokenizer_name = preflight["tokenizer"]["name"]
+    tokenizer_root = Path(preflight["tokenizer"]["root"])
+    verified_tokenizer, tokenizer_uploads = _select_verified_tokenizer_uploads(
+        tokenizer_root,
+        expected_sha256=preflight["tokenizer"]["package_manifest_sha256"],
+        expected_name=tokenizer_name,
+        expected_vocab_size=recipe["model"]["vocab_size"],
+    )
+    files.extend(tokenizer_uploads)
     tokenizer_control_root = base_dir / "control" / "tokenizer" / tokenizer_name
     quality_root = tokenizer_control_root / "quality"
     quality_report, quality_approval = validate_tokenizer_quality_gate(
         quality_root,
         expected_package_sha256=preflight["tokenizer"]["package_manifest_sha256"],
+        expected_training_receipt_sha256=verified_tokenizer.manifest[
+            "training_receipt_sha256"
+        ],
         expected_production_chain=expected_chain,
     )
     for name in ("quality_report.json", "quality_approval.json"):
@@ -945,11 +1025,32 @@ def main_family(args):
             raise SystemExit(
                 "Missing huggingface_hub. Install with: uv pip install -U huggingface_hub"
             ) from exc
+        snapshot_tokenizer, snapshot_tokenizer_uploads = (
+            _snapshot_verified_tokenizer_uploads(
+                tokenizer_root,
+                tmp_path / "verified_tokenizer_upload_snapshot",
+                expected_sha256=preflight["tokenizer"]["package_manifest_sha256"],
+                expected_name=tokenizer_name,
+                expected_vocab_size=recipe["model"]["vocab_size"],
+            )
+        )
+        snapshot_by_remote = {
+            remote: local for local, remote in snapshot_tokenizer_uploads
+        }
+        if (
+            snapshot_tokenizer.canonical_sha256
+            != verified_tokenizer.canonical_sha256
+            or set(snapshot_by_remote) != {remote for _local, remote in tokenizer_uploads}
+        ):
+            raise ValueError("tokenizer upload snapshot drifted after assembly")
+        upload_files = [
+            (snapshot_by_remote.get(remote, local), remote) for local, remote in files
+        ]
         api = HfApi()
         api.create_repo(
             repo_id=args.repo_id, repo_type="model", private=args.private, exist_ok=True
         )
-        for local_path, path_in_repo in generated + files:
+        for local_path, path_in_repo in generated + upload_files:
             print(f"Uploading {local_path} -> {path_in_repo}", flush=True)
             api.upload_file(
                 repo_id=args.repo_id,

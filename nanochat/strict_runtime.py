@@ -62,8 +62,8 @@ def _artifact_contract(*, version: str) -> dict[str, Any]:
         "validation_exposure_manifest": "validation_exposure_manifest.json",
         "exposure_plan_index": "exposure_plan_index.json",
         "training_exposure_manifests": dict(_TRAINING_EXPOSURE_ARTIFACTS),
-        "tokenizer_name": "tr_general_raw_bpe_32k_v1",
-        "tokenizer_root": "tokenizers/tr_general_raw_bpe_32k_v1",
+        "tokenizer_name": f"tr_general_raw_bpe_32k_{version}",
+        "tokenizer_root": f"tokenizers/tr_general_raw_bpe_32k_{version}",
         "tokenizer_package_manifest": "package_manifest.json",
     }
     if version == "v2":

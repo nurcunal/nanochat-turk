@@ -7,14 +7,17 @@ training to the repository's experimental tokenizer implementations.
 
 from __future__ import annotations
 
+import base64
 import hmac
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
 import torch
+import tiktoken
 
 from nanochat.experiment_manifest import (
+    file_sha256,
     ManifestValidationError,
     load_json_strict,
     verify_file_inventory,
@@ -26,6 +29,7 @@ from nanochat.tokenizer import RustBPETokenizer, SPECIAL_TOKENS, SPLIT_PATTERN
 PACKAGE_KIND = "turkish_raw_bpe_tokenizer_package"
 EXPECTED_FILES = {
     "tokenizer.pkl": "tokenizer",
+    "tokenizer.tiktoken": "canonical_tiktoken_export",
     "tokenizer_config.json": "runtime_config",
     "token_bytes.pt": "token_byte_lengths",
     "training_receipt.json": "training_receipt",
@@ -182,6 +186,104 @@ def _validate_training_contract(
         raise TokenizerPackageError("tokenizer pinned iterator parity drifted")
 
 
+def _validate_canonical_export(root: Path, config: Mapping[str, Any]) -> None:
+    metadata = config.get("canonical_export")
+    if not isinstance(metadata, Mapping):
+        raise TokenizerPackageError("canonical tokenizer export metadata is missing")
+    path = root / "tokenizer.tiktoken"
+    if (
+        metadata.get("path") != path.name
+        or metadata.get("format")
+        != "tiktoken_bpe_base64_token_space_decimal_rank_newline"
+        or metadata.get("sha256") != file_sha256(path)
+        or metadata.get("dense_rank_id_identity_verified") is not True
+        or metadata.get("special_token_id_order_verified") is not True
+        or metadata.get("token_byte_lengths_reconstructed") != config["vocab_size"]
+    ):
+        raise TokenizerPackageError("canonical tokenizer export metadata drift")
+    reconstructed: dict[bytes, int] = {}
+    for line_number, line in enumerate(path.read_bytes().splitlines(), 1):
+        parts = line.split(b" ")
+        if len(parts) != 2:
+            raise TokenizerPackageError("canonical tokenizer export line shape drift")
+        try:
+            token_bytes = base64.b64decode(parts[0], validate=True)
+            rank = int(parts[1].decode("ascii"))
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise TokenizerPackageError("canonical tokenizer export parse failure") from exc
+        if token_bytes in reconstructed or rank != line_number - 1:
+            raise TokenizerPackageError("canonical tokenizer ranks are not dense and ordered")
+        reconstructed[token_bytes] = rank
+    lexical = config["vocab_size"] - len(SPECIAL_TOKENS)
+    if len(reconstructed) != lexical:
+        raise TokenizerPackageError("canonical tokenizer lexical vocabulary drift")
+    tokenizer = RustBPETokenizer.from_directory(str(root))
+    if dict(tokenizer.enc._mergeable_ranks) != reconstructed:
+        raise TokenizerPackageError("canonical tokenizer export differs from tokenizer.pkl")
+    special_tokens = {
+        token: lexical + index for index, token in enumerate(SPECIAL_TOKENS)
+    }
+    if (
+        tokenizer.enc._pat_str != SPLIT_PATTERN
+        or dict(tokenizer.enc._special_tokens) != special_tokens
+        or set(tokenizer.enc._mergeable_ranks.values()) != set(range(lexical))
+    ):
+        raise TokenizerPackageError(
+            "tokenizer.pkl split, special-token, or lexical-ID policy drift"
+        )
+    rebuilt = tiktoken.Encoding(
+        name=str(config["name"]),
+        pat_str=SPLIT_PATTERN,
+        mergeable_ranks=reconstructed,
+        special_tokens=special_tokens,
+    )
+    try:
+        token_bytes = torch.load(
+            root / "token_bytes.pt", map_location="cpu", weights_only=True
+        )
+    except TypeError:  # pragma: no cover - older PyTorch compatibility
+        token_bytes = torch.load(root / "token_bytes.pt", map_location="cpu")
+    expected_lengths = torch.tensor(
+        [len(rebuilt.decode_single_token_bytes(token_id)) for token_id in range(lexical)]
+        + [0] * len(SPECIAL_TOKENS),
+        dtype=torch.int32,
+        device="cpu",
+    )
+    if (
+        not isinstance(token_bytes, torch.Tensor)
+        or token_bytes.shape != (config["vocab_size"],)
+        or token_bytes.dtype != torch.int32
+        or token_bytes.device.type != "cpu"
+        or not torch.equal(token_bytes, expected_lengths)
+    ):
+        raise TokenizerPackageError("token-byte table dtype/content reconstruction drift")
+    for token_id in range(lexical):
+        value = rebuilt.decode_single_token_bytes(token_id)
+        if (
+            tokenizer.enc.decode_single_token_bytes(token_id) != value
+            or int(token_bytes[token_id].item()) != len(value)
+        ):
+            raise TokenizerPackageError(
+                f"canonical tokenizer rank/token-byte reconstruction drift at {token_id}"
+            )
+    for token, token_id in special_tokens.items():
+        if rebuilt.encode_single_token(token) != token_id or int(
+            token_bytes[token_id].item()
+        ) != 0:
+            raise TokenizerPackageError("canonical tokenizer special-token reconstruction drift")
+    probes = (
+        "İstanbul'da bugün hava nasıl?",
+        "TÜRKİYE Türkiye türkiye; IĞDIR Iğdır ığdır.",
+        "sorumluluklarımızdakilerdenmişsinizcesine",
+        "Ankara—İzmir 2026: %42,5 😊",
+    )
+    for probe in probes:
+        if rebuilt.encode_ordinary(probe) != tokenizer.encode(probe):
+            raise TokenizerPackageError("canonical tokenizer probe ID sequence drift")
+        if rebuilt.decode(rebuilt.encode_ordinary(probe)) != probe:
+            raise TokenizerPackageError("canonical tokenizer probe round-trip drift")
+
+
 def verify_tokenizer_package(
     manifest_path: str | Path,
     *,
@@ -247,6 +349,9 @@ def verify_tokenizer_package(
     probes = validation.get("unicode_roundtrip_probes")
     if isinstance(probes, bool) or not isinstance(probes, int) or probes <= 0:
         raise TokenizerPackageError("tokenizer Unicode round-trip check is missing")
+    if validation.get("canonical_export") != config.get("canonical_export"):
+        raise TokenizerPackageError("canonical tokenizer validation/config binding drift")
+    _validate_canonical_export(path.parent, config)
     return VerifiedTokenizerPackage(path.parent, path, manifest, config, digest)
 
 
@@ -275,6 +380,8 @@ def load_verified_token_bytes(
         value = torch.load(path, map_location=device)
     if not isinstance(value, torch.Tensor) or value.ndim != 1:
         raise TokenizerPackageError("token_bytes.pt must contain a 1D tensor")
+    if value.dtype != torch.int32:
+        raise TokenizerPackageError("token_bytes.pt must contain exact torch.int32 values")
     if value.numel() != package.config["vocab_size"]:
         raise TokenizerPackageError("token-byte table length differs from vocabulary")
     if bool((value < 0).any().item()):

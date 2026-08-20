@@ -295,6 +295,7 @@ def validate_downstream_lineage(
     checked: dict[str, str] = {"cluster_launch_receipt_sha256": launch_sha}
     pool_manifest: dict[str, Any] | None = None
     pool_qa_sha: str | None = None
+    tokenizer_training_sha: str | None = None
     if pool_dir is not None:
         pool_manifest = require(pool_dir / "corpus_manifest.json", "filtered pool")
         if pool_manifest.get("stage") != "filtered_pool":
@@ -330,18 +331,31 @@ def validate_downstream_lineage(
             raise TurkishCorpusError("tokenizer package/training receipt binding drift")
         require_pool_binding(package, "tokenizer package")
         require_pool_binding(training, "tokenizer training receipt")
+        tokenizer_training_sha = training["canonical_sha256"]
         checked["tokenizer_package_sha256"] = package["canonical_sha256"]
     if tokenizer_quality_dir is not None:
+        if tokenizer_training_sha is None:
+            raise TurkishCorpusError(
+                "tokenizer quality validation requires the verified tokenizer receipt"
+            )
         report = require(
             tokenizer_quality_dir / "quality_report.json", "tokenizer quality report"
         )
         require_pool_binding(report, "tokenizer quality report")
+        if report.get("training_receipt_sha256") != tokenizer_training_sha:
+            raise TurkishCorpusError(
+                "tokenizer quality report/training receipt binding drift"
+            )
         approval_path = tokenizer_quality_dir / "quality_approval.json"
         if approval_path.is_file():
             approval = require(approval_path, "tokenizer quality approval")
             require_pool_binding(approval, "tokenizer quality approval")
             if approval.get("quality_report_sha256") != report["canonical_sha256"]:
                 raise TurkishCorpusError("tokenizer quality report/approval binding drift")
+            if approval.get("training_receipt_sha256") != tokenizer_training_sha:
+                raise TurkishCorpusError(
+                    "tokenizer quality approval/training receipt binding drift"
+                )
         checked["tokenizer_quality_report_sha256"] = report["canonical_sha256"]
     if packing_preflight_dir is not None:
         report = require(

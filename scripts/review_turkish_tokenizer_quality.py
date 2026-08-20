@@ -13,6 +13,7 @@ from nanochat.tokenizer_quality import seal_tokenizer_quality_approval
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--quality-dir", type=Path, required=True)
+    parser.add_argument("--tokenizer-dir", type=Path, required=True)
     parser.add_argument("--reviewer", required=True)
     parser.add_argument("--reviewed-at-utc", required=True)
     parser.add_argument("--decision", choices=("accepted", "rejected"), required=True)
@@ -21,6 +22,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         result = seal_tokenizer_quality_approval(
             args.quality_dir,
+            tokenizer_dir=args.tokenizer_dir,
             reviewer=args.reviewer,
             reviewed_at_utc=args.reviewed_at_utc,
             decision=args.decision,

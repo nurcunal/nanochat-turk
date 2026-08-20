@@ -438,14 +438,73 @@
     }
   ],
   "tokenizer_training": {
-    "name": "tr_general_raw_bpe_32k_v1",
+    "name": "tr_general_raw_bpe_32k_v2",
     "algorithm": "raw_byte_bpe",
     "vocab_size": 32768,
     "sample_scope": "post_filter_train_only",
     "max_chars": 2000000000,
     "max_chars_per_document": 10000,
     "stop_rule": "yield_full_capped_document_then_stop_when_cumulative_characters_strictly_exceed_threshold",
-    "sampling": "weighted_deficit_stable_shuffle_v1",
+    "sampling": "weighted_deficit_stable_rowgroup_shuffle_v2",
+    "sampling_seed": "tr-general-raw-bpe-rowgroups-2026-08-20",
+    "holdout": {
+      "split": "val",
+      "selection": "smallest_sha256_stratified_prefix_v1",
+      "seed": "tr-general-raw-bpe-val-holdout-2026-08-20",
+      "min_documents": 50000,
+      "min_utf8_bytes": 134217728,
+      "threshold_semantics": "documents_gte_min_or_utf8_bytes_gte_min",
+      "strata_fields": [
+        "mixture_id",
+        "source_id",
+        "register_bucket"
+      ],
+      "require_every_available_stratum": true,
+      "target_documents_per_available_stratum": 32
+    },
+    "baseline": {
+      "name": "bpe_32768",
+      "vocab_size": 32768,
+      "split_pattern": "nanochat_gpt4_style_numbers_1_or_2_v1",
+      "special_token_policy": "nanochat_9_v1",
+      "token_byte_table_semantics": "legacy_decoded_utf8_replacement_v1",
+      "raw_byte_length_mismatch_count": 159,
+      "payload_inventory_sha256": "03445f0b5e300c806c305e44029ea48753886eae4048f8805fb9d3f57f83eb52",
+      "files": [
+        {
+          "path": "token_bytes.pt",
+          "size_bytes": 132649,
+          "sha256": "ba345dc7eea5f07b3200f213ccf61ea6e9990d15d81d25e2e323009f4fba502e"
+        },
+        {
+          "path": "tokenizer.pkl",
+          "size_bytes": 436874,
+          "sha256": "3b7f00d8697a303bb0ac7379b497fec6b76a61bd5bb694825264eecd4cb62a20"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size_bytes": 122,
+          "sha256": "b381631bad8ca489b85dbab686d63f0691b6455300f2ae43f8af43ad3b80a916"
+        }
+      ]
+    },
+    "quality_gate": {
+      "schema_version": "1.0",
+      "baseline_required": true,
+      "max_roundtrip_failures": 0,
+      "min_vocab_utilization_fraction": 0.75,
+      "max_overall_efficiency_regression_fraction": 0.02,
+      "max_per_stratum_efficiency_regression_fraction": 0.25,
+      "max_overall_fertility_regression_fraction": 0.05,
+      "max_per_stratum_fertility_regression_fraction": 0.3,
+      "max_single_byte_token_use_fraction": 0.65,
+      "min_non_ascii_token_use_fraction": 0.005,
+      "max_invalid_utf8_token_use_fraction": 0.1,
+      "max_probe_efficiency_regression_fraction": 0.25,
+      "max_probe_fertility_regression_fraction": 0.3,
+      "fixed_probe_suite": "turkish_apostrophe_casing_long_suffix_v1",
+      "fixed_probe_suite_sha256": "60c963ff62721a24f1a88064f2354a47420e87385c61d81fb8e4869e48d70593"
+    },
     "normalization": "none_after_corpus_nfc_whitespace_v1",
     "split_pattern": "nanochat_gpt4_style_numbers_1_or_2_v1",
     "special_token_policy": "nanochat_9_v1",

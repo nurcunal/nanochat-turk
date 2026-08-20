@@ -4,18 +4,23 @@ from __future__ import annotations
 
 import argparse
 import ast
+import base64
 import hashlib
 import json
+import math
 import os
 import subprocess
 import sys
 import tempfile
 import time
+from collections import Counter
+from collections.abc import Mapping
 from types import SimpleNamespace
 from pathlib import Path
 
 import pyarrow.parquet as pq
 import torch
+import tiktoken
 
 from nanochat.experiment_manifest import (
     canonical_json,
@@ -28,7 +33,10 @@ from nanochat.experiment_manifest import (
     write_json_atomic,
 )
 from nanochat.tokenizer import SPECIAL_TOKENS, SPLIT_PATTERN, RustBPETokenizer
-from nanochat.tokenizer_quality import build_tokenizer_quality_report
+from nanochat.tokenizer_quality import (
+    build_tokenizer_quality_report,
+    validate_pinned_baseline_tokenizer,
+)
 from nanochat.turkish_corpus import TOKENIZER_NAME, VOCAB_SIZE, load_corpus_policy
 
 
@@ -54,7 +62,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--sample-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--quality-output-dir", type=Path, required=True)
-    parser.add_argument("--baseline-tokenizer-dir", type=Path)
+    parser.add_argument("--baseline-tokenizer-dir", type=Path, required=True)
+    parser.add_argument(
+        "--baseline-preflight-only",
+        action="store_true",
+        help="verify the pinned baseline and exit before touching output directories",
+    )
     return parser
 
 
@@ -105,6 +118,121 @@ def _validate_training_sample(sample_dir: Path, policy: dict) -> tuple[dict, dic
         "max_chars_per_document"
     ]:
         raise ValueError("tokenizer sample document cap drift")
+    traversal = sample.get("representative_traversal")
+    expected_mixtures = {bucket["id"] for bucket in policy["mixture"]}
+    if (
+        not isinstance(traversal, dict)
+        or traversal.get("algorithm")
+        != "weighted_deficit_stable_rowgroup_shuffle_v2"
+        or traversal.get("seed") != policy["tokenizer_training"]["sampling_seed"]
+        or traversal.get("pool_manifest_sha256")
+        != sample["parent_corpus_manifest_sha256"]
+        or traversal.get("split") != "train"
+        or traversal.get("row_group_schedule_covers_full_pool") is not True
+        or {
+            item.get("mixture_id")
+            for item in traversal.get("by_mixture", [])
+            if isinstance(item, dict)
+        }
+        != expected_mixtures
+    ):
+        raise ValueError("tokenizer sample representative traversal receipt drift")
+    distribution = sample.get("sample_distribution")
+    if (
+        not isinstance(distribution, dict)
+        or distribution.get("documents") != sample.get("documents")
+        or distribution.get("characters") != sample.get("characters")
+    ):
+        raise ValueError("tokenizer sample distribution totals drift")
+    for dimension, id_field in (
+        ("by_mixture", "mixture_id"),
+        ("by_source", "source_id"),
+        ("by_register", "register_bucket"),
+    ):
+        rows = distribution.get(dimension)
+        if not isinstance(rows, list) or not rows or any(
+            not isinstance(item, dict)
+            or not isinstance(item.get(id_field), str)
+            or not item[id_field]
+            or isinstance(item.get("documents"), bool)
+            or not isinstance(item.get("documents"), int)
+            or item["documents"] <= 0
+            or isinstance(item.get("characters"), bool)
+            or not isinstance(item.get("characters"), int)
+            or item["characters"] <= 0
+            or isinstance(item.get("document_share"), bool)
+            or not isinstance(item.get("document_share"), (int, float))
+            or isinstance(item.get("character_share"), bool)
+            or not isinstance(item.get("character_share"), (int, float))
+            for item in rows or ()
+        ):
+            raise ValueError(f"tokenizer sample {dimension} rows drift")
+        if (
+            len({item[id_field] for item in rows}) != len(rows)
+            or sum(item["documents"] for item in rows)
+            != sample["documents"]
+            or sum(item["characters"] for item in rows)
+            != sample["characters"]
+            or not math.isclose(
+                sum(float(item["document_share"]) for item in rows),
+                1.0,
+                rel_tol=0,
+                abs_tol=1e-12,
+            )
+            or not math.isclose(
+                sum(float(item["character_share"]) for item in rows),
+                1.0,
+                rel_tol=0,
+                abs_tol=1e-12,
+            )
+        ):
+            raise ValueError(f"tokenizer sample {dimension} counters/shares drift")
+    holdout = sample.get("quality_holdout")
+    if not isinstance(holdout, dict):
+        raise ValueError("tokenizer held-out selection receipt is missing")
+    for key in (
+        "selected_documents",
+        "minimum_documents",
+        "selected_utf8_bytes",
+        "minimum_utf8_bytes",
+    ):
+        if isinstance(holdout.get(key), bool) or not isinstance(holdout.get(key), int):
+            raise ValueError(f"tokenizer held-out {key} counter drift")
+    if (
+        holdout.get("split") != "val"
+        or holdout.get("algorithm")
+        != policy["tokenizer_training"]["holdout"]["selection"]
+        or holdout.get("seed") != policy["tokenizer_training"]["holdout"]["seed"]
+        or holdout.get("complete_available_stratum_coverage") is not True
+        or holdout.get("available_strata") != holdout.get("selected_strata")
+        or holdout.get("target_documents_per_available_stratum")
+        != policy["tokenizer_training"]["holdout"][
+            "target_documents_per_available_stratum"
+        ]
+        or (
+            holdout["selected_documents"] < holdout["minimum_documents"]
+            and holdout["selected_utf8_bytes"] < holdout["minimum_utf8_bytes"]
+        )
+        or sample.get("quality_gate_policy")
+        != policy["tokenizer_training"]["quality_gate"]
+        or sample.get("baseline_tokenizer")
+        != policy["tokenizer_training"]["baseline"]
+    ):
+        raise ValueError("tokenizer held-out selection/quality policy drift")
+    for item in holdout.get("strata", []):
+        if (
+            not isinstance(item, dict)
+            or item.get("target_documents")
+            != holdout["target_documents_per_available_stratum"]
+            or item.get("coverage_floor_documents")
+            != min(
+                int(item.get("eligible_documents", -1)),
+                holdout["target_documents_per_available_stratum"],
+            )
+            or int(item.get("selected_documents", -1))
+            < int(item.get("coverage_floor_documents", 0))
+        ):
+            raise ValueError("tokenizer held-out per-stratum coverage floor drift")
     dataset = load_json_strict(sample_dir / "fineweb2_manifest.json")
     validate_dataset_manifest(dataset, profile="strict")
     verify_manifest_hash(dataset)
@@ -112,6 +240,12 @@ def _validate_training_sample(sample_dir: Path, policy: dict) -> tuple[dict, dic
         raise ValueError("tokenizer sample validation identity drift")
     if dataset.get("metadata", {}).get("sample_scope") != "post_filter_train_only":
         raise ValueError("tokenizer sample is not declared train-only")
+    if (
+        dataset.get("metadata", {}).get("quality_holdout_scope")
+        != "post_filter_val_only"
+        or dataset.get("metadata", {}).get("quality_holdout") != holdout
+    ):
+        raise ValueError("tokenizer held-out dataset metadata drift")
     if sample.get("nanochat_dataset_manifest_sha256") != dataset["canonical_sha256"]:
         raise ValueError("sample and Nanochat dataset manifests differ")
     if (
@@ -208,7 +342,7 @@ def _training_texts(
     *,
     document_cap: int,
     character_limit: int,
-    stats: dict[str, int],
+    stats: dict[str, object],
 ):
     validation = dataset["validation_file"]
     consumed = 0
@@ -217,10 +351,17 @@ def _training_texts(
             continue
         parquet = pq.ParquetFile(sample_dir / record["path"])
         for row_group_index in range(parquet.num_row_groups):
-            values = parquet.read_row_group(
-                row_group_index, columns=[dataset["text_column"]]
-            ).column(dataset["text_column"])
-            for value in values.to_pylist():
+            rows = parquet.read_row_group(
+                row_group_index,
+                columns=[
+                    dataset["text_column"],
+                    "mixture_id",
+                    "source_id",
+                    "register_bucket",
+                ],
+            ).to_pylist()
+            for row in rows:
+                value = row[dataset["text_column"]]
                 text = "" if value is None else str(value)
                 if len(text) > document_cap:
                     raise ValueError(
@@ -229,14 +370,79 @@ def _training_texts(
                 if consumed + len(text) > character_limit:
                     raise ValueError("sealed tokenizer sample exceeds its declared character count")
                 consumed += len(text)
-                stats["documents"] += 1
-                stats["characters"] += len(text)
+                stats["documents"] = int(stats["documents"]) + 1
+                stats["characters"] = int(stats["characters"]) + len(text)
+                for prefix, value in (
+                    ("mixture", str(row["mixture_id"])),
+                    ("source", str(row["source_id"])),
+                    (
+                        "register",
+                        str(row.get("register_bucket") or "not_applicable"),
+                    ),
+                ):
+                    stats[f"{prefix}_documents"][value] += 1
+                    stats[f"{prefix}_characters"][value] += len(text)
                 yield text
     if consumed != character_limit:
         raise ValueError(
             "strict tokenizer Parquet exposure differs from sample receipt: "
             f"expected={character_limit}, consumed={consumed}"
         )
+
+
+def _distribution_rows(
+    documents: Mapping[str, int],
+    characters: Mapping[str, int],
+    *,
+    id_field: str,
+) -> list[dict[str, object]]:
+    total_documents = sum(documents.values())
+    total_characters = sum(characters.values())
+    if total_documents <= 0 or total_characters <= 0:
+        raise ValueError("trainer-visible sample distribution is empty")
+    return [
+        {
+            id_field: key,
+            "documents": int(documents[key]),
+            "characters": int(characters[key]),
+            "document_share": documents[key] / total_documents,
+            "character_share": characters[key] / total_characters,
+        }
+        for key in sorted(set(documents) | set(characters))
+    ]
+
+
+def _realized_sample_distribution(stats: Mapping[str, object]) -> dict[str, object]:
+    return {
+        "documents": int(stats["documents"]),
+        "characters": int(stats["characters"]),
+        "by_mixture": _distribution_rows(
+            stats["mixture_documents"],
+            stats["mixture_characters"],
+            id_field="mixture_id",
+        ),
+        "by_source": _distribution_rows(
+            stats["source_documents"],
+            stats["source_characters"],
+            id_field="source_id",
+        ),
+        "by_register": _distribution_rows(
+            stats["register_documents"],
+            stats["register_characters"],
+            id_field="register_bucket",
+        ),
+    }
+
+
+def _validate_realized_sample_distribution(
+    stats: Mapping[str, object], declared: Mapping[str, object]
+) -> dict[str, object]:
+    realized = _realized_sample_distribution(stats)
+    if realized != dict(declared):
+        raise ValueError(
+            "trainer-visible sample distribution differs from sealed sample receipt"
+        )
+    return realized
 
 
 def _token_byte_lengths(tokenizer: RustBPETokenizer) -> torch.Tensor:
@@ -271,6 +477,104 @@ def _torch_save_atomic(value: object, destination: Path) -> None:
     finally:
         if temporary is not None:
             Path(temporary).unlink(missing_ok=True)
+
+
+def _export_and_verify_canonical_tiktoken(
+    tokenizer: RustBPETokenizer,
+    output_dir: Path,
+    token_byte_lengths: torch.Tensor,
+) -> dict[str, object]:
+    """Export canonical rank-sorted tiktoken BPE bytes and reconstruct runtime IDs."""
+
+    mergeable = dict(tokenizer.enc._mergeable_ranks)
+    lexical = VOCAB_SIZE - len(SPECIAL_TOKENS)
+    if len(mergeable) != lexical or set(mergeable.values()) != set(range(lexical)):
+        raise ValueError("mergeable ranks are not a dense lexical token-ID range")
+    export_path = output_dir / "tokenizer.tiktoken"
+    temporary: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=output_dir,
+            prefix=".tokenizer.tiktoken.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary = handle.name
+            for token_bytes, rank in sorted(mergeable.items(), key=lambda item: item[1]):
+                handle.write(base64.b64encode(token_bytes))
+                handle.write(b" ")
+                handle.write(str(rank).encode("ascii"))
+                handle.write(b"\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, export_path)
+        temporary = None
+    finally:
+        if temporary is not None:
+            Path(temporary).unlink(missing_ok=True)
+
+    reconstructed: dict[bytes, int] = {}
+    for line_number, raw_line in enumerate(export_path.read_bytes().splitlines(), 1):
+        parts = raw_line.split(b" ")
+        if len(parts) != 2:
+            raise ValueError(f"non-canonical tokenizer.tiktoken line {line_number}")
+        try:
+            token_bytes = base64.b64decode(parts[0], validate=True)
+            rank = int(parts[1].decode("ascii"))
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise ValueError(
+                f"invalid tokenizer.tiktoken line {line_number}"
+            ) from exc
+        if token_bytes in reconstructed or rank != line_number - 1:
+            raise ValueError("tokenizer.tiktoken ranks are duplicated or non-canonical")
+        reconstructed[token_bytes] = rank
+    if reconstructed != mergeable:
+        raise ValueError("tokenizer.tiktoken reconstruction differs from trained ranks")
+    special_tokens = {
+        token: lexical + index for index, token in enumerate(SPECIAL_TOKENS)
+    }
+    rebuilt = tiktoken.Encoding(
+        name=TOKENIZER_NAME,
+        pat_str=SPLIT_PATTERN,
+        mergeable_ranks=reconstructed,
+        special_tokens=special_tokens,
+    )
+    if rebuilt.n_vocab != VOCAB_SIZE:
+        raise ValueError("canonical tokenizer reconstruction vocabulary drift")
+    for rank in range(lexical):
+        expected = tokenizer.enc.decode_single_token_bytes(rank)
+        actual = rebuilt.decode_single_token_bytes(rank)
+        if expected != actual:
+            raise ValueError(f"canonical tokenizer rank/ID drift at {rank}")
+        if int(token_byte_lengths[rank].item()) != len(actual):
+            raise ValueError(f"token-byte table reconstruction drift at {rank}")
+    for token, token_id in special_tokens.items():
+        if rebuilt.encode_single_token(token) != token_id:
+            raise ValueError(f"canonical special-token ID drift for {token}")
+        if int(token_byte_lengths[token_id].item()) != 0:
+            raise ValueError(f"special token-byte length must be zero for {token}")
+    probes = (
+        "İstanbul'da bugün hava nasıl?",
+        "TÜRKİYE Türkiye türkiye; IĞDIR Iğdır ığdır.",
+        "sorumluluklarımızdakilerdenmişsinizcesine",
+        "Ankara—İzmir 2026: %42,5 😊",
+    )
+    for probe in probes:
+        original_ids = tokenizer.encode(probe)
+        rebuilt_ids = rebuilt.encode_ordinary(probe)
+        if rebuilt_ids != original_ids or rebuilt.decode(rebuilt_ids) != probe:
+            raise ValueError(f"canonical tokenizer probe reconstruction failed: {probe!r}")
+    return {
+        "path": export_path.name,
+        "format": "tiktoken_bpe_base64_token_space_decimal_rank_newline",
+        "sha256": file_sha256(export_path),
+        "lexical_ranks": lexical,
+        "dense_rank_id_identity_verified": True,
+        "special_token_id_order_verified": True,
+        "probe_id_sequences_verified": len(probes),
+        "token_byte_lengths_reconstructed": VOCAB_SIZE,
+    }
 
 
 def _validate_tokenizer(tokenizer: RustBPETokenizer) -> dict[str, object]:
@@ -312,6 +616,7 @@ def _validate_tokenizer(tokenizer: RustBPETokenizer) -> dict[str, object]:
 def _rebuild_package(output_dir: Path, receipt: dict) -> dict:
     roles = {
         "tokenizer.pkl": "tokenizer",
+        "tokenizer.tiktoken": "canonical_tiktoken_export",
         "tokenizer_config.json": "runtime_config",
         "token_bytes.pt": "token_byte_lengths",
         "training_receipt.json": "training_receipt",
@@ -355,12 +660,28 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         policy = load_corpus_policy(args.policy)
+        _baseline_tokenizer, baseline_identity = validate_pinned_baseline_tokenizer(
+            args.baseline_tokenizer_dir,
+            policy["tokenizer_training"]["baseline"],
+        )
+        if args.baseline_preflight_only:
+            print(json.dumps(baseline_identity, ensure_ascii=False, sort_keys=True))
+            return 0
         sample, dataset = _validate_training_sample(args.sample_dir, policy)
         iterator_parity = run_pinned_iterator_parity_fixture()
         if args.output_dir.exists() and any(args.output_dir.iterdir()):
             raise FileExistsError(f"refusing non-empty tokenizer output: {args.output_dir}")
         args.output_dir.mkdir(parents=True, exist_ok=True)
-        iterator_stats = {"documents": 0, "characters": 0}
+        iterator_stats: dict[str, object] = {
+            "documents": 0,
+            "characters": 0,
+            "mixture_documents": Counter(),
+            "mixture_characters": Counter(),
+            "source_documents": Counter(),
+            "source_characters": Counter(),
+            "register_documents": Counter(),
+            "register_characters": Counter(),
+        }
         training_iterator = _training_texts(
             args.sample_dir,
             dataset,
@@ -375,6 +696,13 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("raw-BPE trainer character accounting differs from sample")
         if iterator_stats["documents"] != sample["documents"]:
             raise ValueError("raw-BPE trainer document accounting differs from sample")
+        realized_distribution = _validate_realized_sample_distribution(
+            iterator_stats, sample["sample_distribution"]
+        )
+        public_iterator_stats = {
+            "documents": int(iterator_stats["documents"]),
+            "characters": int(iterator_stats["characters"]),
+        }
         config = {
             "schema_version": "1.0",
             "name": TOKENIZER_NAME,
@@ -394,7 +722,13 @@ def main(argv: list[str] | None = None) -> int:
             ],
             "stop_rule": sample["stop_rule"],
             "doc_cap": sample["max_chars_per_document"],
-            "iterator_stats": dict(iterator_stats),
+            "iterator_stats": public_iterator_stats,
+            "representative_traversal": sample["representative_traversal"],
+            "sample_distribution": realized_distribution,
+            "quality_holdout": sample["quality_holdout"],
+            "quality_gate_policy": policy["tokenizer_training"]["quality_gate"],
+            "baseline_tokenizer": policy["tokenizer_training"]["baseline"],
+            "baseline_identity": baseline_identity,
             "sample_manifest_sha256": sample["canonical_sha256"],
             "dataset_manifest_sha256": dataset["canonical_sha256"],
             "parent_corpus_manifest_sha256": sample[
@@ -413,8 +747,14 @@ def main(argv: list[str] | None = None) -> int:
         }
         validation = _validate_tokenizer(tokenizer)
         tokenizer.save(str(args.output_dir))
+        token_byte_lengths = _token_byte_lengths(tokenizer)
+        _torch_save_atomic(token_byte_lengths, args.output_dir / "token_bytes.pt")
+        canonical_export = _export_and_verify_canonical_tiktoken(
+            tokenizer, args.output_dir, token_byte_lengths
+        )
+        validation["canonical_export"] = canonical_export
+        config["canonical_export"] = canonical_export
         write_json_atomic(args.output_dir / "tokenizer_config.json", config)
-        _torch_save_atomic(_token_byte_lengths(tokenizer), args.output_dir / "token_bytes.pt")
         receipt = seal_manifest(
             {
                 "schema_version": "1.0",
@@ -436,7 +776,7 @@ def main(argv: list[str] | None = None) -> int:
                 "production_chain": sample["production_chain"],
                 "training_characters": sample["characters"],
                 "sample_characters": sample["characters"],
-                "iterator_characters": iterator_stats["characters"],
+                "iterator_characters": public_iterator_stats["characters"],
                 "requested_max_characters": sample["requested_max_characters"],
                 "terminal_overshoot_characters": sample[
                     "terminal_overshoot_characters"
@@ -444,13 +784,22 @@ def main(argv: list[str] | None = None) -> int:
                 "stop_rule": sample["stop_rule"],
                 "pinned_iterator_parity": iterator_parity,
                 "training_documents": sample["documents"],
-                "iterator_documents": iterator_stats["documents"],
+                "iterator_documents": public_iterator_stats["documents"],
                 "max_chars_per_document": sample["max_chars_per_document"],
+                "representative_traversal": sample["representative_traversal"],
+                "sample_distribution": realized_distribution,
+                "quality_holdout": sample["quality_holdout"],
+                "quality_gate_policy": policy["tokenizer_training"]["quality_gate"],
+                "baseline_tokenizer": policy["tokenizer_training"]["baseline"],
+                "baseline_identity": baseline_identity,
                 "qa_approval_sha256": sample.get("qa_approval_sha256"),
                 "train_time_seconds": train_time_seconds,
                 "validation": validation,
                 "payload_sha256": {
                     "tokenizer.pkl": file_sha256(args.output_dir / "tokenizer.pkl"),
+                    "tokenizer.tiktoken": file_sha256(
+                        args.output_dir / "tokenizer.tiktoken"
+                    ),
                     "tokenizer_config.json": file_sha256(
                         args.output_dir / "tokenizer_config.json"
                     ),
