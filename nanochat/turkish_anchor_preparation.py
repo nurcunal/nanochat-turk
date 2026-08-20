@@ -159,6 +159,19 @@ _PARLAMINT_SCHEMA_SUPPORT_FILES = frozenset(
         "parla-clarin.rng",
     }
 )
+_PARLAMINT_AGGREGATE_ANCILLARY_XINCLUDES = frozenset(
+    {
+        "ParlaMint-TR-listOrg.xml",
+        "ParlaMint-TR-listPerson.xml",
+        "ParlaMint-TR-taxonomy-parla.constituencies-TR.xml",
+        "ParlaMint-taxonomy-CHES.xml",
+        "ParlaMint-taxonomy-parla.legislature.xml",
+        "ParlaMint-taxonomy-politicalOrientation.xml",
+        "ParlaMint-taxonomy-speaker_types.xml",
+        "ParlaMint-taxonomy-subcorpus.xml",
+        "ParlaMint-taxonomy-topic.xml",
+    }
+)
 
 PARLAMINT_NATIVE_META_HEADER = (
     "Text_ID",
@@ -2272,7 +2285,8 @@ def _parlamint_archive_policy(contract: ParlaMintContract) -> dict[str, Any]:
         ],
         "validated_native_identity_files": [
             "ParlaMint-TR.TEI/<year>/ParlaMint-TR_<date>-*.xml",
-            "ParlaMint-TR.TEI/ParlaMint-TR.xml XIncludes",
+            "ParlaMint-TR.TEI/ParlaMint-TR.xml exact session XIncludes",
+            "ParlaMint-TR.TEI/ParlaMint-TR.xml exact 9-file ancillary XInclude set",
         ],
         "inventoried_ignored_files": [
             "ParlaMint-TR.txt/<year>/ParlaMint-TR_<date>-*-meta-en.tsv",
@@ -4045,6 +4059,9 @@ def _parlamint_database(connection: sqlite3.Connection) -> None:
             href TEXT NOT NULL UNIQUE,
             session_date TEXT NOT NULL
         ) WITHOUT ROWID;
+        CREATE TABLE tei_ancillary_includes (
+            href TEXT PRIMARY KEY
+        ) WITHOUT ROWID;
         CREATE TABLE native_text_files (
             text_id TEXT PRIMARY KEY,
             member TEXT NOT NULL UNIQUE,
@@ -4119,8 +4136,8 @@ def _parlamint_member_disposition(
             return "schema_support"
         if (
             len(parts) == 2
-            and parts[1].endswith(".xml")
-            and parts[1].startswith(("ParlaMint-TR", "ParlaMint-taxonomy"))
+            and parts[1]
+            in ({"ParlaMint-TR.xml"} | _PARLAMINT_AGGREGATE_ANCILLARY_XINCLUDES)
         ):
             return "tei_xml"
         session_match = _PARLAMINT_SESSION_XML_RE.fullmatch(name)
@@ -4258,6 +4275,30 @@ def _validate_tei_stream(
                             raise AnchorPreparationError(
                                 f"{path.as_posix()}: XInclude lacks href"
                             )
+                        if href in _PARLAMINT_AGGREGATE_ANCILLARY_XINCLUDES:
+                            try:
+                                connection.execute(
+                                    "INSERT INTO tei_ancillary_includes VALUES (?)",
+                                    (href,),
+                                )
+                            except sqlite3.IntegrityError as exc:
+                                raise AnchorPreparationError(
+                                    "duplicate ParlaMint aggregate ancillary XInclude: "
+                                    f"{href}"
+                                ) from exc
+                            if not stack or stack[-1] is not element:
+                                raise AnchorPreparationError(
+                                    f"{path.as_posix()}: TEI parser stack drift"
+                                )
+                            parent = stack[-2] if len(stack) >= 2 else None
+                            element.clear()
+                            if parent is not None:
+                                try:
+                                    parent.remove(element)
+                                except ValueError:
+                                    pass
+                            stack.pop()
+                            continue
                         include_match = _PARLAMINT_XINCLUDE_RE.fullmatch(href)
                         if include_match is None:
                             raise AnchorPreparationError(
@@ -4674,6 +4715,36 @@ def _process_parlamint_archive(
     counts["aggregate_xincludes"] = connection.execute(
         "SELECT COUNT(*) FROM tei_includes"
     ).fetchone()[0]
+    ancillary_includes = {
+        row[0]
+        for row in connection.execute(
+            "SELECT href FROM tei_ancillary_includes ORDER BY href COLLATE BINARY"
+        )
+    }
+    if ancillary_includes != _PARLAMINT_AGGREGATE_ANCILLARY_XINCLUDES:
+        raise AnchorPreparationError(
+            "ParlaMint aggregate ancillary XInclude set drift: "
+            f"expected={sorted(_PARLAMINT_AGGREGATE_ANCILLARY_XINCLUDES)!r}, "
+            f"got={sorted(ancillary_includes)!r}"
+        )
+    root_xml_members = {
+        row[0].removeprefix("ParlaMint-TR.TEI/")
+        for row in connection.execute("SELECT path FROM inventory")
+        if row[0].startswith("ParlaMint-TR.TEI/")
+        and row[0].count("/") == 1
+        and row[0].endswith(".xml")
+    }
+    expected_root_xml_members = {
+        "ParlaMint-TR.xml",
+        *_PARLAMINT_AGGREGATE_ANCILLARY_XINCLUDES,
+    }
+    if root_xml_members != expected_root_xml_members:
+        raise AnchorPreparationError(
+            "ParlaMint aggregate ancillary XML member set drift: "
+            f"expected={sorted(expected_root_xml_members)!r}, "
+            f"got={sorted(root_xml_members)!r}"
+        )
+    counts["aggregate_ancillary_xincludes"] = len(ancillary_includes)
     counts["tei_session_identities"] = connection.execute(
         "SELECT COUNT(*) FROM tei_sessions"
     ).fetchone()[0]
@@ -4691,6 +4762,7 @@ def _process_parlamint_archive(
             "tei_declared_speeches",
             "tei_declared_words",
             "aggregate_xincludes",
+            "aggregate_ancillary_xincludes",
             "tei_session_identities",
             "tar_stream_bytes",
             "tar_control_headers",

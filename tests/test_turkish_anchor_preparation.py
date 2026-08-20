@@ -1279,12 +1279,21 @@ def _parlamint_fixture(
                 speeches=2,
                 words=raw_words,
                 includes=(
-                    ([f"2011/{first_text_id}.xml"] if include_first_xinclude else [])
+                    sorted(
+                        anchor_preparation._PARLAMINT_AGGREGATE_ANCILLARY_XINCLUDES
+                    )
+                    + ([f"2011/{first_text_id}.xml"] if include_first_xinclude else [])
                     + [f"2022/{last_text_id}.xml"]
                 ),
                 include_doctype=aggregate_doctype,
             ),
         ),
+        *[
+            (f"ParlaMint-TR.TEI/{name}", _tei())
+            for name in sorted(
+                anchor_preparation._PARLAMINT_AGGREGATE_ANCILLARY_XINCLUDES
+            )
+        ],
         (
             f"ParlaMint-TR.TEI/{first_directory_year}/{first_text_id}.xml",
             _tei(
@@ -1504,14 +1513,25 @@ def test_parlamint_unbalanced_comment_is_quarantined_with_evidence(
             ("README-TR.md", b"test"),
             (
                 "ParlaMint-TR.TEI/ParlaMint-TR.xml",
-                _tei(
-                    "teiCorpus",
-                    speeches=2,
-                    words=raw_words,
-                    includes=[f"2011/{text_id}.xml", f"2022/{last_id}.xml"],
+                    _tei(
+                        "teiCorpus",
+                        speeches=2,
+                        words=raw_words,
+                        includes=(
+                            sorted(
+                                anchor_preparation._PARLAMINT_AGGREGATE_ANCILLARY_XINCLUDES
+                            )
+                            + [f"2011/{text_id}.xml", f"2022/{last_id}.xml"]
+                        ),
+                    ),
                 ),
-            ),
-            (f"ParlaMint-TR.TEI/2011/{text_id}.xml", _tei()),
+                *[
+                    (f"ParlaMint-TR.TEI/{name}", _tei())
+                    for name in sorted(
+                        anchor_preparation._PARLAMINT_AGGREGATE_ANCILLARY_XINCLUDES
+                    )
+                ],
+                (f"ParlaMint-TR.TEI/2011/{text_id}.xml", _tei()),
             (f"ParlaMint-TR.TEI/2022/{last_id}.xml", _tei()),
             (f"ParlaMint-TR.txt/2011/{text_id}.txt", f"u1\t{first_text}\n".encode()),
             (
