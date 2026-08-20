@@ -140,6 +140,17 @@ def test_family_upload_retains_end_to_end_reproduction_sources() -> None:
     assert all(path in source for path in required)
 
 
+def test_family_upload_includes_tokenizer_sample_and_quality_evidence() -> None:
+    source = (ROOT / "scripts" / "upload_base_checkpoint_to_hf.py").read_text(
+        encoding="utf-8"
+    )
+    assert "validate_tokenizer_quality_gate" in source
+    assert '("quality_report.json", "quality_approval.json")' in source
+    assert 'sample_root / "tokenizer_sample_manifest.json"' in source
+    assert 'sample_root / "fineweb2_manifest.json"' in source
+    assert 'training_receipt.get("sample_manifest_sha256") != sample_sha' in source
+
+
 def test_turkish_data_environment_setup_is_frozen_and_version_pinned() -> None:
     source = (ROOT / "runs" / "uhem_turkish_prepare_data_env.sbatch").read_text(
         encoding="utf-8"

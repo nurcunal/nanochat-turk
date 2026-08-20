@@ -359,6 +359,7 @@ def main_family(args):
 
     from nanochat.strict_checkpoint import inspect_strict_checkpoint
     from nanochat.experiment_manifest import seal_manifest, verify_manifest_hash
+    from nanochat.tokenizer_quality import validate_tokenizer_quality_gate
     from scripts.d32_family_workflow import (
         _load_receipt,
         _verify_attention_probe,
@@ -485,6 +486,38 @@ def main_family(args):
 
     tokenizer_root = Path(preflight["tokenizer"]["root"])
     add_tree(files, tokenizer_root, repo_path("tokenizer"))
+    tokenizer_name = preflight["tokenizer"]["name"]
+    tokenizer_control_root = base_dir / "control" / "tokenizer" / tokenizer_name
+    quality_root = tokenizer_control_root / "quality"
+    validate_tokenizer_quality_gate(
+        quality_root,
+        expected_package_sha256=preflight["tokenizer"]["package_manifest_sha256"],
+    )
+    for name in ("quality_report.json", "quality_approval.json"):
+        path = require_file(quality_root / name, f"tokenizer quality evidence {name}")
+        files.append((path, repo_path("provenance", "tokenizer", "quality", name)))
+
+    sample_root = tokenizer_control_root / "sample"
+    training_receipt = _load_receipt(
+        tokenizer_root / "training_receipt.json", "turkish_raw_bpe_training_receipt"
+    )[0]
+    sample_manifest, sample_sha = _load_receipt(
+        sample_root / "tokenizer_sample_manifest.json", "turkish_raw_bpe_training_sample"
+    )
+    dataset_manifest = require_file(
+        sample_root / "fineweb2_manifest.json", "tokenizer sample dataset manifest"
+    )
+    dataset_payload = json.loads(dataset_manifest.read_text(encoding="utf-8"))
+    dataset_sha = verify_manifest_hash(dataset_payload)
+    if (
+        training_receipt.get("sample_manifest_sha256") != sample_sha
+        or sample_manifest.get("nanochat_dataset_manifest_sha256") != dataset_sha
+    ):
+        raise ValueError("tokenizer sample provenance differs from its training receipt")
+    for path in (sample_root / "tokenizer_sample_manifest.json", dataset_manifest):
+        files.append(
+            (path, repo_path("provenance", "tokenizer", "sample", path.name))
+        )
     corpus_root = Path(preflight["corpus"]["root"])
     provenance_names = {
         recipe["artifacts"]["corpus_manifest"],
