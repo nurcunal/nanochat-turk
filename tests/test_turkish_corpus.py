@@ -11,6 +11,7 @@ from nanochat.turkish_corpus import (
     FragmentWriter,
     _write_eval_split,
     allocate_fallback_quotas,
+    iter_input_records,
     load_corpus_policy,
 )
 
@@ -20,6 +21,20 @@ class _CharacterTokenizer:
     def encode(texts, *, num_threads):
         assert num_threads >= 1
         return [[2] * len(text) for text in texts]
+
+
+def test_jsonl_zstd_input_is_decompressed_exactly_once(tmp_path: Path):
+    source = tmp_path / "sample.jsonl.zst"
+    with pa.output_stream(str(source), compression="zstd") as stream:
+        stream.write(b'{"id":"bir","text":"Merhaba dunya"}\n')
+
+    assert list(iter_input_records(source)) == [
+        {
+            "id": "bir",
+            "text": "Merhaba dunya",
+            "_input_path": "sample.jsonl.zst",
+        }
+    ]
 
 
 def _row(text: str, index: int) -> dict:

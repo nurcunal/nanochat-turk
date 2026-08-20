@@ -1992,13 +1992,13 @@ def iter_input_records(
             yield from iter_jsonl(handle, input_path=name)
         return
     if name.endswith(".jsonl.zst"):
-        raw = pa.input_stream(str(source))
-        compressed = pa.CompressedInputStream(raw, "zstd")
+        # Be explicit: pyarrow.input_stream detects .zst by default. Wrapping
+        # that decoded stream in CompressedInputStream would decompress twice.
+        compressed = pa.input_stream(str(source), compression="zstd")
         try:
             yield from iter_jsonl(compressed, input_path=name)
         finally:
             compressed.close()
-            raw.close()
         return
     raise TurkishCorpusError(f"unsupported input format: {source}")
 
