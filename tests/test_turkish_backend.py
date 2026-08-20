@@ -1,14 +1,28 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 from pathlib import Path
 
 import pytest
 
+import nanochat.turkish_backend as backend
+from nanochat.experiment_manifest import (
+    canonical_json,
+    seal_manifest,
+    write_json_atomic,
+)
 from nanochat.turkish_backend import (
+    RESOURCE_APPROVAL_KIND,
+    RESOURCE_BILLING_CONTRACT,
+    RESOURCE_REPORT_KIND,
+    _resource_projection_accounting,
     _source_lid,
     _stage_source_object,
+    seal_resource_approval,
     select_resource_sample_ranks,
+    validate_resource_approval,
+    validate_resource_projection,
 )
 from nanochat.turkish_corpus import (
     TurkishCorpusError,
@@ -18,9 +32,52 @@ from nanochat.turkish_corpus import (
     source_lid_result,
     strict_hplt_register_scores,
 )
+from scripts.turkish_data_backend import build_parser
 
 
 POLICY = Path("configs/pretrain/tr_d32_turkish_general_v1.json")
+
+
+def _resource_accounting():
+    stage_wall = {
+        "download": 10.0,
+        "score_lid": 20.0,
+        "minhash_signature": 30.0,
+        "minhash_buckets": 40.0,
+        "priority_cluster_quality_format": 20.0,
+    }
+    stage_process_cpu = {
+        "download": 2.0,
+        "score_lid": 8.0,
+        "minhash_signature": 10.0,
+        "minhash_buckets": 30.0,
+        "priority_cluster_quality_format": 10.0,
+    }
+    return _resource_projection_accounting(
+        stage_wall,
+        stage_process_cpu,
+        safety_factor=1.5,
+        billable_cpus_per_job=128,
+    )
+
+
+def _sealed_resource_report(policy: dict, plan_sha256: str) -> dict:
+    return seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": RESOURCE_REPORT_KIND,
+            "policy_sha256": hashlib.sha256(
+                canonical_json(policy).encode("utf-8")
+            ).hexdigest(),
+            "source_plan_sha256": plan_sha256,
+            "calibration_sha256": "c" * 64,
+            "billing_contract": dict(RESOURCE_BILLING_CONTRACT),
+            "projection": {"safety_factor": 1.5, **_resource_accounting()},
+            "automated_gate_passed": True,
+            "manual_approval_required": True,
+            "canonical_sha256": None,
+        }
+    )
 
 
 def _hplt_adapter():
@@ -128,6 +185,170 @@ def test_resource_sample_covers_every_source_and_hplt_quality_bin():
     }
 
     assert select_resource_sample_ranks(plan) == [1, 2, 3, 5]
+
+
+def test_resource_accounting_bills_wall_time_at_full_cpu2dq_node_rate():
+    accounting = _resource_accounting()
+
+    assert accounting["wall_seconds_with_safety_factor"] == 180.0
+    assert accounting["billed_cpu_seconds_with_safety_factor"] == 23_040.0
+    assert accounting["billed_cpu_saat_with_safety_factor"] == 6.4
+    assert accounting["diagnostic_process_cpu"][
+        "process_cpu_seconds_with_safety_factor"
+    ] == 90.0
+    assert accounting["diagnostic_process_cpu"][
+        "process_cpu_efficiency_against_billable_capacity"
+    ] == pytest.approx(60.0 / (120.0 * 128))
+
+
+def test_resource_projection_uses_stage_wall_not_process_cpu(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    policy = {
+        "sources": [{"id": "source"}],
+        "materialization": {"max_peak_disk_bytes": 10_000_000_000},
+    }
+    plan = {
+        "canonical_sha256": "a" * 64,
+        "objects": [
+            {
+                "rank": 0,
+                "source_id": "source",
+                "size_bytes": 1_000,
+                "uri": "https://example.test/source",
+            }
+        ],
+    }
+    calibration = {"canonical_sha256": "c" * 64}
+    objects = [
+        {
+            "canonical_sha256": "d" * 64,
+            "source_id": "source",
+            "raw_object": {"size_bytes": 100},
+            "candidate_file": {"rows": 10, "size_bytes": 20},
+            "telemetry": {
+                "download": {"wall_seconds": 2.0, "cpu_seconds": 1.0},
+                "score_lid": {"wall_seconds": 3.0, "cpu_seconds": 2.0},
+                "minhash_signature": {"wall_seconds": 5.0, "cpu_seconds": 4.0},
+            },
+        }
+    ]
+    buckets = [
+        {
+            "canonical_sha256": "e" * 64,
+            "input_signature_bytes": 100,
+            "output": {"duplicate_edges": 2},
+            "telemetry": {"wall_seconds": 7.0, "cpu_seconds": 6.0},
+        }
+    ]
+    cluster = seal_manifest(
+        {
+            "canonical_sha256": None,
+            "sample_mode": True,
+            "telemetry": {"wall_seconds": 11.0, "cpu_seconds": 10.0},
+            "output_files": [{"size_bytes": 30}],
+        }
+    )
+    monkeypatch.setattr(backend, "validate_corpus_policy", lambda _policy: None)
+    monkeypatch.setattr(
+        backend, "validate_source_plan", lambda _plan, _policy: None
+    )
+    monkeypatch.setattr(
+        backend, "validate_backend_calibration", lambda _calibration, _policy: None
+    )
+    monkeypatch.setattr(backend, "_load_object_receipts", lambda *args, **kwargs: objects)
+    monkeypatch.setattr(backend, "_load_bucket_receipts", lambda *args, **kwargs: buckets)
+    monkeypatch.setattr(backend, "load_json_strict", lambda _path: cluster)
+
+    report = backend.build_resource_projection(
+        policy,
+        plan,
+        calibration,
+        tmp_path / "sample",
+        tmp_path / "resource-report.json",
+        quota_headroom_bytes=10_000_000_000,
+        billable_cpus_per_job=128,
+        safety_factor=1.5,
+    )
+
+    stage_wall = report["projection"]["stage_wall_seconds_before_safety_factor"]
+    assert stage_wall == {
+        "download": 20.0,
+        "score_lid": 30.0,
+        "minhash_signature": 50.0,
+        "minhash_buckets": 6_664.0,
+        "priority_cluster_quality_format": 110.0,
+    }
+    assert report["projection"]["billed_cpu_saat_with_safety_factor"] == pytest.approx(
+        sum(stage_wall.values()) * 1.5 * 128 / 3600
+    )
+    diagnostic_cpu = report["projection"]["diagnostic_process_cpu"][
+        "stage_process_cpu_seconds_before_safety_factor"
+    ]
+    assert sum(diagnostic_cpu.values()) == 5_882.0
+    assert report["billing_contract"] == RESOURCE_BILLING_CONTRACT
+
+
+def test_resource_report_and_approval_bind_billed_cpu_contract(tmp_path: Path):
+    policy = load_corpus_policy(POLICY)
+    plan_sha256 = "b" * 64
+    report = _sealed_resource_report(policy, plan_sha256)
+    assert validate_resource_projection(report) == report["canonical_sha256"]
+    report_path = tmp_path / "resource-report.json"
+    approval_path = tmp_path / "resource-approval.json"
+    write_json_atomic(report_path, report)
+
+    approval = seal_resource_approval(
+        report_path,
+        approval_path,
+        reviewer="resource-reviewer",
+        reviewed_at_utc="2026-08-20T18:00:00Z",
+        decision="accepted",
+    )
+
+    assert approval["kind"] == RESOURCE_APPROVAL_KIND
+    assert approval["approved_projection"] == {
+        "billing_contract": RESOURCE_BILLING_CONTRACT,
+        "billed_cpu_saat_with_safety_factor": 6.4,
+    }
+    validate_resource_approval(
+        approval,
+        plan={"canonical_sha256": plan_sha256},
+        policy=policy,
+    )
+
+    bad_report = copy.deepcopy(report)
+    bad_report["projection"]["billed_cpu_saat_with_safety_factor"] = 0.025
+    bad_report = seal_manifest(bad_report)
+    with pytest.raises(TurkishCorpusError, match="billed_cpu_saat.*arithmetic drift"):
+        validate_resource_projection(bad_report)
+
+    bad_approval = copy.deepcopy(approval)
+    bad_approval["approved_projection"]["billing_contract"][
+        "billable_cpus_per_job"
+    ] = 8
+    bad_approval = seal_manifest(bad_approval)
+    with pytest.raises(TurkishCorpusError, match="billing contract drift"):
+        validate_resource_approval(
+            bad_approval,
+            plan={"canonical_sha256": plan_sha256},
+            policy=policy,
+        )
+
+
+def test_resource_report_cli_requires_explicit_billable_cpu_count():
+    required = [
+        "resource-report",
+        "--source-plan=plan.json",
+        "--calibration=calibration.json",
+        "--sample-run-dir=sample",
+        "--quota-headroom-bytes=1000000",
+        "--output=report.json",
+    ]
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(required)
+    parsed = build_parser().parse_args([*required, "--billable-cpus-per-job=128"])
+    assert parsed.billable_cpus_per_job == 128
 
 
 def test_no_code_gate_rejects_assignment_and_builtin_call_snippet():

@@ -73,6 +73,13 @@ CLUSTER_RECEIPT_KIND = "turkish_priority_cluster_result"
 RESOURCE_REPORT_KIND = "turkish_backend_resource_projection"
 RESOURCE_APPROVAL_KIND = "turkish_backend_resource_approval"
 
+RESOURCE_BILLING_CONTRACT = {
+    "scheduler_partition": "cpu2dq",
+    "billable_cpus_per_job": 128,
+    "accounting_basis": "projected_stage_wall_seconds_times_billable_cpus_per_job",
+    "process_cpu_seconds_role": "efficiency_diagnostic_only",
+}
+
 DATATROVE_VERSION = "0.10.0"
 DATATROVE_REVISION = "a649de79c14a550dc90f48a15c025f2dd3fd3b57"
 HPLT_MAP_SHA256 = "3619a23b7aa1a261ec1100117296801aa43feacd1e517db796830f3814a95367"
@@ -2289,6 +2296,150 @@ def _sum_telemetry(receipts: Sequence[Mapping[str, Any]], stage: str) -> dict[st
     return dict(sorted(totals.items()))
 
 
+_RESOURCE_STAGE_NAMES = (
+    "download",
+    "score_lid",
+    "minhash_signature",
+    "minhash_buckets",
+    "priority_cluster_quality_format",
+)
+
+
+def _resource_projection_accounting(
+    stage_wall_seconds: Mapping[str, Any],
+    stage_process_cpu_seconds: Mapping[str, Any],
+    *,
+    safety_factor: float,
+    billable_cpus_per_job: int,
+) -> dict[str, Any]:
+    """Convert projected one-node job wall time to UHeM's billed CPU-saat."""
+
+    if (
+        isinstance(billable_cpus_per_job, bool)
+        or not isinstance(billable_cpus_per_job, int)
+        or billable_cpus_per_job <= 0
+    ):
+        raise TurkishCorpusError("billable_cpus_per_job must be a positive integer")
+    if set(stage_wall_seconds) != set(_RESOURCE_STAGE_NAMES) or set(
+        stage_process_cpu_seconds
+    ) != set(_RESOURCE_STAGE_NAMES):
+        raise TurkishCorpusError("resource projection stage accounting is incomplete")
+    if (
+        isinstance(safety_factor, bool)
+        or not isinstance(safety_factor, (int, float))
+        or not math.isfinite(float(safety_factor))
+        or not 1.0 <= float(safety_factor) <= 3.0
+    ):
+        raise TurkishCorpusError("invalid resource-projection safety factor")
+
+    def normalize(values: Mapping[str, Any], label: str) -> dict[str, float]:
+        result: dict[str, float] = {}
+        for stage in _RESOURCE_STAGE_NAMES:
+            value = values[stage]
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(float(value))
+                or float(value) < 0
+            ):
+                raise TurkishCorpusError(f"{label}.{stage} must be finite and non-negative")
+            result[stage] = float(value)
+        return result
+
+    wall = normalize(stage_wall_seconds, "stage_wall_seconds")
+    process_cpu = normalize(stage_process_cpu_seconds, "stage_process_cpu_seconds")
+    total_wall = sum(wall.values())
+    if total_wall <= 0:
+        raise TurkishCorpusError("projected stage wall time must be positive")
+    total_process_cpu = sum(process_cpu.values())
+    billed_capacity_seconds = total_wall * billable_cpus_per_job
+    wall_with_safety = total_wall * float(safety_factor)
+    billed_cpu_seconds_with_safety = wall_with_safety * billable_cpus_per_job
+    return {
+        "stage_wall_seconds_before_safety_factor": wall,
+        "wall_seconds_with_safety_factor": wall_with_safety,
+        "stage_billed_cpu_saat_before_safety_factor": {
+            stage: seconds * billable_cpus_per_job / 3600.0
+            for stage, seconds in wall.items()
+        },
+        "billed_cpu_seconds_with_safety_factor": billed_cpu_seconds_with_safety,
+        "billed_cpu_saat_with_safety_factor": billed_cpu_seconds_with_safety / 3600.0,
+        "diagnostic_process_cpu": {
+            "stage_process_cpu_seconds_before_safety_factor": process_cpu,
+            "process_cpu_seconds_with_safety_factor": total_process_cpu
+            * float(safety_factor),
+            "process_cpu_efficiency_against_billable_capacity": (
+                total_process_cpu / billed_capacity_seconds
+            ),
+        },
+    }
+
+
+def validate_resource_projection(report: Mapping[str, Any]) -> str:
+    """Validate the sealed wall-time billing arithmetic used for manual approval."""
+
+    report_hash = verify_manifest_hash(report)
+    if report.get("schema_version") != "1.0" or report.get("kind") != RESOURCE_REPORT_KIND:
+        raise TurkishCorpusError("unexpected resource projection kind/version")
+    for key in ("policy_sha256", "source_plan_sha256", "calibration_sha256"):
+        if not _SHA256_RE.fullmatch(str(report.get(key, ""))):
+            raise TurkishCorpusError(f"resource projection {key} is missing")
+    contract = _require_mapping(report.get("billing_contract"), "billing_contract")
+    if dict(contract) != RESOURCE_BILLING_CONTRACT:
+        raise TurkishCorpusError("resource projection billing contract drift")
+    projection = _require_mapping(report.get("projection"), "projection")
+    diagnostics = _require_mapping(
+        projection.get("diagnostic_process_cpu"), "projection.diagnostic_process_cpu"
+    )
+    expected = _resource_projection_accounting(
+        _require_mapping(
+            projection.get("stage_wall_seconds_before_safety_factor"),
+            "projection.stage_wall_seconds_before_safety_factor",
+        ),
+        _require_mapping(
+            diagnostics.get("stage_process_cpu_seconds_before_safety_factor"),
+            "projection.diagnostic_process_cpu.stage_process_cpu_seconds_before_safety_factor",
+        ),
+        safety_factor=projection.get("safety_factor"),
+        billable_cpus_per_job=contract["billable_cpus_per_job"],
+    )
+
+    def require_close(actual: Any, wanted: float, label: str) -> None:
+        if (
+            isinstance(actual, bool)
+            or not isinstance(actual, (int, float))
+            or not math.isfinite(float(actual))
+            or not math.isclose(float(actual), wanted, rel_tol=1e-12, abs_tol=1e-9)
+        ):
+            raise TurkishCorpusError(f"resource projection {label} arithmetic drift")
+
+    for key in (
+        "wall_seconds_with_safety_factor",
+        "billed_cpu_seconds_with_safety_factor",
+        "billed_cpu_saat_with_safety_factor",
+    ):
+        require_close(projection.get(key), expected[key], key)
+    billed_by_stage = _require_mapping(
+        projection.get("stage_billed_cpu_saat_before_safety_factor"),
+        "projection.stage_billed_cpu_saat_before_safety_factor",
+    )
+    if set(billed_by_stage) != set(_RESOURCE_STAGE_NAMES):
+        raise TurkishCorpusError("resource projection billed stage accounting is incomplete")
+    for stage, wanted in expected["stage_billed_cpu_saat_before_safety_factor"].items():
+        require_close(billed_by_stage.get(stage), wanted, f"stage billed CPU-saat ({stage})")
+    expected_diagnostics = expected["diagnostic_process_cpu"]
+    for key in (
+        "process_cpu_seconds_with_safety_factor",
+        "process_cpu_efficiency_against_billable_capacity",
+    ):
+        require_close(diagnostics.get(key), expected_diagnostics[key], key)
+    if report.get("manual_approval_required") is not True:
+        raise TurkishCorpusError("resource projection must require manual approval")
+    if not isinstance(report.get("automated_gate_passed"), bool):
+        raise TurkishCorpusError("resource projection automated gate result is missing")
+    return report_hash
+
+
 def build_resource_projection(
     policy: Mapping[str, Any],
     plan: Mapping[str, Any],
@@ -2297,6 +2448,7 @@ def build_resource_projection(
     output_path: str | Path,
     *,
     quota_headroom_bytes: int,
+    billable_cpus_per_job: int,
     safety_factor: float = 1.5,
 ) -> dict[str, Any]:
     """Extrapolate full CPU/storage needs from the deterministic source sample."""
@@ -2306,6 +2458,10 @@ def build_resource_projection(
     validate_backend_calibration(calibration, policy)
     if quota_headroom_bytes <= 0 or not 1.0 <= safety_factor <= 3.0:
         raise TurkishCorpusError("invalid resource-projection headroom/safety factor")
+    if billable_cpus_per_job != RESOURCE_BILLING_CONTRACT["billable_cpus_per_job"]:
+        raise TurkishCorpusError(
+            "cpu2dq resource projection requires exactly 128 billable CPUs per job"
+        )
     destination = Path(output_path)
     if destination.exists():
         raise FileExistsError(f"refusing to overwrite resource projection: {destination}")
@@ -2326,8 +2482,12 @@ def build_resource_projection(
     sample_bytes_by_source: Counter[str] = Counter()
     projected_candidates = 0.0
     projected_candidate_bytes = 0.0
-    projected_score_cpu = 0.0
-    projected_signature_cpu = 0.0
+    projected_download_wall = 0.0
+    projected_score_wall = 0.0
+    projected_signature_wall = 0.0
+    projected_download_process_cpu = 0.0
+    projected_score_process_cpu = 0.0
+    projected_signature_process_cpu = 0.0
     source_projections: dict[str, Any] = {}
     for receipt in objects:
         source_id = receipt["source_id"]
@@ -2340,15 +2500,34 @@ def build_resource_projection(
         scale = full_bytes / sample_bytes
         candidate_rows = sum(item["candidate_file"]["rows"] for item in source_receipts)
         candidate_bytes = sum(item["candidate_file"]["size_bytes"] for item in source_receipts)
-        score_cpu = sum(item["telemetry"]["score_lid"]["cpu_seconds"] for item in source_receipts)
-        signature_cpu = sum(
+        download_wall = sum(
+            item["telemetry"]["download"]["wall_seconds"] for item in source_receipts
+        )
+        score_wall = sum(
+            item["telemetry"]["score_lid"]["wall_seconds"] for item in source_receipts
+        )
+        signature_wall = sum(
+            item["telemetry"]["minhash_signature"]["wall_seconds"]
+            for item in source_receipts
+        )
+        download_process_cpu = sum(
+            item["telemetry"]["download"]["cpu_seconds"] for item in source_receipts
+        )
+        score_process_cpu = sum(
+            item["telemetry"]["score_lid"]["cpu_seconds"] for item in source_receipts
+        )
+        signature_process_cpu = sum(
             item["telemetry"]["minhash_signature"]["cpu_seconds"]
             for item in source_receipts
         )
         projected_candidates += candidate_rows * scale
         projected_candidate_bytes += candidate_bytes * scale
-        projected_score_cpu += score_cpu * scale
-        projected_signature_cpu += signature_cpu * scale
+        projected_download_wall += download_wall * scale
+        projected_score_wall += score_wall * scale
+        projected_signature_wall += signature_wall * scale
+        projected_download_process_cpu += download_process_cpu * scale
+        projected_score_process_cpu += score_process_cpu * scale
+        projected_signature_process_cpu += signature_process_cpu * scale
         source_projections[source_id] = {
             "sample_objects": len(source_receipts),
             "sample_input_bytes": sample_bytes,
@@ -2357,14 +2536,28 @@ def build_resource_projection(
             "sample_candidate_documents": candidate_rows,
             "projected_candidate_documents": candidate_rows * scale,
             "projected_candidate_bytes": candidate_bytes * scale,
-            "projected_score_cpu_seconds": score_cpu * scale,
-            "projected_signature_cpu_seconds": signature_cpu * scale,
+            "projected_download_wall_seconds": download_wall * scale,
+            "projected_score_lid_wall_seconds": score_wall * scale,
+            "projected_minhash_signature_wall_seconds": signature_wall * scale,
+            "diagnostic_projected_process_cpu_seconds": {
+                "download": download_process_cpu * scale,
+                "score_lid": score_process_cpu * scale,
+                "minhash_signature": signature_process_cpu * scale,
+            },
         }
     sample_signature_bytes = sum(item["input_signature_bytes"] for item in buckets)
-    sample_bucket_cpu = sum(item["telemetry"]["cpu_seconds"] for item in buckets)
+    sample_bucket_wall = sum(item["telemetry"]["wall_seconds"] for item in buckets)
+    sample_bucket_process_cpu = sum(
+        item["telemetry"]["cpu_seconds"] for item in buckets
+    )
     projected_signature_bytes = projected_candidates * 14 * (8 * 8 + 4)
-    projected_bucket_cpu = (
-        sample_bucket_cpu * projected_signature_bytes / sample_signature_bytes
+    projected_bucket_wall = (
+        sample_bucket_wall * projected_signature_bytes / sample_signature_bytes
+        if sample_signature_bytes
+        else 0.0
+    )
+    projected_bucket_process_cpu = (
+        sample_bucket_process_cpu * projected_signature_bytes / sample_signature_bytes
         if sample_signature_bytes
         else 0.0
     )
@@ -2374,9 +2567,15 @@ def build_resource_projection(
         sample_edges * projected_candidates / sample_candidates if sample_candidates else 0.0
     )
     projected_dups_bytes = projected_edges * 16
-    cluster_cpu = float(cluster["telemetry"]["cpu_seconds"])
-    projected_cluster_cpu = (
-        cluster_cpu * projected_candidates / sample_candidates if sample_candidates else 0.0
+    cluster_wall = float(cluster["telemetry"]["wall_seconds"])
+    cluster_process_cpu = float(cluster["telemetry"]["cpu_seconds"])
+    projected_cluster_wall = (
+        cluster_wall * projected_candidates / sample_candidates if sample_candidates else 0.0
+    )
+    projected_cluster_process_cpu = (
+        cluster_process_cpu * projected_candidates / sample_candidates
+        if sample_candidates
+        else 0.0
     )
     sample_backend_bytes = sum(item["size_bytes"] for item in cluster["output_files"])
     projected_backend_bytes = (
@@ -2392,13 +2591,26 @@ def build_resource_projection(
         + projected_dups_bytes
         + projected_backend_bytes
     ) * safety_factor
-    stage_cpu = {
-        "score_lid": projected_score_cpu,
-        "minhash_signature": projected_signature_cpu,
-        "minhash_buckets": projected_bucket_cpu,
-        "priority_cluster_quality_format": projected_cluster_cpu,
+    stage_wall = {
+        "download": projected_download_wall,
+        "score_lid": projected_score_wall,
+        "minhash_signature": projected_signature_wall,
+        "minhash_buckets": projected_bucket_wall,
+        "priority_cluster_quality_format": projected_cluster_wall,
     }
-    projected_cpu_seconds = sum(stage_cpu.values()) * safety_factor
+    diagnostic_stage_process_cpu = {
+        "download": projected_download_process_cpu,
+        "score_lid": projected_score_process_cpu,
+        "minhash_signature": projected_signature_process_cpu,
+        "minhash_buckets": projected_bucket_process_cpu,
+        "priority_cluster_quality_format": projected_cluster_process_cpu,
+    }
+    accounting = _resource_projection_accounting(
+        stage_wall,
+        diagnostic_stage_process_cpu,
+        safety_factor=safety_factor,
+        billable_cpus_per_job=billable_cpus_per_job,
+    )
     limit = min(int(policy["materialization"]["max_peak_disk_bytes"]), quota_headroom_bytes)
     automated_pass = projected_peak <= limit
     report = seal_manifest(
@@ -2411,6 +2623,7 @@ def build_resource_projection(
             "sample_object_receipt_sha256": [item["canonical_sha256"] for item in objects],
             "sample_bucket_receipt_sha256": [item["canonical_sha256"] for item in buckets],
             "sample_cluster_receipt_sha256": cluster["canonical_sha256"],
+            "billing_contract": dict(RESOURCE_BILLING_CONTRACT),
             "sample_selection": {
                 "algorithm": "smallest_object_per_source_plus_hplt_wds_bin_v2",
                 "ranks": select_resource_sample_ranks(plan),
@@ -2436,9 +2649,7 @@ def build_resource_projection(
                 "duplicate_edges": projected_edges,
                 "duplicate_edge_bytes": projected_dups_bytes,
                 "backend_output_bytes": projected_backend_bytes,
-                "stage_cpu_seconds_before_safety_factor": stage_cpu,
-                "cpu_seconds_with_safety_factor": projected_cpu_seconds,
-                "cpu_saat_with_safety_factor": projected_cpu_seconds / 3600,
+                **accounting,
                 "peak_disk_bytes_with_safety_factor": projected_peak,
                 "peak_disk_model": "raw_largest+candidates+signatures+dups+backend_output; conservative until streaming cleanup is proven",
             },
@@ -2452,6 +2663,7 @@ def build_resource_projection(
             "canonical_sha256": None,
         }
     )
+    validate_resource_projection(report)
     write_json_atomic(destination, report)
     return report
 
@@ -2466,9 +2678,7 @@ def seal_resource_approval(
     notes: str = "",
 ) -> dict[str, Any]:
     report = load_json_strict(report_path)
-    report_hash = verify_manifest_hash(report)
-    if report.get("kind") != RESOURCE_REPORT_KIND:
-        raise TurkishCorpusError("unexpected resource projection")
+    report_hash = validate_resource_projection(report)
     if report.get("automated_gate_passed") is not True and decision == "accepted":
         raise TurkishCorpusError("cannot accept a resource projection that exceeds the hard peak limit")
     if not reviewer.strip() or not _RFC3339_UTC_RE.fullmatch(reviewed_at_utc):
@@ -2485,6 +2695,12 @@ def seal_resource_approval(
             "resource_report_sha256": report_hash,
             "policy_sha256": report["policy_sha256"],
             "source_plan_sha256": report["source_plan_sha256"],
+            "approved_projection": {
+                "billing_contract": report["billing_contract"],
+                "billed_cpu_saat_with_safety_factor": report["projection"][
+                    "billed_cpu_saat_with_safety_factor"
+                ],
+            },
             "reviewer": reviewer.strip(),
             "reviewed_at_utc": reviewed_at_utc,
             "decision": decision,
@@ -2500,7 +2716,11 @@ def validate_resource_approval(
     approval: Mapping[str, Any], *, plan: Mapping[str, Any], policy: Mapping[str, Any]
 ) -> None:
     verify_manifest_hash(approval)
-    if approval.get("kind") != RESOURCE_APPROVAL_KIND or approval.get("decision") != "accepted":
+    if (
+        approval.get("schema_version") != "1.0"
+        or approval.get("kind") != RESOURCE_APPROVAL_KIND
+        or approval.get("decision") != "accepted"
+    ):
         raise TurkishCorpusError("full backend requires an accepted resource approval")
     if (
         approval.get("source_plan_sha256") != plan["canonical_sha256"]
@@ -2508,6 +2728,23 @@ def validate_resource_approval(
         or not _SHA256_RE.fullmatch(str(approval.get("resource_report_sha256", "")))
     ):
         raise TurkishCorpusError("resource approval binding drift")
+    projection = _require_mapping(
+        approval.get("approved_projection"), "resource approval approved_projection"
+    )
+    contract = _require_mapping(
+        projection.get("billing_contract"),
+        "resource approval approved_projection.billing_contract",
+    )
+    if dict(contract) != RESOURCE_BILLING_CONTRACT:
+        raise TurkishCorpusError("resource approval billing contract drift")
+    billed_cpu_saat = projection.get("billed_cpu_saat_with_safety_factor")
+    if (
+        isinstance(billed_cpu_saat, bool)
+        or not isinstance(billed_cpu_saat, (int, float))
+        or not math.isfinite(float(billed_cpu_saat))
+        or float(billed_cpu_saat) <= 0
+    ):
+        raise TurkishCorpusError("resource approval lacks billed CPU-saat")
 
 
 __all__ = [
@@ -2526,5 +2763,6 @@ __all__ = [
     "select_resource_sample_ranks",
     "validate_backend_calibration",
     "validate_resource_approval",
+    "validate_resource_projection",
     "validate_source_plan",
 ]

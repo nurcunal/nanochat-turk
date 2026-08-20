@@ -93,6 +93,7 @@ def build_parser() -> argparse.ArgumentParser:
     resources.add_argument("--calibration", type=Path, required=True)
     resources.add_argument("--sample-run-dir", type=Path, required=True)
     resources.add_argument("--quota-headroom-bytes", type=int, required=True)
+    resources.add_argument("--billable-cpus-per-job", type=int, required=True)
     resources.add_argument("--safety-factor", type=float, default=1.5)
     resources.add_argument("--output", type=Path, required=True)
 
@@ -190,6 +191,7 @@ def main(argv: list[str] | None = None) -> int:
                             args.sample_run_dir,
                             args.output,
                             quota_headroom_bytes=args.quota_headroom_bytes,
+                            billable_cpus_per_job=args.billable_cpus_per_job,
                             safety_factor=args.safety_factor,
                         )
                     elif args.command == "seal-source":

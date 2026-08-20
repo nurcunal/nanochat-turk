@@ -71,6 +71,10 @@ Data preparation is deliberately excluded: its sampled/extrapolated sealed
 CPU-saat value is added before preflight because inventing a fixed estimate
 before the real source mix exists would be unsafe.
 
+The data `resource-report` command requires `--billable-cpus-per-job 128`.
+Its sealed `cpu2dq` contract bills projected stage wall time at 128 CPUs for
+each one-node job; process CPU time is retained only as an efficiency diagnostic.
+
 The ws8 calibration corresponds to roughly 153.0–206.9 training wall-hours.
 At the minimum accepted 1.7x ws8-to-ws16 speedup, ws16 corresponds to roughly
 90.0–121.7 wall-hours (or 76.5–103.4 hours at ideal 2x scaling). The
