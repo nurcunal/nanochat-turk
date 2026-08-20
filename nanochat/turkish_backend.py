@@ -655,6 +655,7 @@ def _calibrate_lsh(*, trials: int = 1024) -> dict[str, Any]:
     try:
         import numpy as np
         from datatrove.pipeline.dedup import MinhashDedupSignature
+        from datatrove.utils.hashing import create_hash_func
         from datatrove.utils.typeshelper import Languages
     except ImportError as exc:  # pragma: no cover
         raise TurkishCorpusError("DataTrove/NumPy are required for LSH calibration") from exc
@@ -664,21 +665,35 @@ def _calibrate_lsh(*, trials: int = 1024) -> dict[str, Any]:
         config=config,
         language=Languages.turkish__latn,
     )
+    shingle_hash = create_hash_func(config.hash_config)
     similarities = (0.50, 0.65, 0.70, 0.82, 0.90)
+    # DataTrove hashes every production shingle before applying its affine
+    # MinHash permutations. Raw sequential integers create pathological band
+    # correlations, so exercise the pinned shingle hash here as well.
     observations: list[dict[str, Any]] = []
     universe = 200
-    for similarity in similarities:
+    for similarity_index, similarity in enumerate(similarities):
         # For two equal-size sets, intersection n solves J=n/(2m-n).
         intersection = max(5, round((2 * universe * similarity) / (1 + similarity)))
         actual = intersection / (2 * universe - intersection)
         matches = 0
         for trial in range(trials):
-            base = trial * 10_000
-            left = np.arange(base + 1, base + universe + 1, dtype=np.uint64).reshape((-1, 1))
-            right_values = list(range(base + 1, base + intersection + 1)) + list(
-                range(base + universe + 1, base + 2 * universe - intersection + 1)
+            values = np.fromiter(
+                (
+                    shingle_hash(
+                        f"nanochat-lsh-calibration-v2:{similarity_index}:{trial}:{item}"
+                    )
+                    for item in range(2 * universe - intersection)
+                ),
+                dtype=np.uint64,
+                count=2 * universe - intersection,
             )
-            right = np.asarray(right_values, dtype=np.uint64).reshape((-1, 1))
+            if np.unique(values).size != values.size:
+                raise TurkishCorpusError("synthetic MinHash input collision")
+            left = values[:universe].reshape((-1, 1))
+            right = np.concatenate(
+                (values[:intersection], values[universe:])
+            ).reshape((-1, 1))
             left_sig = signature.get_signature(left)
             right_sig = signature.get_signature(right)
             matches += int(any(a == b for a, b in zip(left_sig, right_sig)))
@@ -697,7 +712,8 @@ def _calibrate_lsh(*, trials: int = 1024) -> dict[str, Any]:
         )
     passed = all(item["absolute_error"] <= 0.06 for item in observations)
     body = {
-        "implementation": "actual_datatrove_get_signature_synthetic_sets_v1",
+        "implementation": "actual_datatrove_get_signature_random_hashes_v2",
+        "synthetic_input": "unique_pinned_xxhash64_shingle_ids_v1",
         "precision_bits": 64,
         "num_buckets": 14,
         "hashes_per_bucket": 8,
