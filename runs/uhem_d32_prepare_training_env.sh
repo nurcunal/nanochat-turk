@@ -12,10 +12,11 @@ module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
 set -u
 
 CODE_DIR="${CODE_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+UV_BIN="${UV_BIN:-$HOME/.local/bin/uv}"
 cd "$CODE_DIR"
 
 expected_uv_version=0.11.29
-actual_uv_version="$(uv --version | awk '{print $2}')"
+actual_uv_version="$("$UV_BIN" --version | awk '{print $2}')"
 if [ "$actual_uv_version" != "$expected_uv_version" ]; then
     echo "uv must be exactly $expected_uv_version, found $actual_uv_version" >&2
     exit 2
@@ -42,7 +43,7 @@ if [ "$("$module_python" -c 'import platform; print(platform.python_version())')
     echo "The loaded UHeM Python module is not Python 3.12.4" >&2
     exit 2
 fi
-uv sync --frozen --extra gpu --python "$module_python"
+"$UV_BIN" sync --frozen --extra gpu --python "$module_python"
 
 .venv/bin/python -c 'import platform, torch, kernels, pyarrow, rustbpe
 assert platform.python_version() == "3.12.4"

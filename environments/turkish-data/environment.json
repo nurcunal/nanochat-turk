@@ -16,10 +16,10 @@
   },
   "project_file": {
     "path": "pyproject.toml",
-    "sha256": "78c149b8bfa7773b0d180296e8bf3b82fb9cab130da5f0dec1ca6d4c667a3dfa"
+    "sha256": "e93ae5c2474870bc94e6bda12496bbbac2ee25c8189aef0bbcc69273fb41a25f"
   },
   "lock_file": {
     "path": "uv.lock",
-    "sha256": "a5ecf95e9d4aa45bf2273dcbb063f173b3a0f30208df7214c307c59d2bcb0a54"
+    "sha256": "a5fa81e681f32696d1d659499da9f490bc28326c44c24c9d223e04f5b2c6bfb4"
   }
 }

@@ -29,6 +29,7 @@ set -u
 : "${DATA_RUN_DIR:?Set DATA_RUN_DIR to a dedicated sample or production run directory}"
 
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
+UV_BIN="${UV_BIN:-$HOME/.local/bin/uv}"
 POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v1.json}"
 SAMPLE="${SAMPLE:-0}"
 cd "$CODE_DIR"
@@ -51,4 +52,4 @@ else
     args+=(--resource-approval "$RESOURCE_APPROVAL")
 fi
 
-uv run --project environments/turkish-data --locked python "${args[@]}"
+"$UV_BIN" run --project environments/turkish-data --locked python "${args[@]}"

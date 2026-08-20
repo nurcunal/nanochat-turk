@@ -99,7 +99,7 @@ def test_training_environment_setup_is_frozen_and_version_pinned() -> None:
         encoding="utf-8"
     )
     assert "expected_uv_version=0.11.29" in source
-    assert "uv sync --frozen --extra gpu" in source
+    assert '"$UV_BIN" sync --frozen --extra gpu' in source
     assert "uv sync --locked" not in source
     assert "c91fdd03ae9705565572eee31924d4c0bca24bf5431a8eabff4c061882f94929" in source
     assert "de7891b832854162111208644ddb72685069ce8128e2bed9dbb7993aa6af5861" in source
@@ -146,8 +146,17 @@ def test_turkish_data_environment_setup_is_frozen_and_version_pinned() -> None:
     )
     assert '"$UV_BIN" sync --project "$PROJECT_DIR" --locked' in source
     assert '!= 0.11.29' in source
-    assert "78c149b8bfa7773b0d180296e8bf3b82fb9cab130da5f0dec1ca6d4c667a3dfa" in source
-    assert "a5ecf95e9d4aa45bf2273dcbb063f173b3a0f30208df7214c307c59d2bcb0a54" in source
+    assert "e93ae5c2474870bc94e6bda12496bbbac2ee25c8189aef0bbcc69273fb41a25f" in source
+    assert "a5fa81e681f32696d1d659499da9f490bc28326c44c24c9d223e04f5b2c6bfb4" in source
+    assert 'metadata.version("fasttext-numpy2-wheel") == "0.9.2"' in source
+    project = (ROOT / "environments" / "turkish-data" / "pyproject.toml").read_text(
+        encoding="utf-8"
+    )
+    lock = (ROOT / "environments" / "turkish-data" / "uv.lock").read_text(
+        encoding="utf-8"
+    )
+    assert '"fasttext-numpy2-wheel==0.9.2"' in project
+    assert '\nname = "fasttext-wheel"\n' not in lock
 
 
 def test_uhem_module_initialization_precedes_bash_nounset() -> None:
@@ -179,6 +188,17 @@ def test_turkish_data_bootstrap_pins_and_seals_prerequisites() -> None:
     assert "--locked" in source
     assert 'export PYTHONPATH="$CODE_DIR${PYTHONPATH:+:$PYTHONPATH}"' in source
     assert 'mv "$sample_tmp" "$SAMPLE_RANKS"' in source
+
+
+def test_turkish_data_jobs_use_the_pinned_uv_binary() -> None:
+    for relative in (
+        "runs/uhem_turkish_data_objects.sbatch",
+        "runs/uhem_turkish_data_buckets.sbatch",
+        "runs/uhem_turkish_data_cluster.sbatch",
+    ):
+        source = (ROOT / relative).read_text(encoding="utf-8")
+        assert 'UV_BIN="${UV_BIN:-$HOME/.local/bin/uv}"' in source
+        assert '"$UV_BIN" run --project environments/turkish-data --locked' in source
 
 
 def test_signal_path_targets_the_srun_step_on_slurm_20() -> None:

@@ -34,11 +34,11 @@ if [ "$("$UV_BIN" --version | awk '{print $2}')" != 0.11.29 ]; then
     echo "The Turkish-data environment requires uv 0.11.29" >&2
     exit 2
 fi
-if [ "$(sha256sum "$PROJECT_DIR/pyproject.toml" | awk '{print $1}')" != 78c149b8bfa7773b0d180296e8bf3b82fb9cab130da5f0dec1ca6d4c667a3dfa ]; then
+if [ "$(sha256sum "$PROJECT_DIR/pyproject.toml" | awk '{print $1}')" != e93ae5c2474870bc94e6bda12496bbbac2ee25c8189aef0bbcc69273fb41a25f ]; then
     echo "Turkish-data pyproject.toml hash mismatch" >&2
     exit 2
 fi
-if [ "$(sha256sum "$PROJECT_DIR/uv.lock" | awk '{print $1}')" != a5ecf95e9d4aa45bf2273dcbb063f173b3a0f30208df7214c307c59d2bcb0a54 ]; then
+if [ "$(sha256sum "$PROJECT_DIR/uv.lock" | awk '{print $1}')" != a5fa81e681f32696d1d659499da9f490bc28326c44c24c9d223e04f5b2c6bfb4 ]; then
     echo "Turkish-data uv.lock hash mismatch" >&2
     exit 2
 fi
@@ -51,12 +51,12 @@ import platform
 
 assert platform.python_version() == "3.12.4"
 assert metadata.version("datatrove") == "0.10.0"
-assert metadata.version("fasttext-wheel") == "0.9.2"
+assert metadata.version("fasttext-numpy2-wheel") == "0.9.2"
 assert metadata.version("pyarrow") == "23.0.1"
 print({
     "python": platform.python_version(),
     "datatrove": metadata.version("datatrove"),
-    "fasttext-wheel": metadata.version("fasttext-wheel"),
+    "fasttext-numpy2-wheel": metadata.version("fasttext-numpy2-wheel"),
     "pyarrow": metadata.version("pyarrow"),
 })'
 

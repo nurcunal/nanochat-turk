@@ -12,6 +12,8 @@ Pinned production backends:
 - GlotLID v3 at Hugging Face commit
   `85cd6716494360367b75f642b5bc78667605d0b4`, file `model_v3.bin`, LFS
   SHA-256 `a818b6bd42a628ab47d3dfc1578c7ea615c45381f3494c42535e31e8c4cafc9e`.
+- `fasttext-numpy2-wheel==0.9.2`; the legacy `fasttext-wheel` distribution is
+  excluded because its prediction wrapper is incompatible with NumPy 2.x.
 - The Python/SQLite MinHash and lexical Turkish scorer in
   `nanochat.turkish_corpus` are reference checks for fixtures/smokes only and
   are rejected by the production command.

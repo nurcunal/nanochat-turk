@@ -491,7 +491,9 @@ def _load_glotlid_model(model_path: Path, policy: Mapping[str, Any]) -> Any:
     try:
         import fasttext
     except ImportError as exc:  # pragma: no cover
-        raise TurkishCorpusError("fasttext-wheel is required for GlotLID") from exc
+        raise TurkishCorpusError(
+            "fasttext-numpy2-wheel is required for GlotLID"
+        ) from exc
     return fasttext.load_model(str(model_path))
 
 
