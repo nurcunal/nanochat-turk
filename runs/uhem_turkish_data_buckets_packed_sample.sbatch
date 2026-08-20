@@ -73,7 +73,7 @@ export PYTHONUNBUFFERED=1
 
 set +e
 srun --nodes=1 --ntasks=14 --ntasks-per-node=14 --cpus-per-task=8 \
-    --cpu-bind=cores --kill-on-bad-exit=1 \
+    --kill-on-bad-exit=1 \
     --output="$LAUNCH_ROOT/bucket-%t.out" \
     --error="$LAUNCH_ROOT/bucket-%t.err" \
     "$PYTHON" -m scripts.turkish_packed_sample run-bucket \

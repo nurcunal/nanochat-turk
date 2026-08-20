@@ -358,12 +358,13 @@ def test_packed_sbatch_is_direct_sample_only_and_collective():
         "#SBATCH --ntasks-per-node=32",
         "#SBATCH --cpus-per-task=4",
         "srun --nodes=1 --ntasks=32 --ntasks-per-node=32 --cpus-per-task=4",
-        "--cpu-bind=cores --kill-on-bad-exit=1",
+        "--kill-on-bad-exit=1",
         "-m scripts.turkish_packed_sample run-lane",
         "-m scripts.turkish_packed_sample finalize",
         'if [ "$srun_rc" -ne 0 ]',
     )
     assert all(fragment in source for fragment in required)
+    assert "--cpu-bind" not in source
     assert "RESOURCE_APPROVAL" not in source
     assert "SAMPLE=" not in source
     for name in packed.THREAD_CAPS:
@@ -523,12 +524,13 @@ def test_packed_bucket_sbatch_is_direct_sample_only_and_collective():
         "#SBATCH --cpus-per-task=8",
         "#SBATCH --mem=240G",
         "srun --nodes=1 --ntasks=14 --ntasks-per-node=14 --cpus-per-task=8",
-        "--cpu-bind=cores --kill-on-bad-exit=1",
+        "--kill-on-bad-exit=1",
         "-m scripts.turkish_packed_sample run-bucket",
         "-m scripts.turkish_packed_sample finalize-buckets",
         'if [ "$srun_rc" -ne 0 ]',
     )
     assert all(fragment in source for fragment in required)
+    assert "--cpu-bind" not in source
     assert "#SBATCH --array" not in source
     assert "RESOURCE_APPROVAL" not in source
     assert "SAMPLE=" not in source

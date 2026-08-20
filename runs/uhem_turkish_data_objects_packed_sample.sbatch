@@ -81,7 +81,7 @@ export PYTHONUNBUFFERED=1
 
 set +e
 srun --nodes=1 --ntasks=32 --ntasks-per-node=32 --cpus-per-task=4 \
-    --cpu-bind=cores --kill-on-bad-exit=1 \
+    --kill-on-bad-exit=1 \
     --output="$LAUNCH_ROOT/lane-%t.out" \
     --error="$LAUNCH_ROOT/lane-%t.err" \
     "$PYTHON" -m scripts.turkish_packed_sample run-lane \
