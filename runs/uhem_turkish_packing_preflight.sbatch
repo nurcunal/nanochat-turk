@@ -14,7 +14,12 @@
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
 
-set -euo pipefail
+set -eo pipefail
+source /etc/profile.d/modules.sh
+module use /ari/progs/modulefiles
+module purge
+module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
+set -u
 : "${POOL_DIR:?Set POOL_DIR to the manually QA-approved production pool}"
 : "${TOKENIZER_DIR:?Set TOKENIZER_DIR to the verified raw-BPE package}"
 : "${PACKING_CONTROL_DIR:?Set PACKING_CONTROL_DIR to a new control directory}"

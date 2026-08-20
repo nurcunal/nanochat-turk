@@ -151,9 +151,9 @@ def test_turkish_data_environment_setup_is_frozen_and_version_pinned() -> None:
 
 
 def test_uhem_module_initialization_precedes_bash_nounset() -> None:
-    launchers = sorted((ROOT / "runs").glob("uhem_d32_*")) + [
-        ROOT / "runs" / "uhem_turkish_prepare_data_env.sbatch"
-    ]
+    launchers = sorted((ROOT / "runs").glob("uhem_d32_*")) + sorted(
+        (ROOT / "runs").glob("uhem_turkish_*")
+    )
     checked = 0
     for path in launchers:
         if not path.is_file():
@@ -165,7 +165,7 @@ def test_uhem_module_initialization_precedes_bash_nounset() -> None:
         checked += 1
         assert source.index(marker) < source.index("\nset -u\n"), path
         assert source.index(marker) > source.index("set -eo pipefail"), path
-    assert checked >= 15
+    assert checked >= 21
 
 
 def test_turkish_data_bootstrap_pins_and_seals_prerequisites() -> None:

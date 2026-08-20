@@ -13,7 +13,12 @@
 #SBATCH --output=%x-%A_%a.out
 #SBATCH --error=%x-%A_%a.err
 
-set -euo pipefail
+set -eo pipefail
+source /etc/profile.d/modules.sh
+module use /ari/progs/modulefiles
+module purge
+module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
+set -u
 : "${SOURCE_PLAN:?}"
 : "${CALIBRATION:?}"
 : "${DATA_RUN_DIR:?}"
