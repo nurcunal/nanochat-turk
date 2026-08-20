@@ -588,20 +588,17 @@ def _read_bounded_regular_at(
     return payload, after
 
 
-def _rename_noreplace_at(
+def _native_rename_noreplace_at(
     source_parent_fd: int,
     source_name: str,
     destination_parent_fd: int,
     destination_name: str,
-    *,
-    label: str,
-) -> None:
-    """Atomically rename without replacement or fail closed if unavailable."""
+) -> int | None:
+    """Return zero, errno, or ``None`` when no native primitive is available."""
 
     libc = ctypes.CDLL(None, use_errno=True)
     source = os.fsencode(source_name)
     destination = os.fsencode(destination_name)
-    result: int
     if hasattr(libc, "renameat2"):
         operation = libc.renameat2
         operation.argtypes = [
@@ -612,6 +609,7 @@ def _rename_noreplace_at(
             ctypes.c_uint,
         ]
         operation.restype = ctypes.c_int
+        ctypes.set_errno(0)
         result = operation(
             source_parent_fd,
             source,
@@ -629,6 +627,7 @@ def _rename_noreplace_at(
             ctypes.c_uint,
         ]
         operation.restype = ctypes.c_int
+        ctypes.set_errno(0)
         result = operation(
             source_parent_fd,
             source,
@@ -637,17 +636,306 @@ def _rename_noreplace_at(
             0x00000004,  # Darwin RENAME_EXCL
         )
     else:
-        raise AnchorPreparationError(
-            f"atomic no-replace publication is unavailable for {label}"
+        return None
+    return 0 if result == 0 else ctypes.get_errno()
+
+
+def _require_publication_basename(name: str, *, label: str) -> None:
+    if (
+        not isinstance(name, str)
+        or name in {"", ".", ".."}
+        or os.path.sep in name
+        or (os.path.altsep is not None and os.path.altsep in name)
+    ):
+        raise AnchorPreparationError(f"unsafe {label} basename")
+
+
+def _same_directory(source_parent_fd: int, destination_parent_fd: int) -> bool:
+    return _inode_identity(os.fstat(source_parent_fd)) == _inode_identity(
+        os.fstat(destination_parent_fd)
+    )
+
+
+def _rollback_owned_name(parent_fd: int, name: str, owned: os.stat_result) -> None:
+    try:
+        named = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        if _inode_identity(named) == _inode_identity(owned):
+            os.unlink(name, dir_fd=parent_fd)
+    except FileNotFoundError:
+        pass
+
+
+def _link_unlink_noreplace_at(
+    parent_fd: int,
+    source_name: str,
+    destination_name: str,
+    source: os.stat_result,
+    *,
+    label: str,
+) -> None:
+    """Publish a regular file with link(2)'s atomic exclusive destination."""
+
+    linked_destination: os.stat_result | None = None
+    try:
+        os.link(
+            source_name,
+            destination_name,
+            src_dir_fd=parent_fd,
+            dst_dir_fd=parent_fd,
+            follow_symlinks=False,
         )
-    if result != 0:
-        error_number = ctypes.get_errno()
-        if error_number in {errno.EEXIST, errno.ENOTEMPTY}:
+        named_destination = os.stat(
+            destination_name, dir_fd=parent_fd, follow_symlinks=False
+        )
+        # Capture an owned destination before reopening the source name so a
+        # concurrent source removal cannot strand the link we just created.
+        if _inode_identity(named_destination) == _inode_identity(source):
+            linked_destination = named_destination
+        named_source = os.stat(source_name, dir_fd=parent_fd, follow_symlinks=False)
+        # Also claim a link to the current source inode, covering a source-name
+        # swap before link(). A destination replaced by an unrelated inode is
+        # never claimed and therefore survives rollback.
+        if _inode_identity(named_destination) in {
+            _inode_identity(named_source),
+            _inode_identity(source),
+        }:
+            linked_destination = named_destination
+        if (
+            not stat.S_ISREG(named_source.st_mode)
+            or _inode_identity(named_source) != _inode_identity(source)
+            or _inode_identity(named_destination) != _inode_identity(source)
+        ):
+            raise AnchorPreparationError(f"{label} source inode binding drift")
+        os.unlink(source_name, dir_fd=parent_fd)
+    except FileExistsError as exc:
+        raise AnchorPreparationError(f"refusing to overwrite {label}") from exc
+    except BaseException:
+        if linked_destination is not None:
+            _rollback_owned_name(parent_fd, destination_name, linked_destination)
+        raise
+
+
+def _plain_directory_rename_is_noreplace(parent_fd: int) -> bool:
+    """Probe whether plain same-directory rename refuses an existing directory."""
+
+    token = secrets.token_hex(16)
+    source_name = f".anchor-rename-probe-{token}.source"
+    destination_name = f".anchor-rename-probe-{token}.destination"
+    source_fd: int | None = None
+    destination_fd: int | None = None
+    owned: list[os.stat_result] = []
+    try:
+        os.mkdir(source_name, 0o700, dir_fd=parent_fd)
+        owned.append(
+            os.stat(source_name, dir_fd=parent_fd, follow_symlinks=False)
+        )
+        source_fd = os.open(source_name, _DIRECTORY_OPEN_FLAGS, dir_fd=parent_fd)
+        if _inode_identity(owned[-1]) != _inode_identity(os.fstat(source_fd)):
+            return False
+        marker_fd = os.open(
+            ".owned-marker",
+            os.O_WRONLY
+            | os.O_CREAT
+            | os.O_EXCL
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0),
+            0o600,
+            dir_fd=source_fd,
+        )
+        os.close(marker_fd)
+        os.mkdir(destination_name, 0o700, dir_fd=parent_fd)
+        owned.append(
+            os.stat(destination_name, dir_fd=parent_fd, follow_symlinks=False)
+        )
+        destination_fd = os.open(
+            destination_name, _DIRECTORY_OPEN_FLAGS, dir_fd=parent_fd
+        )
+        if _inode_identity(owned[-1]) != _inode_identity(os.fstat(destination_fd)):
+            return False
+        try:
+            os.rename(
+                source_name,
+                destination_name,
+                src_dir_fd=parent_fd,
+                dst_dir_fd=parent_fd,
+            )
+        except OSError as exc:
+            if exc.errno not in {errno.EEXIST, errno.ENOTEMPTY}:
+                return False
+            named_source = os.stat(
+                source_name, dir_fd=parent_fd, follow_symlinks=False
+            )
+            named_destination = os.stat(
+                destination_name, dir_fd=parent_fd, follow_symlinks=False
+            )
+            return (
+                stat.S_ISDIR(named_source.st_mode)
+                and stat.S_ISDIR(named_destination.st_mode)
+                and _inode_identity(named_source)
+                == _inode_identity(os.fstat(source_fd))
+                and _inode_identity(named_destination)
+                == _inode_identity(os.fstat(destination_fd))
+            )
+        return False
+    finally:
+        if source_fd is not None:
+            os.close(source_fd)
+        if destination_fd is not None:
+            os.close(destination_fd)
+        owned_identities = {_inode_identity(item) for item in owned}
+        for name in (source_name, destination_name):
+            try:
+                named = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+                if (
+                    stat.S_ISDIR(named.st_mode)
+                    and _inode_identity(named) in owned_identities
+                ):
+                    shutil.rmtree(name, dir_fd=parent_fd)
+            except FileNotFoundError:
+                pass
+
+
+def _locked_directory_rename_at(
+    parent_fd: int,
+    source_name: str,
+    destination_name: str,
+    source: os.stat_result,
+    *,
+    label: str,
+) -> None:
+    """Use plain rename only after the filesystem proves no-replace semantics."""
+
+    digest = hashlib.sha256(os.fsencode(destination_name)).hexdigest()
+    lock_name = f".anchor-publish-{digest}.lock"
+    lock_fd: int | None = None
+    lock_stat: os.stat_result | None = None
+    try:
+        try:
+            lock_fd = os.open(
+                lock_name,
+                os.O_WRONLY
+                | os.O_CREAT
+                | os.O_EXCL
+                | getattr(os, "O_CLOEXEC", 0)
+                | getattr(os, "O_NOFOLLOW", 0),
+                0o600,
+                dir_fd=parent_fd,
+            )
+        except FileExistsError as exc:
+            raise AnchorPreparationError(
+                f"exclusive publication lock already exists for {label}"
+            ) from exc
+        lock_stat = os.fstat(lock_fd)
+        os.fsync(lock_fd)
+        named_lock = os.stat(lock_name, dir_fd=parent_fd, follow_symlinks=False)
+        if (
+            not stat.S_ISREG(named_lock.st_mode)
+            or _inode_identity(named_lock) != _inode_identity(lock_stat)
+        ):
+            raise AnchorPreparationError(f"{label} publication lock binding drift")
+        if not _plain_directory_rename_is_noreplace(parent_fd):
+            raise AnchorPreparationError(
+                f"filesystem lacks safe no-replace directory rename for {label}"
+            )
+        try:
+            os.stat(destination_name, dir_fd=parent_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            pass
+        else:
             raise AnchorPreparationError(f"refusing to overwrite {label}")
+        named_source = os.stat(source_name, dir_fd=parent_fd, follow_symlinks=False)
+        if (
+            not stat.S_ISDIR(named_source.st_mode)
+            or stat.S_ISLNK(named_source.st_mode)
+            or _inode_identity(named_source) != _inode_identity(source)
+        ):
+            raise AnchorPreparationError(f"{label} source inode binding drift")
+        try:
+            os.rename(
+                source_name,
+                destination_name,
+                src_dir_fd=parent_fd,
+                dst_dir_fd=parent_fd,
+            )
+        except OSError as exc:
+            if exc.errno in {errno.EEXIST, errno.ENOTEMPTY}:
+                raise AnchorPreparationError(f"refusing to overwrite {label}") from exc
+            if exc.errno in {errno.EISDIR, errno.ENOTDIR}:
+                try:
+                    os.stat(
+                        destination_name,
+                        dir_fd=parent_fd,
+                        follow_symlinks=False,
+                    )
+                except FileNotFoundError:
+                    pass
+                else:
+                    raise AnchorPreparationError(
+                        f"refusing to overwrite {label}"
+                    ) from exc
+            raise
+        published = os.stat(
+            destination_name, dir_fd=parent_fd, follow_symlinks=False
+        )
+        if _inode_identity(published) != _inode_identity(source):
+            raise AnchorPreparationError(f"{label} published inode binding drift")
+    finally:
+        if lock_stat is not None:
+            _rollback_owned_name(parent_fd, lock_name, lock_stat)
+        if lock_fd is not None:
+            os.close(lock_fd)
+
+
+def _rename_noreplace_at(
+    source_parent_fd: int,
+    source_name: str,
+    destination_parent_fd: int,
+    destination_name: str,
+    *,
+    label: str,
+) -> None:
+    """Rename without replacement, with BeeGFS-safe same-directory fallbacks."""
+
+    _require_publication_basename(source_name, label="publication source")
+    _require_publication_basename(destination_name, label="publication destination")
+    native_error = _native_rename_noreplace_at(
+        source_parent_fd,
+        source_name,
+        destination_parent_fd,
+        destination_name,
+    )
+    if native_error == 0:
+        return
+    if native_error in {errno.EEXIST, errno.ENOTEMPTY}:
+        raise AnchorPreparationError(f"refusing to overwrite {label}")
+    unsupported = {
+        None,
+        errno.EINVAL,
+        errno.ENOSYS,
+        getattr(errno, "ENOTSUP", errno.EINVAL),
+        getattr(errno, "EOPNOTSUPP", errno.EINVAL),
+    }
+    if native_error not in unsupported:
         raise AnchorPreparationError(
             f"atomic no-replace publication failed for {label}: "
-            f"{os.strerror(error_number)}"
+            f"{os.strerror(native_error)}"
         )
+    if not _same_directory(source_parent_fd, destination_parent_fd):
+        raise AnchorPreparationError(f"same-directory fallback required for {label}")
+    source = os.stat(source_name, dir_fd=source_parent_fd, follow_symlinks=False)
+    if stat.S_ISLNK(source.st_mode):
+        raise AnchorPreparationError(f"refusing symlink publication for {label}")
+    if stat.S_ISREG(source.st_mode):
+        _link_unlink_noreplace_at(
+            source_parent_fd, source_name, destination_name, source, label=label
+        )
+        return
+    if stat.S_ISDIR(source.st_mode):
+        _locked_directory_rename_at(
+            source_parent_fd, source_name, destination_name, source, label=label
+        )
+        return
+    raise AnchorPreparationError(f"unsupported publication inode type for {label}")
 
 
 @dataclass(frozen=True)

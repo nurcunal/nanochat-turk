@@ -574,6 +574,11 @@ def test_receipt_publication_is_atomic_no_replace_under_race(
     marker = b"competitor-must-survive"
     original = anchor_preparation._rename_noreplace_at
     raced = False
+    monkeypatch.setattr(
+        anchor_preparation,
+        "_native_rename_noreplace_at",
+        lambda *_args, **_kwargs: anchor_preparation.errno.EINVAL,
+    )
 
     def install_competitor_before_publish(
         source_parent_fd: int,
@@ -619,6 +624,257 @@ def test_receipt_publication_is_atomic_no_replace_under_race(
     assert raced
     assert receipt.read_bytes() == marker
     assert not list(tmp_path.glob(f".{receipt.name}.*.tmp"))
+    assert not list(tmp_path.glob(".anchor-publish-*.lock"))
+
+
+def test_beegfs_einval_fallback_publishes_receipt_and_output_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    old_path, new_path, contract = _mot_fixture(tmp_path)
+    monkeypatch.setattr(
+        anchor_preparation,
+        "_native_rename_noreplace_at",
+        lambda *_args, **_kwargs: anchor_preparation.errno.EINVAL,
+    )
+    monkeypatch.setattr(
+        anchor_preparation,
+        "_plain_directory_rename_is_noreplace",
+        lambda _parent_fd: True,
+    )
+    acquisition = _seal_acquisition(
+        tmp_path,
+        MOT_SOURCE_ID,
+        [old_path, new_path],
+        contract,
+        name="beegfs-acquisition.json",
+    )
+    output = tmp_path / "beegfs-output"
+    manifest = prepare_mot_v1_11(
+        old_path,
+        new_path,
+        output,
+        acquisition_receipt_path=acquisition,
+        discovery=True,
+        contract=contract,
+    )
+    assert acquisition.is_file()
+    assert validate_anchor_preparation(output, contract=contract) == manifest
+    assert not list(tmp_path.glob(".*.tmp"))
+    assert not list(tmp_path.glob(f".{output.name}.build-*"))
+    assert not list(tmp_path.glob(".anchor-publish-*.lock"))
+
+
+def test_beegfs_file_fallback_rolls_back_inode_linked_after_source_swap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "source.tmp"
+    replacement = tmp_path / "replacement.tmp"
+    parked = tmp_path / "parked-original.tmp"
+    destination = tmp_path / "receipt.json"
+    source.write_bytes(b"original")
+    replacement.write_bytes(b"replacement-must-survive")
+    original_link = os.link
+    swapped = False
+
+    monkeypatch.setattr(
+        anchor_preparation,
+        "_native_rename_noreplace_at",
+        lambda *_args, **_kwargs: anchor_preparation.errno.EINVAL,
+    )
+
+    def swap_source_before_link(*args, **kwargs):
+        nonlocal swapped
+        if not swapped:
+            swapped = True
+            os.rename(source, parked)
+            os.rename(replacement, source)
+        return original_link(*args, **kwargs)
+
+    monkeypatch.setattr(anchor_preparation.os, "link", swap_source_before_link)
+    parent_fd = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        with pytest.raises(AnchorPreparationError, match="source inode binding drift"):
+            anchor_preparation._rename_noreplace_at(
+                parent_fd,
+                source.name,
+                parent_fd,
+                destination.name,
+                label="receipt",
+            )
+    finally:
+        os.close(parent_fd)
+    assert swapped
+    assert not destination.exists()
+    assert source.read_bytes() == b"replacement-must-survive"
+    assert parked.read_bytes() == b"original"
+
+
+def test_beegfs_file_fallback_does_not_strand_link_when_source_disappears(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "source.tmp"
+    destination = tmp_path / "receipt.json"
+    source.write_bytes(b"owned")
+    original_link = os.link
+
+    monkeypatch.setattr(
+        anchor_preparation,
+        "_native_rename_noreplace_at",
+        lambda *_args, **_kwargs: anchor_preparation.errno.EINVAL,
+    )
+
+    def remove_source_after_link(*args, **kwargs):
+        original_link(*args, **kwargs)
+        source.unlink()
+
+    monkeypatch.setattr(anchor_preparation.os, "link", remove_source_after_link)
+    parent_fd = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        with pytest.raises(FileNotFoundError):
+            anchor_preparation._rename_noreplace_at(
+                parent_fd,
+                source.name,
+                parent_fd,
+                destination.name,
+                label="receipt",
+            )
+    finally:
+        os.close(parent_fd)
+    assert not source.exists()
+    assert not destination.exists()
+
+
+def test_directory_fallback_rejects_replacement_capable_filesystem(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "build"
+    source.mkdir()
+    (source / "payload").write_bytes(b"owned")
+    destination = tmp_path / "published"
+    monkeypatch.setattr(
+        anchor_preparation,
+        "_native_rename_noreplace_at",
+        lambda *_args, **_kwargs: anchor_preparation.errno.EINVAL,
+    )
+    monkeypatch.setattr(
+        anchor_preparation,
+        "_plain_directory_rename_is_noreplace",
+        lambda _parent_fd: False,
+    )
+    parent_fd = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        with pytest.raises(AnchorPreparationError, match="lacks safe no-replace"):
+            anchor_preparation._rename_noreplace_at(
+                parent_fd,
+                source.name,
+                parent_fd,
+                destination.name,
+                label="output",
+            )
+    finally:
+        os.close(parent_fd)
+    assert source.is_dir()
+    assert not destination.exists()
+    assert not list(tmp_path.glob(".anchor-publish-*.lock"))
+
+
+def test_directory_noreplace_probe_rejects_local_replacement_semantics_and_cleans(
+    tmp_path: Path,
+) -> None:
+    parent_fd = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        assert anchor_preparation._plain_directory_rename_is_noreplace(parent_fd) is False
+    finally:
+        os.close(parent_fd)
+    assert not list(tmp_path.glob(".anchor-rename-probe-*"))
+
+
+def test_directory_noreplace_probe_accepts_beegfs_eexist_semantics_and_cleans(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original_rename = os.rename
+
+    def emulate_beegfs(src, dst, *, src_dir_fd=None, dst_dir_fd=None):
+        if str(src).startswith(".anchor-rename-probe-"):
+            raise FileExistsError(anchor_preparation.errno.EEXIST, "BeeGFS EEXIST")
+        return original_rename(
+            src, dst, src_dir_fd=src_dir_fd, dst_dir_fd=dst_dir_fd
+        )
+
+    monkeypatch.setattr(anchor_preparation.os, "rename", emulate_beegfs)
+    parent_fd = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        assert anchor_preparation._plain_directory_rename_is_noreplace(parent_fd) is True
+    finally:
+        os.close(parent_fd)
+    assert not list(tmp_path.glob(".anchor-rename-probe-*"))
+
+
+def test_beegfs_directory_fallback_preserves_internal_window_competitor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "build"
+    source.mkdir()
+    (source / "payload").write_bytes(b"owned")
+    destination = tmp_path / "published"
+    marker = b"competitor-must-survive"
+    original_rename = os.rename
+    raced = False
+
+    monkeypatch.setattr(
+        anchor_preparation,
+        "_native_rename_noreplace_at",
+        lambda *_args, **_kwargs: anchor_preparation.errno.EINVAL,
+    )
+    monkeypatch.setattr(
+        anchor_preparation,
+        "_plain_directory_rename_is_noreplace",
+        lambda _parent_fd: True,
+    )
+
+    def emulate_beegfs_race(src, dst, *, src_dir_fd=None, dst_dir_fd=None):
+        nonlocal raced
+        if dst == destination.name and not raced:
+            raced = True
+            os.mkdir(dst, 0o700, dir_fd=dst_dir_fd)
+            competitor_fd = os.open(
+                dst, os.O_RDONLY | os.O_DIRECTORY, dir_fd=dst_dir_fd
+            )
+            try:
+                descriptor = os.open(
+                    "marker",
+                    os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                    0o600,
+                    dir_fd=competitor_fd,
+                )
+                try:
+                    os.write(descriptor, marker)
+                finally:
+                    os.close(descriptor)
+            finally:
+                os.close(competitor_fd)
+            raise FileExistsError(anchor_preparation.errno.EEXIST, "BeeGFS EEXIST")
+        return original_rename(
+            src, dst, src_dir_fd=src_dir_fd, dst_dir_fd=dst_dir_fd
+        )
+
+    monkeypatch.setattr(anchor_preparation.os, "rename", emulate_beegfs_race)
+    parent_fd = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        with pytest.raises(AnchorPreparationError, match="refusing to overwrite"):
+            anchor_preparation._rename_noreplace_at(
+                parent_fd,
+                source.name,
+                parent_fd,
+                destination.name,
+                label="output",
+            )
+    finally:
+        os.close(parent_fd)
+    assert raced
+    assert (destination / "marker").read_bytes() == marker
+    assert source.is_dir()
+    assert not list(tmp_path.glob(".anchor-publish-*.lock"))
 
 
 def test_receipt_publication_uses_held_parent_inode_during_path_swap(
@@ -1276,6 +1532,16 @@ def test_output_publication_is_atomic_no_replace_under_race(
     output = tmp_path / "raced-output"
     original = anchor_preparation._rename_noreplace_at
     raced = False
+    monkeypatch.setattr(
+        anchor_preparation,
+        "_native_rename_noreplace_at",
+        lambda *_args, **_kwargs: anchor_preparation.errno.EINVAL,
+    )
+    monkeypatch.setattr(
+        anchor_preparation,
+        "_plain_directory_rename_is_noreplace",
+        lambda _parent_fd: True,
+    )
 
     def install_competing_directory(
         source_parent_fd: int,
@@ -1313,6 +1579,7 @@ def test_output_publication_is_atomic_no_replace_under_race(
     assert output.is_dir()
     assert list(output.iterdir()) == []
     assert not list(tmp_path.glob(f".{output.name}.build-*"))
+    assert not list(tmp_path.glob(".anchor-publish-*.lock"))
 
 
 def test_shard_replacement_after_prepublication_validation_is_not_published(
