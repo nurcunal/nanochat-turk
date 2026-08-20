@@ -1,7 +1,7 @@
 """Seal and execute packed Turkish v2 object and MinHash resource samples.
 
 The launchers are deliberately sample-only.  Object ranks are assigned
-round-robin to eight Slurm workers; the fourteen fixed MinHash buckets map
+round-robin to thirty-two Slurm workers; the fourteen fixed MinHash buckets map
 one-to-one to fourteen workers.  There is no production-mode switch in this
 interface.
 """
@@ -33,8 +33,8 @@ from nanochat.turkish_backend import (
 from nanochat.turkish_corpus import TurkishCorpusError, load_corpus_policy
 
 
-LANE_COUNT = 8
-CPUS_PER_LANE = 16
+LANE_COUNT = 32
+CPUS_PER_LANE = 4
 BUCKET_COUNT = 14
 CPUS_PER_BUCKET_TASK = 8
 V2_POLICY_NAME = "tr_general_clean_v2"
@@ -209,7 +209,7 @@ def _slurm_lane_context(env: Mapping[str, str]) -> dict[str, Any]:
     nodes = _positive_slurm_int(env, "SLURM_NNODES")
     if tasks != LANE_COUNT or cpus_per_task != CPUS_PER_LANE or nodes != 1:
         raise TurkishCorpusError(
-            "packed sample requires one node, eight tasks, and sixteen CPUs per task"
+            "packed sample requires one node, thirty-two tasks, and four CPUs per task"
         )
     try:
         proc_id = int(env.get("SLURM_PROCID", ""))
@@ -952,7 +952,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    plan = sub.add_parser("seal-plan", help="seal the exact eight-lane rank plan")
+    plan = sub.add_parser("seal-plan", help="seal the exact thirty-two-lane rank plan")
     _common_inputs(plan)
 
     lane = sub.add_parser("run-lane", help="run one sample-only Slurm lane")

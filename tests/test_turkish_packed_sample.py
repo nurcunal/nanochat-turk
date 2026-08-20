@@ -62,8 +62,8 @@ def _fixture_inputs(
 
 def _slurm_env(lane_id: int, tmp_path: Path) -> dict[str, str]:
     return {
-        "SLURM_NTASKS": "8",
-        "SLURM_CPUS_PER_TASK": "16",
+        "SLURM_NTASKS": "32",
+        "SLURM_CPUS_PER_TASK": "4",
         "SLURM_NNODES": "1",
         "SLURM_PROCID": str(lane_id),
         "SLURM_LOCALID": str(lane_id),
@@ -108,7 +108,7 @@ def _write_object_launch_fixture(paths: dict[str, Path], run_root: Path) -> Path
         write_json_atomic(path, receipt)
         records.append(
             {
-                "lane_id": position % 8,
+                "lane_id": position % 32,
                 "rank": rank,
                 "path": f"objects/{rank:05d}/object_receipt.json",
                 "canonical_sha256": receipt["canonical_sha256"],
@@ -129,8 +129,8 @@ def _write_object_launch_fixture(paths: dict[str, Path], run_root: Path) -> Path
                 "slurm_step_id": "0",
                 "slurm_node": "cpu-node-01",
                 "nodes": 1,
-                "tasks": 8,
-                "cpus_per_task": 16,
+                "tasks": 32,
+                "cpus_per_task": 4,
                 "allocated_cpus": 128,
             },
             "object_receipts": records,
@@ -167,12 +167,12 @@ def test_lane_plan_is_sealed_disjoint_and_deterministic(
     assert first == second
     assert verify_manifest_hash(first) == first["canonical_sha256"]
     assert first["sample_mode"] is True
-    assert first["lane_count"] == 8
-    assert first["cpus_per_lane"] == 16
+    assert first["lane_count"] == 32
+    assert first["cpus_per_lane"] == 4
     assert first["totals"]["allocated_cpus"] == 128
-    assert [lane["lane_id"] for lane in first["lanes"]] == list(range(8))
+    assert [lane["lane_id"] for lane in first["lanes"]] == list(range(32))
     assert [lane["ranks"] for lane in first["lanes"]] == [
-        ranks[lane_id::8] for lane_id in range(8)
+        ranks[lane_id::32] for lane_id in range(32)
     ]
     flattened = [rank for lane in first["lanes"] for rank in lane["ranks"]]
     assert sorted(flattened) == ranks
@@ -260,7 +260,7 @@ def test_lane_worker_is_sample_only_and_finalizes_collectively(
         return receipt
 
     monkeypatch.setattr(packed, "process_source_object", fake_process)
-    for lane_id in range(8):
+    for lane_id in range(32):
         packed.run_lane(
             paths["policy"],
             paths["source_plan"],
@@ -286,7 +286,7 @@ def test_lane_worker_is_sample_only_and_finalizes_collectively(
     )
 
     assert [call["rank"] for call in calls] == [
-        rank for lane_id in range(8) for rank in ranks[lane_id::8]
+        rank for lane_id in range(32) for rank in ranks[lane_id::32]
     ]
     assert all(call["sample_mode"] is True for call in calls)
     assert all(call["resource_approval_path"] is None for call in calls)
@@ -296,8 +296,8 @@ def test_lane_worker_is_sample_only_and_finalizes_collectively(
         "slurm_step_id": "0",
         "slurm_node": "cpu-node-01",
         "nodes": 1,
-        "tasks": 8,
-        "cpus_per_task": 16,
+        "tasks": 32,
+        "cpus_per_task": 4,
         "allocated_cpus": 128,
     }
     assert [item["rank"] for item in launch["object_receipts"]] == ranks
@@ -321,7 +321,7 @@ def test_lane_worker_rejects_wrong_topology_or_thread_caps(
         lambda *_args, **_kwargs: pytest.fail("invalid topology reached processing"),
     )
     bad_topology = _slurm_env(0, tmp_path) | {"SLURM_NTASKS": "7"}
-    with pytest.raises(TurkishCorpusError, match="one node, eight tasks"):
+    with pytest.raises(TurkishCorpusError, match="one node, thirty-two tasks"):
         packed.run_lane(
             paths["policy"],
             paths["source_plan"],
@@ -354,10 +354,10 @@ def test_packed_sbatch_is_direct_sample_only_and_collective():
     ).read_text(encoding="utf-8")
     required = (
         "#SBATCH --nodes=1",
-        "#SBATCH --ntasks=8",
-        "#SBATCH --ntasks-per-node=8",
-        "#SBATCH --cpus-per-task=16",
-        "srun --nodes=1 --ntasks=8 --ntasks-per-node=8 --cpus-per-task=16",
+        "#SBATCH --ntasks=32",
+        "#SBATCH --ntasks-per-node=32",
+        "#SBATCH --cpus-per-task=4",
+        "srun --nodes=1 --ntasks=32 --ntasks-per-node=32 --cpus-per-task=4",
         "--cpu-bind=cores --kill-on-bad-exit=1",
         "-m scripts.turkish_packed_sample run-lane",
         "-m scripts.turkish_packed_sample finalize",

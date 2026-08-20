@@ -1,16 +1,18 @@
 #!/bin/bash
 
 # One full cpu2dq node runs the deterministic v2 object resource sample as
-# eight disjoint lanes.  This launcher has no production mode: every object is
-# processed with sample_mode=True and no resource approval can be supplied.
+# thirty-two disjoint lanes. Each worker is single-core in practice, while four
+# CPUs/task preserve one full exclusive 128-CPU allocation. This launcher has
+# no production mode: every object is processed with sample_mode=True and no
+# resource approval can be supplied.
 
-#SBATCH --job-name=tr-data-sample8
+#SBATCH --job-name=tr-data-sample32
 #SBATCH --account=nakane
 #SBATCH --partition=cpu2dq
 #SBATCH --nodes=1
-#SBATCH --ntasks=8
-#SBATCH --ntasks-per-node=8
-#SBATCH --cpus-per-task=16
+#SBATCH --ntasks=32
+#SBATCH --ntasks-per-node=32
+#SBATCH --cpus-per-task=4
 #SBATCH --mem=240G
 #SBATCH --time=2-00:00:00
 #SBATCH --output=%x-%j.out
@@ -48,9 +50,9 @@ test -f "$CALIBRATION"
 test -f "$SAMPLE_RANKS"
 test -f "$GLOTLID_MODEL"
 if [ "${SLURM_NNODES:-0}" -ne 1 ] || \
-   [ "${SLURM_NTASKS:-0}" -ne 8 ] || \
-   [ "${SLURM_CPUS_PER_TASK:-0}" -ne 16 ]; then
-    echo "Packed sample requires exactly one node, 8 tasks, and 16 CPUs/task" >&2
+   [ "${SLURM_NTASKS:-0}" -ne 32 ] || \
+   [ "${SLURM_CPUS_PER_TASK:-0}" -ne 4 ]; then
+    echo "Packed sample requires exactly one node, 32 tasks, and 4 CPUs/task" >&2
     exit 2
 fi
 if [ -e "$LAUNCH_ROOT" ]; then
@@ -64,8 +66,8 @@ mkdir -p "$DATA_RUN_DIR" "$LANE_RECEIPT_DIR"
     --calibration="$CALIBRATION" --sample-ranks="$SAMPLE_RANKS" \
     --lane-plan="$LANE_PLAN"
 
-# Each rank is a single Python worker.  Numerical runtimes are forced to one
-# thread so eight workers cannot silently oversubscribe their 16-core cpusets.
+# Each rank is a single Python worker. Numerical runtimes are forced to one
+# thread so thirty-two workers cannot silently oversubscribe their cpusets.
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
@@ -78,7 +80,7 @@ export TOKENIZERS_PARALLELISM=false
 export PYTHONUNBUFFERED=1
 
 set +e
-srun --nodes=1 --ntasks=8 --ntasks-per-node=8 --cpus-per-task=16 \
+srun --nodes=1 --ntasks=32 --ntasks-per-node=32 --cpus-per-task=4 \
     --cpu-bind=cores --kill-on-bad-exit=1 \
     --output="$LAUNCH_ROOT/lane-%t.out" \
     --error="$LAUNCH_ROOT/lane-%t.err" \
