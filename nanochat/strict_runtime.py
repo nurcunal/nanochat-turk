@@ -30,6 +30,9 @@ PINNED_UPSTREAM_REVISION = "92d63d4e8bb4df75c3b71618f31ddde2378b2bcd"
 FAMILY_ID = "tr_d32_general_bpe32k_v1"  # Backwards-compatible v1 alias.
 FAMILY_ID_V2 = "tr_d32_general_bpe32k_v2"
 FAMILY_ID_V3 = "tr_d32_general_bpe32k_v3"
+FAMILY_ID_V4 = "tr_d32_general_bpe32k_v4"
+
+_REPEAT_CAPACITY_FAMILY_IDS = frozenset({FAMILY_ID_V3, FAMILY_ID_V4})
 
 _TRAINING_EXPOSURE_ARTIFACTS = {
     "proxy_d12_seed42_ws1": "training_exposure_proxy_d12_seed42_ws1.json",
@@ -68,11 +71,11 @@ def _artifact_contract(*, version: str) -> dict[str, Any]:
         "tokenizer_root": f"tokenizers/tr_general_raw_bpe_32k_{version}",
         "tokenizer_package_manifest": "package_manifest.json",
     }
-    if version in {"v2", "v3"}:
+    if version in {"v2", "v3", "v4"}:
         artifacts["macocu_preparation_manifest"] = (
             "source_data/macocu_genre_tr_v1/manifest.json"
         )
-    if version == "v3":
+    if version in {"v3", "v4"}:
         artifacts.update(
             {
                 "mot_preparation_manifest": (
@@ -90,6 +93,7 @@ FAMILY_ARTIFACT_CONTRACTS = {
     FAMILY_ID: _artifact_contract(version="v1"),
     FAMILY_ID_V2: _artifact_contract(version="v2"),
     FAMILY_ID_V3: _artifact_contract(version="v3"),
+    FAMILY_ID_V4: _artifact_contract(version="v4"),
 }
 
 
@@ -658,7 +662,7 @@ def validate_preflight_artifact_bindings(
         or source_receipt.get("policy_sha256") != policy_sha
     ):
         raise StrictTrainingError("runtime source-receipt policy binding drifted")
-    if recipe["family_id"] == FAMILY_ID_V3:
+    if recipe["family_id"] in _REPEAT_CAPACITY_FAMILY_IDS:
         try:
             from nanochat.turkish_corpus import validate_source_receipt
 
@@ -1032,7 +1036,7 @@ def validate_bestfit_capacity_receipt(
         receipt_sha = verify_manifest_hash(receipt)
     except ValueError as exc:
         raise StrictTrainingError(f"invalid packing capacity receipt: {exc}") from exc
-    if family_id == FAMILY_ID_V3:
+    if family_id in _REPEAT_CAPACITY_FAMILY_IDS:
         try:
             from nanochat.packing_capacity import (
                 validate_repetition_capacity_receipt,
@@ -1049,7 +1053,7 @@ def validate_bestfit_capacity_receipt(
             )
         except (KeyError, TypeError, ValueError) as exc:
             raise StrictTrainingError(
-                f"invalid v3 repetition capacity receipt: {exc}"
+                f"invalid repetition capacity receipt: {exc}"
             ) from exc
         if (
             summary.get("canonical_sha256") != receipt_sha
@@ -1057,7 +1061,7 @@ def validate_bestfit_capacity_receipt(
             or summary.get("cleanup_authorized") is not True
             or summary.get("approval_satisfied") is not True
         ):
-            raise StrictTrainingError("v3 repetition capacity gate did not pass")
+            raise StrictTrainingError("repetition capacity gate did not pass")
         final_manifest = load_json_strict(root / "corpus_manifest.json")
         if not isinstance(final_manifest, dict):
             raise StrictTrainingError("final corpus manifest must contain an object")
@@ -2064,7 +2068,7 @@ def validate_production_topology_gate(
         raise StrictTrainingError(
             "production topology gate capacity differs from the sealed preflight"
         ) from exc
-    if recipe["family_id"] == FAMILY_ID_V3:
+    if recipe["family_id"] in _REPEAT_CAPACITY_FAMILY_IDS:
         selected_capacity_matches_preflight = (
             preflight_world == selected_capacity
             and selected_capacity.get("capacity_mode") == "whole_pool_repeat_v3"
@@ -2194,6 +2198,7 @@ __all__ = [
     "FAMILY_ID",
     "FAMILY_ID_V2",
     "FAMILY_ID_V3",
+    "FAMILY_ID_V4",
     "PINNED_UPSTREAM_REVISION",
     "PREEMPTION_EXIT_CODE",
     "SeedPlan",

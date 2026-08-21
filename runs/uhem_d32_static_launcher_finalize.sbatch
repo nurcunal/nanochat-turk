@@ -24,12 +24,12 @@ set -u
 : "${PROBE_JOB_ID:?Set the completed parent launcher-probe job ID}"
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
 NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
-RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v3.json}"
-PREFLIGHT_RECEIPT="${PREFLIGHT_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/preflight.json}"
+RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v4.json}"
+PREFLIGHT_RECEIPT="${PREFLIGHT_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32_v4/preflight.json}"
 cd "$CODE_DIR"
 
 .venv/bin/python scripts/d32_family_workflow.py finalize-static-probe \
     --recipe="$RECIPE" --preflight-receipt="$PREFLIGHT_RECEIPT" \
-    --raw-probe-receipt="$NANOCHAT_BASE_DIR/control/d32/launcher/job${PROBE_JOB_ID}/static_nccl_probe.json" \
+    --raw-probe-receipt="$NANOCHAT_BASE_DIR/control/d32_v4/launcher/job${PROBE_JOB_ID}/static_nccl_probe.json" \
     --slurm-job-id="$PROBE_JOB_ID" --nodes=1 \
-    --output="$NANOCHAT_BASE_DIR/control/d32/static_launcher_gate_ws4.json"
+    --output="$NANOCHAT_BASE_DIR/control/d32_v4/static_launcher_gate_ws4.json"

@@ -46,6 +46,7 @@ from nanochat.experiment_manifest import (
 from nanochat.strict_runtime import (
     FAMILY_ARTIFACT_CONTRACTS,
     FAMILY_ID_V3,
+    FAMILY_ID_V4,
     StrictTrainingError,
     capacity_authorized_positions,
     capacity_world_gate_record,
@@ -55,8 +56,8 @@ from nanochat.strict_runtime import (
 from nanochat.training_log import read_training_log
 
 
-DEFAULT_RECIPE = Path("configs/pretrain/tr_d32_turkish_general_wsd_v3.json")
-DEFAULT_POLICY = Path("configs/pretrain/tr_d32_turkish_general_v3.json")
+DEFAULT_RECIPE = Path("configs/pretrain/tr_d32_turkish_general_wsd_v4.json")
+DEFAULT_POLICY = Path("configs/pretrain/tr_d32_turkish_general_v4.json")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 SAFE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
@@ -104,6 +105,25 @@ class FamilyWorkflowError(ValueError):
 
 def _fail(message: str) -> None:
     raise FamilyWorkflowError(message)
+
+
+def family_metric_roots(family_id: str) -> dict[str, Path]:
+    """Return exact local metric roots for one supported family."""
+
+    if family_id == FAMILY_ID_V4:
+        root = Path("metrics/d32_v4")
+        return {
+            category: root / category
+            for category in ("family", "smoke", "proxy", "signal_smoke")
+        }
+    if family_id in FAMILY_ARTIFACT_CONTRACTS:
+        return {
+            "family": Path("metrics/d32_family"),
+            "smoke": Path("metrics/d32_smoke"),
+            "proxy": Path("metrics/d32_proxy"),
+            "signal_smoke": Path("metrics/d32_signal_smoke"),
+        }
+    _fail("unexpected family_id for metric namespace")
 
 
 def _mapping(value: Any, name: str) -> Mapping[str, Any]:
@@ -446,7 +466,7 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
     )
     final_retention = (
         "full_resumable"
-        if family_id == FAMILY_ID_V3
+        if family_id in {FAMILY_ID_V3, FAMILY_ID_V4}
         else "model_metadata_provenance_required_optimizer_explicit"
     )
     expected_finals = (
@@ -791,11 +811,14 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
         _fail("data-preparation storage gate drifted")
     if storage.get("estimated_cooled_final_model_bundle_bytes") != 12 * 1024**3:
         _fail("cooled-final estimate must leave room above raw d32 model weights")
-    if family_id == FAMILY_ID_V3 and (
+    if family_id in {FAMILY_ID_V3, FAMILY_ID_V4} and (
         storage.get("cooled_final_model_bundles_retained") != 0
         or storage.get("full_cooled_final_transactions_at_peak") != 3
     ):
-        _fail("v3 storage must retain all three cooled finals as full transactions")
+        _fail(
+            "repeat-capacity family storage must retain all three cooled finals "
+            "as full transactions"
+        )
     if storage.get("smoke_measurement_safety_factor") != 1.25:
         _fail("smoke checkpoint storage safety factor must equal 1.25")
     required = _positive_int(
@@ -965,10 +988,13 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
         _fail("UHeM operational ceiling scope must explicitly exclude data preparation")
     if ceiling < float(planned_range[1]) + int(budget.get("proxy_and_smoke_reserve_cpu_saat", -1)):
         _fail("operational CPU-saat ceiling does not cover training, proxy, and smokes")
-    if family_id == FAMILY_ID_V3:
+    if family_id in {FAMILY_ID_V3, FAMILY_ID_V4}:
         publication = _mapping(recipe.get("publication"), "publication")
         if publication.get("require_manual_final_quality_approval") is not True:
-            _fail("v3 publication must require manual final-model quality approval")
+            _fail(
+                "repeat-capacity family publication must require manual "
+                "final-model quality approval"
+            )
 
 
 def load_recipe(path: Path, *, require_sealed: bool = True) -> tuple[dict[str, Any], str]:
@@ -1446,7 +1472,7 @@ def _verify_packing_capacity_receipt(
 ) -> tuple[dict[str, Any], str]:
     """Verify the family-specific capacity proof for both topologies."""
 
-    if family_id == FAMILY_ID_V3:
+    if family_id in {FAMILY_ID_V3, FAMILY_ID_V4}:
         receipt, digest = _load_receipt(
             path, "turkish_bestfit_repeat_capacity_receipt"
         )
@@ -1461,14 +1487,14 @@ def _verify_packing_capacity_receipt(
                 receipt,
                 dataset_manifest_sha256=dataset_sha256,
                 tokenizer_package_sha256=tokenizer_sha256,
-                # The v3 production family currently accepts the preferred
+                # Repeat-capacity production families accept the preferred
                 # tier only. A manual-risk receipt therefore remains closed
                 # until a separate sealed approval is added to the contract.
                 manual_repetition_risk_approval=None,
             )
         except (KeyError, TypeError, ValueError) as exc:
             raise FamilyWorkflowError(
-                f"invalid v3 repetition capacity receipt: {exc}"
+                f"invalid repetition capacity receipt: {exc}"
             ) from exc
         if (
             summary.get("canonical_sha256") != digest
@@ -1478,7 +1504,7 @@ def _verify_packing_capacity_receipt(
             or summary.get("approval_required") is not False
             or summary.get("approval_satisfied") is not True
         ):
-            _fail("v3 repetition capacity gate did not pass at the preferred tier")
+            _fail("repetition capacity gate did not pass at the preferred tier")
         simulation = _mapping(
             receipt.get("simulation"), "repetition packing-capacity simulation"
         )
@@ -4665,6 +4691,63 @@ def command_preflight(args: argparse.Namespace) -> None:
     ):
         _fail("corpus manifest tokenizer binding differs from the family contract")
 
+    training_receipt, training_receipt_sha = _verify_sealed(
+        paths["tokenizer_root"] / "training_receipt.json",
+        "tokenizer training receipt",
+    )
+    if (
+        training_receipt.get("kind") != "turkish_raw_bpe_training_receipt"
+        or package.get("training_receipt_sha256") != training_receipt_sha
+    ):
+        _fail("tokenizer package does not bind the exact training receipt")
+    tokenizer_evidence_root = paths["corpus_root"] / "tokenizer_quality"
+    try:
+        from nanochat.tokenizer_quality import (
+            validate_tokenizer_quality_gate,
+            validate_tokenizer_sample_evidence_archive,
+        )
+
+        quality_report, quality_approval = validate_tokenizer_quality_gate(
+            tokenizer_evidence_root,
+            expected_package_sha256=package_sha,
+            expected_training_receipt_sha256=training_receipt_sha,
+            expected_production_chain=production_chain,
+        )
+        _, _, sample_evidence = validate_tokenizer_sample_evidence_archive(
+            tokenizer_evidence_root,
+            training_receipt=training_receipt,
+            expected_quality_report_sha256=quality_report["canonical_sha256"],
+            expected_production_chain=production_chain,
+            expected_parent_corpus_manifest_sha256=parent_pool_sha,
+            expected_qa_approval_sha256=archived_qa_sha,
+        )
+    except Exception as exc:
+        raise FamilyWorkflowError(
+            f"archived tokenizer quality/sample evidence failed verification: {exc}"
+        ) from exc
+    expected_sample_evidence = {
+        "relative_path": "tokenizer_quality",
+        **sample_evidence,
+    }
+    dataset_metadata = _mapping(dataset.get("metadata"), "dataset metadata")
+    if (
+        corpus_tokenizer.get("training_receipt_sha256") != training_receipt_sha
+        or corpus_tokenizer.get("quality_report_sha256")
+        != quality_report["canonical_sha256"]
+        or corpus_tokenizer.get("quality_approval_sha256")
+        != quality_approval["canonical_sha256"]
+        or corpus_tokenizer.get("sample_evidence") != expected_sample_evidence
+        or dataset_metadata.get("tokenizer_quality_report_sha256")
+        != quality_report["canonical_sha256"]
+        or dataset_metadata.get("tokenizer_quality_approval_sha256")
+        != quality_approval["canonical_sha256"]
+        or dataset_metadata.get("tokenizer_sample_manifest_sha256")
+        != sample_evidence["sample_manifest_sha256"]
+        or dataset_metadata.get("tokenizer_sample_dataset_manifest_sha256")
+        != sample_evidence["dataset_manifest_sha256"]
+    ):
+        _fail("final corpus does not bind its exact tokenizer evidence archive")
+
     macocu_record: dict[str, Any] | None = None
     macocu_path = paths.get("macocu_preparation")
     derived_sources = _mapping(
@@ -5060,6 +5143,19 @@ def command_preflight(args: argparse.Namespace) -> None:
                 "name": recipe["artifacts"]["tokenizer_name"],
                 "vocab_size": recipe["model"]["vocab_size"],
                 "package_manifest_sha256": package_sha,
+                "training_receipt_sha256": training_receipt_sha,
+                "evidence_archive_relative_path": "tokenizer_quality",
+                "quality_report_sha256": quality_report["canonical_sha256"],
+                "quality_approval_sha256": quality_approval[
+                    "canonical_sha256"
+                ],
+                "sample_manifest_sha256": sample_evidence[
+                    "sample_manifest_sha256"
+                ],
+                "sample_dataset_manifest_sha256": sample_evidence[
+                    "dataset_manifest_sha256"
+                ],
+                "sample_evidence_files": sample_evidence["files"],
                 "actual_bytes": tokenizer_bytes,
             },
             "code": {
@@ -5485,7 +5581,7 @@ def _verify_frozen_protocol(
         )
         expected_capacity_kind = (
             "turkish_bestfit_repeat_capacity_receipt"
-            if recipe["family_id"] == FAMILY_ID_V3
+            if recipe["family_id"] in {FAMILY_ID_V3, FAMILY_ID_V4}
             else "turkish_bestfit_capacity_receipt"
         )
         capacity_receipt, capacity_sha = _load_receipt(
@@ -7671,6 +7767,9 @@ def collect_final_evaluation_evidence(
         or gate.get("passed") is not True
     ):
         _fail("final-quality evidence uses an invalid preflight/topology chain")
+    family_metrics_root = family_metric_roots(str(recipe.get("family_id")))[
+        "family"
+    ]
     by_target = {
         (str(stage["model_tag"]), int(stage["target_step"])): stage
         for stage in recipe["stages"]
@@ -7783,7 +7882,7 @@ def collect_final_evaluation_evidence(
             for value in (final_bpb, minimum_bpb)
         ) or float(minimum_bpb) > float(final_bpb):
             _fail(f"final-quality BPB evidence is invalid for {label}")
-        curve_path = base_dir / "metrics" / "d32_family" / run_id / "training_curve.jsonl"
+        curve_path = base_dir / family_metrics_root / run_id / "training_curve.jsonl"
         events, curve_state = read_training_log(
             curve_path,
             expected_study_id=recipe["family_id"],
@@ -8727,7 +8826,7 @@ def command_seal_stage(args: argparse.Namespace) -> None:
                     if stage["kind"] == "trunk"
                     else (
                         "cooled_final_full_resumable_retained"
-                        if recipe["family_id"] == FAMILY_ID_V3
+                        if recipe["family_id"] in {FAMILY_ID_V3, FAMILY_ID_V4}
                         else "cooled_final_full_transaction_pending_explicit_export_policy"
                     )
                 ),

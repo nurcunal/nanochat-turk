@@ -17,6 +17,9 @@
 
 set -euo pipefail
 
+CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
+source "$CODE_DIR/runs/uhem_d32_require_clean_code.sh"
+d32_require_clean_committed_code "$CODE_DIR"
 NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
 RAW_DIR="${RAW_DIR:-$NANOCHAT_BASE_DIR/source_data/anchors/raw}"
 mkdir -p "$RAW_DIR"

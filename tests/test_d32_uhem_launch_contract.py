@@ -79,13 +79,49 @@ def test_smoke_submitter_rejects_fixed_output_collisions_before_sbatch() -> None
     for fixed_output in (
         'base_checkpoints/${FAMILY_ID}_smoke_ws8',
         'base_checkpoints/${FAMILY_ID}_smoke_ws16',
-        'metrics/d32_smoke/ws8',
-        'metrics/d32_smoke/ws16',
-        'control/d32/smoke_ws8.json',
-        'control/d32/smoke_ws16.json',
+        'metrics/d32_v4/smoke/ws8',
+        'metrics/d32_v4/smoke/ws16',
+        'control/d32_v4/smoke_ws8.json',
+        'control/d32_v4/smoke_ws16.json',
         '"$PRODUCTION_GATE"',
     ):
         assert fixed_output in branch[:first_sbatch]
+
+
+def test_active_submitter_routes_every_slurm_stream_outside_code_dir() -> None:
+    source = (ROOT / "runs" / "uhem_submit_d32_family.sh").read_text(
+        encoding="utf-8"
+    )
+    assert 'SBATCH_LOG_DIR="$NANOCHAT_BASE_DIR/logs/d32_v4"' in source
+    assert '--output="$SBATCH_LOG_DIR/%x-%j.out"' in source
+    assert '--error="$SBATCH_LOG_DIR/%x-%j.err"' in source
+    submissions = [line for line in source.splitlines() if "$(sbatch " in line]
+    assert len(submissions) == 12
+    assert all('"${SBATCH_LOG_ARGS[@]}"' in line for line in submissions)
+
+    # Plan mode remains read-only even when the BeeGFS log directory is absent.
+    plan_exit = source.index("fi\n\nmkdir -p \"$SBATCH_LOG_DIR\"")
+    plan_branch = source.index('if [ "$mode" = --plan ]; then')
+    assert plan_branch < plan_exit
+
+
+def test_v4_runbook_routes_every_sbatch_invocation_outside_code_dir() -> None:
+    source = (ROOT / "docs" / "tr_d32_turkish_wsd_uhem.md").read_text(
+        encoding="utf-8"
+    )
+    assert 'SBATCH_LOG_DIR="$NANOCHAT_BASE_DIR/logs/d32_v4"' in source
+    first_submit = source.index("sbatch")
+    assert source.index('mkdir -p "$SBATCH_LOG_DIR"') < first_submit
+    submission_lines = [
+        line
+        for line in source.splitlines()
+        if re.search(r"(?<!\.)\bsbatch\b", line)
+    ]
+    assert submission_lines
+    assert all(
+        "SBATCH_LOG_ARGS" in line or "SBATCH_ARRAY_LOG_ARGS" in line
+        for line in submission_lines
+    )
 
 
 def test_smoke_submitter_cannot_redirect_the_gate_collision_check() -> None:
@@ -95,7 +131,7 @@ def test_smoke_submitter_cannot_redirect_the_gate_collision_check() -> None:
     first_sbatch = submitter.index('probe_job="$(sbatch')
     prefix = submitter[:first_sbatch]
     assert (
-        'canonical_production_gate="$NANOCHAT_BASE_DIR/control/d32/'
+        'canonical_production_gate="$NANOCHAT_BASE_DIR/control/d32_v4/'
         'production_topology_gate.json"'
     ) in prefix
     assert 'if [ "$PRODUCTION_GATE" != "$canonical_production_gate" ]; then' in prefix
@@ -226,9 +262,11 @@ def test_family_upload_includes_tokenizer_sample_and_quality_evidence() -> None:
         encoding="utf-8"
     )
     assert "validate_tokenizer_quality_gate" in source
+    assert "validate_tokenizer_sample_evidence_archive" in source
     assert '("quality_report.json", "quality_approval.json")' in source
-    assert 'sample_root / "tokenizer_sample_manifest.json"' in source
-    assert 'sample_root / "fineweb2_manifest.json"' in source
+    assert 'quality_root / "tokenizer_sample_manifest.json"' in source
+    assert 'quality_root / "fineweb2_manifest.json"' in source
+    assert 'evidence_relative != "tokenizer_quality"' in source
     assert 'training_receipt.get("sample_manifest_sha256") != sample_sha' in source
     for evidence in (
         "parent_pool_manifest.json",
@@ -296,6 +334,45 @@ def test_production_data_and_tokenizer_launchers_consume_exact_gate() -> None:
             assert source.index("--baseline-preflight-only") < source.index(
                 'mkdir -p "$TOKENIZER_DIR" "$TOKENIZER_QUALITY_DIR"'
             )
+    canonical_bindings = {
+        "runs/uhem_turkish_production_pool.sbatch": ("POOL_DIR",),
+        "runs/uhem_turkish_tokenizer_sample.sbatch": (
+            "POOL_DIR",
+            "TOKENIZER_SAMPLE_DIR",
+        ),
+        "runs/uhem_turkish_tokenizer_train.sbatch": (
+            "POOL_DIR",
+            "TOKENIZER_SAMPLE_DIR",
+            "TOKENIZER_DIR",
+            "TOKENIZER_QUALITY_DIR",
+        ),
+        "runs/uhem_turkish_tokenizer_quality.sbatch": (
+            "POOL_DIR",
+            "TOKENIZER_DIR",
+            "TOKENIZER_QUALITY_DIR",
+        ),
+        "runs/uhem_turkish_packing_preflight.sbatch": (
+            "POOL_DIR",
+            "TOKENIZER_DIR",
+            "PACKING_CONTROL_DIR",
+        ),
+        "runs/uhem_turkish_corpus_finalize.sbatch": (
+            "POOL_DIR",
+            "TOKENIZER_DIR",
+            "TOKENIZER_QUALITY_DIR",
+            "PACKING_CONTROL_DIR",
+            "FINAL_CORPUS_DIR",
+        ),
+    }
+    for relative, variables in canonical_bindings.items():
+        source = (ROOT / relative).read_text(encoding="utf-8")
+        assert 'D32_PATH_CONTRACT="${D32_PATH_CONTRACT:-v4}"' in source
+        assert 'source "$CODE_DIR/runs/uhem_d32_${D32_PATH_CONTRACT}_paths.sh"' in source
+        for variable in variables:
+            assert (
+                f'd32_bind_canonical_path {variable} '
+                f'"$D32_{variable}"'
+            ) in source
     for relative in (
         "runs/uhem_turkish_data_objects_packed_production.sbatch",
         "runs/uhem_turkish_data_buckets_packed_production.sbatch",
@@ -325,11 +402,215 @@ def test_operator_runbook_names_all_data_and_tokenizer_gates() -> None:
         "tokenizer.tiktoken",
         "APPROVED_SOURCE_TOKENS",
         "QUOTA_HEADROOM_BYTES",
-        "tr_general_raw_bpe_32k_v3",
+        "tr_general_raw_bpe_32k_v4",
         "cannot authorize this production run",
         "Any mixture weight, source selector, or accepted-source policy change invalidates",
     ):
         assert fragment in source
+
+
+def test_v4_runbook_splits_data_and_family_controls_and_reuses_sources() -> None:
+    source = (ROOT / "docs" / "tr_d32_turkish_wsd_uhem.md").read_text(
+        encoding="utf-8"
+    )
+    for fragment in (
+        'DATA_CONTROL_DIR="$NANOCHAT_BASE_DIR/control/data_v4"',
+        'FAMILY_CONTROL_DIR="$NANOCHAT_BASE_DIR/control/d32_v4"',
+        '--preflight-receipt "$FAMILY_CONTROL_DIR/preflight.json"',
+        'MACOCU_MANIFEST="$SHARED_SOURCE_BASE/source_data/macocu_genre_tr_v1/manifest.json"',
+        'MOT_MANIFEST="$SHARED_SOURCE_BASE/source_data/mot_tr_v1_11/manifest.json"',
+        'PARLAMINT_MANIFEST="$SHARED_SOURCE_BASE/source_data/parlamint_tr_v5_0/manifest.json"',
+        'GLOTLID_MODEL="$MODEL_DIR/model_v3.bin"',
+        'SBATCH_LOG_ARGS=(--output="$SBATCH_LOG_DIR/%x-%j.out"',
+    ):
+        assert fragment in source
+
+
+def test_early_data_launchers_fail_closed_on_canonical_lineage_paths() -> None:
+    common = (
+        'D32_PATH_CONTRACT="${D32_PATH_CONTRACT:-v4}"',
+        'source "$CODE_DIR/runs/uhem_d32_${D32_PATH_CONTRACT}_paths.sh"',
+        'd32_bind_canonical_path CONTROL_DIR "$D32_CONTROL_DIR"',
+        'd32_bind_canonical_path SOURCE_PLAN "$D32_SOURCE_PLAN"',
+        'd32_bind_canonical_path CALIBRATION "$D32_CALIBRATION"',
+    )
+    required = {
+        "runs/uhem_turkish_data_bootstrap.sbatch": (
+            *common,
+            'd32_bind_canonical_path SAMPLE_RANKS "$D32_SAMPLE_RANKS"',
+        ),
+        "runs/uhem_turkish_data_objects_packed_sample.sbatch": (
+            *common,
+            'd32_bind_canonical_path DATA_RUN_DIR "$D32_SAMPLE_RUN_DIR"',
+            'd32_bind_canonical_path LANE_PLAN "$D32_LANE_PLAN"',
+        ),
+        "runs/uhem_turkish_data_buckets_packed_sample.sbatch": (
+            *common,
+            'd32_bind_canonical_path DATA_RUN_DIR "$D32_SAMPLE_RUN_DIR"',
+            'd32_bind_canonical_path LANE_PLAN "$D32_LANE_PLAN"',
+        ),
+        "runs/uhem_turkish_data_cluster.sbatch": (
+            *common,
+            'd32_bind_canonical_path DATA_RUN_DIR "$D32_SAMPLE_RUN_DIR"',
+            'd32_bind_canonical_path DATA_RUN_DIR "$D32_DATA_RUN_DIR"',
+            'd32_bind_canonical_path PACK_PLAN "$D32_PACK_PLAN"',
+        ),
+        "runs/uhem_turkish_sample_quality_audit.sbatch": (
+            *common,
+            'd32_bind_canonical_path SAMPLE_RUN_DIR "$D32_SAMPLE_RUN_DIR"',
+            'd32_bind_canonical_path AUDIT_OUTPUT_DIR "$D32_AUDIT_OUTPUT_DIR"',
+        ),
+        "runs/uhem_d32_data_prep_writer_probe.sbatch": (
+            *common,
+            'd32_bind_canonical_path SAMPLE_RUN_DIR "$D32_SAMPLE_RUN_DIR"',
+            'd32_bind_canonical_path BACKEND_RESOURCE_REPORT "$D32_BACKEND_RESOURCE_REPORT"',
+            'd32_bind_canonical_path WRITER_PROBE "$D32_WRITER_PROBE"',
+        ),
+        "runs/uhem_turkish_data_objects_packed_production.sbatch": (
+            *common,
+            'd32_bind_canonical_path DATA_RUN_DIR "$D32_DATA_RUN_DIR"',
+            'd32_bind_canonical_path PACK_PLAN "$D32_PACK_PLAN"',
+        ),
+        "runs/uhem_turkish_data_buckets_packed_production.sbatch": (
+            *common,
+            'd32_bind_canonical_path DATA_RUN_DIR "$D32_DATA_RUN_DIR"',
+            'd32_bind_canonical_path PACK_PLAN "$D32_PACK_PLAN"',
+        ),
+    }
+    for relative, fragments in required.items():
+        source = (ROOT / relative).read_text(encoding="utf-8")
+        assert all(fragment in source for fragment in fragments), relative
+
+    for version, family_control in (("v3", "control/d32"), ("v4", "control/d32_v4")):
+        helper = (ROOT / "runs" / f"uhem_d32_{version}_paths.sh").read_text(
+            encoding="utf-8"
+        )
+        for alias in (
+            "D32_SOURCE_PLAN",
+            "D32_CALIBRATION",
+            "D32_SAMPLE_RANKS",
+            "D32_LANE_PLAN",
+            "D32_BACKEND_RESOURCE_REPORT",
+            "D32_WRITER_PROBE",
+            "D32_DATA_PREP_STORAGE_GATE",
+        ):
+            assert alias in helper
+        assert family_control in helper
+
+
+def test_runbook_executes_complete_v4_bootstrap_sample_chain() -> None:
+    source = (ROOT / "docs" / "tr_d32_turkish_wsd_uhem.md").read_text(
+        encoding="utf-8"
+    )
+    block = source[source.index("From the clean v4 checkout") :]
+    ordered = (
+        'DATA_ENV_JOB_ID="$(sbatch',
+        'BOOTSTRAP_JOB_ID="$(sbatch',
+        'SAMPLE_OBJECT_JOB_ID="$(sbatch',
+        'OBJECT_SAMPLE_LAUNCH_RECEIPT=',
+        'SAMPLE_BUCKET_JOB_ID="$(sbatch',
+        'SAMPLE_CLUSTER_JOB_ID="$(sbatch',
+        'SAMPLE_QUALITY_AUDIT_JOB_ID="$(sbatch',
+    )
+    positions = [block.index(fragment) for fragment in ordered]
+    assert positions == sorted(positions)
+    for parent in (
+        "DATA_ENV_JOB_ID",
+        "BOOTSTRAP_JOB_ID",
+        "SAMPLE_OBJECT_JOB_ID",
+        "SAMPLE_BUCKET_JOB_ID",
+        "SAMPLE_CLUSTER_JOB_ID",
+    ):
+        assert f'--dependency="afterok:${parent}"' in block
+    assert 'CODE_REVISION="$(git -C "$CODE_DIR" rev-parse HEAD)"' in block
+    assert "D32_PATH_CONTRACT=v4" in block
+    assert "CONTROL_DIR=$DATA_CONTROL_DIR" in block
+    assert "DATA_RUN_DIR=$SAMPLE_RUN_DIR" in block
+    assert "SAMPLE_RUN_DIR=$SAMPLE_RUN_DIR" in block
+    assert block.count("runs/uhem_turkish_sample_quality_audit.sbatch") == 1
+
+
+def test_finalizer_recomputes_live_headroom_inside_allocation() -> None:
+    source = (ROOT / "runs" / "uhem_turkish_corpus_finalize.sbatch").read_text(
+        encoding="utf-8"
+    )
+    assert ': "${QUOTA_HEADROOM_BYTES:?' not in source
+    query = source.index("live-beegfs-headroom")
+    materialize = source.index(
+        '"$PYTHON_BIN" scripts/build_turkish_pretrain_corpus.py', query
+    )
+    assert query < materialize
+    assert '--quota-headroom-bytes "$QUOTA_HEADROOM_BYTES"' in source
+
+
+def test_every_data_artifact_producer_requires_clean_committed_code() -> None:
+    producers = (
+        "runs/uhem_d32_data_prep_storage_sample.sbatch",
+        "runs/uhem_d32_data_prep_writer_probe.sbatch",
+        "runs/uhem_turkish_anchor_fetch_v3.sbatch",
+        "runs/uhem_turkish_anchor_prepare_v3.sbatch",
+        "runs/uhem_turkish_data_prepare_macocu.sbatch",
+        "runs/uhem_turkish_data_bootstrap.sbatch",
+        "runs/uhem_turkish_data_objects.sbatch",
+        "runs/uhem_turkish_data_buckets.sbatch",
+        "runs/uhem_turkish_data_objects_packed_sample.sbatch",
+        "runs/uhem_turkish_data_buckets_packed_sample.sbatch",
+        "runs/uhem_turkish_data_cluster.sbatch",
+        "runs/uhem_turkish_sample_quality_audit.sbatch",
+        "runs/uhem_turkish_data_objects_packed_production.sbatch",
+        "runs/uhem_turkish_data_buckets_packed_production.sbatch",
+        "runs/uhem_turkish_production_pool.sbatch",
+        "runs/uhem_turkish_tokenizer_sample.sbatch",
+        "runs/uhem_turkish_tokenizer_train.sbatch",
+        "runs/uhem_turkish_tokenizer_quality.sbatch",
+        "runs/uhem_turkish_packing_preflight.sbatch",
+        "runs/uhem_turkish_corpus_finalize.sbatch",
+    )
+    for relative in producers:
+        source = (ROOT / relative).read_text(encoding="utf-8")
+        assert 'source "$CODE_DIR/runs/uhem_d32_require_clean_code.sh"' in source
+        assert 'd32_require_clean_committed_code "$CODE_DIR"' in source
+
+
+def test_operator_runbook_spells_out_the_post_qa_dependency_chain() -> None:
+    source = (ROOT / "docs" / "tr_d32_turkish_wsd_uhem.md").read_text(
+        encoding="utf-8"
+    )
+    exact_commands = (
+        '"$DATA_PYTHON" scripts/d32_family_workflow.py seal-mixture-quality-approval',
+        '"$DATA_PYTHON" scripts/turkish_data_backend.py approve-resources',
+        "select-production-nodes --recipe \"$RECIPE\" --policy \"$POLICY\"",
+        "runs/uhem_d32_data_prep_storage_sample.sbatch",
+        '--array="0-$OBJECT_ARRAY_MAX"',
+        '--dependency="afterok:$OBJECT_JOB_ID"',
+        '--dependency="afterok:$BUCKET_JOB_ID"',
+        '--dependency="afterok:$CLUSTER_JOB_ID"',
+        "approve-qa --pool-dir \"$POOL_DIR\"",
+        "--baseline-preflight-only",
+        "approve-packing-preflight",
+        "live-beegfs-headroom --recipe \"$RECIPE\" --work-dir \"$NANOCHAT_BASE_DIR\"",
+        "runs/uhem_turkish_corpus_finalize.sbatch",
+    )
+    assert all(command in source for command in exact_commands)
+    order = (
+        "runs/uhem_turkish_data_objects_packed_production.sbatch",
+        "runs/uhem_turkish_data_buckets_packed_production.sbatch",
+        "runs/uhem_turkish_data_cluster.sbatch",
+        "runs/uhem_turkish_production_pool.sbatch",
+        "approve-qa --pool-dir",
+        "runs/uhem_turkish_tokenizer_sample.sbatch",
+        "runs/uhem_turkish_tokenizer_train.sbatch",
+        "runs/uhem_turkish_tokenizer_quality.sbatch",
+        "runs/uhem_turkish_packing_preflight.sbatch",
+        "approve-packing-preflight",
+        "runs/uhem_turkish_corpus_finalize.sbatch",
+    )
+    positions = [
+        source.index(fragment, source.index("### Executable post-gate"))
+        for fragment in order
+    ]
+    assert positions == sorted(positions)
+    assert "\npython scripts/d32_family_workflow.py seal-mixture-quality-approval" not in source
 
 
 def test_family_preflight_and_upload_require_exact_cluster_launch() -> None:
@@ -487,7 +768,7 @@ def test_v3_anchor_and_macocu_preparation_launchers_are_audited() -> None:
     assert '"${MACOCU_SOURCE_ARGS[@]}"' in macocu
 
 
-def test_active_uhem_launchers_default_only_to_v3_lineage() -> None:
+def test_active_uhem_launchers_default_to_v4_artifacts_on_shared_base() -> None:
     active = sorted((ROOT / "runs").glob("uhem_d32_*")) + sorted(
         (ROOT / "runs").glob("uhem_turkish_*")
     ) + [ROOT / "runs" / "uhem_submit_d32_family.sh"]
@@ -503,33 +784,54 @@ def test_active_uhem_launchers_default_only_to_v3_lineage() -> None:
         "data_backend/production_v2",
         "data_v2/filtered_pool",
     )
+    stale_v3_defaults = (
+        "tr_d32_turkish_general_v3.json",
+        "tr_d32_turkish_general_wsd_v3.json",
+        "pretrain_data/tr_general_clean_v3",
+        "tokenizers/tr_general_raw_bpe_32k_v3",
+        "control/data_v3",
+        "data_backend/resource_sample_v3",
+        "data_backend/production_v3",
+        "data_v3/filtered_pool",
+    )
+    historical = {
+        ROOT / "runs" / "uhem_d32_v3_paths.sh",
+        ROOT / "runs" / "uhem_turkish_anchor_fetch_v3.sbatch",
+        ROOT / "runs" / "uhem_turkish_anchor_prepare_v3.sbatch",
+    }
     for path in active:
         if not path.is_file():
             continue
         source = path.read_text(encoding="utf-8")
         assert not [literal for literal in stale_literals if literal in source], path
+        if path not in historical:
+            assert not [
+                literal for literal in stale_v3_defaults if literal in source
+            ], path
 
     coherent_defaults = {
         "runs/uhem_d32_production.sbatch": (
             "nanochat-turk-d32-general-v3",
-            "tr_d32_turkish_general_wsd_v3.json",
-            "pretrain_data/tr_general_clean_v3",
-            "tokenizers/tr_general_raw_bpe_32k_v3/package_manifest.json",
+            "tr_d32_turkish_general_wsd_v4.json",
+            "pretrain_data/tr_general_clean_v4",
+            "tokenizers/tr_general_raw_bpe_32k_v4/package_manifest.json",
         ),
         "runs/uhem_d32_smoke.sbatch": (
             "nanochat-turk-d32-general-v3",
-            "tr_d32_turkish_general_wsd_v3.json",
+            "tr_d32_turkish_general_wsd_v4.json",
             'DATA_DIR="${DATA_DIR:-',
             'TOKENIZER_MANIFEST="${TOKENIZER_MANIFEST:-',
         ),
         "runs/uhem_turkish_data_bootstrap.sbatch": (
             "nanochat-turk-d32-general-v3",
-            "tr_d32_turkish_general_v3.json",
-            "control/data_v3",
+            "tr_d32_turkish_general_v4.json",
+            'D32_PATH_CONTRACT="${D32_PATH_CONTRACT:-v4}"',
+            'd32_bind_canonical_path CONTROL_DIR "$D32_CONTROL_DIR"',
         ),
         "runs/uhem_turkish_production_pool.sbatch": (
-            "data_backend/production_v3",
-            "data_v3/filtered_pool",
+            'D32_PATH_CONTRACT="${D32_PATH_CONTRACT:-v4}"',
+            'd32_bind_canonical_path DATA_RUN_DIR "$D32_DATA_RUN_DIR"',
+            'd32_bind_canonical_path POOL_DIR "$D32_POOL_DIR"',
         ),
     }
     for relative, required in coherent_defaults.items():
@@ -558,6 +860,13 @@ def test_data_prep_storage_bridge_is_dependent_and_pre_safety() -> None:
     assert "#SBATCH --cpus-per-task=128" in storage_source
     assert "SAMPLE_BUCKET_JOB_ID" in storage_source
     assert "SAMPLE_BUCKET_LAUNCH_RECEIPT" in storage_source
+    assert "scripts/d32_data_prep_operator.py" in storage_source
+    assert "validate-production-nodes" in storage_source
+    assert 'PRODUCTION_NODE_SELECTION:-$CONTROL_DIR/production_data_node_selection.json' in storage_source
+    assert storage_source.index("validate-production-nodes") < storage_source.index(
+        "seal-data-prep-pack-plan"
+    )
+    assert 'PRODUCTION_DATA_NODES disagrees with the sealed node selection' in storage_source
     assert "seal-data-prep-pack-plan" in storage_source
     assert "seal-data-prep-storage-sample" in storage_source
     assert "data-prep-storage-gate" in storage_source

@@ -34,11 +34,15 @@ from scripts import upload_base_checkpoint_to_hf as uploader
 
 
 ROOT = Path(__file__).resolve().parents[1]
-RECIPE = ROOT / "configs" / "pretrain" / "tr_d32_turkish_general_wsd_v3.json"
+RECIPE_V3 = ROOT / "configs" / "pretrain" / "tr_d32_turkish_general_wsd_v3.json"
+RECIPE_V4 = ROOT / "configs" / "pretrain" / "tr_d32_turkish_general_wsd_v4.json"
 
 
-def test_v3_retains_all_three_final_transactions_and_prices_them() -> None:
-    recipe, _ = workflow.load_recipe(RECIPE)
+@pytest.mark.parametrize("recipe_path", (RECIPE_V3, RECIPE_V4))
+def test_repeat_capacity_families_retain_all_final_transactions(
+    recipe_path: Path,
+) -> None:
+    recipe, _ = workflow.load_recipe(recipe_path)
     assert {item["retention"] for item in recipe["checkpoints"]["finals"]} == {
         "full_resumable"
     }
@@ -47,6 +51,274 @@ def test_v3_retains_all_three_final_transactions_and_prices_them() -> None:
     assert storage["full_cooled_final_transactions_at_peak"] == 3
     assert storage["required_free_bytes_at_training_preflight"] == 560 * 1024**3
     assert storage["estimated_end_to_end_peak_project_bytes"] == 792 * 1024**3
+
+
+def test_family_metric_roots_are_exact_and_remote_categories_are_stable() -> None:
+    assert workflow.family_metric_roots(workflow.FAMILY_ID_V3) == {
+        "family": Path("metrics/d32_family"),
+        "smoke": Path("metrics/d32_smoke"),
+        "proxy": Path("metrics/d32_proxy"),
+        "signal_smoke": Path("metrics/d32_signal_smoke"),
+    }
+    assert workflow.family_metric_roots(workflow.FAMILY_ID_V4) == {
+        "family": Path("metrics/d32_v4/family"),
+        "smoke": Path("metrics/d32_v4/smoke"),
+        "proxy": Path("metrics/d32_v4/proxy"),
+        "signal_smoke": Path("metrics/d32_v4/signal_smoke"),
+    }
+    with pytest.raises(workflow.FamilyWorkflowError, match="metric namespace"):
+        workflow.family_metric_roots("tr_d32_general_bpe32k_unknown")
+
+
+class _AtomicHubFixture:
+    def __init__(
+        self,
+        files: dict[str, bytes],
+        *,
+        fail_commit: bool = False,
+        parent_sha: str | None = "a" * 40,
+        mismatch_path: str | None = None,
+        unexpected_remote_path: str | None = None,
+    ) -> None:
+        self.files = dict(files)
+        self.fail_commit = fail_commit
+        self.parent_sha = parent_sha
+        self.mismatch_path = mismatch_path
+        self.unexpected_remote_path = unexpected_remote_path
+        self.create_repo_calls = []
+        self.commit_calls = []
+        self.list_repo_files_calls = []
+
+    def create_repo(self, **kwargs):
+        self.create_repo_calls.append(kwargs)
+
+    def repo_info(self, **kwargs):
+        return SimpleNamespace(sha=self.parent_sha)
+
+    def list_repo_files(self, **kwargs):
+        self.list_repo_files_calls.append(kwargs)
+        assert kwargs["revision"] == self.parent_sha
+        return sorted(self.files)
+
+    def upload_file(self, **_kwargs):
+        raise AssertionError("closed publication must never commit one file at a time")
+
+    def create_commit(self, **kwargs):
+        from huggingface_hub import CommitOperationAdd, CommitOperationDelete
+
+        self.commit_calls.append(kwargs)
+        if self.fail_commit:
+            raise RuntimeError("simulated interruption before ref update")
+        replacement = dict(self.files)
+        for operation in kwargs["operations"]:
+            if isinstance(operation, CommitOperationDelete):
+                replacement.pop(operation.path_in_repo, None)
+            elif isinstance(operation, CommitOperationAdd):
+                replacement[operation.path_in_repo] = Path(
+                    operation.path_or_fileobj
+                ).read_bytes()
+            else:  # pragma: no cover - protects the fixture from API drift
+                raise AssertionError(type(operation))
+        self.files = replacement
+        return SimpleNamespace(oid="b" * 40)
+
+    def list_repo_tree(self, **kwargs):
+        assert kwargs == {
+            "repo_id": "fixture/d32",
+            "repo_type": "model",
+            "revision": "b" * 40,
+            "recursive": True,
+            "expand": False,
+        }
+        files = dict(self.files)
+        if self.unexpected_remote_path:
+            files[self.unexpected_remote_path] = b"unexpected"
+        records = []
+        for path, payload in sorted(files.items()):
+            git_blob = hashlib.sha1(
+                f"blob {len(payload)}\0".encode("ascii") + payload
+            ).hexdigest()
+            lfs = None
+            if path.endswith(".pt"):
+                lfs = SimpleNamespace(
+                    sha256=hashlib.sha256(payload).hexdigest(),
+                    size=len(payload),
+                )
+            if path == self.mismatch_path:
+                if lfs is None:
+                    git_blob = "0" * 40
+                else:
+                    lfs.sha256 = "0" * 64
+            records.append(
+                SimpleNamespace(
+                    path=path,
+                    size=len(payload),
+                    blob_id=git_blob,
+                    lfs=lfs,
+                )
+            )
+        return records
+
+
+def test_closed_hf_publication_replaces_stale_payload_in_one_commit(
+    tmp_path: Path,
+) -> None:
+    readme = _touch(tmp_path / "README.md", b"new card")
+    manifest = _touch(tmp_path / "upload_manifest.json", b"new manifest")
+    model = _touch(tmp_path / "model.pt", b"new model")
+    api = _AtomicHubFixture(
+        {
+            ".gitattributes": b"hub metadata",
+            "README.md": b"old card",
+            "finals/s12/stale_optimizer.pt": b"stale",
+        }
+    )
+
+    uploader._publish_closed_model_snapshot(
+        api,
+        repo_id="fixture/d32",
+        files=[
+            (readme, "README.md"),
+            (manifest, "provenance/upload_manifest.json"),
+            (model, "finals/s12/model.pt"),
+        ],
+        private=True,
+        commit_message="publish fixture",
+    )
+
+    assert api.create_repo_calls == [
+        {
+            "repo_id": "fixture/d32",
+            "repo_type": "model",
+            "private": True,
+            "exist_ok": True,
+        }
+    ]
+    assert len(api.commit_calls) == 1
+    assert api.commit_calls[0]["parent_commit"] == "a" * 40
+    assert api.list_repo_files_calls == [
+        {
+            "repo_id": "fixture/d32",
+            "repo_type": "model",
+            "revision": "a" * 40,
+        }
+    ]
+    assert api.files == {
+        ".gitattributes": b"hub metadata",
+        "README.md": b"new card",
+        "provenance/upload_manifest.json": b"new manifest",
+        "finals/s12/model.pt": b"new model",
+    }
+
+
+def test_interrupted_closed_hf_publication_leaves_previous_commit_intact(
+    tmp_path: Path,
+) -> None:
+    replacement = _touch(tmp_path / "README.md", b"new card")
+    previous = {
+        ".gitattributes": b"hub metadata",
+        "README.md": b"previous complete card",
+        "finals/s12/model.pt": b"previous complete model",
+    }
+    api = _AtomicHubFixture(previous, fail_commit=True)
+
+    with pytest.raises(RuntimeError, match="simulated interruption"):
+        uploader._publish_closed_model_snapshot(
+            api,
+            repo_id="fixture/d32",
+            files=[(replacement, "README.md")],
+            private=True,
+            commit_message="publish fixture",
+        )
+
+    assert len(api.commit_calls) == 1
+    assert api.files == previous
+
+
+def test_closed_hf_publication_handles_new_empty_repo_without_parent(
+    tmp_path: Path,
+) -> None:
+    readme = _touch(tmp_path / "README.md", b"first card")
+    api = _AtomicHubFixture({}, parent_sha=None)
+
+    uploader._publish_closed_model_snapshot(
+        api,
+        repo_id="fixture/d32",
+        files=[(readme, "README.md")],
+        private=True,
+        commit_message="first publication",
+    )
+
+    assert api.list_repo_files_calls == []
+    assert api.commit_calls[0]["parent_commit"] is None
+    assert api.files == {"README.md": b"first card"}
+
+
+def test_closed_hf_publication_limits_legacy_cleanup_to_managed_prefix(
+    tmp_path: Path,
+) -> None:
+    readme = _touch(tmp_path / "README.md", b"replacement")
+    api = _AtomicHubFixture(
+        {
+            ".gitattributes": b"hub metadata",
+            "other-release/model.pt": b"keep",
+            "release-v1/stale.log": b"delete",
+        }
+    )
+
+    uploader._publish_closed_model_snapshot(
+        api,
+        repo_id="fixture/d32",
+        files=[(readme, "release-v1/README.md")],
+        private=True,
+        commit_message="replace release v1",
+        managed_prefix="release-v1",
+    )
+
+    assert api.files == {
+        ".gitattributes": b"hub metadata",
+        "other-release/model.pt": b"keep",
+        "release-v1/README.md": b"replacement",
+    }
+
+
+@pytest.mark.parametrize(
+    ("remote_path", "message"),
+    (
+        ("README.md", "published Git blob mismatch"),
+        ("finals/s12/model.pt", "published LFS SHA-256 mismatch"),
+    ),
+)
+def test_closed_hf_publication_rejects_remote_content_mismatch(
+    tmp_path: Path, remote_path: str, message: str
+) -> None:
+    payload = _touch(tmp_path / Path(remote_path).name, b"payload")
+    api = _AtomicHubFixture({}, mismatch_path=remote_path)
+
+    with pytest.raises(RuntimeError, match=message):
+        uploader._publish_closed_model_snapshot(
+            api,
+            repo_id="fixture/d32",
+            files=[(payload, remote_path)],
+            private=True,
+            commit_message="publish fixture",
+        )
+
+
+def test_closed_hf_publication_rejects_unexpected_remote_path(
+    tmp_path: Path,
+) -> None:
+    readme = _touch(tmp_path / "README.md", b"card")
+    api = _AtomicHubFixture({}, unexpected_remote_path="stale.bin")
+
+    with pytest.raises(RuntimeError, match="unexpected=.*stale.bin"):
+        uploader._publish_closed_model_snapshot(
+            api,
+            repo_id="fixture/d32",
+            files=[(readme, "README.md")],
+            private=True,
+            commit_message="publish fixture",
+        )
 
 
 def _write_receipt(path: Path, kind: str, **fields) -> tuple[dict, str]:
@@ -77,15 +349,19 @@ def _evidence_record(path: Path, root: Path) -> dict[str, object]:
     }
 
 
-def test_main_family_dry_run_verifies_complete_v3_publication_inventory(
-    tmp_path: Path, monkeypatch, capsys
+@pytest.mark.parametrize(
+    ("recipe_path", "data_version"),
+    ((RECIPE_V3, "v3"), (RECIPE_V4, "v4")),
+)
+def test_main_family_dry_run_verifies_complete_publication_inventory(
+    tmp_path: Path, monkeypatch, capsys, recipe_path: Path, data_version: str
 ) -> None:
-    recipe, recipe_sha = workflow.load_recipe(RECIPE)
+    recipe, recipe_sha = workflow.load_recipe(recipe_path)
     base = tmp_path / "base"
     corpus_root = base / recipe["artifacts"]["corpus_root"]
     tokenizer_root = base / recipe["artifacts"]["tokenizer_root"]
     control = base / "control" / "d32"
-    data_control = base / "control" / "data_v3"
+    data_control = base / "control" / f"data_{data_version}"
     lineage_dir = control / "lineage"
     for directory in (corpus_root, tokenizer_root, control, data_control, lineage_dir):
         directory.mkdir(parents=True, exist_ok=True)
@@ -368,7 +644,7 @@ def test_main_family_dry_run_verifies_complete_v3_publication_inventory(
         parent_corpus_manifest_sha256=parent_pool_sha,
         qa_approval_sha256=qa_approval_sha,
     )
-    sample_root = base / "control" / "tokenizer" / recipe["artifacts"]["tokenizer_name"] / "sample"
+    sample_root = corpus_root / "tokenizer_quality"
     sample_dataset, sample_dataset_sha = _write_receipt(
         sample_root / "fineweb2_manifest.json",
         "nanochat_dataset_manifest",
@@ -387,16 +663,46 @@ def test_main_family_dry_run_verifies_complete_v3_publication_inventory(
         qa_approval_sha256=qa_approval_sha,
     )
     training_receipt["sample_manifest_sha256"] = sample_sha
+    training_receipt["dataset_manifest_sha256"] = sample_dataset_sha
+    training_receipt["name"] = recipe["artifacts"]["tokenizer_name"]
+    training_receipt["vocab_size"] = recipe["model"]["vocab_size"]
+    training_receipt["policy_sha256"] = policy_sha
     training_receipt["canonical_sha256"] = None
     training_receipt = seal_manifest(training_receipt)
+    training_sha = training_receipt["canonical_sha256"]
     write_json_atomic(tokenizer_root / "training_receipt.json", training_receipt)
-    quality_root = sample_root.parent / "quality"
+    tokenizer_package["training_receipt_sha256"] = training_sha
+    tokenizer_package["canonical_sha256"] = None
+    tokenizer_package = seal_manifest(tokenizer_package)
+    tokenizer_sha = tokenizer_package["canonical_sha256"]
+    write_json_atomic(tokenizer_root / "package_manifest.json", tokenizer_package)
+    quality_root = sample_root
+    sample_evidence_files = [
+        {
+            **_evidence_record(
+                sample_root / "tokenizer_sample_manifest.json", sample_root
+            ),
+            "role": "tokenizer_training_sample_manifest",
+        },
+        {
+            **_evidence_record(sample_root / "fineweb2_manifest.json", sample_root),
+            "role": "tokenizer_sample_dataset_manifest",
+        },
+    ]
+    sample_evidence = {
+        "kind": "turkish_tokenizer_sample_evidence_v1",
+        "sample_manifest_sha256": sample_sha,
+        "dataset_manifest_sha256": sample_dataset_sha,
+        "files": sample_evidence_files,
+    }
     quality_report, _ = _write_receipt(
         quality_root / "quality_report.json",
         "fixture_tokenizer_quality_report",
         production_chain=production_chain,
         parent_corpus_manifest_sha256=parent_pool_sha,
         qa_approval_sha256=qa_approval_sha,
+        training_receipt_sha256=training_sha,
+        sample_evidence=sample_evidence,
     )
     quality_approval, _ = _write_receipt(
         quality_root / "quality_approval.json",
@@ -405,6 +711,40 @@ def test_main_family_dry_run_verifies_complete_v3_publication_inventory(
         parent_corpus_manifest_sha256=parent_pool_sha,
         qa_approval_sha256=qa_approval_sha,
     )
+    dataset["metadata"].update(
+        {
+            "tokenizer_quality_report_sha256": quality_report[
+                "canonical_sha256"
+            ],
+            "tokenizer_quality_approval_sha256": quality_approval[
+                "canonical_sha256"
+            ],
+            "tokenizer_sample_manifest_sha256": sample_sha,
+            "tokenizer_sample_dataset_manifest_sha256": sample_dataset_sha,
+        }
+    )
+    dataset["canonical_sha256"] = None
+    dataset = seal_manifest(dataset)
+    dataset_sha = dataset["canonical_sha256"]
+    write_json_atomic(
+        corpus_root / recipe["artifacts"]["nanochat_dataset_manifest"], dataset
+    )
+    corpus["tokenizer"] = {
+        "name": recipe["artifacts"]["tokenizer_name"],
+        "vocab_size": recipe["model"]["vocab_size"],
+        "package_sha256": tokenizer_sha,
+        "training_receipt_sha256": training_sha,
+        "quality_report_sha256": quality_report["canonical_sha256"],
+        "quality_approval_sha256": quality_approval["canonical_sha256"],
+        "sample_evidence": {
+            "relative_path": "tokenizer_quality",
+            **sample_evidence,
+        },
+    }
+    corpus["canonical_sha256"] = None
+    corpus = seal_manifest(corpus)
+    corpus_sha = corpus["canonical_sha256"]
+    write_json_atomic(corpus_root / recipe["artifacts"]["corpus_manifest"], corpus)
 
     validation_sha = verify_manifest_hash(
         json.loads(
@@ -450,6 +790,13 @@ def test_main_family_dry_run_verifies_complete_v3_publication_inventory(
             "root": str(tokenizer_root.resolve()),
             "name": recipe["artifacts"]["tokenizer_name"],
             "package_manifest_sha256": tokenizer_sha,
+            "training_receipt_sha256": training_sha,
+            "evidence_archive_relative_path": "tokenizer_quality",
+            "quality_report_sha256": quality_report["canonical_sha256"],
+            "quality_approval_sha256": quality_approval["canonical_sha256"],
+            "sample_manifest_sha256": sample_sha,
+            "sample_dataset_manifest_sha256": sample_dataset_sha,
+            "sample_evidence_files": sample_evidence_files,
         },
         code={"git_commit": "1" * 40},
     )
@@ -519,7 +866,11 @@ def test_main_family_dry_run_verifies_complete_v3_publication_inventory(
         )
         bpb = 2.0
         if stage["kind"] == "cooldown_fork":
-            curve_dir = base / "metrics" / "d32_family" / run_id
+            curve_dir = (
+                base
+                / workflow.family_metric_roots(recipe["family_id"])["family"]
+                / run_id
+            )
             curve_dir.mkdir(parents=True, exist_ok=True)
             curve = CanonicalTrainingLog(
                 curve_dir / "training_curve.jsonl",
@@ -741,6 +1092,15 @@ def test_main_family_dry_run_verifies_complete_v3_publication_inventory(
         lambda *_args, **_kwargs: (quality_report, quality_approval),
     )
     monkeypatch.setattr(
+        tokenizer_quality,
+        "validate_tokenizer_sample_evidence_archive",
+        lambda *_args, **_kwargs: (
+            sample_manifest,
+            sample_dataset,
+            sample_evidence,
+        ),
+    )
+    monkeypatch.setattr(
         uploader,
         "_select_verified_tokenizer_uploads",
         lambda *_args, **_kwargs: (
@@ -784,12 +1144,34 @@ def test_main_family_dry_run_verifies_complete_v3_publication_inventory(
         lambda command: "1" * 40 if command[1:] == ["rev-parse", "HEAD"] else "",
     )
 
+    active_metric_files = {}
+    for category, relative_root in workflow.family_metric_roots(
+        recipe["family_id"]
+    ).items():
+        metric_path = _touch(
+            base / relative_root / f"active_{data_version}_{category}.json",
+            f"active-{data_version}-{category}\n".encode("utf-8"),
+        )
+        active_metric_files[category] = metric_path.name
+    if data_version == "v4":
+        for category, relative_root in workflow.family_metric_roots(
+            workflow.FAMILY_ID_V3
+        ).items():
+            _touch(
+                base / relative_root / f"stale_v3_{category}.json",
+                b"stale-v3\n",
+            )
+            _touch(
+                base / "metrics" / category / f"stale_neutral_{category}.json",
+                b"stale-neutral\n",
+            )
+
     args = argparse.Namespace(
         repo_id="fixture/d32",
         private=True,
         dry_run=True,
         base_dir=str(base),
-        family_recipe=str(RECIPE),
+        family_recipe=str(recipe_path),
         preflight_receipt=str(control / "preflight.json"),
         attention_probe=str(control / "attention_probe.json"),
         wd_proxy_approval=str(control / "wd_proxy_approval.json"),
@@ -835,8 +1217,23 @@ def test_main_family_dry_run_verifies_complete_v3_publication_inventory(
         "provenance/control/final_quality_approval.json",
         "provenance/control/smoke_ws8.json",
         "provenance/data/qa/reviewed.jsonl",
+        "provenance/tokenizer/quality/quality_report.json",
+        "provenance/tokenizer/quality/quality_approval.json",
+        "provenance/tokenizer/sample/tokenizer_sample_manifest.json",
+        "provenance/tokenizer/sample/fineweb2_manifest.json",
+        "provenance/source/nanochat/turkish_anchor_preparation.py",
+        "provenance/source/runs/uhem_d32_require_clean_code.sh",
+        "provenance/source/scripts/prepare_turkish_anchors.py",
     ):
         assert f"-> {remote}" in output
+    assert (
+        f"-> provenance/source/runs/uhem_d32_{data_version}_paths.sh" in output
+    )
+    for category, filename in active_metric_files.items():
+        assert f"-> metrics/{category}/{filename}" in output
+    if data_version == "v4":
+        assert "stale_v3_" not in output
+        assert "stale_neutral_" not in output
     for fork in recipe["checkpoints"]["stable_forks"]:
         root = f"stable_forks/step_{int(fork['step']):06d}"
         assert f"-> {root}/completion.json" in output

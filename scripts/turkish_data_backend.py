@@ -26,7 +26,7 @@ from nanochat.turkish_backend import (
 from nanochat.turkish_corpus import load_corpus_policy
 
 
-DEFAULT_POLICY = Path("configs/pretrain/tr_d32_turkish_general_v3.json")
+DEFAULT_POLICY = Path("configs/pretrain/tr_d32_turkish_general_v4.json")
 DEFAULT_CALIBRATION_FIXTURE = Path("configs/pretrain/glotlid_calibration_tr_v1.jsonl")
 PREPARED_SOURCE_IDS = frozenset({"mot_tr_v1_11", "parlamint_tr_v5_0"})
 

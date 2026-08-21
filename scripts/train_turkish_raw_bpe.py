@@ -41,6 +41,7 @@ from nanochat.turkish_corpus import VOCAB_SIZE, load_corpus_policy
 
 
 PACKAGE_KIND = "turkish_raw_bpe_tokenizer_package"
+DEFAULT_POLICY = Path("configs/pretrain/tr_d32_turkish_general_v4.json")
 PINNED_TOK_TRAIN_ITERATOR_SHA256 = (
     "206d8c89554ceeb4de7afe22e53786806d567e1c4f5493352b2170c0ac174a29"
 )
@@ -57,7 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--policy",
         type=Path,
-        default=Path("configs/pretrain/tr_d32_turkish_general_v3.json"),
+        default=DEFAULT_POLICY,
     )
     parser.add_argument("--sample-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)

@@ -23,15 +23,28 @@ set -u
 
 : "${QUOTA_HEADROOM_BYTES:?Set current project-quota headroom in bytes}"
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
+source "$CODE_DIR/runs/uhem_d32_require_clean_code.sh"
+d32_require_clean_committed_code "$CODE_DIR"
 NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
-POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v3.json}"
-RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v3.json}"
-CONTROL_DIR="${CONTROL_DIR:-$NANOCHAT_BASE_DIR/control/data_v3}"
+POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v4.json}"
+RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v4.json}"
+D32_PATH_CONTRACT="${D32_PATH_CONTRACT:-v4}"
+case "$D32_PATH_CONTRACT" in
+    v3|v4) source "$CODE_DIR/runs/uhem_d32_${D32_PATH_CONTRACT}_paths.sh" ;;
+    *) echo "D32_PATH_CONTRACT must equal v3 or v4" >&2; exit 2 ;;
+esac
+CONTROL_DIR="${CONTROL_DIR:-$D32_CONTROL_DIR}"
+d32_bind_canonical_path CONTROL_DIR "$D32_CONTROL_DIR"
 SOURCE_PLAN="${SOURCE_PLAN:-$CONTROL_DIR/source_plan.json}"
 CALIBRATION="${CALIBRATION:-$CONTROL_DIR/backend_calibration.json}"
-SAMPLE_RUN_DIR="${SAMPLE_RUN_DIR:-$NANOCHAT_BASE_DIR/data_backend/resource_sample_v3}"
+SAMPLE_RUN_DIR="${SAMPLE_RUN_DIR:-$D32_SAMPLE_RUN_DIR}"
+d32_bind_canonical_path SAMPLE_RUN_DIR "$D32_SAMPLE_RUN_DIR"
 BACKEND_RESOURCE_REPORT="${BACKEND_RESOURCE_REPORT:-$CONTROL_DIR/backend_resource_report.json}"
 WRITER_PROBE="${WRITER_PROBE:-$CONTROL_DIR/post_cluster_writer_probe.json}"
+d32_bind_canonical_path SOURCE_PLAN "$D32_SOURCE_PLAN"
+d32_bind_canonical_path CALIBRATION "$D32_CALIBRATION"
+d32_bind_canonical_path BACKEND_RESOURCE_REPORT "$D32_BACKEND_RESOURCE_REPORT"
+d32_bind_canonical_path WRITER_PROBE "$D32_WRITER_PROBE"
 PYTHON="${PYTHON:-$CODE_DIR/environments/turkish-data/.venv/bin/python}"
 SCRATCH_DIR="${SCRATCH_DIR:-$NANOCHAT_BASE_DIR/scratch/data_prep_writer_probe/job${SLURM_JOB_ID:?}}"
 

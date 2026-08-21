@@ -26,11 +26,11 @@ set -u
 
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
 NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
-RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v3.json}"
-PREFLIGHT_RECEIPT="${PREFLIGHT_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/preflight.json}"
-ATTENTION_PROBE_RECEIPT="${ATTENTION_PROBE_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/attention_probe.json}"
-SCREENING_RECEIPT="${SCREENING_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/proxy_screening.json}"
-WD_PROXY_APPROVAL="${WD_PROXY_APPROVAL:-$NANOCHAT_BASE_DIR/control/d32/wd_proxy_approval.json}"
+RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v4.json}"
+PREFLIGHT_RECEIPT="${PREFLIGHT_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32_v4/preflight.json}"
+ATTENTION_PROBE_RECEIPT="${ATTENTION_PROBE_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32_v4/attention_probe.json}"
+SCREENING_RECEIPT="${SCREENING_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32_v4/proxy_screening.json}"
+WD_PROXY_APPROVAL="${WSD_PROXY_APPROVAL:-$NANOCHAT_BASE_DIR/control/d32_v4/wd_proxy_approval.json}"
 PROXY_PHASE="${PROXY_PHASE:-}"
 FAMILY_ID="${FAMILY_ID:-$("$CODE_DIR/.venv/bin/python" -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["family_id"])' "$RECIPE")}"
 export CODE_DIR NANOCHAT_BASE_DIR RECIPE PREFLIGHT_RECEIPT ATTENTION_PROBE_RECEIPT FAMILY_ID
@@ -102,7 +102,7 @@ if [ "$PROXY_PHASE" = screen ]; then
         for seed in 42 314159; do
             arms+=("$candidate $seed")
             run_id="${FAMILY_ID}_proxy_d12_${candidate}_seed${seed}"
-            receipt_args+=(--run-receipt="$NANOCHAT_BASE_DIR/control/d32/proxy_runs/${run_id}.json")
+            receipt_args+=(--run-receipt="$NANOCHAT_BASE_DIR/control/d32_v4/proxy_runs/${run_id}.json")
         done
     done
     run_packed_arms 12 "${arms[@]}"
@@ -127,7 +127,7 @@ else
     for candidate in "${confirmation_candidates[@]}"; do
         arms+=("$candidate 42")
         run_id="${FAMILY_ID}_proxy_d20_${candidate}_seed42"
-        receipt_args+=(--run-receipt="$NANOCHAT_BASE_DIR/control/d32/proxy_runs/${run_id}.json")
+        receipt_args+=(--run-receipt="$NANOCHAT_BASE_DIR/control/d32_v4/proxy_runs/${run_id}.json")
     done
     run_packed_arms 20 "${arms[@]}"
     .venv/bin/python scripts/d32_family_workflow.py accept-proxy \

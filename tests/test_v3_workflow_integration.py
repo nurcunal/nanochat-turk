@@ -117,12 +117,12 @@ def test_prepared_source_cli_requires_exact_unique_v3_source_ids() -> None:
         _prepared_source_manifests(["unknown=/data/source"])
 
 
-def test_current_cli_defaults_select_v3_without_removing_explicit_v2() -> None:
+def test_current_cli_defaults_select_v4_without_removing_explicit_v2() -> None:
     assert workflow.DEFAULT_RECIPE == Path(
-        "configs/pretrain/tr_d32_turkish_general_wsd_v3.json"
+        "configs/pretrain/tr_d32_turkish_general_wsd_v4.json"
     )
     assert workflow.DEFAULT_POLICY == Path(
-        "configs/pretrain/tr_d32_turkish_general_v3.json"
+        "configs/pretrain/tr_d32_turkish_general_v4.json"
     )
     v2_recipe = _load(
         ROOT / "configs/pretrain/tr_d32_turkish_general_wsd_v2.json"

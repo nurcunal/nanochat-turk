@@ -37,6 +37,13 @@ from nanochat.turkish_corpus import (
 QUALITY_REPORT_KIND = "turkish_tokenizer_heldout_quality"
 QUALITY_APPROVAL_KIND = "turkish_tokenizer_quality_approval"
 QUALITY_GATE_KIND = "turkish_tokenizer_automatic_quality_gate_v1"
+TOKENIZER_SAMPLE_EVIDENCE_KIND = "turkish_tokenizer_sample_evidence_v1"
+TOKENIZER_SAMPLE_MANIFEST_FILE = "tokenizer_sample_manifest.json"
+TOKENIZER_SAMPLE_DATASET_MANIFEST_FILE = "fineweb2_manifest.json"
+_TOKENIZER_SAMPLE_EVIDENCE_ROLES = {
+    TOKENIZER_SAMPLE_MANIFEST_FILE: "tokenizer_training_sample_manifest",
+    TOKENIZER_SAMPLE_DATASET_MANIFEST_FILE: "tokenizer_sample_dataset_manifest",
+}
 _WORD_RE = re.compile(r"[^\W\d_]+", re.UNICODE)
 _RFC3339_UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 _QUANTILES = (0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99, 1.0)
@@ -221,6 +228,163 @@ def _validation_rows(
         "selection": dict(holdout),
     }
     return rows, dataset, sample, identity
+
+
+def _archive_tokenizer_sample_evidence(
+    destination: Path,
+    *,
+    sample: Mapping[str, Any],
+    dataset: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Copy the two small tokenizer-input manifests into the quality artifact.
+
+    The training Parquets deliberately remain outside this archive.  These
+    manifests are sufficient to bind the exact sampled dataset inventory and
+    held-out file used by the tokenizer package and quality report.
+    """
+
+    payloads = {
+        TOKENIZER_SAMPLE_MANIFEST_FILE: dict(sample),
+        TOKENIZER_SAMPLE_DATASET_MANIFEST_FILE: dict(dataset),
+    }
+    records: list[dict[str, Any]] = []
+    for name, payload in payloads.items():
+        path = destination / name
+        write_json_atomic(path, payload)
+        if path.is_symlink() or not path.is_file():
+            raise TurkishCorpusError(f"tokenizer sample evidence is unsafe: {path}")
+        records.append(
+            {
+                "path": name,
+                "role": _TOKENIZER_SAMPLE_EVIDENCE_ROLES[name],
+                "size_bytes": path.stat().st_size,
+                "sha256": file_sha256(path),
+            }
+        )
+    return {
+        "kind": TOKENIZER_SAMPLE_EVIDENCE_KIND,
+        "sample_manifest_sha256": sample["canonical_sha256"],
+        "dataset_manifest_sha256": dataset["canonical_sha256"],
+        "files": records,
+    }
+
+
+def validate_tokenizer_sample_evidence_archive(
+    quality_dir: str | Path,
+    *,
+    training_receipt: Mapping[str, Any],
+    expected_quality_report_sha256: str | None = None,
+    expected_production_chain: Mapping[str, Any] | None = None,
+    expected_parent_corpus_manifest_sha256: str | None = None,
+    expected_qa_approval_sha256: str | None = None,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Verify the immutable tokenizer sample evidence archived with quality QA.
+
+    Fixed filenames and exact file hashes prevent a later control-directory
+    copy from being substituted after preflight.  The manifests must also be
+    the exact canonical inputs named by the package-bound training receipt.
+    """
+
+    root = Path(quality_dir)
+    if root.is_symlink() or not root.is_dir():
+        raise TurkishCorpusError("tokenizer sample evidence root is missing or unsafe")
+    training_hash = verify_manifest_hash(training_receipt)
+    report = load_json_strict(root / "quality_report.json")
+    report_hash = verify_manifest_hash(report)
+    if (
+        expected_quality_report_sha256 is not None
+        and report_hash != expected_quality_report_sha256
+    ):
+        raise TurkishCorpusError("tokenizer sample evidence quality-report binding drift")
+    evidence = report.get("sample_evidence")
+    if not isinstance(evidence, Mapping):
+        raise TurkishCorpusError("tokenizer quality report lacks sample evidence")
+    expected_paths = list(_TOKENIZER_SAMPLE_EVIDENCE_ROLES)
+    records = evidence.get("files")
+    if (
+        set(evidence)
+        != {"kind", "sample_manifest_sha256", "dataset_manifest_sha256", "files"}
+        or evidence.get("kind") != TOKENIZER_SAMPLE_EVIDENCE_KIND
+        or not isinstance(records, list)
+        or [item.get("path") if isinstance(item, Mapping) else None for item in records]
+        != expected_paths
+        or [item.get("role") if isinstance(item, Mapping) else None for item in records]
+        != [_TOKENIZER_SAMPLE_EVIDENCE_ROLES[name] for name in expected_paths]
+    ):
+        raise TurkishCorpusError("tokenizer sample evidence inventory contract drift")
+    try:
+        verify_file_inventory(root, records, require_role=True)
+        sample = load_json_strict(root / TOKENIZER_SAMPLE_MANIFEST_FILE)
+        sample_hash = verify_manifest_hash(sample)
+        dataset = load_json_strict(root / TOKENIZER_SAMPLE_DATASET_MANIFEST_FILE)
+        validate_dataset_manifest(dataset, profile="strict")
+        dataset_hash = verify_manifest_hash(dataset)
+    except (OSError, TypeError, ValueError) as exc:
+        raise TurkishCorpusError("tokenizer sample evidence failed verification") from exc
+
+    expected_sample_hash = training_receipt.get("sample_manifest_sha256")
+    expected_dataset_hash = training_receipt.get("dataset_manifest_sha256")
+    parent_hash = training_receipt.get("parent_corpus_manifest_sha256")
+    qa_hash = training_receipt.get("qa_approval_sha256")
+    production_chain = training_receipt.get("production_chain")
+    dataset_metadata = dataset.get("metadata")
+    if not isinstance(dataset_metadata, Mapping):
+        raise TurkishCorpusError("tokenizer sample dataset metadata is missing")
+    heldout = report.get("heldout_validation")
+    validation_path = dataset.get("validation_file")
+    dataset_records = {
+        item.get("path"): item
+        for item in dataset.get("ordered_files", [])
+        if isinstance(item, Mapping)
+    }
+    validation_record = dataset_records.get(validation_path)
+    if (
+        training_receipt.get("kind") != "turkish_raw_bpe_training_receipt"
+        or report.get("kind") != QUALITY_REPORT_KIND
+        or report.get("training_receipt_sha256") != training_hash
+        or report.get("policy_sha256") != training_receipt.get("policy_sha256")
+        or report.get("production_chain") != production_chain
+        or report.get("parent_corpus_manifest_sha256") != parent_hash
+        or report.get("qa_approval_sha256") != qa_hash
+        or evidence.get("sample_manifest_sha256") != sample_hash
+        or evidence.get("dataset_manifest_sha256") != dataset_hash
+        or sample_hash != expected_sample_hash
+        or dataset_hash != expected_dataset_hash
+        or sample.get("kind") != "turkish_raw_bpe_training_sample"
+        or sample.get("name") != training_receipt.get("name")
+        or sample.get("vocab_size") != training_receipt.get("vocab_size")
+        or sample.get("nanochat_dataset_manifest_sha256") != dataset_hash
+        or sample.get("policy_sha256") != training_receipt.get("policy_sha256")
+        or sample.get("production_chain") != production_chain
+        or sample.get("parent_corpus_manifest_sha256") != parent_hash
+        or sample.get("qa_approval_sha256") != qa_hash
+        or dataset_metadata.get("policy_sha256")
+        != training_receipt.get("policy_sha256")
+        or dataset_metadata.get("production_chain") != production_chain
+        or dataset_metadata.get("parent_corpus_manifest_sha256") != parent_hash
+        or dataset_metadata.get("qa_approval_sha256") != qa_hash
+        or not isinstance(heldout, Mapping)
+        or not isinstance(validation_record, Mapping)
+        or heldout.get("dataset_manifest_sha256") != dataset_hash
+        or heldout.get("sample_manifest_sha256") != sample_hash
+        or heldout.get("path") != validation_path
+        or heldout.get("size_bytes") != validation_record.get("size_bytes")
+        or heldout.get("sha256") != validation_record.get("sha256")
+        or (
+            expected_production_chain is not None
+            and production_chain != expected_production_chain
+        )
+        or (
+            expected_parent_corpus_manifest_sha256 is not None
+            and parent_hash != expected_parent_corpus_manifest_sha256
+        )
+        or (
+            expected_qa_approval_sha256 is not None
+            and qa_hash != expected_qa_approval_sha256
+        )
+    ):
+        raise TurkishCorpusError("tokenizer sample evidence lineage drift")
+    return sample, dataset, dict(evidence)
 
 
 def _push_smallest_word(
@@ -866,6 +1030,8 @@ def build_tokenizer_quality_report(
     sample_root = Path(sample_dir)
     baseline_root = Path(baseline_tokenizer_dir)
     destination = Path(output_dir)
+    if destination.is_symlink():
+        raise TurkishCorpusError("tokenizer quality output directory must not be a symlink")
     if destination.exists() and any(destination.iterdir()):
         raise FileExistsError(f"refusing non-empty tokenizer quality directory: {destination}")
     training_receipt = load_json_strict(tokenizer_root / "training_receipt.json")
@@ -935,6 +1101,11 @@ def build_tokenizer_quality_report(
         "comparison_gate_passed": automatic_gate["passed"],
     }
     destination.mkdir(parents=True, exist_ok=True)
+    sample_evidence = _archive_tokenizer_sample_evidence(
+        destination,
+        sample=sample,
+        dataset=dataset,
+    )
     report = seal_manifest(
         {
             "schema_version": "1.0",
@@ -948,6 +1119,7 @@ def build_tokenizer_quality_report(
             ],
             "qa_approval_sha256": training_receipt["qa_approval_sha256"],
             "heldout_validation": validation_identity,
+            "sample_evidence": sample_evidence,
             "metrics": current_metrics,
             "structural_validation": training_receipt["validation"],
             "baseline_comparison": baseline,
@@ -1145,5 +1317,6 @@ __all__ = [
     "evaluate_tokenizer_quality_gate",
     "seal_tokenizer_quality_approval",
     "validate_pinned_baseline_tokenizer",
+    "validate_tokenizer_sample_evidence_archive",
     "validate_tokenizer_quality_gate",
 ]

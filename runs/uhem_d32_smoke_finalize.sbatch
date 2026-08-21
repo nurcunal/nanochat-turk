@@ -25,12 +25,12 @@ set -u
 : "${SMOKE_NODES:?Set SMOKE_NODES to 2 or 4}"
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
 NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
-RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v3.json}"
-PREFLIGHT_RECEIPT="${PREFLIGHT_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/preflight.json}"
-ATTENTION_PROBE_RECEIPT="${ATTENTION_PROBE_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/attention_probe.json}"
-WSD_PROXY_APPROVAL="${WSD_PROXY_APPROVAL:-$NANOCHAT_BASE_DIR/control/d32/wd_proxy_approval.json}"
-STATIC_LAUNCHER_GATE="${STATIC_LAUNCHER_GATE:-$NANOCHAT_BASE_DIR/control/d32/static_launcher_gate_ws4.json}"
-SIGNAL_RESUME_GATE="${SIGNAL_RESUME_GATE:-$NANOCHAT_BASE_DIR/control/d32/signal_resume_gate_ws4.json}"
+RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v4.json}"
+PREFLIGHT_RECEIPT="${PREFLIGHT_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32_v4/preflight.json}"
+ATTENTION_PROBE_RECEIPT="${ATTENTION_PROBE_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32_v4/attention_probe.json}"
+WSD_PROXY_APPROVAL="${WSD_PROXY_APPROVAL:-$NANOCHAT_BASE_DIR/control/d32_v4/wd_proxy_approval.json}"
+STATIC_LAUNCHER_GATE="${STATIC_LAUNCHER_GATE:-$NANOCHAT_BASE_DIR/control/d32_v4/static_launcher_gate_ws4.json}"
+SIGNAL_RESUME_GATE="${SIGNAL_RESUME_GATE:-$NANOCHAT_BASE_DIR/control/d32_v4/signal_resume_gate_ws4.json}"
 cd "$CODE_DIR"
 
 if [ "$SMOKE_NODES" -ne 2 ] && [ "$SMOKE_NODES" -ne 4 ]; then
@@ -45,7 +45,7 @@ if [ -n "${FAMILY_ID:-}" ] && [ "$FAMILY_ID" != "$RECIPE_FAMILY_ID" ]; then
 fi
 FAMILY_ID="$RECIPE_FAMILY_ID"
 RUN_ID="${FAMILY_ID}_smoke_ws${WORLD_SIZE}"
-CONTROL_ROOT="$NANOCHAT_BASE_DIR/control/d32/launcher/job${SMOKE_JOB_ID}"
+CONTROL_ROOT="$NANOCHAT_BASE_DIR/control/d32_v4/launcher/job${SMOKE_JOB_ID}"
 
 .venv/bin/python scripts/d32_family_workflow.py seal-smoke \
     --recipe="$RECIPE" \
@@ -53,7 +53,7 @@ CONTROL_ROOT="$NANOCHAT_BASE_DIR/control/d32/launcher/job${SMOKE_JOB_ID}"
     --attention-probe="$ATTENTION_PROBE_RECEIPT" \
     --wd-proxy-approval="$WSD_PROXY_APPROVAL" \
     --nodes="$SMOKE_NODES" \
-    --curve-log="$NANOCHAT_BASE_DIR/metrics/d32_smoke/ws${WORLD_SIZE}/training_curve.jsonl" \
+    --curve-log="$NANOCHAT_BASE_DIR/metrics/d32_v4/smoke/ws${WORLD_SIZE}/training_curve.jsonl" \
     --checkpoint-root="$NANOCHAT_BASE_DIR/base_checkpoints/$RUN_ID" \
     --static-launcher-gate="$STATIC_LAUNCHER_GATE" \
     --signal-resume-gate="$SIGNAL_RESUME_GATE" \
@@ -61,4 +61,4 @@ CONTROL_ROOT="$NANOCHAT_BASE_DIR/control/d32/launcher/job${SMOKE_JOB_ID}"
     --launch-receipt="$CONTROL_ROOT/smoke_initial_50/launch.json" \
     --launch-receipt="$CONTROL_ROOT/smoke_resume_100/launch.json" \
     --slurm-job-id="$SMOKE_JOB_ID" \
-    --output="$NANOCHAT_BASE_DIR/control/d32/smoke_ws${WORLD_SIZE}.json"
+    --output="$NANOCHAT_BASE_DIR/control/d32_v4/smoke_ws${WORLD_SIZE}.json"

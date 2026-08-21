@@ -37,10 +37,15 @@ LANE_COUNT = 32
 CPUS_PER_LANE = 4
 BUCKET_COUNT = 14
 CPUS_PER_BUCKET_TASK = 8
-DEFAULT_POLICY = Path("configs/pretrain/tr_d32_turkish_general_v3.json")
+DEFAULT_POLICY = Path("configs/pretrain/tr_d32_turkish_general_v4.json")
 V2_POLICY_NAME = "tr_general_clean_v2"  # Backwards-compatible public alias.
+V4_POLICY_NAME = "tr_general_clean_v4"
 SUPPORTED_POLICY_IDENTITIES = frozenset(
-    {("2.0", V2_POLICY_NAME), ("3.0", "tr_general_clean_v3")}
+    {
+        ("2.0", V2_POLICY_NAME),
+        ("3.0", "tr_general_clean_v3"),
+        ("3.0", V4_POLICY_NAME),
+    }
 )
 LANE_PLAN_KIND = "turkish_packed_resource_sample_lane_plan"
 LANE_RECEIPT_KIND = "turkish_packed_resource_sample_lane_receipt"
@@ -70,7 +75,7 @@ def _load_bound_inputs(
         SUPPORTED_POLICY_IDENTITIES
     ):
         raise TurkishCorpusError(
-            "the packed object sample accepts only frozen Turkish v2/v3 policies"
+            "the packed object sample accepts only frozen Turkish v2/v3/v4 policies"
         )
     source_plan = load_json_strict(source_plan_path)
     calibration = load_json_strict(calibration_path)

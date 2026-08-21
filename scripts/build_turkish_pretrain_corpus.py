@@ -26,7 +26,7 @@ from nanochat.turkish_corpus import (
 )
 
 
-DEFAULT_POLICY = Path("configs/pretrain/tr_d32_turkish_general_v3.json")
+DEFAULT_POLICY = Path("configs/pretrain/tr_d32_turkish_general_v4.json")
 
 
 def _git_commit() -> str:

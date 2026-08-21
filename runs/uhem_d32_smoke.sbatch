@@ -27,12 +27,12 @@ set -u
 
 export CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
 export NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
-export RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v3.json}"
-export PREFLIGHT_RECEIPT="${PREFLIGHT_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/preflight.json}"
-export ATTENTION_PROBE_RECEIPT="${ATTENTION_PROBE_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/attention_probe.json}"
-export WSD_PROXY_APPROVAL="${WSD_PROXY_APPROVAL:-$NANOCHAT_BASE_DIR/control/d32/wd_proxy_approval.json}"
-export STATIC_LAUNCHER_GATE="${STATIC_LAUNCHER_GATE:-$NANOCHAT_BASE_DIR/control/d32/static_launcher_gate_ws4.json}"
-export SIGNAL_RESUME_GATE="${SIGNAL_RESUME_GATE:-$NANOCHAT_BASE_DIR/control/d32/signal_resume_gate_ws4.json}"
+export RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v4.json}"
+export PREFLIGHT_RECEIPT="${PREFLIGHT_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32_v4/preflight.json}"
+export ATTENTION_PROBE_RECEIPT="${ATTENTION_PROBE_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32_v4/attention_probe.json}"
+export WSD_PROXY_APPROVAL="${WSD_PROXY_APPROVAL:-$NANOCHAT_BASE_DIR/control/d32_v4/wd_proxy_approval.json}"
+export STATIC_LAUNCHER_GATE="${STATIC_LAUNCHER_GATE:-$NANOCHAT_BASE_DIR/control/d32_v4/static_launcher_gate_ws4.json}"
+export SIGNAL_RESUME_GATE="${SIGNAL_RESUME_GATE:-$NANOCHAT_BASE_DIR/control/d32_v4/signal_resume_gate_ws4.json}"
 
 cd "$CODE_DIR"
 NNODES="${SLURM_NNODES:-${SLURM_JOB_NUM_NODES:-0}}"
@@ -75,12 +75,12 @@ export EVAL_EVERY=250
 export LR_SCHEDULE=wsd
 export WSD_COOLDOWN_START_STEP=-1
 export STUDY_MANIFEST="$RECIPE"
-export DATA_DIR="${DATA_DIR:-$NANOCHAT_BASE_DIR/pretrain_data/tr_general_clean_v3}"
+export DATA_DIR="${DATA_DIR:-$NANOCHAT_BASE_DIR/pretrain_data/tr_general_clean_v4}"
 export PACKING_CAPACITY_RECEIPT="$DATA_DIR/packing_capacity_receipt.json"
-export TOKENIZER_MANIFEST="${TOKENIZER_MANIFEST:-$NANOCHAT_BASE_DIR/tokenizers/tr_general_raw_bpe_32k_v3/package_manifest.json}"
+export TOKENIZER_MANIFEST="${TOKENIZER_MANIFEST:-$NANOCHAT_BASE_DIR/tokenizers/tr_general_raw_bpe_32k_v4/package_manifest.json}"
 export VALIDATION_MANIFEST="$DATA_DIR/validation_exposure_manifest.json"
 export EXPOSURE_PLAN="$DATA_DIR/training_exposure_smoke_ws${WORLD_SIZE}.json"
-export METRICS_DIR="$NANOCHAT_BASE_DIR/metrics/d32_smoke/ws${WORLD_SIZE}"
+export METRICS_DIR="$NANOCHAT_BASE_DIR/metrics/d32_v4/smoke/ws${WORLD_SIZE}"
 export MASTER_PORT="${MASTER_PORT:-$((20000 + SLURM_JOB_ID % 40000))}"
 mapfile -t SLURM_HOSTS < <(scontrol show hostnames "$SLURM_JOB_NODELIST")
 export MASTER_ADDR="${MASTER_ADDR:-${SLURM_HOSTS[0]}}"
@@ -92,7 +92,7 @@ eval "$(.venv/bin/python scripts/d32_family_workflow.py optimizer-env \
     --wd-proxy-approval="$WSD_PROXY_APPROVAL")"
 export EFFECTIVE_BASE_WEIGHT_DECAY WSD_WEIGHT_DECAY_COOLDOWN CODE_REVISION
 export ATTENTION_BACKEND WINDOW_PATTERN ATTENTION_PROBE_RECEIPT
-CONTROL_ROOT="$NANOCHAT_BASE_DIR/control/d32/launcher/job${SLURM_JOB_ID}"
+CONTROL_ROOT="$NANOCHAT_BASE_DIR/control/d32_v4/launcher/job${SLURM_JOB_ID}"
 if [ -e "$CONTROL_ROOT" ]; then
     echo "Refusing to reuse launcher receipt directory: $CONTROL_ROOT" >&2
     exit 2

@@ -70,6 +70,36 @@ def repo_path(*parts):
     return "/".join(clean)
 
 
+def _family_uses_full_final_transactions(family_id):
+    """Return whether cooled finals must retain their full local transactions."""
+
+    from nanochat.strict_runtime import FAMILY_ID_V3, FAMILY_ID_V4
+
+    return family_id in {FAMILY_ID_V3, FAMILY_ID_V4}
+
+
+def _family_paths_inventory(family_id):
+    """Select the exact family-specific canonical-path helper for publication."""
+
+    from nanochat.strict_runtime import (
+        FAMILY_ID,
+        FAMILY_ID_V2,
+        FAMILY_ID_V3,
+        FAMILY_ID_V4,
+    )
+
+    paths = {
+        FAMILY_ID_V3: "runs/uhem_d32_v3_paths.sh",
+        FAMILY_ID_V4: "runs/uhem_d32_v4_paths.sh",
+    }
+    if family_id in {FAMILY_ID, FAMILY_ID_V2}:
+        return None
+    try:
+        return paths[family_id]
+    except KeyError as exc:
+        raise ValueError("unsupported family path inventory") from exc
+
+
 def require_file(path, label):
     if not path.is_file():
         raise FileNotFoundError(f"Missing {label}: {path}")
@@ -190,6 +220,180 @@ def file_entry(path, path_in_repo):
         "mtime_utc": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
         "sha256": sha256_file(path),
     }
+
+
+_HUB_MANAGED_PATHS = frozenset({".gitattributes"})
+
+
+def _publication_file_identity(path):
+    """Return the identities used by regular Git blobs and Hub LFS objects."""
+
+    size = path.stat().st_size
+    sha256 = hashlib.sha256()
+    git_blob = hashlib.sha1()
+    git_blob.update(f"blob {size}\0".encode("ascii"))
+    bytes_read = 0
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            bytes_read += len(chunk)
+            sha256.update(chunk)
+            git_blob.update(chunk)
+    if bytes_read != size or path.stat().st_size != size:
+        raise ValueError(f"publication payload changed while hashing: {path}")
+    return {
+        "size_bytes": size,
+        "sha256": sha256.hexdigest(),
+        "git_blob_sha1": git_blob.hexdigest(),
+    }
+
+
+def _publish_closed_model_snapshot(
+    api,
+    *,
+    repo_id,
+    files,
+    private,
+    commit_message,
+    managed_prefix=None,
+):
+    """Atomically replace a model repo with one closed file inventory.
+
+    Hugging Face commits are atomic at the repository-reference boundary. A
+    single commit containing every addition and every stale-path deletion means
+    an interrupted upload leaves the previous complete commit visible, while a
+    successful retry cannot retain payload files excluded by the new policy.
+    ``.gitattributes`` is repository-managed metadata and is the sole path
+    intentionally outside the publication inventory. ``managed_prefix`` lets
+    the legacy multi-bundle mode close only the subtree it owns.
+    """
+
+    from huggingface_hub import CommitOperationAdd, CommitOperationDelete
+
+    desired = {}
+    desired_identity = {}
+    normalized_prefix = repo_path(managed_prefix or "")
+    for local_path, path_in_repo in files:
+        path_in_repo = str(path_in_repo)
+        path = Path(local_path)
+        require_file(path, f"publication payload {path_in_repo}")
+        if (
+            not path_in_repo
+            or path_in_repo != path_in_repo.strip("/")
+            or any(part in {"", ".", ".."} for part in path_in_repo.split("/"))
+        ):
+            raise ValueError(f"invalid publication path: {path_in_repo!r}")
+        if path_in_repo in desired:
+            raise ValueError(f"duplicate publication path: {path_in_repo}")
+        if normalized_prefix and not path_in_repo.startswith(
+            f"{normalized_prefix}/"
+        ):
+            raise ValueError(
+                f"publication path escapes managed prefix {normalized_prefix!r}: "
+                f"{path_in_repo!r}"
+            )
+        desired[path_in_repo] = path
+        desired_identity[path_in_repo] = _publication_file_identity(path)
+
+    api.create_repo(
+        repo_id=repo_id,
+        repo_type="model",
+        private=private,
+        exist_ok=True,
+    )
+    repo_info = api.repo_info(repo_id=repo_id, repo_type="model")
+    parent_commit = getattr(repo_info, "sha", None)
+    existing = (
+        set(
+            api.list_repo_files(
+                repo_id=repo_id,
+                repo_type="model",
+                revision=parent_commit,
+            )
+        )
+        if parent_commit
+        else set()
+    )
+    managed_existing = (
+        {
+            path
+            for path in existing
+            if path == normalized_prefix
+            or path.startswith(f"{normalized_prefix}/")
+        }
+        if normalized_prefix
+        else existing
+    )
+    stale = sorted(managed_existing - set(desired) - _HUB_MANAGED_PATHS)
+    operations = [CommitOperationDelete(path_in_repo=path) for path in stale]
+    operations.extend(
+        CommitOperationAdd(path_in_repo=path, path_or_fileobj=desired[path])
+        for path in sorted(desired)
+    )
+    print(
+        "Publishing one atomic closed snapshot: "
+        f"{len(desired)} additions, {len(stale)} stale deletions",
+        flush=True,
+    )
+    commit_info = api.create_commit(
+        repo_id=repo_id,
+        repo_type="model",
+        operations=operations,
+        commit_message=commit_message,
+        commit_description=(
+            "Complete publication payload and stale-path deletions applied in "
+            "one compare-and-swap commit."
+        ),
+        parent_commit=parent_commit,
+    )
+    commit_oid = getattr(commit_info, "oid", None)
+    if not commit_oid:
+        raise RuntimeError("Hugging Face commit did not return an immutable revision")
+    remote_files = {
+        item.path: item
+        for item in api.list_repo_tree(
+            repo_id=repo_id,
+            repo_type="model",
+            revision=commit_oid,
+            recursive=True,
+            expand=False,
+        )
+        if hasattr(item, "blob_id")
+    }
+    remote_paths = set(remote_files)
+    remote_managed = (
+        {
+            path
+            for path in remote_paths
+            if path == normalized_prefix
+            or path.startswith(f"{normalized_prefix}/")
+        }
+        if normalized_prefix
+        else remote_paths - _HUB_MANAGED_PATHS
+    )
+    if remote_managed != set(desired):
+        missing = sorted(set(desired) - remote_managed)
+        unexpected = sorted(remote_managed - set(desired))
+        raise RuntimeError(
+            "published repository inventory mismatch: "
+            f"missing={missing}, unexpected={unexpected}"
+        )
+    for path_in_repo, identity in desired_identity.items():
+        remote = remote_files[path_in_repo]
+        if remote.size != identity["size_bytes"]:
+            raise RuntimeError(
+                f"published size mismatch for {path_in_repo}: "
+                f"expected {identity['size_bytes']}, got {remote.size}"
+            )
+        if remote.lfs is not None:
+            remote_sha256 = str(remote.lfs.sha256).removeprefix("sha256:")
+            if remote_sha256 != identity["sha256"]:
+                raise RuntimeError(
+                    f"published LFS SHA-256 mismatch for {path_in_repo}"
+                )
+        elif remote.blob_id != identity["git_blob_sha1"]:
+            raise RuntimeError(f"published Git blob mismatch for {path_in_repo}")
+    print(f"Verified closed snapshot at commit {commit_oid}", flush=True)
+    return commit_info
 
 
 def _metric_sort_key(item):
@@ -529,7 +733,7 @@ def _verify_family_data_controls(
     repo_root,
     expected_chain,
 ):
-    """Verify and select the exact v3 data-control chain used by preflight."""
+    """Verify and select the exact family data-control chain used by preflight."""
 
     from nanochat.experiment_manifest import (
         canonical_json,
@@ -805,7 +1009,10 @@ def main_family(args):
 
     from nanochat.strict_checkpoint import inspect_strict_checkpoint
     from nanochat.experiment_manifest import seal_manifest, verify_manifest_hash
-    from nanochat.tokenizer_quality import validate_tokenizer_quality_gate
+    from nanochat.tokenizer_quality import (
+        validate_tokenizer_quality_gate,
+        validate_tokenizer_sample_evidence_archive,
+    )
     from scripts.d32_family_workflow import (
         FINAL_MODEL_PUBLICATION_APPROVAL_KIND,
         _load_receipt,
@@ -814,6 +1021,7 @@ def main_family(args):
         _verify_signal_resume_gate,
         _verify_static_launcher_gate,
         collect_final_evaluation_evidence,
+        family_metric_roots,
         load_recipe,
         validate_final_model_publication_approval,
     )
@@ -988,7 +1196,7 @@ def main_family(args):
             if stage["kind"] == "trunk"
             else (
                 "cooled_final_full_resumable_retained"
-                if recipe["family_id"] == "tr_d32_general_bpe32k_v3"
+                if _family_uses_full_final_transactions(recipe["family_id"])
                 else "cooled_final_full_transaction_pending_explicit_export_policy"
             )
         )
@@ -1165,8 +1373,18 @@ def main_family(args):
         expected_vocab_size=recipe["model"]["vocab_size"],
     )
     files.extend(tokenizer_uploads)
-    tokenizer_control_root = base_dir / "control" / "tokenizer" / tokenizer_name
-    quality_root = tokenizer_control_root / "quality"
+    evidence_relative = preflight["tokenizer"].get(
+        "evidence_archive_relative_path"
+    )
+    if evidence_relative != "tokenizer_quality":
+        raise ValueError("preflight does not bind the canonical tokenizer evidence archive")
+    quality_root = corpus_root / evidence_relative
+    training_receipt, training_receipt_sha = _load_receipt(
+        tokenizer_root / "training_receipt.json", "turkish_raw_bpe_training_receipt"
+    )
+    tokenizer_package, tokenizer_package_sha = _load_receipt(
+        tokenizer_root / "package_manifest.json", "turkish_raw_bpe_tokenizer_package"
+    )
     quality_report, quality_approval = validate_tokenizer_quality_gate(
         quality_root,
         expected_package_sha256=preflight["tokenizer"]["package_manifest_sha256"],
@@ -1175,30 +1393,62 @@ def main_family(args):
         ],
         expected_production_chain=expected_chain,
     )
+    sample_manifest, dataset_payload, sample_evidence = (
+        validate_tokenizer_sample_evidence_archive(
+            quality_root,
+            training_receipt=training_receipt,
+            expected_quality_report_sha256=quality_report["canonical_sha256"],
+            expected_production_chain=expected_chain,
+            expected_parent_corpus_manifest_sha256=parent_pool_sha,
+            expected_qa_approval_sha256=qa_approval_sha,
+        )
+    )
     for name in ("quality_report.json", "quality_approval.json"):
         path = require_file(quality_root / name, f"tokenizer quality evidence {name}")
         files.append((path, repo_path("provenance", "tokenizer", "quality", name)))
 
-    sample_root = tokenizer_control_root / "sample"
-    training_receipt = _load_receipt(
-        tokenizer_root / "training_receipt.json", "turkish_raw_bpe_training_receipt"
-    )[0]
-    tokenizer_package, tokenizer_package_sha = _load_receipt(
-        tokenizer_root / "package_manifest.json", "turkish_raw_bpe_tokenizer_package"
-    )
-    sample_manifest, sample_sha = _load_receipt(
-        sample_root / "tokenizer_sample_manifest.json", "turkish_raw_bpe_training_sample"
-    )
-    dataset_manifest = require_file(
-        sample_root / "fineweb2_manifest.json", "tokenizer sample dataset manifest"
-    )
-    dataset_payload = json.loads(dataset_manifest.read_text(encoding="utf-8"))
+    sample_sha = verify_manifest_hash(sample_manifest)
     dataset_sha = verify_manifest_hash(dataset_payload)
+    corpus_tokenizer = corpus_manifest.get("tokenizer")
+    if not isinstance(corpus_tokenizer, dict):
+        raise ValueError("final corpus tokenizer evidence contract is malformed")
+    expected_sample_evidence = {
+        "relative_path": "tokenizer_quality",
+        **sample_evidence,
+    }
+    preflight_tokenizer = preflight["tokenizer"]
+    dataset_metadata = final_dataset.get("metadata", {})
     if (
         training_receipt.get("sample_manifest_sha256") != sample_sha
         or sample_manifest.get("nanochat_dataset_manifest_sha256") != dataset_sha
         or tokenizer_package_sha
         != preflight["tokenizer"]["package_manifest_sha256"]
+        or tokenizer_package.get("training_receipt_sha256")
+        != training_receipt_sha
+        or training_receipt_sha
+        != preflight_tokenizer.get("training_receipt_sha256")
+        or quality_report["canonical_sha256"]
+        != preflight_tokenizer.get("quality_report_sha256")
+        or quality_approval["canonical_sha256"]
+        != preflight_tokenizer.get("quality_approval_sha256")
+        or sample_sha != preflight_tokenizer.get("sample_manifest_sha256")
+        or dataset_sha
+        != preflight_tokenizer.get("sample_dataset_manifest_sha256")
+        or sample_evidence["files"]
+        != preflight_tokenizer.get("sample_evidence_files")
+        or corpus_tokenizer.get("training_receipt_sha256") != training_receipt_sha
+        or corpus_tokenizer.get("quality_report_sha256")
+        != quality_report["canonical_sha256"]
+        or corpus_tokenizer.get("quality_approval_sha256")
+        != quality_approval["canonical_sha256"]
+        or corpus_tokenizer.get("sample_evidence") != expected_sample_evidence
+        or dataset_metadata.get("tokenizer_quality_report_sha256")
+        != quality_report["canonical_sha256"]
+        or dataset_metadata.get("tokenizer_quality_approval_sha256")
+        != quality_approval["canonical_sha256"]
+        or dataset_metadata.get("tokenizer_sample_manifest_sha256") != sample_sha
+        or dataset_metadata.get("tokenizer_sample_dataset_manifest_sha256")
+        != dataset_sha
         or any(
             receipt.get("production_chain") != expected_chain
             or receipt.get("parent_corpus_manifest_sha256") != parent_pool_sha
@@ -1221,7 +1471,10 @@ def main_family(args):
         != qa_approval_sha
     ):
         raise ValueError("tokenizer sample provenance differs from its training receipt")
-    for path in (sample_root / "tokenizer_sample_manifest.json", dataset_manifest):
+    for path in (
+        quality_root / "tokenizer_sample_manifest.json",
+        quality_root / "fineweb2_manifest.json",
+    ):
         files.append(
             (path, repo_path("provenance", "tokenizer", "sample", path.name))
         )
@@ -1384,6 +1637,7 @@ def main_family(args):
     code_paths.update(
         {
             "scripts/d32_family_workflow.py",
+            "scripts/d32_data_prep_operator.py",
             "scripts/d32_attention_probe.py",
             "scripts/d32_static_launch_probe.py",
             "scripts/d32_wsd_train.py",
@@ -1394,6 +1648,7 @@ def main_family(args):
             "scripts/turkish_packed_sample.py",
             "scripts/turkish_packed_production.py",
             "scripts/turkish_data_backend.py",
+            "scripts/prepare_turkish_anchors.py",
             "scripts/upload_base_checkpoint_to_hf.py",
             "nanochat/experiment_manifest.py",
             "nanochat/exposure.py",
@@ -1404,6 +1659,7 @@ def main_family(args):
             "nanochat/strict_tokenizer.py",
             "nanochat/packing_capacity.py",
             "nanochat/tokenizer_quality.py",
+            "nanochat/turkish_anchor_preparation.py",
             "nanochat/training_log.py",
             "nanochat/turkish_backend.py",
             "nanochat/turkish_corpus.py",
@@ -1416,6 +1672,7 @@ def main_family(args):
             "environments/turkish-data/uv.lock",
             "schemas/artifact-manifest.schema.json",
             "schemas/dataset-manifest.schema.json",
+            "runs/uhem_d32_require_clean_code.sh",
             "runs/uhem_d32_train_node.sh",
             "runs/uhem_d32_srun_env.sh",
             "runs/uhem_d32_prepare_training_env.sh",
@@ -1456,12 +1713,20 @@ def main_family(args):
             "runs/uhem_turkish_tokenizer_quality.sbatch",
         }
     )
+    family_paths_file = _family_paths_inventory(recipe["family_id"])
+    if family_paths_file is not None:
+        code_paths.add(family_paths_file)
     for relative in sorted(code_paths):
         path = require_file(repo_root / relative, f"reviewed source {relative}")
         files.append((path, repo_path("provenance", "source", relative)))
-    add_tree(files, base_dir / "metrics" / "d32_family", repo_path("metrics", "family"))
-    add_tree(files, base_dir / "metrics" / "d32_smoke", repo_path("metrics", "smoke"))
-    add_tree(files, base_dir / "metrics" / "d32_proxy", repo_path("metrics", "proxy"))
+    for category, relative_root in family_metric_roots(
+        str(recipe["family_id"])
+    ).items():
+        add_tree(
+            files,
+            base_dir / relative_root,
+            repo_path("metrics", category),
+        )
 
     remote_paths = [remote for _local, remote in files]
     if len(remote_paths) != len(set(remote_paths)):
@@ -1543,18 +1808,13 @@ def main_family(args):
             (snapshot_by_remote.get(remote, local), remote) for local, remote in files
         ]
         api = HfApi()
-        api.create_repo(
-            repo_id=args.repo_id, repo_type="model", private=args.private, exist_ok=True
+        _publish_closed_model_snapshot(
+            api,
+            repo_id=args.repo_id,
+            files=generated + upload_files,
+            private=args.private,
+            commit_message=f"Publish complete {recipe['family_id']} snapshot",
         )
-        for local_path, path_in_repo in generated + upload_files:
-            print(f"Uploading {local_path} -> {path_in_repo}", flush=True)
-            api.upload_file(
-                repo_id=args.repo_id,
-                repo_type="model",
-                path_or_fileobj=str(local_path),
-                path_in_repo=path_in_repo,
-                commit_message=f"Upload {path_in_repo}",
-            )
     print(f"Upload complete: https://huggingface.co/{args.repo_id}")
 
 
@@ -1668,9 +1928,6 @@ def main():
     except ImportError as exc:
         raise SystemExit("Missing huggingface_hub. Install with: uv pip install -U huggingface_hub") from exc
 
-    api = HfApi()
-    api.create_repo(repo_id=args.repo_id, repo_type="model", private=args.private, exist_ok=True)
-
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         card_path = tmp_path / "README.md"
@@ -1683,15 +1940,15 @@ def main():
             (manifest_path, repo_path(prefix, "provenance", "upload_manifest.json")),
         ]
 
-        for local_path, path_in_repo in generated + files:
-            print(f"Uploading {local_path} -> {path_in_repo}", flush=True)
-            api.upload_file(
-                repo_id=args.repo_id,
-                repo_type="model",
-                path_or_fileobj=str(local_path),
-                path_in_repo=path_in_repo,
-                commit_message=f"Upload {path_in_repo}",
-            )
+        api = HfApi()
+        _publish_closed_model_snapshot(
+            api,
+            repo_id=args.repo_id,
+            files=generated + files,
+            private=args.private,
+            commit_message=f"Publish complete checkpoint step {step}",
+            managed_prefix=prefix or None,
+        )
 
     print(f"Upload complete: https://huggingface.co/{args.repo_id}")
 

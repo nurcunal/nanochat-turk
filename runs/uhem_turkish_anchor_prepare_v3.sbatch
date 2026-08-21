@@ -24,6 +24,8 @@ module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
 set -u
 
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
+source "$CODE_DIR/runs/uhem_d32_require_clean_code.sh"
+d32_require_clean_committed_code "$CODE_DIR"
 NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
 MODE="${MODE:-discovery}"
 PYTHON="${PYTHON:-$CODE_DIR/environments/turkish-data/.venv/bin/python}"

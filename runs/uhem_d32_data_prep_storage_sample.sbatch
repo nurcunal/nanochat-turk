@@ -34,14 +34,22 @@ set -u
 : "${WRITER_PROBE:?Set the sealed post-cluster writer-probe receipt}"
 : "${RESOURCE_APPROVAL:?Set the accepted backend resource approval}"
 : "${MIXTURE_QUALITY_APPROVAL:?Set the accepted manual mixture-quality approval}"
-: "${PRODUCTION_DATA_NODES:?Choose the explicit cpu2dq node count for packed production data work}"
 
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
+source "$CODE_DIR/runs/uhem_d32_require_clean_code.sh"
+d32_require_clean_committed_code "$CODE_DIR"
 NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
-POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v3.json}"
-RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v3.json}"
-CONTROL_DIR="${CONTROL_DIR:-$NANOCHAT_BASE_DIR/control/data_v3}"
-SAMPLE_RUN_DIR="${SAMPLE_RUN_DIR:-$NANOCHAT_BASE_DIR/data_backend/resource_sample_v3}"
+POLICY="${POLICY:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v4.json}"
+RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v4.json}"
+D32_PATH_CONTRACT="${D32_PATH_CONTRACT:-v4}"
+case "$D32_PATH_CONTRACT" in
+    v3|v4) source "$CODE_DIR/runs/uhem_d32_${D32_PATH_CONTRACT}_paths.sh" ;;
+    *) echo "D32_PATH_CONTRACT must equal v3 or v4" >&2; exit 2 ;;
+esac
+CONTROL_DIR="${CONTROL_DIR:-$D32_CONTROL_DIR}"
+d32_bind_canonical_path CONTROL_DIR "$D32_CONTROL_DIR"
+SAMPLE_RUN_DIR="${SAMPLE_RUN_DIR:-$D32_SAMPLE_RUN_DIR}"
+d32_bind_canonical_path SAMPLE_RUN_DIR "$D32_SAMPLE_RUN_DIR"
 SOURCE_PLAN="${SOURCE_PLAN:-$CONTROL_DIR/source_plan.json}"
 CALIBRATION="${CALIBRATION:-$CONTROL_DIR/backend_calibration.json}"
 SAMPLE_RANKS="${SAMPLE_RANKS:-$CONTROL_DIR/resource_sample_ranks.json}"
@@ -50,9 +58,22 @@ SAMPLE_OBJECT_LAUNCH_RECEIPT="${SAMPLE_OBJECT_LAUNCH_RECEIPT:-$SAMPLE_RUN_DIR/pa
 SAMPLE_BUCKET_LAUNCH_RECEIPT="${SAMPLE_BUCKET_LAUNCH_RECEIPT:-$SAMPLE_RUN_DIR/packed_bucket_launches/job$SAMPLE_BUCKET_JOB_ID/launch_receipt.json}"
 MACOCU_MANIFEST="${MACOCU_MANIFEST:-$NANOCHAT_BASE_DIR/source_data/macocu_genre_tr_v1/manifest.json}"
 BACKEND_RESOURCE_REPORT="${BACKEND_RESOURCE_REPORT:-$CONTROL_DIR/backend_resource_report.json}"
+PRODUCTION_NODE_SELECTION="${PRODUCTION_NODE_SELECTION:-$CONTROL_DIR/production_data_node_selection.json}"
 PRODUCTION_PACK_PLAN="${PRODUCTION_PACK_PLAN:-$CONTROL_DIR/production_source_pack_plan.json}"
 STORAGE_SAMPLE="${STORAGE_SAMPLE:-$CONTROL_DIR/d32_data_prep_storage_sample.json}"
-STORAGE_GATE="${STORAGE_GATE:-$NANOCHAT_BASE_DIR/control/d32/data_prep_storage_gate.json}"
+STORAGE_GATE="${STORAGE_GATE:-$D32_DATA_PREP_STORAGE_GATE}"
+d32_bind_canonical_path SOURCE_PLAN "$D32_SOURCE_PLAN"
+d32_bind_canonical_path CALIBRATION "$D32_CALIBRATION"
+d32_bind_canonical_path SAMPLE_RANKS "$D32_SAMPLE_RANKS"
+d32_bind_canonical_path SAMPLE_LANE_PLAN "$D32_LANE_PLAN"
+d32_bind_canonical_path BACKEND_RESOURCE_REPORT "$D32_BACKEND_RESOURCE_REPORT"
+d32_bind_canonical_path WRITER_PROBE "$D32_WRITER_PROBE"
+d32_bind_canonical_path RESOURCE_APPROVAL "$D32_RESOURCE_APPROVAL"
+d32_bind_canonical_path MIXTURE_QUALITY_APPROVAL "$D32_MIXTURE_QUALITY_APPROVAL"
+d32_bind_canonical_path PRODUCTION_NODE_SELECTION "$D32_PRODUCTION_NODE_SELECTION"
+d32_bind_canonical_path PRODUCTION_PACK_PLAN "$D32_PACK_PLAN"
+d32_bind_canonical_path STORAGE_SAMPLE "$D32_STORAGE_SAMPLE"
+d32_bind_canonical_path STORAGE_GATE "$D32_DATA_PREP_STORAGE_GATE"
 WORK_DIR="${WORK_DIR:-$NANOCHAT_BASE_DIR}"
 PYTHON="${PYTHON:-$CODE_DIR/environments/turkish-data/.venv/bin/python}"
 
@@ -63,7 +84,8 @@ for input in "$POLICY" "$RECIPE" "$SOURCE_PLAN" "$CALIBRATION" \
     "$SAMPLE_RANKS" "$SAMPLE_LANE_PLAN" "$SAMPLE_OBJECT_LAUNCH_RECEIPT" \
     "$SAMPLE_BUCKET_LAUNCH_RECEIPT" \
     "$MACOCU_MANIFEST" "$BACKEND_RESOURCE_REPORT" "$WRITER_PROBE" \
-    "$RESOURCE_APPROVAL" "$MIXTURE_QUALITY_APPROVAL"; do
+    "$RESOURCE_APPROVAL" "$MIXTURE_QUALITY_APPROVAL" \
+    "$PRODUCTION_NODE_SELECTION"; do
     test -f "$input"
 done
 test -d "$SAMPLE_RUN_DIR"
@@ -72,6 +94,30 @@ test ! -e "$PRODUCTION_PACK_PLAN"
 test ! -e "$STORAGE_SAMPLE"
 test ! -e "$STORAGE_GATE"
 mkdir -p "$(dirname "$STORAGE_GATE")"
+
+SELECTED_PRODUCTION_DATA_NODES="$("$PYTHON" scripts/d32_data_prep_operator.py \
+    validate-production-nodes --recipe "$RECIPE" --policy "$POLICY" \
+    --source-plan "$SOURCE_PLAN" --calibration "$CALIBRATION" \
+    --sample-run-dir "$SAMPLE_RUN_DIR" \
+    --backend-resource-report "$BACKEND_RESOURCE_REPORT" \
+    --writer-probe "$WRITER_PROBE" \
+    --node-selection "$PRODUCTION_NODE_SELECTION")"
+case "$SELECTED_PRODUCTION_DATA_NODES" in
+    ''|*[!0-9]*)
+        echo "validated production data node count is not a positive integer" >&2
+        exit 2
+        ;;
+esac
+if [ "$SELECTED_PRODUCTION_DATA_NODES" -le 0 ]; then
+    echo "validated production data node count must be positive" >&2
+    exit 2
+fi
+if [ -n "${PRODUCTION_DATA_NODES:-}" ] && \
+    [ "$PRODUCTION_DATA_NODES" != "$SELECTED_PRODUCTION_DATA_NODES" ]; then
+    echo "PRODUCTION_DATA_NODES disagrees with the sealed node selection" >&2
+    exit 2
+fi
+PRODUCTION_DATA_NODES="$SELECTED_PRODUCTION_DATA_NODES"
 
 "$PYTHON" scripts/d32_family_workflow.py seal-data-prep-pack-plan \
     --recipe "$RECIPE" --policy "$POLICY" --source-plan "$SOURCE_PLAN" \

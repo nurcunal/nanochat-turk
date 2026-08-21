@@ -27,11 +27,11 @@ set -u
 
 export CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
 export NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
-export RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v3.json}"
-export PREFLIGHT_RECEIPT="${PREFLIGHT_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/preflight.json}"
-export ATTENTION_PROBE_RECEIPT="${ATTENTION_PROBE_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32/attention_probe.json}"
-export WSD_PROXY_APPROVAL="${WSD_PROXY_APPROVAL:-$NANOCHAT_BASE_DIR/control/d32/wd_proxy_approval.json}"
-export STATIC_LAUNCHER_GATE="${STATIC_LAUNCHER_GATE:-$NANOCHAT_BASE_DIR/control/d32/static_launcher_gate_ws4.json}"
+export RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v4.json}"
+export PREFLIGHT_RECEIPT="${PREFLIGHT_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32_v4/preflight.json}"
+export ATTENTION_PROBE_RECEIPT="${ATTENTION_PROBE_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32_v4/attention_probe.json}"
+export WSD_PROXY_APPROVAL="${WSD_PROXY_APPROVAL:-$NANOCHAT_BASE_DIR/control/d32_v4/wd_proxy_approval.json}"
+export STATIC_LAUNCHER_GATE="${STATIC_LAUNCHER_GATE:-$NANOCHAT_BASE_DIR/control/d32_v4/static_launcher_gate_ws4.json}"
 cd "$CODE_DIR"
 
 if [ "${SLURM_NNODES:-0}" -ne 1 ] || [ "${SLURM_NTASKS:-0}" -ne 4 ]; then
@@ -55,11 +55,11 @@ export DEPTH=32 DEVICE_BATCH_SIZE=4 TOTAL_BATCH_SIZE=2097152
 export NUM_ITERATIONS=6 STOP_AT_STEP=6 SEED=42 EVAL_EVERY=250
 export LR_SCHEDULE=wsd WSD_COOLDOWN_START_STEP=-1
 export STUDY_MANIFEST="$RECIPE"
-export DATA_DIR="${DATA_DIR:-$NANOCHAT_BASE_DIR/pretrain_data/tr_general_clean_v3}"
-export TOKENIZER_MANIFEST="${TOKENIZER_MANIFEST:-$NANOCHAT_BASE_DIR/tokenizers/tr_general_raw_bpe_32k_v3/package_manifest.json}"
+export DATA_DIR="${DATA_DIR:-$NANOCHAT_BASE_DIR/pretrain_data/tr_general_clean_v4}"
+export TOKENIZER_MANIFEST="${TOKENIZER_MANIFEST:-$NANOCHAT_BASE_DIR/tokenizers/tr_general_raw_bpe_32k_v4/package_manifest.json}"
 export VALIDATION_MANIFEST="$DATA_DIR/validation_exposure_manifest.json"
 export EXPOSURE_PLAN="$DATA_DIR/training_exposure_signal_smoke_ws4_seed42.json"
-export METRICS_DIR="$NANOCHAT_BASE_DIR/metrics/d32_signal_smoke/ws4"
+export METRICS_DIR="$NANOCHAT_BASE_DIR/metrics/d32_v4/signal_smoke/ws4"
 export CODE_REVISION EFFECTIVE_BASE_WEIGHT_DECAY WSD_WEIGHT_DECAY_COOLDOWN
 export ATTENTION_BACKEND WINDOW_PATTERN ATTENTION_PROBE_RECEIPT
 export NNODES=1 NPROC_PER_NODE=4
@@ -68,7 +68,7 @@ export MASTER_ADDR="${SLURM_HOSTS[0]}"
 export MASTER_PORT="${MASTER_PORT:-$((20000 + SLURM_JOB_ID % 40000))}"
 
 RESTART_COUNT="${SLURM_RESTART_COUNT:-0}"
-CONTROL_ROOT="$NANOCHAT_BASE_DIR/control/d32/launcher/job${SLURM_JOB_ID}/signal_smoke"
+CONTROL_ROOT="$NANOCHAT_BASE_DIR/control/d32_v4/launcher/job${SLURM_JOB_ID}/signal_smoke"
 ATTEMPT_ROOT="$CONTROL_ROOT/attempt${RESTART_COUNT}"
 if [ -e "$ATTEMPT_ROOT" ]; then
     echo "Refusing to reuse signal-smoke attempt: $ATTEMPT_ROOT" >&2

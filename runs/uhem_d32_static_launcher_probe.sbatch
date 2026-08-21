@@ -25,7 +25,7 @@ set -u
 
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
 NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
-RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v3.json}"
+RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v4.json}"
 cd "$CODE_DIR"
 
 if [ "${SLURM_NNODES:-0}" -ne 1 ] || [ "${SLURM_NTASKS:-0}" -ne 4 ]; then
@@ -38,7 +38,7 @@ export MASTER_PORT="${MASTER_PORT:-$((20000 + SLURM_JOB_ID % 40000))}"
 export NPROC_PER_NODE=4
 FAMILY_ID="${FAMILY_ID:-$(.venv/bin/python -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["family_id"])' "$RECIPE")}"
 RUN_ID="${FAMILY_ID}_launcher_probe_ws4"
-CONTROL_ROOT="$NANOCHAT_BASE_DIR/control/d32/launcher/job${SLURM_JOB_ID}"
+CONTROL_ROOT="$NANOCHAT_BASE_DIR/control/d32_v4/launcher/job${SLURM_JOB_ID}"
 RANK_DIR="$CONTROL_ROOT/static_nccl_probe"
 RAW_RECEIPT="$CONTROL_ROOT/static_nccl_probe.json"
 if [ -e "$CONTROL_ROOT" ]; then
