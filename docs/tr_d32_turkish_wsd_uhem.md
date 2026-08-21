@@ -158,6 +158,7 @@ Slurm log:
 export CODE_DIR="$(pwd -P)"
 export NANOCHAT_BASE_DIR=/ari/users/nunal/nanochat-turk-d32-general-v3
 export D32_PATH_CONTRACT=v4
+source "$CODE_DIR/runs/uhem_slurm_submit.sh"
 SBATCH_LOG_DIR="$NANOCHAT_BASE_DIR/logs/d32_v4"
 mkdir -p "$SBATCH_LOG_DIR"
 SBATCH_LOG_ARGS=(--output="$SBATCH_LOG_DIR/%x-%j.out" --error="$SBATCH_LOG_DIR/%x-%j.err")
@@ -309,6 +310,7 @@ artifacts use v4-only paths:
 export CODE_DIR="$(pwd -P)"
 export NANOCHAT_BASE_DIR=/ari/users/nunal/nanochat-turk-d32-general-v3
 export D32_PATH_CONTRACT=v4
+source "$CODE_DIR/runs/uhem_slurm_submit.sh"
 DATA_PYTHON="$CODE_DIR/environments/turkish-data/.venv/bin/python"
 TRAIN_PYTHON="$CODE_DIR/.venv/bin/python"
 POLICY="$CODE_DIR/configs/pretrain/tr_d32_turkish_general_v4.json"
@@ -361,33 +363,33 @@ CODE_REVISION="$(git -C "$CODE_DIR" rev-parse HEAD)"
 test "${#CODE_REVISION}" -eq 40
 test -z "$(git -C "$CODE_DIR" status --porcelain --untracked-files=all)"
 
-DATA_ENV_JOB_ID="$(sbatch --parsable "${SBATCH_LOG_ARGS[@]}" \
+DATA_ENV_JOB_ID="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" \
   --export="ALL,CODE_DIR=$CODE_DIR,CODE_REVISION=$CODE_REVISION" \
   runs/uhem_turkish_prepare_data_env.sbatch)"
 
-BOOTSTRAP_JOB_ID="$(sbatch --parsable "${SBATCH_LOG_ARGS[@]}" \
+BOOTSTRAP_JOB_ID="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" \
   --dependency="afterok:$DATA_ENV_JOB_ID" \
   --export="ALL,CODE_DIR=$CODE_DIR,CODE_REVISION=$CODE_REVISION,NANOCHAT_BASE_DIR=$NANOCHAT_BASE_DIR,D32_PATH_CONTRACT=v4,POLICY=$POLICY,CONTROL_DIR=$DATA_CONTROL_DIR,SOURCE_PLAN=$SOURCE_PLAN,CALIBRATION=$CALIBRATION,SAMPLE_RANKS=$SAMPLE_RANKS,MACOCU_MANIFEST=$MACOCU_MANIFEST,MOT_MANIFEST=$MOT_MANIFEST,PARLAMINT_MANIFEST=$PARLAMINT_MANIFEST,MODEL_DIR=$MODEL_DIR" \
   runs/uhem_turkish_data_bootstrap.sbatch)"
 
-SAMPLE_OBJECT_JOB_ID="$(sbatch --parsable "${SBATCH_LOG_ARGS[@]}" \
+SAMPLE_OBJECT_JOB_ID="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" \
   --dependency="afterok:$BOOTSTRAP_JOB_ID" \
   --export="ALL,CODE_DIR=$CODE_DIR,CODE_REVISION=$CODE_REVISION,NANOCHAT_BASE_DIR=$NANOCHAT_BASE_DIR,D32_PATH_CONTRACT=v4,POLICY=$POLICY,CONTROL_DIR=$DATA_CONTROL_DIR,SOURCE_PLAN=$SOURCE_PLAN,CALIBRATION=$CALIBRATION,SAMPLE_RANKS=$SAMPLE_RANKS,LANE_PLAN=$SAMPLE_LANE_PLAN,DATA_RUN_DIR=$SAMPLE_RUN_DIR,GLOTLID_MODEL=$GLOTLID_MODEL" \
   runs/uhem_turkish_data_objects_packed_sample.sbatch)"
 OBJECT_SAMPLE_LAUNCH_RECEIPT="$SAMPLE_RUN_DIR/packed_sample_launches/job$SAMPLE_OBJECT_JOB_ID/launch_receipt.json"
 
-SAMPLE_BUCKET_JOB_ID="$(sbatch --parsable "${SBATCH_LOG_ARGS[@]}" \
+SAMPLE_BUCKET_JOB_ID="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" \
   --dependency="afterok:$SAMPLE_OBJECT_JOB_ID" \
   --export="ALL,CODE_DIR=$CODE_DIR,CODE_REVISION=$CODE_REVISION,NANOCHAT_BASE_DIR=$NANOCHAT_BASE_DIR,D32_PATH_CONTRACT=v4,POLICY=$POLICY,CONTROL_DIR=$DATA_CONTROL_DIR,SOURCE_PLAN=$SOURCE_PLAN,CALIBRATION=$CALIBRATION,SAMPLE_RANKS=$SAMPLE_RANKS,LANE_PLAN=$SAMPLE_LANE_PLAN,DATA_RUN_DIR=$SAMPLE_RUN_DIR,OBJECT_SAMPLE_LAUNCH_RECEIPT=$OBJECT_SAMPLE_LAUNCH_RECEIPT" \
   runs/uhem_turkish_data_buckets_packed_sample.sbatch)"
 SAMPLE_BUCKET_LAUNCH_RECEIPT="$SAMPLE_RUN_DIR/packed_bucket_launches/job$SAMPLE_BUCKET_JOB_ID/launch_receipt.json"
 
-SAMPLE_CLUSTER_JOB_ID="$(sbatch --parsable "${SBATCH_LOG_ARGS[@]}" \
+SAMPLE_CLUSTER_JOB_ID="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" \
   --dependency="afterok:$SAMPLE_BUCKET_JOB_ID" \
   --export="ALL,CODE_DIR=$CODE_DIR,CODE_REVISION=$CODE_REVISION,NANOCHAT_BASE_DIR=$NANOCHAT_BASE_DIR,D32_PATH_CONTRACT=v4,POLICY=$POLICY,CONTROL_DIR=$DATA_CONTROL_DIR,SOURCE_PLAN=$SOURCE_PLAN,CALIBRATION=$CALIBRATION,DATA_RUN_DIR=$SAMPLE_RUN_DIR,SAMPLE=1" \
   runs/uhem_turkish_data_cluster.sbatch)"
 
-SAMPLE_QUALITY_AUDIT_JOB_ID="$(sbatch --parsable "${SBATCH_LOG_ARGS[@]}" \
+SAMPLE_QUALITY_AUDIT_JOB_ID="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" \
   --dependency="afterok:$SAMPLE_CLUSTER_JOB_ID" \
   --export="ALL,CODE_DIR=$CODE_DIR,CODE_REVISION=$CODE_REVISION,NANOCHAT_BASE_DIR=$NANOCHAT_BASE_DIR,D32_PATH_CONTRACT=v4,POLICY=$POLICY,CONTROL_DIR=$DATA_CONTROL_DIR,SOURCE_PLAN=$SOURCE_PLAN,CALIBRATION=$CALIBRATION,SAMPLE_RUN_DIR=$SAMPLE_RUN_DIR,AUDIT_OUTPUT_DIR=$DATA_CONTROL_DIR/sample_quality_audit" \
   runs/uhem_turkish_sample_quality_audit.sbatch)"
@@ -410,7 +412,7 @@ submit the sole writer-probe/report producer and the read-only quality audit:
 QUOTA_HEADROOM_BYTES="$("$DATA_PYTHON" scripts/d32_data_prep_operator.py \
   live-beegfs-headroom --recipe "$RECIPE" --work-dir "$NANOCHAT_BASE_DIR")"
 
-WRITER_PROBE_JOB_ID="$(sbatch --parsable "${SBATCH_LOG_ARGS[@]}" \
+WRITER_PROBE_JOB_ID="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" \
   --dependency="afterok:$SAMPLE_CLUSTER_JOB_ID" \
   --export="ALL,CODE_DIR=$CODE_DIR,CODE_REVISION=$CODE_REVISION,NANOCHAT_BASE_DIR=$NANOCHAT_BASE_DIR,D32_PATH_CONTRACT=v4,POLICY=$POLICY,RECIPE=$RECIPE,CONTROL_DIR=$DATA_CONTROL_DIR,SOURCE_PLAN=$SOURCE_PLAN,CALIBRATION=$CALIBRATION,SAMPLE_RUN_DIR=$SAMPLE_RUN_DIR,BACKEND_RESOURCE_REPORT=$BACKEND_RESOURCE_REPORT,WRITER_PROBE=$WRITER_PROBE,QUOTA_HEADROOM_BYTES=$QUOTA_HEADROOM_BYTES" \
   runs/uhem_d32_data_prep_writer_probe.sbatch)"
@@ -471,7 +473,7 @@ that produced the named evidence:
 : "${SAMPLE_QUALITY_AUDIT_JOB_ID:?}"
 : "${WRITER_PROBE_JOB_ID:?}"
 
-STORAGE_GATE_JOB_ID="$(sbatch --parsable "${SBATCH_LOG_ARGS[@]}" \
+STORAGE_GATE_JOB_ID="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" \
   --dependency="afterok:$MACOCU_JOB_ID:$BOOTSTRAP_JOB_ID:$SAMPLE_OBJECT_JOB_ID:$SAMPLE_BUCKET_JOB_ID:$SAMPLE_CLUSTER_JOB_ID:$SAMPLE_QUALITY_AUDIT_JOB_ID:$WRITER_PROBE_JOB_ID" \
   --export="ALL,CODE_DIR=$CODE_DIR,NANOCHAT_BASE_DIR=$NANOCHAT_BASE_DIR,MACOCU_JOB_ID=$MACOCU_JOB_ID,BOOTSTRAP_JOB_ID=$BOOTSTRAP_JOB_ID,SAMPLE_OBJECT_JOB_ID=$SAMPLE_OBJECT_JOB_ID,SAMPLE_BUCKET_JOB_ID=$SAMPLE_BUCKET_JOB_ID,SAMPLE_CLUSTER_JOB_ID=$SAMPLE_CLUSTER_JOB_ID,SAMPLE_QUALITY_AUDIT_JOB_ID=$SAMPLE_QUALITY_AUDIT_JOB_ID,WRITER_PROBE_JOB_ID=$WRITER_PROBE_JOB_ID,WRITER_PROBE=$WRITER_PROBE,RESOURCE_APPROVAL=$RESOURCE_APPROVAL,MIXTURE_QUALITY_APPROVAL=$MIXTURE_QUALITY_APPROVAL,PRODUCTION_NODE_SELECTION=$PRODUCTION_NODE_SELECTION,PRODUCTION_DATA_NODES=$PRODUCTION_DATA_NODES" \
   runs/uhem_d32_data_prep_storage_sample.sbatch)"
@@ -511,23 +513,23 @@ print(n)' \
 OBJECT_ARRAY_MAX=$((PRODUCTION_DATA_NODES - 1))
 COMMON_DATA_EXPORTS="CODE_DIR=$CODE_DIR,NANOCHAT_BASE_DIR=$NANOCHAT_BASE_DIR,RESOURCE_APPROVAL=$RESOURCE_APPROVAL,MIXTURE_QUALITY_APPROVAL=$MIXTURE_QUALITY_APPROVAL,DATA_PREP_STORAGE_GATE=$DATA_PREP_STORAGE_GATE"
 
-OBJECT_JOB_ID="$(sbatch --parsable "${SBATCH_ARRAY_LOG_ARGS[@]}" --array="0-$OBJECT_ARRAY_MAX" \
+OBJECT_JOB_ID="$(d32_submit_sbatch "${SBATCH_ARRAY_LOG_ARGS[@]}" --array="0-$OBJECT_ARRAY_MAX" \
   --dependency="afterok:$STORAGE_GATE_JOB_ID" \
   --export="ALL,$COMMON_DATA_EXPORTS" \
   runs/uhem_turkish_data_objects_packed_production.sbatch)"
 
 OBJECT_NODE_RECEIPT_DIR="$DATA_RUN_DIR/packed_production_objects/node_receipts"
-BUCKET_JOB_ID="$(sbatch --parsable "${SBATCH_LOG_ARGS[@]}" --dependency="afterok:$OBJECT_JOB_ID" \
+BUCKET_JOB_ID="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" --dependency="afterok:$OBJECT_JOB_ID" \
   --export="ALL,$COMMON_DATA_EXPORTS,OBJECT_NODE_RECEIPT_DIR=$OBJECT_NODE_RECEIPT_DIR" \
   runs/uhem_turkish_data_buckets_packed_production.sbatch)"
 
 BUCKET_LAUNCH_RECEIPT="$DATA_RUN_DIR/packed_production_buckets/job$BUCKET_JOB_ID/launch_receipt.json"
-CLUSTER_JOB_ID="$(sbatch --parsable "${SBATCH_LOG_ARGS[@]}" --dependency="afterok:$BUCKET_JOB_ID" \
+CLUSTER_JOB_ID="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" --dependency="afterok:$BUCKET_JOB_ID" \
   --export="ALL,$COMMON_DATA_EXPORTS,SAMPLE=0,SOURCE_PLAN=$SOURCE_PLAN,CALIBRATION=$CALIBRATION,PACK_PLAN=$PACK_PLAN,DATA_RUN_DIR=$DATA_RUN_DIR,OBJECT_NODE_RECEIPT_DIR=$OBJECT_NODE_RECEIPT_DIR,BUCKET_LAUNCH_RECEIPT=$BUCKET_LAUNCH_RECEIPT" \
   runs/uhem_turkish_data_cluster.sbatch)"
 
 CLUSTER_LAUNCH_RECEIPT="$DATA_RUN_DIR/packed_production_cluster/job$CLUSTER_JOB_ID/launch_receipt.json"
-POOL_JOB_ID="$(sbatch --parsable "${SBATCH_LOG_ARGS[@]}" --dependency="afterok:$CLUSTER_JOB_ID" \
+POOL_JOB_ID="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" --dependency="afterok:$CLUSTER_JOB_ID" \
   --export="ALL,$COMMON_DATA_EXPORTS,CLUSTER_LAUNCH_RECEIPT=$CLUSTER_LAUNCH_RECEIPT" \
   runs/uhem_turkish_production_pool.sbatch)"
 ```
@@ -550,7 +552,7 @@ pinned files `token_bytes.pt`, `tokenizer.pkl`, and `tokenizer_config.json`:
 ```bash
 bash runs/uhem_d32_prepare_training_env.sh
 
-TOKENIZER_SAMPLE_JOB_ID="$(sbatch --parsable "${SBATCH_LOG_ARGS[@]}" --dependency="afterok:$POOL_JOB_ID" \
+TOKENIZER_SAMPLE_JOB_ID="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" --dependency="afterok:$POOL_JOB_ID" \
   --export="ALL,$COMMON_DATA_EXPORTS,CLUSTER_LAUNCH_RECEIPT=$CLUSTER_LAUNCH_RECEIPT" \
   runs/uhem_turkish_tokenizer_sample.sbatch)"
 
@@ -559,7 +561,7 @@ TOKENIZER_SAMPLE_JOB_ID="$(sbatch --parsable "${SBATCH_LOG_ARGS[@]}" --dependenc
   --quality-output-dir "$TOKENIZER_QUALITY_DIR" \
   --baseline-tokenizer-dir "$BASELINE_TOKENIZER_DIR" --baseline-preflight-only
 
-TOKENIZER_TRAIN_JOB_ID="$(sbatch --parsable "${SBATCH_LOG_ARGS[@]}" \
+TOKENIZER_TRAIN_JOB_ID="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" \
   --dependency="afterok:$TOKENIZER_SAMPLE_JOB_ID" \
   --export="ALL,$COMMON_DATA_EXPORTS,CLUSTER_LAUNCH_RECEIPT=$CLUSTER_LAUNCH_RECEIPT,BASELINE_TOKENIZER_DIR=$BASELINE_TOKENIZER_DIR" \
   runs/uhem_turkish_tokenizer_train.sbatch)"
@@ -570,12 +572,12 @@ After training completes, inspect
 pass; only then submit the manual accepted decision and packing preflight:
 
 ```bash
-TOKENIZER_QUALITY_JOB_ID="$(sbatch --parsable "${SBATCH_LOG_ARGS[@]}" \
+TOKENIZER_QUALITY_JOB_ID="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" \
   --dependency="afterok:$TOKENIZER_TRAIN_JOB_ID" \
   --export="ALL,$COMMON_DATA_EXPORTS,CLUSTER_LAUNCH_RECEIPT=$CLUSTER_LAUNCH_RECEIPT,TOKENIZER_REVIEWER=$REVIEWER,TOKENIZER_REVIEWED_AT_UTC=$REVIEWED_AT_UTC,TOKENIZER_DECISION=accepted" \
   runs/uhem_turkish_tokenizer_quality.sbatch)"
 
-PACKING_JOB_ID="$(sbatch --parsable "${SBATCH_LOG_ARGS[@]}" \
+PACKING_JOB_ID="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" \
   --dependency="afterok:$TOKENIZER_QUALITY_JOB_ID" \
   --export="ALL,$COMMON_DATA_EXPORTS,CLUSTER_LAUNCH_RECEIPT=$CLUSTER_LAUNCH_RECEIPT" \
   runs/uhem_turkish_packing_preflight.sbatch)"
@@ -602,7 +604,7 @@ if x.get("kind") != "turkish_packing_preflight_approval" or x.get("decision") !=
     raise SystemExit("invalid accepted packing approval/source-token target")
 print(n)' \
   "$PACKING_CONTROL_DIR/packing_preflight_approval.json")"
-FINAL_CORPUS_JOB_ID="$(sbatch --parsable "${SBATCH_LOG_ARGS[@]}" --dependency="afterok:$PACKING_JOB_ID" \
+FINAL_CORPUS_JOB_ID="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" --dependency="afterok:$PACKING_JOB_ID" \
   --export="ALL,$COMMON_DATA_EXPORTS,CLUSTER_LAUNCH_RECEIPT=$CLUSTER_LAUNCH_RECEIPT,APPROVED_SOURCE_TOKENS=$APPROVED_SOURCE_TOKENS" \
   runs/uhem_turkish_corpus_finalize.sbatch)"
 ```

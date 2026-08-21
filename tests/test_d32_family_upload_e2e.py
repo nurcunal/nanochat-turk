@@ -1223,6 +1223,7 @@ def test_main_family_dry_run_verifies_complete_publication_inventory(
         "provenance/tokenizer/sample/fineweb2_manifest.json",
         "provenance/source/nanochat/turkish_anchor_preparation.py",
         "provenance/source/runs/uhem_d32_require_clean_code.sh",
+        "provenance/source/runs/uhem_slurm_submit.sh",
         "provenance/source/scripts/prepare_turkish_anchors.py",
     ):
         assert f"-> {remote}" in output

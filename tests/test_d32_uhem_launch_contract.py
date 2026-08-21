@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import re
+import subprocess
 from pathlib import Path
 
 from scripts.build_turkish_pretrain_corpus import build_parser as build_corpus_parser
@@ -71,7 +73,7 @@ def test_smoke_submitter_rejects_fixed_output_collisions_before_sbatch() -> None
         encoding="utf-8"
     )
     branch = source.split('if [ "$mode" = --submit-smoke-chain ]; then', 1)[1]
-    first_sbatch = branch.index('smoke8_job="$(sbatch')
+    first_sbatch = branch.index('smoke8_job="$(d32_submit_sbatch')
     collision_guard = branch.index('assert_smoke_output_absent "$path"')
     assert collision_guard < first_sbatch
     assert 'if [ -e "$path" ] || [ -L "$path" ]; then' in branch[:first_sbatch]
@@ -95,14 +97,61 @@ def test_active_submitter_routes_every_slurm_stream_outside_code_dir() -> None:
     assert 'SBATCH_LOG_DIR="$NANOCHAT_BASE_DIR/logs/d32_v4"' in source
     assert '--output="$SBATCH_LOG_DIR/%x-%j.out"' in source
     assert '--error="$SBATCH_LOG_DIR/%x-%j.err"' in source
-    submissions = [line for line in source.splitlines() if "$(sbatch " in line]
+    submissions = [
+        line for line in source.splitlines() if "$(d32_submit_sbatch " in line
+    ]
     assert len(submissions) == 12
     assert all('"${SBATCH_LOG_ARGS[@]}"' in line for line in submissions)
+    assert 'source "$CODE_DIR/runs/uhem_slurm_submit.sh"' in source
 
     # Plan mode remains read-only even when the BeeGFS log directory is absent.
     plan_exit = source.index("fi\n\nmkdir -p \"$SBATCH_LOG_DIR\"")
     plan_branch = source.index('if [ "$mode" = --plan ]; then')
     assert plan_branch < plan_exit
+
+
+def test_uhem_submit_helper_extracts_one_id_and_rejects_notice_only_success(
+    tmp_path: Path,
+) -> None:
+    fake_sbatch = tmp_path / "sbatch"
+    fake_sbatch.write_text(
+        "#!/bin/bash\n"
+        "printf '%s\\n' 'sbatch: BILGI: billing notice' '512999;altay'\n",
+        encoding="utf-8",
+    )
+    fake_sbatch.chmod(0o755)
+    environment = dict(os.environ)
+    environment["PATH"] = f"{tmp_path}:{environment['PATH']}"
+    helper = ROOT / "runs" / "uhem_slurm_submit.sh"
+    command = (
+        'source "$1"; job_id="$(d32_submit_sbatch --dependency=afterok:1 x.sbatch)"; '
+        'printf "captured=%s\\n" "$job_id"'
+    )
+    result = subprocess.run(
+        ["bash", "-c", command, "bash", str(helper)],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "captured=512999\n"
+    assert "billing notice" in result.stderr
+
+    fake_sbatch.write_text(
+        "#!/bin/bash\nprintf '%s\\n' 'sbatch: error: rejected but status zero'\n",
+        encoding="utf-8",
+    )
+    fake_sbatch.chmod(0o755)
+    result = subprocess.run(
+        ["bash", "-c", 'source "$1"; d32_submit_sbatch x.sbatch', "bash", str(helper)],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    assert result.returncode != 0
+    assert "without a parsable allocation ID" in result.stderr
 
 
 def test_v4_runbook_routes_every_sbatch_invocation_outside_code_dir() -> None:
@@ -115,7 +164,7 @@ def test_v4_runbook_routes_every_sbatch_invocation_outside_code_dir() -> None:
     submission_lines = [
         line
         for line in source.splitlines()
-        if re.search(r"(?<!\.)\bsbatch\b", line)
+        if re.search(r"(?<!\.)\bsbatch\b|\bd32_submit_sbatch\b", line)
     ]
     assert submission_lines
     assert all(
@@ -128,7 +177,7 @@ def test_smoke_submitter_cannot_redirect_the_gate_collision_check() -> None:
     submitter = (ROOT / "runs" / "uhem_submit_d32_family.sh").read_text(
         encoding="utf-8"
     )
-    first_sbatch = submitter.index('probe_job="$(sbatch')
+    first_sbatch = submitter.index('probe_job="$(d32_submit_sbatch')
     prefix = submitter[:first_sbatch]
     assert (
         'canonical_production_gate="$NANOCHAT_BASE_DIR/control/d32_v4/'
@@ -149,7 +198,7 @@ def test_smoke_submitter_cannot_inherit_a_different_family_id() -> None:
     submitter = (ROOT / "runs" / "uhem_submit_d32_family.sh").read_text(
         encoding="utf-8"
     )
-    first_sbatch = submitter.index('probe_job="$(sbatch')
+    first_sbatch = submitter.index('probe_job="$(d32_submit_sbatch')
     prefix = submitter[:first_sbatch]
     assert 'recipe_family_id="$(.venv/bin/python' in prefix
     assert 'if [ -n "${FAMILY_ID:-}" ] && [ "$FAMILY_ID" != "$recipe_family_id" ]; then' in prefix
@@ -235,6 +284,7 @@ def test_family_upload_retains_end_to_end_reproduction_sources() -> None:
         '"environments/turkish-data/uv.lock"',
         '"schemas/artifact-manifest.schema.json"',
         '"schemas/dataset-manifest.schema.json"',
+        '"runs/uhem_slurm_submit.sh"',
         '"runs/uhem_d32_prepare_training_env.sh"',
         '"runs/uhem_d32_data_prep_storage_sample.sbatch"',
         '"runs/uhem_d32_data_prep_writer_probe.sbatch"',
@@ -504,13 +554,13 @@ def test_runbook_executes_complete_v4_bootstrap_sample_chain() -> None:
     )
     block = source[source.index("From the clean v4 checkout") :]
     ordered = (
-        'DATA_ENV_JOB_ID="$(sbatch',
-        'BOOTSTRAP_JOB_ID="$(sbatch',
-        'SAMPLE_OBJECT_JOB_ID="$(sbatch',
+        'DATA_ENV_JOB_ID="$(d32_submit_sbatch',
+        'BOOTSTRAP_JOB_ID="$(d32_submit_sbatch',
+        'SAMPLE_OBJECT_JOB_ID="$(d32_submit_sbatch',
         'OBJECT_SAMPLE_LAUNCH_RECEIPT=',
-        'SAMPLE_BUCKET_JOB_ID="$(sbatch',
-        'SAMPLE_CLUSTER_JOB_ID="$(sbatch',
-        'SAMPLE_QUALITY_AUDIT_JOB_ID="$(sbatch',
+        'SAMPLE_BUCKET_JOB_ID="$(d32_submit_sbatch',
+        'SAMPLE_CLUSTER_JOB_ID="$(d32_submit_sbatch',
+        'SAMPLE_QUALITY_AUDIT_JOB_ID="$(d32_submit_sbatch',
     )
     positions = [block.index(fragment) for fragment in ordered]
     assert positions == sorted(positions)

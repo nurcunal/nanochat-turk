@@ -1673,6 +1673,7 @@ def main_family(args):
             "schemas/artifact-manifest.schema.json",
             "schemas/dataset-manifest.schema.json",
             "runs/uhem_d32_require_clean_code.sh",
+            "runs/uhem_slurm_submit.sh",
             "runs/uhem_d32_train_node.sh",
             "runs/uhem_d32_srun_env.sh",
             "runs/uhem_d32_prepare_training_env.sh",
