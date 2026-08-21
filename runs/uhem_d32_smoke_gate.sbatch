@@ -24,12 +24,18 @@ set -u
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
 NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
 RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v3.json}"
+PRODUCTION_GATE="${PRODUCTION_GATE:-$NANOCHAT_BASE_DIR/control/d32/production_topology_gate.json}"
+canonical_production_gate="$NANOCHAT_BASE_DIR/control/d32/production_topology_gate.json"
+if [ "$PRODUCTION_GATE" != "$canonical_production_gate" ]; then
+    echo "PRODUCTION_GATE must equal the fixed topology-gate path: $canonical_production_gate" >&2
+    exit 2
+fi
 cd "$CODE_DIR"
 
 compare_args=(
     --recipe="$RECIPE"
     --smoke-8gpu="$NANOCHAT_BASE_DIR/control/d32/smoke_ws8.json"
-    --output="$NANOCHAT_BASE_DIR/control/d32/production_topology_gate.json"
+    --output="$PRODUCTION_GATE"
 )
 smoke16="$NANOCHAT_BASE_DIR/control/d32/smoke_ws16.json"
 if [ -f "$smoke16" ]; then

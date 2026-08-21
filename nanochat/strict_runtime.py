@@ -6,6 +6,7 @@ import hashlib
 import inspect
 import json
 import math
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -1570,6 +1571,399 @@ def validate_proxy_approval(
     return approval, digest
 
 
+def _strict_smoke_number(value: Any, label: str, *, allow_zero: bool = False) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise StrictTrainingError(f"{label} must be finite numeric")
+    observed = float(value)
+    if not math.isfinite(observed) or observed < 0 or (observed == 0 and not allow_zero):
+        qualifier = "non-negative" if allow_zero else "positive"
+        raise StrictTrainingError(f"{label} must be {qualifier} and finite")
+    return observed
+
+
+def _strict_smoke_sha256(value: Any, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise StrictTrainingError(f"{label} must be a lowercase SHA-256")
+    return value
+
+
+def _fixed_smoke_receipt(
+    gate_path: Path,
+    *,
+    world_size: int,
+    recipe: Mapping[str, Any],
+    recipe_sha256: str,
+    preflight_sha256: str,
+) -> tuple[dict[str, Any], str, list[dict[str, int]]]:
+    """Reopen and semantically verify one fixed sibling smoke receipt."""
+
+    path = gate_path.parent / f"smoke_ws{world_size}.json"
+    if path.is_symlink() or not path.is_file():
+        raise StrictTrainingError(
+            f"fixed ws{world_size} smoke receipt is missing or unsafe: {path}"
+        )
+    try:
+        value = load_json_strict(path)
+        if not isinstance(value, dict):
+            raise StrictTrainingError(
+                f"fixed ws{world_size} smoke receipt must contain an object"
+            )
+        digest = verify_manifest_hash(value)
+    except (OSError, ValueError) as exc:
+        if isinstance(exc, StrictTrainingError):
+            raise
+        raise StrictTrainingError(
+            f"invalid fixed ws{world_size} smoke receipt: {exc}"
+        ) from exc
+
+    distributed = recipe["distributed_gate"]
+    gpus_per_node = int(distributed["gpus_per_node"])
+    nodes = world_size // gpus_per_node
+    first = int(distributed["benchmark_first_update"])
+    last = int(distributed["benchmark_last_update"])
+    measured_updates = last - first + 1
+    scheduled_positions = measured_updates * int(recipe["training"]["global_batch_tokens"])
+    expected = {
+        "schema_version": "1.0",
+        "kind": "d32_distributed_smoke_receipt",
+        "family_id": recipe["family_id"],
+        "preflight_receipt_sha256": preflight_sha256,
+        "nodes": nodes,
+        "gpus_per_node": gpus_per_node,
+        "world_size": world_size,
+        "measured_first_update": first,
+        "measured_last_update": last,
+        "measured_updates": measured_updates,
+        "scheduled_positions": scheduled_positions,
+        "packing_capacity_world_size": world_size,
+    }
+    for field, wanted in expected.items():
+        if value.get(field) != wanted:
+            raise StrictTrainingError(
+                f"fixed ws{world_size} smoke receipt mismatch at {field}"
+            )
+
+    completion = value.get("slurm_completion")
+    slurm_job_id = value.get("slurm_job_id")
+    if (
+        not isinstance(slurm_job_id, str)
+        or re.fullmatch(r"[0-9]+", slurm_job_id) is None
+        or not isinstance(completion, Mapping)
+        or completion.get("job_id") != slurm_job_id
+        or completion.get("state") != "COMPLETED"
+        or completion.get("exit_code") != "0:0"
+        or completion.get("nodes") != nodes
+    ):
+        raise StrictTrainingError(
+            f"fixed ws{world_size} smoke receipt lacks clean Slurm completion"
+        )
+    _strict_smoke_sha256(
+        completion.get("sacct_output_sha256"),
+        f"fixed ws{world_size} Slurm accounting output",
+    )
+    _strict_smoke_sha256(
+        value.get("static_nccl_probe_sha256"),
+        f"fixed ws{world_size} static NCCL probe",
+    )
+    _strict_smoke_sha256(
+        value.get("static_launcher_gate_sha256"),
+        f"fixed ws{world_size} static launcher gate",
+    )
+
+    identity = value.get("production_identity")
+    if not isinstance(identity, Mapping) or identity.get("recipe_sha256") != recipe_sha256:
+        raise StrictTrainingError(
+            f"fixed ws{world_size} smoke production identity mismatch"
+        )
+    identity_digest = hashlib.sha256(
+        json.dumps(identity, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    if value.get("production_identity_sha256") != identity_digest:
+        raise StrictTrainingError(
+            f"fixed ws{world_size} smoke production identity hash mismatch"
+        )
+
+    duration = _strict_smoke_number(
+        value.get("duration_seconds"), f"fixed ws{world_size} smoke duration"
+    )
+    throughput = _strict_smoke_number(
+        value.get("scheduled_positions_per_second"),
+        f"fixed ws{world_size} smoke throughput",
+    )
+    recomputed_throughput = scheduled_positions / duration
+    if not math.isclose(throughput, recomputed_throughput, rel_tol=1e-12, abs_tol=0.0):
+        raise StrictTrainingError(
+            f"fixed ws{world_size} smoke throughput arithmetic drifted"
+        )
+
+    loader = value.get("loader_performance")
+    if not isinstance(loader, Mapping) or loader.get("passed") is not True:
+        raise StrictTrainingError(
+            f"fixed ws{world_size} smoke loader gate did not pass"
+        )
+    loader_seconds = _strict_smoke_number(
+        loader.get("aggregate_loader_seconds"),
+        f"fixed ws{world_size} aggregate loader seconds",
+        allow_zero=True,
+    )
+    loader_fraction = _strict_smoke_number(
+        loader.get("aggregate_loader_fraction"),
+        f"fixed ws{world_size} aggregate loader fraction",
+        allow_zero=True,
+    )
+    p95_fraction = _strict_smoke_number(
+        loader.get("p95_loader_fraction"),
+        f"fixed ws{world_size} p95 loader fraction",
+        allow_zero=True,
+    )
+    maximum_aggregate = float(distributed["maximum_aggregate_loader_fraction"])
+    maximum_p95 = float(distributed["maximum_p95_loader_fraction"])
+    if (
+        loader_seconds > duration
+        or loader_fraction > maximum_aggregate
+        or p95_fraction > maximum_p95
+        or not math.isclose(
+            loader_fraction, loader_seconds / duration, rel_tol=1e-12, abs_tol=1e-15
+        )
+        or loader.get("maximum_aggregate_loader_fraction") != maximum_aggregate
+        or loader.get("maximum_p95_loader_fraction") != maximum_p95
+    ):
+        raise StrictTrainingError(
+            f"fixed ws{world_size} smoke loader measurements drifted"
+        )
+    for field in (
+        "minimum_scheduled_positions_per_second",
+        "median_scheduled_positions_per_second",
+    ):
+        _strict_smoke_number(loader.get(field), f"fixed ws{world_size} loader {field}")
+
+    resume = value.get("forced_resume")
+    if (
+        not isinstance(resume, Mapping)
+        or resume.get("step") != distributed["forced_resume_step"]
+        or resume.get("final_step") != distributed["smoke_updates"]
+        or resume.get("verified_from_final_metadata") is not True
+    ):
+        raise StrictTrainingError(
+            f"fixed ws{world_size} smoke forced-resume evidence drifted"
+        )
+    _strict_smoke_sha256(
+        resume.get("checkpoint_sha256"), f"fixed ws{world_size} resume checkpoint"
+    )
+    _strict_smoke_sha256(
+        resume.get("final_checkpoint_sha256"), f"fixed ws{world_size} final checkpoint"
+    )
+    _strict_smoke_sha256(
+        value.get("packing_capacity_receipt_sha256"),
+        f"fixed ws{world_size} packing capacity",
+    )
+    _strict_smoke_sha256(
+        value.get("signal_resume_gate_sha256"),
+        f"fixed ws{world_size} signal/resume gate",
+    )
+    safe_positions = value.get("packing_capacity_safe_global_scheduled_positions")
+    if (
+        isinstance(safe_positions, bool)
+        or not isinstance(safe_positions, int)
+        or safe_positions <= 0
+    ):
+        raise StrictTrainingError(
+            f"fixed ws{world_size} packing capacity horizon must be positive"
+        )
+
+    launches = value.get("static_srun_launches")
+    if not isinstance(launches, list) or [
+        item.get("phase") if isinstance(item, Mapping) else None for item in launches
+    ] != ["smoke_initial_50", "smoke_resume_100"]:
+        raise StrictTrainingError(
+            f"fixed ws{world_size} smoke launch evidence is incomplete"
+        )
+    for index, launch in enumerate(launches):
+        assert isinstance(launch, Mapping)
+        _strict_smoke_sha256(
+            launch.get("sha256"), f"fixed ws{world_size} launch {index}"
+        )
+        if not isinstance(launch.get("path"), str) or not launch["path"]:
+            raise StrictTrainingError(
+                f"fixed ws{world_size} launch {index} path is missing"
+            )
+
+    storage = value.get("checkpoint_storage")
+    if not isinstance(storage, Mapping) or set(storage) != {"forced_resume", "final"}:
+        raise StrictTrainingError(
+            f"fixed ws{world_size} smoke checkpoint storage is incomplete"
+        )
+    storage_records: list[dict[str, int]] = []
+    for boundary in ("forced_resume", "final"):
+        record = storage.get(boundary)
+        if not isinstance(record, Mapping):
+            raise StrictTrainingError(
+                f"fixed ws{world_size} {boundary} storage must be an object"
+            )
+        observed: dict[str, int] = {}
+        for field in (
+            "full_transaction_bytes",
+            "declared_payload_bytes",
+            "model_metadata_completion_bytes",
+        ):
+            raw = record.get(field)
+            if isinstance(raw, bool) or not isinstance(raw, int) or raw <= 0:
+                raise StrictTrainingError(
+                    f"fixed ws{world_size} {boundary} {field} must be positive"
+                )
+            observed[field] = raw
+        if (
+            observed["declared_payload_bytes"] >= observed["full_transaction_bytes"]
+            or observed["model_metadata_completion_bytes"]
+            > observed["full_transaction_bytes"]
+        ):
+            raise StrictTrainingError(
+                f"fixed ws{world_size} {boundary} storage arithmetic drifted"
+            )
+        storage_records.append(observed)
+
+    curve_log = value.get("curve_log")
+    if (
+        not isinstance(curve_log, Mapping)
+        or not isinstance(curve_log.get("path"), str)
+        or not curve_log["path"]
+        or isinstance(curve_log.get("event_count"), bool)
+        or not isinstance(curve_log.get("event_count"), int)
+        or curve_log["event_count"] < measured_updates
+    ):
+        raise StrictTrainingError(
+            f"fixed ws{world_size} smoke curve-log evidence is incomplete"
+        )
+    _strict_smoke_sha256(
+        curve_log.get("sha256"), f"fixed ws{world_size} smoke curve log"
+    )
+    _strict_smoke_sha256(
+        curve_log.get("last_event_sha256"),
+        f"fixed ws{world_size} smoke curve-log tail",
+    )
+    return value, digest, storage_records
+
+
+def _recompute_topology_smoke_evidence(
+    gate_path: str | Path,
+    gate: Mapping[str, Any],
+    *,
+    recipe: Mapping[str, Any],
+    recipe_sha256: str,
+    preflight_sha256: str,
+) -> dict[str, Any]:
+    """Recompute the topology decision from fixed sibling smoke receipts."""
+
+    path = Path(gate_path)
+    smoke8, smoke8_sha, storage_records = _fixed_smoke_receipt(
+        path,
+        world_size=8,
+        recipe=recipe,
+        recipe_sha256=recipe_sha256,
+        preflight_sha256=preflight_sha256,
+    )
+    if gate.get("smoke_8gpu_sha256") != smoke8_sha:
+        raise StrictTrainingError("production gate ws8 smoke hash differs from fixed receipt")
+
+    smoke16_path = path.parent / "smoke_ws16.json"
+    claimed_smoke16_sha = gate.get("smoke_16gpu_sha256")
+    smoke16 = None
+    smoke16_sha = None
+    if claimed_smoke16_sha is None:
+        if smoke16_path.exists() or smoke16_path.is_symlink():
+            raise StrictTrainingError(
+                "fixed ws16 smoke receipt exists but the production gate omitted it"
+            )
+    else:
+        smoke16, smoke16_sha, smoke16_storage = _fixed_smoke_receipt(
+            path,
+            world_size=16,
+            recipe=recipe,
+            recipe_sha256=recipe_sha256,
+            preflight_sha256=preflight_sha256,
+        )
+        storage_records.extend(smoke16_storage)
+        if claimed_smoke16_sha != smoke16_sha:
+            raise StrictTrainingError(
+                "production gate ws16 smoke hash differs from fixed receipt"
+            )
+
+    identity8 = smoke8["production_identity"]
+    if smoke16 is not None and (
+        smoke16.get("production_identity") != identity8
+        or smoke16.get("production_identity_sha256")
+        != smoke8.get("production_identity_sha256")
+        or smoke16.get("signal_resume_gate_sha256")
+        != smoke8.get("signal_resume_gate_sha256")
+        or smoke16.get("static_launcher_gate_sha256")
+        != smoke8.get("static_launcher_gate_sha256")
+        or smoke16.get("packing_capacity_receipt_sha256")
+        != smoke8.get("packing_capacity_receipt_sha256")
+    ):
+        raise StrictTrainingError("fixed ws8/ws16 smoke evidence has mixed lineage")
+
+    throughput8 = float(smoke8["scheduled_positions_per_second"])
+    throughput16 = (
+        None
+        if smoke16 is None
+        else float(smoke16["scheduled_positions_per_second"])
+    )
+    speedup = None if throughput16 is None else throughput16 / throughput8
+    threshold = float(recipe["distributed_gate"]["minimum_8_to_16_gpu_speedup"])
+    preferred = speedup is not None and speedup >= threshold
+    selected_world_size = 16 if preferred else 8
+    gpus_per_node = int(recipe["distributed_gate"]["gpus_per_node"])
+    selected_nodes = selected_world_size // gpus_per_node
+    selected_smoke = smoke16 if preferred else smoke8
+    assert selected_smoke is not None
+    if smoke16 is None:
+        selection_reason = "no_clean_16gpu_smoke_receipt_supplied_use_8gpu_fallback"
+    elif preferred:
+        selection_reason = "clean_16gpu_smoke_meets_minimum_1.7_speedup"
+    else:
+        selection_reason = "clean_16gpu_smoke_below_minimum_1.7_speedup_use_8gpu_fallback"
+
+    storage_factor = float(recipe["storage"]["smoke_measurement_safety_factor"])
+    measured_full = max(record["full_transaction_bytes"] for record in storage_records)
+    measured_model = max(
+        record["model_metadata_completion_bytes"] for record in storage_records
+    )
+    storage_calibration = {
+        "safety_factor": storage_factor,
+        "maximum_measured_full_transaction_bytes": measured_full,
+        "maximum_measured_model_bundle_bytes": measured_model,
+        "calibrated_full_transaction_bytes": math.ceil(measured_full * storage_factor),
+        "calibrated_model_bundle_bytes": math.ceil(measured_model * storage_factor),
+    }
+    return {
+        "smoke_8gpu_sha256": smoke8_sha,
+        "smoke_16gpu_sha256": smoke16_sha,
+        "throughput_8gpu": throughput8,
+        "throughput_16gpu": throughput16,
+        "speedup_8_to_16": speedup,
+        "parallel_efficiency": None if speedup is None else speedup / 2.0,
+        "preferred_topology_accepted": preferred,
+        "selection_reason": selection_reason,
+        "authorized_production_world_size": selected_world_size,
+        "authorized_production_nodes": selected_nodes,
+        "authorized_safe_global_scheduled_positions": selected_smoke[
+            "packing_capacity_safe_global_scheduled_positions"
+        ],
+        "selected_smoke_sha256": smoke16_sha if preferred else smoke8_sha,
+        "selected_throughput": throughput16 if preferred else throughput8,
+        "packing_capacity_receipt_sha256": smoke8[
+            "packing_capacity_receipt_sha256"
+        ],
+        "signal_resume_gate_sha256": smoke8["signal_resume_gate_sha256"],
+        "production_identity": identity8,
+        "storage_calibration": storage_calibration,
+    }
+
+
 def validate_production_topology_gate(
     gate_path: str | Path,
     preflight_receipt_path: str | Path,
@@ -1605,6 +1999,46 @@ def validate_production_topology_gate(
         gate_sha = verify_manifest_hash(gate)
     except ValueError as exc:
         raise StrictTrainingError(f"invalid production topology gate: {exc}") from exc
+    smoke_evidence = _recompute_topology_smoke_evidence(
+        gate_path,
+        gate,
+        recipe=recipe,
+        recipe_sha256=recipe_sha256,
+        preflight_sha256=preflight_sha,
+    )
+    for field in (
+        "smoke_8gpu_sha256",
+        "smoke_16gpu_sha256",
+        "throughput_8gpu",
+        "throughput_16gpu",
+        "speedup_8_to_16",
+        "parallel_efficiency",
+        "preferred_topology_accepted",
+        "selection_reason",
+        "authorized_production_world_size",
+        "authorized_production_nodes",
+        "authorized_safe_global_scheduled_positions",
+        "packing_capacity_receipt_sha256",
+        "signal_resume_gate_sha256",
+        "storage_calibration",
+    ):
+        if gate.get(field) != smoke_evidence[field]:
+            raise StrictTrainingError(
+                f"production topology gate drifted from fixed smoke evidence at {field}"
+            )
+    smoke_identity = smoke_evidence["production_identity"]
+    expected_smoke_identity = {
+        "recipe_sha256": recipe_sha256,
+        "attention_probe_sha256": attention_probe_sha256,
+        "wsd_proxy_approval_sha256": proxy_approval_sha256,
+        "wsd_base_weight_decay": accepted_base_weight_decay,
+        "wsd_weight_decay_cooldown": accepted_weight_decay_cooldown_policy,
+    }
+    for field, wanted in expected_smoke_identity.items():
+        if smoke_identity.get(field) != wanted:
+            raise StrictTrainingError(
+                f"fixed smoke production identity mismatch at {field}"
+            )
     preflight_corpus = preflight.get("corpus")
     preflight_capacity = (
         preflight_corpus.get("packing_capacity_receipt")
@@ -1706,16 +2140,8 @@ def validate_production_topology_gate(
         raise StrictTrainingError("production topology gate lacks a selection reason")
     if not isinstance(gate.get("storage_calibration"), Mapping):
         raise StrictTrainingError("production topology gate lacks storage calibration")
-    selected_smoke_sha = (
-        gate.get("smoke_16gpu_sha256")
-        if world_size == 16
-        else gate.get("smoke_8gpu_sha256")
-    )
-    selected_throughput = (
-        gate.get("throughput_16gpu")
-        if world_size == 16
-        else gate.get("throughput_8gpu")
-    )
+    selected_smoke_sha = smoke_evidence["selected_smoke_sha256"]
+    selected_throughput = smoke_evidence["selected_throughput"]
     try:
         throughput = float(selected_throughput)
         nodes = int(gate["authorized_production_nodes"])

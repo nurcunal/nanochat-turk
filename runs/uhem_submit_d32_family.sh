@@ -29,8 +29,21 @@ STATIC_LAUNCHER_GATE="${STATIC_LAUNCHER_GATE:-$NANOCHAT_BASE_DIR/control/d32/sta
 SIGNAL_RESUME_GATE="${SIGNAL_RESUME_GATE:-$NANOCHAT_BASE_DIR/control/d32/signal_resume_gate_ws4.json}"
 PRODUCTION_GATE="${PRODUCTION_GATE:-$NANOCHAT_BASE_DIR/control/d32/production_topology_gate.json}"
 
+canonical_production_gate="$NANOCHAT_BASE_DIR/control/d32/production_topology_gate.json"
+if [ "$PRODUCTION_GATE" != "$canonical_production_gate" ]; then
+    echo "PRODUCTION_GATE must equal the fixed topology-gate path: $canonical_production_gate" >&2
+    exit 2
+fi
+
 cd "$CODE_DIR"
 .venv/bin/python scripts/d32_family_workflow.py validate-recipe --recipe="$RECIPE"
+recipe_family_id="$(.venv/bin/python -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["family_id"])' "$RECIPE")"
+if [ -n "${FAMILY_ID:-}" ] && [ "$FAMILY_ID" != "$recipe_family_id" ]; then
+    echo "FAMILY_ID differs from the validated recipe family_id: $recipe_family_id" >&2
+    exit 2
+fi
+FAMILY_ID="$recipe_family_id"
+export FAMILY_ID PRODUCTION_GATE
 
 if [ "$mode" = --plan ]; then
     echo "No job will be submitted in --plan mode."
@@ -61,7 +74,7 @@ if [ "$mode" = --plan ]; then
     exit 0
 fi
 
-common_export="ALL,CODE_DIR=$CODE_DIR,NANOCHAT_BASE_DIR=$NANOCHAT_BASE_DIR,RECIPE=$RECIPE,PREFLIGHT_RECEIPT=$PREFLIGHT_RECEIPT,ATTENTION_PROBE_RECEIPT=$ATTENTION_PROBE_RECEIPT,WSD_PROXY_APPROVAL=$WD_PROXY_APPROVAL,STATIC_LAUNCHER_GATE=$STATIC_LAUNCHER_GATE,SIGNAL_RESUME_GATE=$SIGNAL_RESUME_GATE"
+common_export="ALL,CODE_DIR=$CODE_DIR,NANOCHAT_BASE_DIR=$NANOCHAT_BASE_DIR,RECIPE=$RECIPE,PREFLIGHT_RECEIPT=$PREFLIGHT_RECEIPT,ATTENTION_PROBE_RECEIPT=$ATTENTION_PROBE_RECEIPT,WSD_PROXY_APPROVAL=$WD_PROXY_APPROVAL,STATIC_LAUNCHER_GATE=$STATIC_LAUNCHER_GATE,SIGNAL_RESUME_GATE=$SIGNAL_RESUME_GATE,FAMILY_ID=$FAMILY_ID,PRODUCTION_GATE=$PRODUCTION_GATE"
 
 if [ "$mode" = --submit-static-launcher-probe ]; then
     test -f "$PREFLIGHT_RECEIPT"
@@ -107,6 +120,23 @@ if [ "$mode" = --submit-smoke-chain ]; then
     test -f "$WD_PROXY_APPROVAL"
     test -f "$STATIC_LAUNCHER_GATE"
     test -f "$SIGNAL_RESUME_GATE"
+    assert_smoke_output_absent() {
+        local path="$1"
+        if [ -e "$path" ] || [ -L "$path" ]; then
+            echo "Refusing to submit smoke chain because fixed output already exists: $path" >&2
+            exit 2
+        fi
+    }
+    for path in \
+        "$NANOCHAT_BASE_DIR/base_checkpoints/${FAMILY_ID}_smoke_ws8" \
+        "$NANOCHAT_BASE_DIR/base_checkpoints/${FAMILY_ID}_smoke_ws16" \
+        "$NANOCHAT_BASE_DIR/metrics/d32_smoke/ws8" \
+        "$NANOCHAT_BASE_DIR/metrics/d32_smoke/ws16" \
+        "$NANOCHAT_BASE_DIR/control/d32/smoke_ws8.json" \
+        "$NANOCHAT_BASE_DIR/control/d32/smoke_ws16.json" \
+        "$PRODUCTION_GATE"; do
+        assert_smoke_output_absent "$path"
+    done
     smoke8_job="$(sbatch --parsable --nodes=2 --export="$common_export" runs/uhem_d32_smoke.sbatch)"
     smoke8_final="$(sbatch --parsable --dependency="afterok:$smoke8_job" --export="$common_export,SMOKE_JOB_ID=$smoke8_job,SMOKE_NODES=2,STATIC_LAUNCHER_GATE=$STATIC_LAUNCHER_GATE" runs/uhem_d32_smoke_finalize.sbatch)"
     smoke16_job="$(sbatch --parsable --nodes=4 --dependency="afterok:$smoke8_final" --export="$common_export,STATIC_LAUNCHER_GATE=$STATIC_LAUNCHER_GATE" runs/uhem_d32_smoke.sbatch)"

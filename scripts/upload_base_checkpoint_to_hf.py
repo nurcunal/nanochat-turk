@@ -40,6 +40,16 @@ def parse_args():
     parser.add_argument("--production-gate", default="")
     parser.add_argument("--cluster-launch-receipt", default="")
     parser.add_argument("--lineage-dir", default="")
+    parser.add_argument("--source-plan", default="")
+    parser.add_argument("--backend-calibration", default="")
+    parser.add_argument("--backend-resource-report", default="")
+    parser.add_argument("--mixture-quality-approval", default="")
+    parser.add_argument("--resource-approval", default="")
+    parser.add_argument("--production-pack-plan", default="")
+    parser.add_argument("--data-prep-storage-sample", default="")
+    parser.add_argument("--writer-probe", default="")
+    parser.add_argument("--data-prep-storage-gate", default="")
+    parser.add_argument("--final-quality-approval", default="")
     parser.add_argument(
         "--family-final-optimizer-policy",
         choices=("include", "omit"),
@@ -379,6 +389,7 @@ fully verified source transaction and lists every omitted role.
 
 Family recipe SHA-256: `{manifest['family_recipe_sha256']}`
 Training code revision: `{manifest['code_revision']}`
+Manual final-model quality approval SHA-256: `{manifest.get('final_quality_approval_sha256', 'not supplied')}`
 """
 
 
@@ -412,6 +423,358 @@ def _add_strict_transaction(files, manifest, step_dir, remote_root, *, full):
     }
 
 
+def _verified_relative_evidence(root, record, label):
+    """Resolve one hash-bound evidence record without following symlink escapes."""
+
+    if not isinstance(record, dict):
+        raise ValueError(f"{label} evidence record is malformed")
+    relative = Path(str(record.get("path") or ""))
+    if not relative.parts or relative.is_absolute() or ".." in relative.parts:
+        raise ValueError(f"{label} evidence path is unsafe")
+    root = Path(root).resolve()
+    if not root.is_dir() or root.is_symlink():
+        raise ValueError(f"{label} evidence root is unsafe or missing")
+    unresolved = root / relative
+    resolved = unresolved.resolve()
+    if root not in resolved.parents:
+        raise ValueError(f"{label} evidence escapes its receipt tree")
+    current = unresolved
+    while current != root:
+        if current.is_symlink():
+            raise ValueError(f"{label} evidence path is symlinked")
+        current = current.parent
+    require_file(resolved, f"{label} evidence")
+    expected_size = record.get("size_bytes")
+    expected_sha = record.get("sha256")
+    if (
+        isinstance(expected_size, bool)
+        or not isinstance(expected_size, int)
+        or expected_size < 0
+        or not isinstance(expected_sha, str)
+        or re.fullmatch(r"[0-9a-f]{64}", expected_sha) is None
+        or resolved.stat().st_size != expected_size
+        or sha256_file(resolved) != expected_sha
+    ):
+        raise ValueError(f"{label} evidence content drift")
+    return resolved, relative
+
+
+def _select_archived_mixture_audit_uploads(mixture, mixture_path, remote_parent):
+    """Select the bounded, human-reviewed audit evidence needed off-cluster."""
+
+    from nanochat.experiment_manifest import load_json_strict, verify_manifest_hash
+
+    bundle = mixture.get("evidence_bundle")
+    if not isinstance(bundle, dict) or bundle.get("schema_version") != "1.0":
+        raise ValueError("mixture-quality approval evidence bundle is malformed")
+    root_relative = Path(str(bundle.get("root") or ""))
+    if (
+        not str(bundle.get("root") or "")
+        or root_relative.is_absolute()
+        or ".." in root_relative.parts
+    ):
+        raise ValueError("mixture-quality evidence root is unsafe")
+    approval_parent = Path(mixture_path).resolve().parent
+    audit_root = (approval_parent / root_relative).resolve()
+    if audit_root != approval_parent and approval_parent not in audit_root.parents:
+        raise ValueError("mixture-quality evidence root escapes approval tree")
+    remote_audit_root = repo_path(
+        remote_parent,
+        "" if root_relative.as_posix() == "." else root_relative.as_posix(),
+    )
+
+    report_path, report_relative = _verified_relative_evidence(
+        audit_root, bundle.get("report"), "mixture-quality audit report"
+    )
+    report = load_json_strict(report_path)
+    report_sha = verify_manifest_hash(report)
+    if report_sha != mixture.get("sample_quality_audit_sha256"):
+        raise ValueError("mixture-quality audit report differs from its approval")
+
+    records = [(report_path, repo_path(remote_audit_root, report_relative))]
+    input_artifacts = report.get("input_artifacts")
+    example_sampling = report.get("example_sampling")
+    example_files = (
+        example_sampling.get("files") if isinstance(example_sampling, dict) else None
+    )
+    if not isinstance(input_artifacts, dict) or not isinstance(example_files, dict):
+        raise ValueError("mixture-quality audit evidence inventory is malformed")
+    for name in ("cluster_receipt", "object_launch_receipt", "bucket_launch_receipt"):
+        path, relative = _verified_relative_evidence(
+            audit_root, input_artifacts.get(name), f"sample audit {name}"
+        )
+        records.append((path, repo_path(remote_audit_root, relative)))
+    for decision in ("accepted", "rejected"):
+        decision_files = example_files.get(decision)
+        if not isinstance(decision_files, dict):
+            raise ValueError(f"sample audit {decision} example inventory is malformed")
+        for representation in ("jsonl", "plaintext"):
+            path, relative = _verified_relative_evidence(
+                audit_root,
+                decision_files.get(representation),
+                f"sample audit {decision} {representation}",
+            )
+            records.append((path, repo_path(remote_audit_root, relative)))
+    if len({remote for _path, remote in records}) != len(records):
+        raise ValueError("mixture-quality audit evidence contains duplicate paths")
+    return records
+
+
+def _verify_family_data_controls(
+    args,
+    *,
+    recipe,
+    recipe_sha,
+    preflight,
+    repo_root,
+    expected_chain,
+):
+    """Verify and select the exact v3 data-control chain used by preflight."""
+
+    from nanochat.experiment_manifest import (
+        canonical_json,
+        load_json_strict,
+        verify_manifest_hash,
+    )
+    from nanochat.turkish_backend import (
+        MIXTURE_QUALITY_APPROVAL_KIND,
+        RESOURCE_APPROVAL_KIND,
+        RESOURCE_REPORT_KIND,
+        validate_backend_calibration,
+        validate_mixture_quality_approval,
+        validate_resource_approval,
+        validate_resource_projection,
+        validate_source_plan,
+    )
+    from nanochat.turkish_corpus import load_corpus_policy
+    from scripts.d32_family_workflow import (
+        DATA_PREP_PACK_PLAN_KIND,
+        DATA_PREP_STORAGE_SAMPLE_KIND,
+        DATA_PREP_WRITER_PROBE_KIND,
+        _load_receipt,
+        _validate_data_prep_storage_sample,
+        _validate_data_prep_storage_gate_receipt,
+        _validate_production_pack_plan,
+        _validate_recipe_policy_identity,
+        _validate_storage_approval_evidence,
+        _validate_writer_probe,
+    )
+
+    policy_path = (repo_root / recipe["artifacts"]["mixture_config"]).resolve()
+    policy = load_corpus_policy(policy_path)
+    _validate_recipe_policy_identity(recipe, policy)
+    policy_sha = hashlib.sha256(canonical_json(policy).encode("utf-8")).hexdigest()
+
+    source_plan_path = require_file(Path(args.source_plan).resolve(), "source plan")
+    calibration_path = require_file(
+        Path(args.backend_calibration).resolve(), "backend calibration"
+    )
+    source_plan = load_json_strict(source_plan_path)
+    calibration = load_json_strict(calibration_path)
+    validate_source_plan(source_plan, policy)
+    validate_backend_calibration(calibration, policy)
+    source_plan_sha = verify_manifest_hash(source_plan)
+    calibration_sha = verify_manifest_hash(calibration)
+
+    mixture_path = Path(args.mixture_quality_approval).resolve()
+    mixture, mixture_sha = _load_receipt(
+        mixture_path, MIXTURE_QUALITY_APPROVAL_KIND
+    )
+    validate_mixture_quality_approval(
+        mixture,
+        policy=policy,
+        plan=source_plan,
+        calibration=calibration,
+        approval_path=mixture_path,
+    )
+    resource_path = Path(args.resource_approval).resolve()
+    resource, resource_sha = _load_receipt(resource_path, RESOURCE_APPROVAL_KIND)
+    validate_resource_approval(
+        resource,
+        plan=source_plan,
+        policy=policy,
+        calibration=calibration,
+        approval_path=resource_path,
+    )
+    if resource.get("mixture_quality_approval_sha256") != mixture_sha:
+        raise ValueError("resource approval does not bind the supplied quality approval")
+
+    backend_report_path = Path(args.backend_resource_report).resolve()
+    backend_report, backend_report_sha = _load_receipt(
+        backend_report_path, RESOURCE_REPORT_KIND
+    )
+    validate_resource_projection(backend_report, plan=source_plan)
+    if (
+        backend_report_sha != resource.get("resource_report_sha256")
+        or backend_report.get("policy_sha256") != policy_sha
+        or backend_report.get("source_plan_sha256") != source_plan_sha
+        or backend_report.get("calibration_sha256") != calibration_sha
+        or backend_report.get("sample_cluster_receipt_sha256")
+        != mixture.get("sample_cluster_receipt_sha256")
+    ):
+        raise ValueError("backend resource report does not form the approval chain")
+
+    pack_path = Path(args.production_pack_plan).resolve()
+    pack_plan, pack_sha = _load_receipt(pack_path, DATA_PREP_PACK_PLAN_KIND)
+    _validate_production_pack_plan(
+        pack_plan,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        policy_sha=policy_sha,
+        source_plan=source_plan,
+        source_plan_sha=source_plan_sha,
+    )
+    storage_sample_path = Path(args.data_prep_storage_sample).resolve()
+    storage_sample, storage_sample_sha = _load_receipt(
+        storage_sample_path, DATA_PREP_STORAGE_SAMPLE_KIND
+    )
+    _validate_data_prep_storage_sample(
+        storage_sample, recipe=recipe, recipe_sha=recipe_sha
+    )
+    _validate_storage_approval_evidence(
+        storage_sample,
+        measurement_path=storage_sample_path,
+        policy_path=policy_path,
+    )
+    writer_path = Path(args.writer_probe).resolve()
+    writer_probe, writer_sha = _load_receipt(
+        writer_path, DATA_PREP_WRITER_PROBE_KIND
+    )
+    _validate_writer_probe(
+        writer_probe,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        policy_sha=policy_sha,
+        source_plan_sha=source_plan_sha,
+        calibration_sha=calibration_sha,
+        backend_report_sha=backend_report_sha,
+        cluster_sha=mixture["sample_cluster_receipt_sha256"],
+        sample_documents=storage_sample["sample_documents"],
+        estimated_total_documents=storage_sample["estimated_total_documents"],
+    )
+    storage_path = Path(args.data_prep_storage_gate).resolve()
+    storage_gate, storage_sha = _load_receipt(
+        storage_path, "d32_data_prep_storage_gate"
+    )
+    _validate_data_prep_storage_gate_receipt(
+        storage_gate, recipe=recipe, recipe_sha=recipe_sha
+    )
+
+    expected = {
+        "policy_sha256": policy_sha,
+        "source_plan_sha256": source_plan_sha,
+        "calibration_sha256": calibration_sha,
+        "backend_resource_report_sha256": backend_report_sha,
+        "resource_approval_sha256": resource_sha,
+        "mixture_quality_approval_sha256": mixture_sha,
+        "sample_quality_audit_sha256": mixture["sample_quality_audit_sha256"],
+        "production_pack_plan_sha256": pack_sha,
+    }
+    if preflight.get("data_preparation_provenance") != expected:
+        raise ValueError("upload data controls differ from production preflight")
+    if (
+        preflight.get("data_preparation_storage_gate_sha256") != storage_sha
+        or storage_gate.get("policy_sha256") != policy_sha
+        or storage_gate.get("source_plan_sha256") != source_plan_sha
+        or storage_gate.get("calibration_sha256") != calibration_sha
+        or storage_gate.get("backend_resource_report_sha256") != backend_report_sha
+        or storage_gate.get("resource_approval_sha256") != resource_sha
+        or storage_gate.get("mixture_quality_approval_sha256") != mixture_sha
+        or storage_gate.get("production_pack_plan_sha256") != pack_sha
+        or storage_gate.get("sample_measurement_sha256") != storage_sample_sha
+        or storage_gate.get("writer_probe_sha256") != writer_sha
+        or storage_sample.get("policy_sha256") != policy_sha
+        or storage_sample.get("source_plan_sha256") != source_plan_sha
+        or storage_sample.get("calibration_sha256") != calibration_sha
+        or storage_sample.get("backend_resource_report_sha256") != backend_report_sha
+        or storage_sample.get("resource_approval_sha256") != resource_sha
+        or storage_sample.get("mixture_quality_approval_sha256") != mixture_sha
+        or storage_sample.get("sample_quality_audit_sha256")
+        != mixture["sample_quality_audit_sha256"]
+        or storage_sample.get("sample_cluster_receipt_sha256")
+        != mixture["sample_cluster_receipt_sha256"]
+        or storage_sample.get("production_pack_plan_sha256") != pack_sha
+        or storage_sample.get("writer_probe_sha256") != writer_sha
+        or expected_chain.get("data_prep_storage_gate_sha256") != storage_sha
+        or expected_chain.get("production_pack_plan_sha256") != pack_sha
+        or expected_chain.get("resource_approval_sha256") != resource_sha
+        or expected_chain.get("mixture_quality_approval_sha256") != mixture_sha
+    ):
+        raise ValueError("upload data controls do not form the preflight production chain")
+
+    archive_root = storage_sample_path.parent.resolve()
+    archive_remote_root = repo_path("provenance", "data_controls")
+    approval_evidence = storage_sample.get("approval_evidence")
+    if not isinstance(approval_evidence, dict):
+        raise ValueError("storage sample approval-evidence inventory is malformed")
+    primary = {
+        "source_plan": source_plan_path,
+        "calibration": calibration_path,
+        "backend_resource_report": backend_report_path,
+        "resource_approval": resource_path,
+        "mixture_quality_approval": mixture_path,
+    }
+    uploads = []
+    primary_remotes = {}
+    for key, supplied_path in primary.items():
+        evidence_path, relative = _verified_relative_evidence(
+            archive_root, approval_evidence.get(key), f"storage sample {key}"
+        )
+        if evidence_path != supplied_path:
+            raise ValueError(f"supplied {key} is not the storage sample evidence file")
+        remote = repo_path(archive_remote_root, relative)
+        primary_remotes[key] = remote
+        uploads.append((supplied_path, remote))
+
+    resource_bundle = resource.get("evidence_bundle")
+    if not isinstance(resource_bundle, dict):
+        raise ValueError("resource approval evidence bundle is malformed")
+    resource_remote_parent = Path(primary_remotes["resource_approval"]).parent.as_posix()
+    for key, supplied_path in (
+        ("resource_report", backend_report_path),
+        ("mixture_quality_approval", mixture_path),
+    ):
+        evidence_path, relative = _verified_relative_evidence(
+            resource_path.parent, resource_bundle.get(key), f"resource approval {key}"
+        )
+        expected_remote = repo_path(resource_remote_parent, relative)
+        supplied_remote = primary_remotes[
+            "backend_resource_report" if key == "resource_report" else key
+        ]
+        if evidence_path != supplied_path or expected_remote != supplied_remote:
+            raise ValueError(
+                f"resource approval {key} link would not be portable in the upload"
+            )
+
+    uploads.extend(
+        (
+            (pack_path, repo_path(archive_remote_root, "production_source_pack_plan.json")),
+            (
+                storage_sample_path,
+                repo_path(archive_remote_root, "d32_data_prep_storage_sample.json"),
+            ),
+            (writer_path, repo_path(archive_remote_root, "post_cluster_writer_probe.json")),
+            (storage_path, repo_path(archive_remote_root, "data_prep_storage_gate.json")),
+        )
+    )
+    mixture_remote_parent = Path(
+        primary_remotes["mixture_quality_approval"]
+    ).parent.as_posix()
+    uploads.extend(
+        _select_archived_mixture_audit_uploads(
+            mixture,
+            mixture_path,
+            mixture_remote_parent,
+        )
+    )
+    return expected | {
+        "backend_resource_report_sha256": backend_report_sha,
+        "data_prep_storage_sample_sha256": storage_sample_sha,
+        "writer_probe_sha256": writer_sha,
+        "data_prep_storage_gate_sha256": storage_sha,
+    }, uploads
+
+
 def main_family(args):
     if not args.family_final_optimizer_policy:
         raise ValueError("--family-final-optimizer-policy=include|omit is required")
@@ -425,6 +788,16 @@ def main_family(args):
         "production-gate": args.production_gate,
         "cluster-launch-receipt": args.cluster_launch_receipt,
         "lineage-dir": args.lineage_dir,
+        "source-plan": getattr(args, "source_plan", ""),
+        "backend-calibration": getattr(args, "backend_calibration", ""),
+        "backend-resource-report": getattr(args, "backend_resource_report", ""),
+        "mixture-quality-approval": getattr(args, "mixture_quality_approval", ""),
+        "resource-approval": getattr(args, "resource_approval", ""),
+        "production-pack-plan": getattr(args, "production_pack_plan", ""),
+        "data-prep-storage-sample": getattr(args, "data_prep_storage_sample", ""),
+        "writer-probe": getattr(args, "writer_probe", ""),
+        "data-prep-storage-gate": getattr(args, "data_prep_storage_gate", ""),
+        "final-quality-approval": getattr(args, "final_quality_approval", ""),
     }
     missing = [name for name, value in required_args.items() if not value]
     if missing:
@@ -434,12 +807,15 @@ def main_family(args):
     from nanochat.experiment_manifest import seal_manifest, verify_manifest_hash
     from nanochat.tokenizer_quality import validate_tokenizer_quality_gate
     from scripts.d32_family_workflow import (
+        FINAL_MODEL_PUBLICATION_APPROVAL_KIND,
         _load_receipt,
         _verify_attention_probe,
         _verify_gate_and_preflight,
         _verify_signal_resume_gate,
         _verify_static_launcher_gate,
+        collect_final_evaluation_evidence,
         load_recipe,
+        validate_final_model_publication_approval,
     )
 
     repo_root = Path.cwd().resolve()
@@ -501,6 +877,24 @@ def main_family(args):
         raise ValueError("family upload requires a passed ws8/ws16 topology gate")
     if gate.get("signal_resume_gate_sha256") != signal_gate_sha:
         raise ValueError("family upload signal/resume gate differs from production")
+    smoke_root = Path(args.production_gate).resolve().parent
+    smoke_receipts = []
+    for filename, hash_field, expected_world_size in (
+        ("smoke_ws8.json", "smoke_8gpu_sha256", 8),
+        ("smoke_ws16.json", "smoke_16gpu_sha256", 16),
+    ):
+        expected_sha = gate.get(hash_field)
+        if expected_sha is None:
+            if expected_world_size == 8:
+                raise ValueError("production gate does not bind the required ws8 smoke")
+            continue
+        smoke_path = smoke_root / filename
+        smoke, smoke_sha = _load_receipt(
+            smoke_path, "d32_distributed_smoke_receipt"
+        )
+        if smoke_sha != expected_sha or smoke.get("world_size") != expected_world_size:
+            raise ValueError(f"{filename} differs from the production topology gate")
+        smoke_receipts.append(smoke_path)
     revision = run_command(["git", "rev-parse", "HEAD"])
     if revision != preflight["code"]["git_commit"]:
         raise ValueError("upload code revision differs from production preflight")
@@ -561,6 +955,7 @@ def main_family(args):
 
     lineage_dir = Path(args.lineage_dir).resolve()
     lineage_hashes = {}
+    lineage_records = {}
     for stage in recipe["stages"]:
         path = lineage_dir / f"{stage['id']}.json"
         receipt, digest = _load_receipt(path, "d32_checkpoint_lineage_receipt")
@@ -587,6 +982,15 @@ def main_family(args):
         )
         expected_recipe_scope = (
             "production_trunk" if stage["kind"] == "trunk" else stage_id
+        )
+        expected_retention_class = (
+            "full_resumable_stable_fork"
+            if stage["kind"] == "trunk"
+            else (
+                "cooled_final_full_resumable_retained"
+                if recipe["family_id"] == "tr_d32_general_bpe32k_v3"
+                else "cooled_final_full_transaction_pending_explicit_export_policy"
+            )
         )
         source_step = stage.get("source_step")
         expected_source = None
@@ -619,6 +1023,8 @@ def main_family(args):
             or receipt.get("target", {}).get("model_tag") != target_key[0]
             or receipt.get("target", {}).get("step") != target_key[1]
             or receipt.get("target", {}).get("checkpoint_sha256") != target_sha
+            or receipt.get("target", {}).get("retention_class")
+            != expected_retention_class
             or target_manifest.get("expected_world_size")
             != gate["authorized_production_world_size"]
             or target_identity.get("run_id") != expected_run_id
@@ -634,7 +1040,40 @@ def main_family(args):
         ):
             raise ValueError(f"lineage receipt mismatch: {path}")
         lineage_hashes[stage["id"]] = digest
+        lineage_records[stage["id"]] = (receipt, digest)
         files.append((path, repo_path("provenance", "lineage", path.name)))
+
+    final_evaluations = collect_final_evaluation_evidence(
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight=preflight,
+        preflight_sha=preflight_sha,
+        gate=gate,
+        gate_sha=gate_sha,
+        base_dir=base_dir,
+        lineage_dir=lineage_dir,
+        checkpoint_records=checkpoint_manifests,
+        lineage_records=lineage_records,
+    )
+    final_quality_path = Path(args.final_quality_approval).resolve()
+    final_quality, _final_quality_sha = _load_receipt(
+        final_quality_path, FINAL_MODEL_PUBLICATION_APPROVAL_KIND
+    )
+    final_quality_sha = validate_final_model_publication_approval(
+        final_quality,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight_sha=preflight_sha,
+        gate_sha=gate_sha,
+        expected_evidence=final_evaluations,
+        require_accepted=True,
+    )
+    files.append(
+        (
+            final_quality_path,
+            repo_path("provenance", "control", "final_quality_approval.json"),
+        )
+    )
 
     corpus_root = Path(preflight["corpus"]["root"])
     expected_chain = preflight["corpus"].get("production_chain")
@@ -648,6 +1087,15 @@ def main_family(args):
         != cluster_launch.get("sample_cluster_receipt_sha256")
     ):
         raise ValueError("production preflight has malformed data lineage")
+    data_control_hashes, data_control_uploads = _verify_family_data_controls(
+        args,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight=preflight,
+        repo_root=repo_root,
+        expected_chain=expected_chain,
+    )
+    files.extend(data_control_uploads)
     corpus_manifest, corpus_manifest_sha = _load_receipt(
         corpus_root / recipe["artifacts"]["corpus_manifest"],
         "turkish_pretrain_corpus",
@@ -823,7 +1271,7 @@ def main_family(args):
         path = require_file(
             corpus_root / "qa" / record["path"], "archived QA reviewed example"
         )
-        if path.stat().st_size != record["size_bytes"] or file_sha256(path) != record["sha256"]:
+        if path.stat().st_size != record["size_bytes"] or sha256_file(path) != record["sha256"]:
             raise ValueError("archived QA reviewed example differs from report")
         files.append(
             (path, repo_path("provenance", "data", "qa", path.name))
@@ -850,6 +1298,18 @@ def main_family(args):
         manifest, manifest_sha = _load_receipt(
             path, "turkish_macocu_genre_preparation"
         )
+        from nanochat.turkish_backend import validate_macocu_preparation_manifest
+        from nanochat.turkish_corpus import load_corpus_policy
+
+        data_policy = load_corpus_policy(
+            repo_root / recipe["artifacts"]["mixture_config"]
+        )
+        validate_macocu_preparation_manifest(
+            manifest,
+            data_policy,
+            path.parent,
+            verify_files=True,
+        )
         source_macocu = derived_sources.get("macocu_genre_tr")
         preflight_macocu = preflight["corpus"].get(
             "macocu_preparation_manifest"
@@ -874,6 +1334,35 @@ def main_family(args):
         )
     elif derived_sources:
         raise ValueError("v1 family source receipt unexpectedly contains derived data")
+    from scripts.d32_family_workflow import _verify_anchor_preparation_binding
+
+    for source_id, artifact_key in (
+        ("mot_tr_v1_11", "mot_preparation_manifest"),
+        ("parlamint_tr_v5_0", "parlamint_preparation_manifest"),
+    ):
+        relative = recipe["artifacts"].get(artifact_key)
+        if relative is None:
+            if source_id in derived_sources:
+                raise ValueError(
+                    f"family source receipt binds {source_id} without {artifact_key}"
+                )
+            continue
+        path = require_file(base_dir / relative, f"{source_id} preparation manifest")
+        record = _verify_anchor_preparation_binding(
+            path,
+            source_id=source_id,
+            derived_sources=derived_sources,
+        )
+        if preflight["corpus"].get(artifact_key) != record:
+            raise ValueError(
+                f"{source_id} preparation manifest differs from source receipt/preflight"
+            )
+        files.append(
+            (
+                path,
+                repo_path("provenance", "data", f"{artifact_key}.json"),
+            )
+        )
     control_files = [
         recipe_path,
         Path(args.preflight_receipt),
@@ -883,6 +1372,7 @@ def main_family(args):
         Path(args.signal_resume_gate),
         Path(args.production_gate),
         Path(args.cluster_launch_receipt),
+        *smoke_receipts,
         repo_root / recipe["artifacts"]["mixture_config"],
         repo_root / "pyproject.toml",
         repo_root / "uv.lock",
@@ -990,6 +1480,8 @@ def main_family(args):
             "signal_resume_gate_sha256": signal_gate_sha,
             "wsd_proxy_approval_sha256": approval_sha,
             "production_gate_sha256": gate_sha,
+            "final_quality_approval_sha256": final_quality_sha,
+            "data_preparation_provenance": data_control_hashes,
             "code_revision": revision,
             "final_optimizer_policy": args.family_final_optimizer_policy,
             "retention": retention,

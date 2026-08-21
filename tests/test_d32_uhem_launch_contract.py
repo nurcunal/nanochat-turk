@@ -66,6 +66,69 @@ def test_every_wrapper_mode_exports_preflight_and_uses_dedicated_trainer() -> No
     assert "export PRODUCTION_GATE=" in production
 
 
+def test_smoke_submitter_rejects_fixed_output_collisions_before_sbatch() -> None:
+    source = (ROOT / "runs" / "uhem_submit_d32_family.sh").read_text(
+        encoding="utf-8"
+    )
+    branch = source.split('if [ "$mode" = --submit-smoke-chain ]; then', 1)[1]
+    first_sbatch = branch.index('smoke8_job="$(sbatch')
+    collision_guard = branch.index('assert_smoke_output_absent "$path"')
+    assert collision_guard < first_sbatch
+    assert 'if [ -e "$path" ] || [ -L "$path" ]; then' in branch[:first_sbatch]
+    assert "exit 2" in branch[:first_sbatch]
+    for fixed_output in (
+        'base_checkpoints/${FAMILY_ID}_smoke_ws8',
+        'base_checkpoints/${FAMILY_ID}_smoke_ws16',
+        'metrics/d32_smoke/ws8',
+        'metrics/d32_smoke/ws16',
+        'control/d32/smoke_ws8.json',
+        'control/d32/smoke_ws16.json',
+        '"$PRODUCTION_GATE"',
+    ):
+        assert fixed_output in branch[:first_sbatch]
+
+
+def test_smoke_submitter_cannot_redirect_the_gate_collision_check() -> None:
+    submitter = (ROOT / "runs" / "uhem_submit_d32_family.sh").read_text(
+        encoding="utf-8"
+    )
+    first_sbatch = submitter.index('probe_job="$(sbatch')
+    prefix = submitter[:first_sbatch]
+    assert (
+        'canonical_production_gate="$NANOCHAT_BASE_DIR/control/d32/'
+        'production_topology_gate.json"'
+    ) in prefix
+    assert 'if [ "$PRODUCTION_GATE" != "$canonical_production_gate" ]; then' in prefix
+    assert "exit 2" in prefix
+    assert "PRODUCTION_GATE=$PRODUCTION_GATE" in submitter
+
+    gate_writer = (ROOT / "runs" / "uhem_d32_smoke_gate.sbatch").read_text(
+        encoding="utf-8"
+    )
+    assert 'if [ "$PRODUCTION_GATE" != "$canonical_production_gate" ]; then' in gate_writer
+    assert '--output="$PRODUCTION_GATE"' in gate_writer
+
+
+def test_smoke_submitter_cannot_inherit_a_different_family_id() -> None:
+    submitter = (ROOT / "runs" / "uhem_submit_d32_family.sh").read_text(
+        encoding="utf-8"
+    )
+    first_sbatch = submitter.index('probe_job="$(sbatch')
+    prefix = submitter[:first_sbatch]
+    assert 'recipe_family_id="$(.venv/bin/python' in prefix
+    assert 'if [ -n "${FAMILY_ID:-}" ] && [ "$FAMILY_ID" != "$recipe_family_id" ]; then' in prefix
+    assert 'FAMILY_ID="$recipe_family_id"' in prefix
+    assert "FAMILY_ID=$FAMILY_ID" in submitter
+
+    for relative in (
+        "runs/uhem_d32_smoke.sbatch",
+        "runs/uhem_d32_smoke_finalize.sbatch",
+    ):
+        source = (ROOT / relative).read_text(encoding="utf-8")
+        assert 'if [ -n "${FAMILY_ID:-}" ] && [ "$FAMILY_ID" != "$RECIPE_FAMILY_ID" ]; then' in source
+        assert 'FAMILY_ID="${FAMILY_ID:-$(' not in source
+
+
 def test_distributed_launchers_are_slurm_20_static_srun_only() -> None:
     launchers = (
         ROOT / "runs" / "uhem_d32_production.sbatch",

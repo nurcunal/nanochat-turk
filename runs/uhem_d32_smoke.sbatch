@@ -56,7 +56,12 @@ if [ "${SLURM_NTASKS:-0}" -ne "$WORLD_SIZE" ]; then
     echo "Smoke allocation must start four static tasks per node" >&2
     exit 2
 fi
-export FAMILY_ID="${FAMILY_ID:-$(.venv/bin/python -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["family_id"])' "$RECIPE")}"
+RECIPE_FAMILY_ID="$(.venv/bin/python -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["family_id"])' "$RECIPE")"
+if [ -n "${FAMILY_ID:-}" ] && [ "$FAMILY_ID" != "$RECIPE_FAMILY_ID" ]; then
+    echo "FAMILY_ID differs from the validated recipe family_id: $RECIPE_FAMILY_ID" >&2
+    exit 2
+fi
+export FAMILY_ID="$RECIPE_FAMILY_ID"
 export RUN_KIND=smoke
 export RUN_ID="${FAMILY_ID}_smoke_ws${WORLD_SIZE}"
 export MODEL_TAG="$RUN_ID"

@@ -50,6 +50,7 @@ from nanochat.strict_runtime import (
     capacity_authorized_positions,
     capacity_world_gate_record,
     family_artifact_contract,
+    validate_production_topology_gate,
 )
 from nanochat.training_log import read_training_log
 
@@ -62,6 +63,7 @@ SAFE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 DATA_PREP_STORAGE_SAMPLE_KIND = "d32_data_prep_storage_sample"
 DATA_PREP_PACK_PLAN_KIND = "d32_data_prep_production_pack_plan"
 DATA_PREP_WRITER_PROBE_KIND = "d32_data_prep_post_cluster_writer_probe"
+FINAL_MODEL_PUBLICATION_APPROVAL_KIND = "d32_final_model_publication_approval"
 MIXTURE_QUALITY_APPROVAL_KIND = (
     "turkish_bounded_backend_sample_quality_approval"
 )
@@ -442,6 +444,11 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
             "retention": "full_resumable",
         },
     )
+    final_retention = (
+        "full_resumable"
+        if family_id == FAMILY_ID_V3
+        else "model_metadata_provenance_required_optimizer_explicit"
+    )
     expected_finals = (
         {
             "label": "s12",
@@ -451,7 +458,7 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
             "final_step": 9600,
             "cooldown_steps": 960,
             "scheduled_tokens": 9600 * training["global_batch_tokens"],
-            "retention": "model_metadata_provenance_required_optimizer_explicit",
+            "retention": final_retention,
         },
         {
             "label": "s20",
@@ -461,7 +468,7 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
             "final_step": 16000,
             "cooldown_steps": 1600,
             "scheduled_tokens": 16000 * training["global_batch_tokens"],
-            "retention": "model_metadata_provenance_required_optimizer_explicit",
+            "retention": final_retention,
         },
         {
             "label": "s40",
@@ -471,7 +478,7 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
             "final_step": 32000,
             "cooldown_steps": 3200,
             "scheduled_tokens": 32000 * training["global_batch_tokens"],
-            "retention": "model_metadata_provenance_required_optimizer_explicit",
+            "retention": final_retention,
         },
     )
     if len(forks) != len(expected_forks) or len(finals) != len(expected_finals):
@@ -784,6 +791,11 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
         _fail("data-preparation storage gate drifted")
     if storage.get("estimated_cooled_final_model_bundle_bytes") != 12 * 1024**3:
         _fail("cooled-final estimate must leave room above raw d32 model weights")
+    if family_id == FAMILY_ID_V3 and (
+        storage.get("cooled_final_model_bundles_retained") != 0
+        or storage.get("full_cooled_final_transactions_at_peak") != 3
+    ):
+        _fail("v3 storage must retain all three cooled finals as full transactions")
     if storage.get("smoke_measurement_safety_factor") != 1.25:
         _fail("smoke checkpoint storage safety factor must equal 1.25")
     required = _positive_int(
@@ -817,7 +829,7 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
             storage.get("estimated_cooled_final_model_bundle_bytes"),
             "estimated_cooled_final_model_bundle_bytes",
         )
-        * _positive_int(
+        * _nonnegative_int(
             storage.get("cooled_final_model_bundles_retained"),
             "cooled_final_model_bundles_retained",
         )
@@ -953,6 +965,10 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
         _fail("UHeM operational ceiling scope must explicitly exclude data preparation")
     if ceiling < float(planned_range[1]) + int(budget.get("proxy_and_smoke_reserve_cpu_saat", -1)):
         _fail("operational CPU-saat ceiling does not cover training, proxy, and smokes")
+    if family_id == FAMILY_ID_V3:
+        publication = _mapping(recipe.get("publication"), "publication")
+        if publication.get("require_manual_final_quality_approval") is not True:
+            _fail("v3 publication must require manual final-model quality approval")
 
 
 def load_recipe(path: Path, *, require_sealed: bool = True) -> tuple[dict[str, Any], str]:
@@ -7173,8 +7189,8 @@ def command_seal_smoke(args: argparse.Namespace) -> None:
     expected_batch = int(recipe["training"]["global_batch_tokens"])
     if any(value != expected_batch for value in positions):
         _fail("smoke did not use the production global batch on every measured update")
-    if any(value <= 0 for value in durations):
-        _fail("smoke curve contains a non-positive update duration")
+    if any(not math.isfinite(value) or value <= 0 for value in durations):
+        _fail("smoke curve contains a non-positive or non-finite update duration")
     if any(
         not math.isfinite(seconds)
         or seconds < 0
@@ -7417,6 +7433,18 @@ def _measured_cost_projection(
 
 def command_compare_smokes(args: argparse.Namespace) -> None:
     recipe, recipe_sha = load_recipe(args.recipe)
+    expected_smoke8 = args.output.parent / "smoke_ws8.json"
+    if args.smoke_8gpu.resolve() != expected_smoke8.resolve() or args.smoke_8gpu.is_symlink():
+        _fail("topology gate requires the fixed sibling smoke_ws8.json receipt")
+    expected_smoke16 = args.output.parent / "smoke_ws16.json"
+    if args.smoke_16gpu is not None:
+        if (
+            args.smoke_16gpu.resolve() != expected_smoke16.resolve()
+            or args.smoke_16gpu.is_symlink()
+        ):
+            _fail("topology gate requires the fixed sibling smoke_ws16.json receipt")
+    elif expected_smoke16.exists() or expected_smoke16.is_symlink():
+        _fail("fixed smoke_ws16.json exists but was omitted from topology comparison")
     smoke8, smoke8_sha = _load_receipt(args.smoke_8gpu, "d32_distributed_smoke_receipt")
     if smoke8.get("world_size") != 8:
         _fail("topology gate requires a clean 8-GPU fallback receipt")
@@ -7443,6 +7471,12 @@ def command_compare_smokes(args: argparse.Namespace) -> None:
         "signal_resume_gate_sha256"
     ):
         _fail("8- and 16-GPU smokes used different signal/resume gates")
+    launcher_gate_sha = _sha256(
+        smoke8.get("static_launcher_gate_sha256"),
+        "8-GPU smoke static-launcher-gate SHA-256",
+    )
+    if smoke16 is not None and smoke16.get("static_launcher_gate_sha256") != launcher_gate_sha:
+        _fail("8- and 16-GPU smokes used different static launcher gates")
     capacity_sha = _sha256(
         smoke8.get("packing_capacity_receipt_sha256"),
         "8-GPU smoke packing-capacity SHA-256",
@@ -7454,12 +7488,16 @@ def command_compare_smokes(args: argparse.Namespace) -> None:
             _fail("8- and 16-GPU smokes used different packing-capacity receipts")
         if smoke16.get("packing_capacity_world_size") != 16:
             _fail("16-GPU smoke did not bind the ws16 packing-capacity record")
-    throughput8 = float(smoke8["scheduled_positions_per_second"])
-    throughput16 = (
-        None if smoke16 is None else float(smoke16["scheduled_positions_per_second"])
+    throughput8 = _positive_number(
+        smoke8.get("scheduled_positions_per_second"), "8-GPU smoke throughput"
     )
-    if throughput8 <= 0 or (throughput16 is not None and throughput16 <= 0):
-        _fail("smoke throughputs must be positive")
+    throughput16 = (
+        None
+        if smoke16 is None
+        else _positive_number(
+            smoke16.get("scheduled_positions_per_second"), "16-GPU smoke throughput"
+        )
+    )
     speedup = None if throughput16 is None else throughput16 / throughput8
     threshold = float(recipe["distributed_gate"]["minimum_8_to_16_gpu_speedup"])
     preferred_accepted = speedup is not None and speedup >= threshold
@@ -7611,6 +7649,338 @@ def _checkpoint_manifest(base_dir: Path, model_tag: str, step: int) -> tuple[dic
     return manifest, digest
 
 
+def collect_final_evaluation_evidence(
+    *,
+    recipe: Mapping[str, Any],
+    recipe_sha: str,
+    preflight: Mapping[str, Any],
+    preflight_sha: str,
+    gate: Mapping[str, Any],
+    gate_sha: str,
+    base_dir: Path,
+    lineage_dir: Path,
+    checkpoint_records: Mapping[tuple[str, int], tuple[Mapping[str, Any], str]] | None = None,
+    lineage_records: Mapping[str, tuple[Mapping[str, Any], str]] | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Collect exact, finite full-validation evidence for all cooled finals."""
+
+    if (
+        preflight.get("recipe", {}).get("canonical_sha256") != recipe_sha
+        or gate.get("recipe_sha256") != recipe_sha
+        or gate.get("preflight_receipt_sha256") != preflight_sha
+        or gate.get("passed") is not True
+    ):
+        _fail("final-quality evidence uses an invalid preflight/topology chain")
+    by_target = {
+        (str(stage["model_tag"]), int(stage["target_step"])): stage
+        for stage in recipe["stages"]
+        if stage["kind"] == "cooldown_fork"
+    }
+    finals = _sequence(recipe["checkpoints"].get("finals"), "checkpoint finals")
+    evidence: dict[str, dict[str, Any]] = {}
+    for final_value in finals:
+        final = _mapping(final_value, "cooled final")
+        label = str(final["label"])
+        model_tag = str(final["model_tag"])
+        step = int(final["final_step"])
+        stage = by_target.get((model_tag, step))
+        if stage is None:
+            _fail(f"cooled final {label} has no exact recipe stage")
+        key = (model_tag, step)
+        if checkpoint_records is None:
+            checkpoint, checkpoint_sha = _checkpoint_manifest(base_dir, model_tag, step)
+        else:
+            checkpoint_record = checkpoint_records.get(key)
+            if checkpoint_record is None:
+                _fail(f"final-quality evidence lacks checkpoint {model_tag}@{step}")
+            checkpoint, checkpoint_sha = checkpoint_record
+            if verify_manifest_hash(checkpoint) != checkpoint_sha:
+                _fail(f"final-quality checkpoint hash drifted for {label}")
+        lineage_path = lineage_dir / f"{stage['id']}.json"
+        if lineage_records is None:
+            lineage, lineage_sha = _load_receipt(
+                lineage_path, "d32_checkpoint_lineage_receipt"
+            )
+        else:
+            lineage_record = lineage_records.get(str(stage["id"]))
+            if lineage_record is None:
+                _fail(f"final-quality evidence lacks lineage for {label}")
+            lineage, lineage_sha = lineage_record
+            if verify_manifest_hash(lineage) != lineage_sha:
+                _fail(f"final-quality lineage hash drifted for {label}")
+        if (
+            lineage.get("family_id") != recipe["family_id"]
+            or lineage.get("stage_id") != stage["id"]
+            or lineage.get("recipe_sha256") != recipe_sha
+            or lineage.get("preflight_receipt_sha256") != preflight_sha
+            or lineage.get("production_gate_sha256") != gate_sha
+            or lineage.get("target", {}).get("model_tag") != model_tag
+            or lineage.get("target", {}).get("step") != step
+            or lineage.get("target", {}).get("checkpoint_sha256") != checkpoint_sha
+            or lineage.get("target", {}).get("retention_class")
+            != "cooled_final_full_resumable_retained"
+        ):
+            _fail(f"final-quality lineage binding drifted for {label}")
+
+        identity = _mapping(checkpoint.get("identity"), f"{label} identity")
+        protocol = _mapping(identity.get("protocol"), f"{label} protocol")
+        validation = _mapping(protocol.get("validation"), f"{label} validation")
+        curve_log = _mapping(identity.get("curve_log"), f"{label} curve log")
+        run_id = str(identity.get("run_id", ""))
+        if (
+            protocol.get("run_kind") != "production"
+            or protocol.get("recipe_scope") != stage["id"]
+            or protocol.get("model_tag") != model_tag
+            or protocol.get("num_iterations") != int(stage["num_iterations"])
+            or run_id != f"{recipe['family_id']}_{stage['id']}"
+            or validation.get("manifest_sha256")
+            != preflight["corpus"]["validation_exposure_manifest_sha256"]
+            or validation.get("full_manifest") is not True
+            or validation.get("eval_tokens_cli_unused") != -1
+            or curve_log.get("last_updates_completed") != step
+        ):
+            _fail(f"final-quality fixed-validation protocol drifted for {label}")
+
+        file_records = _sequence(checkpoint.get("files"), f"{label} checkpoint files")
+        meta_records = [record for record in file_records if record.get("role") == "meta"]
+        if len(meta_records) != 1 or meta_records[0].get("path") != "meta.json":
+            _fail(f"final-quality checkpoint metadata inventory drifted for {label}")
+        meta_record = _mapping(meta_records[0], f"{label} metadata record")
+        step_dir = base_dir / "base_checkpoints" / model_tag / f"strict_{step:06d}"
+        meta_path = step_dir / "meta.json"
+        meta = _load_object(meta_path, f"{label} final checkpoint metadata")
+        if (
+            meta.get("step") != step
+            or meta.get("updates_completed") != step
+            or meta.get("strict_run_contract_sha256") != identity.get("run_sha256")
+            or meta_path.stat().st_size != meta_record.get("size_bytes")
+            or file_sha256(meta_path) != meta_record.get("sha256")
+        ):
+            _fail(f"final-quality checkpoint metadata drifted for {label}")
+        coverage = _mapping(meta.get("validation_coverage"), f"{label} validation coverage")
+        expected_coverage = {
+            field: validation[field]
+            for field in (
+                "target_tokens",
+                "payload_bytes",
+                "documents",
+                "logical_rows",
+                "padded_token_positions_world1",
+                "row_layout_sha256",
+            )
+        }
+        if dict(coverage) != expected_coverage:
+            _fail(f"final-quality checkpoint validation coverage drifted for {label}")
+        final_bpb = meta.get("val_bpb")
+        minimum_bpb = _mapping(meta.get("loop_state"), f"{label} loop state").get(
+            "min_val_bpb"
+        )
+        if any(
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(float(value))
+            or float(value) <= 0.0
+            for value in (final_bpb, minimum_bpb)
+        ) or float(minimum_bpb) > float(final_bpb):
+            _fail(f"final-quality BPB evidence is invalid for {label}")
+        curve_path = base_dir / "metrics" / "d32_family" / run_id / "training_curve.jsonl"
+        events, curve_state = read_training_log(
+            curve_path,
+            expected_study_id=recipe["family_id"],
+            expected_run_id=run_id,
+        )
+        expected_curve_state = {
+            "event_count": curve_state.event_count,
+            "last_event_sha256": curve_state.last_event_sha256,
+            "last_updates_completed": curve_state.last_updates_completed,
+            "recovered_truncated_bytes": curve_state.recovered_truncated_bytes,
+            "file_sha256": file_sha256(curve_path),
+        }
+        if curve_log != expected_curve_state or not events:
+            _fail(f"final-quality curve-log binding drifted for {label}")
+        terminal = _mapping(events[-1], f"{label} terminal validation event")
+        metrics = _mapping(terminal.get("metrics"), f"{label} terminal metrics")
+        terminal_identities = _mapping(
+            terminal.get("identities"), f"{label} terminal identities"
+        )
+        metric_keys = {
+            "val/all_target_nats",
+            "val/all_target_count",
+            "val/payload_nats",
+            "val/payload_target_count",
+            "val/payload_bytes",
+            "val/bpb",
+        }
+        if (
+            terminal.get("event_type") != "validation"
+            or terminal.get("updates_completed") != step
+            or terminal_identities.get("validation_manifest_sha256")
+            != validation["manifest_sha256"]
+            or terminal_identities.get("run_sha256") != identity.get("run_sha256")
+            or set(metrics) != metric_keys
+        ):
+            _fail(f"final-quality terminal validation event drifted for {label}")
+        for name in (
+            "val/all_target_count",
+            "val/payload_target_count",
+            "val/payload_bytes",
+        ):
+            _positive_int(metrics.get(name), f"{label} terminal {name}")
+        for name in ("val/all_target_nats", "val/payload_nats", "val/bpb"):
+            _positive_number(metrics.get(name), f"{label} terminal {name}")
+        recomputed_bpb = float(metrics["val/payload_nats"]) / (
+            math.log(2.0) * int(metrics["val/payload_bytes"])
+        )
+        if (
+            metrics["val/all_target_count"] != coverage["target_tokens"]
+            or metrics["val/payload_target_count"] != coverage["target_tokens"]
+            or metrics["val/payload_bytes"] != coverage["payload_bytes"]
+            or not math.isclose(
+                float(metrics["val/bpb"]), recomputed_bpb, rel_tol=1e-12, abs_tol=1e-12
+            )
+            or not math.isclose(
+                float(metrics["val/bpb"]), float(final_bpb), rel_tol=1e-12, abs_tol=1e-12
+            )
+        ):
+            _fail(f"final-quality terminal validation arithmetic drifted for {label}")
+        evidence[label] = {
+            "stage_id": str(stage["id"]),
+            "model_tag": model_tag,
+            "step": step,
+            "checkpoint_sha256": checkpoint_sha,
+            "lineage_receipt_sha256": lineage_sha,
+            "checkpoint_meta_sha256": meta_record["sha256"],
+            "validation_manifest_sha256": validation["manifest_sha256"],
+            "full_fixed_validation": True,
+            "validation_coverage": expected_coverage,
+            "run_id": run_id,
+            "run_sha256": identity["run_sha256"],
+            "exposure_plan_sha256": identity["exposure_plan_sha256"],
+            "curve_log": {
+                "path": curve_path.relative_to(base_dir).as_posix(),
+                "size_bytes": curve_path.stat().st_size,
+                **dict(curve_log),
+                "curve_log_state_sha256": identity["curve_log_state_sha256"],
+            },
+            "terminal_validation_event": {
+                "event_index": terminal["event_index"],
+                "event_sha256": terminal["event_sha256"],
+                "updates_completed": step,
+                **{name: metrics[name] for name in sorted(metric_keys)},
+            },
+            "final_validation_bpb": float(final_bpb),
+            "minimum_validation_bpb": float(minimum_bpb),
+        }
+    expected_labels = {str(final["label"]) for final in finals}
+    if set(evidence) != expected_labels or len(evidence) != 3:
+        _fail("final-quality evidence must contain exactly all three cooled finals")
+    return evidence
+
+
+def validate_final_model_publication_approval(
+    approval: Mapping[str, Any],
+    *,
+    recipe: Mapping[str, Any],
+    recipe_sha: str,
+    preflight_sha: str,
+    gate_sha: str,
+    expected_evidence: Mapping[str, Any],
+    require_accepted: bool,
+) -> str:
+    """Validate one manual publication decision over exact final evaluations."""
+
+    digest = verify_manifest_hash(approval)
+    if (
+        approval.get("schema_version") != "1.0"
+        or approval.get("kind") != FINAL_MODEL_PUBLICATION_APPROVAL_KIND
+        or approval.get("family_id") != recipe["family_id"]
+        or approval.get("recipe_sha256") != recipe_sha
+        or approval.get("preflight_receipt_sha256") != preflight_sha
+        or approval.get("production_gate_sha256") != gate_sha
+        or approval.get("automatic_decision") is not False
+        or approval.get("review_confirmation")
+        != "all_three_final_fixed_validation_results_and_checkpoint_lineage_reviewed"
+        or approval.get("final_evaluations") != expected_evidence
+        or approval.get("required_final_labels") != sorted(expected_evidence)
+        or approval.get("automatic_evidence_validation_passed") is not True
+        or approval.get("manual_acceptance_required") is not True
+        or approval.get("quality_decision_policy")
+        != "manual_review_no_automatic_numeric_threshold"
+        or approval.get("decision") not in {"accepted", "rejected"}
+        or not isinstance(approval.get("reviewer"), str)
+        or not approval["reviewer"].strip()
+        or re.fullmatch(
+            r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z",
+            str(approval.get("reviewed_at_utc", "")),
+        )
+        is None
+        or not isinstance(approval.get("notes"), str)
+    ):
+        _fail("final-model publication approval is malformed or stale")
+    if require_accepted and approval.get("decision") != "accepted":
+        _fail("family publication requires an accepted final-model quality decision")
+    return digest
+
+
+def command_seal_final_model_publication_approval(args: argparse.Namespace) -> None:
+    if args.output.exists():
+        _fail(f"refusing to overwrite final-model publication approval: {args.output}")
+    recipe, recipe_sha = load_recipe(args.recipe)
+    preflight, preflight_sha = _load_receipt(
+        args.preflight_receipt, "d32_family_preflight_receipt"
+    )
+    gate, gate_sha = _load_receipt(args.gate, "d32_production_topology_gate")
+    evidence = collect_final_evaluation_evidence(
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight=preflight,
+        preflight_sha=preflight_sha,
+        gate=gate,
+        gate_sha=gate_sha,
+        base_dir=args.base_dir.expanduser().resolve(),
+        lineage_dir=args.lineage_dir.expanduser().resolve(),
+    )
+    if not args.reviewer.strip() or re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", args.reviewed_at_utc
+    ) is None:
+        _fail("final-model approval requires reviewer and RFC3339 UTC timestamp")
+    approval = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": FINAL_MODEL_PUBLICATION_APPROVAL_KIND,
+            "family_id": recipe["family_id"],
+            "recipe_sha256": recipe_sha,
+            "preflight_receipt_sha256": preflight_sha,
+            "production_gate_sha256": gate_sha,
+            "final_evaluations": evidence,
+            "required_final_labels": sorted(evidence),
+            "automatic_evidence_validation_passed": True,
+            "manual_acceptance_required": True,
+            "automatic_decision": False,
+            "quality_decision_policy": "manual_review_no_automatic_numeric_threshold",
+            "review_confirmation": (
+                "all_three_final_fixed_validation_results_and_checkpoint_lineage_reviewed"
+            ),
+            "reviewer": args.reviewer.strip(),
+            "reviewed_at_utc": args.reviewed_at_utc,
+            "decision": args.decision,
+            "notes": args.notes,
+            "canonical_sha256": None,
+        }
+    )
+    validate_final_model_publication_approval(
+        approval,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight_sha=preflight_sha,
+        gate_sha=gate_sha,
+        expected_evidence=evidence,
+        require_accepted=False,
+    )
+    write_json_atomic(args.output, approval)
+    print(json.dumps(approval, sort_keys=True))
+
+
 def _verify_gate_and_preflight(
     recipe: Mapping[str, Any],
     recipe_sha: str,
@@ -7709,6 +8079,28 @@ def _verify_gate_and_preflight(
         "accepted_weight_decay_cooldown_policy"
     ]:
         _fail("production topology gate cooldown policy differs from proxy approval")
+    try:
+        strict_gate, strict_gate_sha = validate_production_topology_gate(
+            gate_path,
+            preflight_path,
+            recipe=recipe,
+            recipe_sha256=recipe_sha,
+            attention_probe_sha256=attention_probe_sha,
+            proxy_approval_sha256=approval_sha,
+            accepted_base_weight_decay=float(approval["accepted_base_weight_decay"]),
+            accepted_weight_decay_cooldown_policy=str(
+                approval["accepted_weight_decay_cooldown_policy"]
+            ),
+            world_size=int(selected_world_size),
+            packing_capacity_receipt_sha256=capacity_sha,
+            selected_capacity=capacity_world,
+        )
+    except StrictTrainingError as exc:
+        raise FamilyWorkflowError(
+            f"production topology fixed-smoke verification failed: {exc}"
+        ) from exc
+    if strict_gate_sha != gate_sha or strict_gate != gate:
+        _fail("production topology validator returned a different sealed gate")
     return preflight, preflight_sha, gate, gate_sha, approval, approval_sha
 
 
@@ -7782,9 +8174,9 @@ def command_preflight_stage(args: argparse.Namespace) -> None:
 
     completed = _completed_target_count(recipe, base_dir)
     storage = recipe["storage"]
-    # Free space already reflects completed artifacts.  Estimate only future
-    # retained targets, plus one full final transaction, one atomic-write copy,
-    # logs/evals and immutable safety headroom.
+    # Free space already reflects completed artifacts. Estimate only future
+    # retained targets, one atomic-write copy, logs/evals and immutable safety
+    # headroom. V3 keeps every future cooled final fully resumable.
     incomplete = [
         stage_value
         for stage_value in recipe["stages"]
@@ -7817,10 +8209,21 @@ def command_preflight_stage(args: argparse.Namespace) -> None:
             "calibrated model bundle bytes",
         ),
     )
+    if (
+        int(storage["cooled_final_model_bundles_retained"]) == 0
+        and int(storage["full_cooled_final_transactions_at_peak"]) == 3
+    ):
+        final_bytes = full_bytes * future_finals
+        full_final_transient_bytes = 0
+    else:
+        final_bytes = model_bytes * future_finals
+        full_final_transient_bytes = (
+            full_bytes * int(storage["full_cooled_final_transactions_at_peak"])
+        )
     required_free = (
         full_bytes * future_stable
-        + model_bytes * future_finals
-        + full_bytes * int(storage["full_cooled_final_transactions_at_peak"])
+        + final_bytes
+        + full_final_transient_bytes
         + full_bytes * int(storage["atomic_write_transient_transactions"])
         + full_bytes * int(storage["maximum_retained_preemption_transactions"])
         + int(storage["estimated_logs_and_evaluations_bytes"])
@@ -8322,7 +8725,11 @@ def command_seal_stage(args: argparse.Namespace) -> None:
                 "retention_class": (
                     "full_resumable_stable_fork"
                     if stage["kind"] == "trunk"
-                    else "cooled_final_full_transaction_pending_explicit_export_policy"
+                    else (
+                        "cooled_final_full_resumable_retained"
+                        if recipe["family_id"] == FAMILY_ID_V3
+                        else "cooled_final_full_transaction_pending_explicit_export_policy"
+                    )
                 ),
             },
             "slurm_job_id": args.slurm_job_id,
@@ -8699,6 +9106,21 @@ def build_parser() -> argparse.ArgumentParser:
     seal_stage.add_argument("--launch-receipt", type=Path, required=True)
     seal_stage.add_argument("--output", type=Path, required=True)
     seal_stage.set_defaults(func=command_seal_stage)
+
+    final_quality = subparsers.add_parser("seal-final-quality-approval")
+    final_quality.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
+    final_quality.add_argument("--preflight-receipt", type=Path, required=True)
+    final_quality.add_argument("--gate", type=Path, required=True)
+    final_quality.add_argument("--base-dir", type=Path, required=True)
+    final_quality.add_argument("--lineage-dir", type=Path, required=True)
+    final_quality.add_argument("--reviewer", required=True)
+    final_quality.add_argument("--reviewed-at-utc", required=True)
+    final_quality.add_argument(
+        "--decision", choices=("accepted", "rejected"), required=True
+    )
+    final_quality.add_argument("--notes", default="")
+    final_quality.add_argument("--output", type=Path, required=True)
+    final_quality.set_defaults(func=command_seal_final_model_publication_approval)
     return parser
 
 

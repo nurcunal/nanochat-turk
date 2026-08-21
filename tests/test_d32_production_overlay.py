@@ -702,12 +702,152 @@ def test_capacity_receipt_binds_explicit_path_and_40x_safe_horizon(
         )
 
 
+def _write_fixed_topology_smoke(
+    tmp_path: Path,
+    *,
+    recipe: dict,
+    recipe_sha: str,
+    preflight_sha: str,
+    attention_sha: str,
+    approval_sha: str,
+    capacity_sha: str,
+    world_size: int,
+    throughput: float,
+    launcher_gate_sha: str = "c" * 64,
+) -> dict:
+    identity = {
+        "recipe_sha256": recipe_sha,
+        "attention_probe_sha256": attention_sha,
+        "wsd_proxy_approval_sha256": approval_sha,
+        "wsd_base_weight_decay": 0.1,
+        "wsd_weight_decay_cooldown": "constant",
+    }
+    identity_sha = hashlib.sha256(
+        json.dumps(identity, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    first = recipe["distributed_gate"]["benchmark_first_update"]
+    last = recipe["distributed_gate"]["benchmark_last_update"]
+    positions = (last - first + 1) * recipe["training"]["global_batch_tokens"]
+    duration = positions / throughput
+    nodes = world_size // recipe["distributed_gate"]["gpus_per_node"]
+    storage = {
+        "forced_resume": {
+            "full_transaction_bytes": 1_000,
+            "declared_payload_bytes": 900,
+            "model_metadata_completion_bytes": 400,
+        },
+        "final": {
+            "full_transaction_bytes": 1_200,
+            "declared_payload_bytes": 1_100,
+            "model_metadata_completion_bytes": 500,
+        },
+    }
+    smoke = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "d32_distributed_smoke_receipt",
+            "family_id": recipe["family_id"],
+            "slurm_job_id": "123",
+            "slurm_completion": {
+                "job_id": "123",
+                "state": "COMPLETED",
+                "exit_code": "0:0",
+                "nodes": nodes,
+                "sacct_output_sha256": "6" * 64,
+            },
+            "static_nccl_probe_sha256": "b" * 64,
+            "static_launcher_gate_sha256": launcher_gate_sha,
+            "signal_resume_gate_sha256": "5" * 64,
+            "packing_capacity_receipt_sha256": capacity_sha,
+            "packing_capacity_world_size": world_size,
+            "packing_capacity_safe_global_scheduled_positions": 68_451_041_280,
+            "static_srun_launches": [
+                {
+                    "phase": "smoke_initial_50",
+                    "sha256": "7" * 64,
+                    "path": "initial.json",
+                },
+                {
+                    "phase": "smoke_resume_100",
+                    "sha256": "8" * 64,
+                    "path": "resume.json",
+                },
+            ],
+            "nodes": nodes,
+            "gpus_per_node": recipe["distributed_gate"]["gpus_per_node"],
+            "world_size": world_size,
+            "measured_first_update": first,
+            "measured_last_update": last,
+            "measured_updates": last - first + 1,
+            "forced_resume": {
+                "step": recipe["distributed_gate"]["forced_resume_step"],
+                "checkpoint_sha256": "9" * 64,
+                "final_step": recipe["distributed_gate"]["smoke_updates"],
+                "final_checkpoint_sha256": "a" * 64,
+                "verified_from_final_metadata": True,
+            },
+            "scheduled_positions": positions,
+            "duration_seconds": duration,
+            "scheduled_positions_per_second": throughput,
+            "loader_performance": {
+                "aggregate_loader_seconds": duration * 0.1,
+                "aggregate_loader_fraction": 0.1,
+                "p95_loader_fraction": 0.2,
+                "minimum_scheduled_positions_per_second": 1_000_000.0,
+                "median_scheduled_positions_per_second": 1_100_000.0,
+                "maximum_aggregate_loader_fraction": recipe["distributed_gate"][
+                    "maximum_aggregate_loader_fraction"
+                ],
+                "maximum_p95_loader_fraction": recipe["distributed_gate"][
+                    "maximum_p95_loader_fraction"
+                ],
+                "passed": True,
+            },
+            "checkpoint_storage": storage,
+            "curve_log": {
+                "path": "training_curve.jsonl",
+                "sha256": "d" * 64,
+                "event_count": 100,
+                "last_event_sha256": "e" * 64,
+            },
+            "preflight_receipt_sha256": preflight_sha,
+            "production_identity": identity,
+            "production_identity_sha256": identity_sha,
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(tmp_path / f"smoke_ws{world_size}.json", smoke)
+    return smoke
+
+
 def test_topology_gate_is_bound_to_selected_capacity_world(tmp_path: Path) -> None:
     recipe_sha = "1" * 64
     attention_sha = "2" * 64
     approval_sha = "3" * 64
     capacity_sha = "4" * 64
     safe_positions = 68_451_041_280
+    recipe = {
+        "family_id": "tr_d32_general_bpe32k_v1",
+        "distributed_gate": {
+            "gpus_per_node": 4,
+            "smoke_updates": 100,
+            "forced_resume_step": 50,
+            "benchmark_first_update": 21,
+            "benchmark_last_update": 100,
+            "maximum_aggregate_loader_fraction": 0.35,
+            "maximum_p95_loader_fraction": 0.6,
+            "minimum_8_to_16_gpu_speedup": 1.7,
+            "minimum_parallel_efficiency": 0.85,
+        },
+        "training": {"global_batch_tokens": 2_097_152},
+        "stages": [{"source_step": None, "target_step": 34_560}],
+        "storage": {"smoke_measurement_safety_factor": 1.25},
+        "uhem_budget": {
+            "cpu_saat_per_4gpu_node_hour": 64,
+            "proxy_and_smoke_reserve_cpu_saat": 4_000,
+            "operational_ceiling_cpu_saat": 40_000,
+        },
+    }
     preflight = seal_manifest(
         {
             "kind": "d32_family_preflight_receipt",
@@ -719,7 +859,11 @@ def test_topology_gate_is_bound_to_selected_capacity_world(tmp_path: Path) -> No
                         "8": {
                             "passes_40x_no_wrap_with_margin": True,
                             "safe_global_scheduled_positions": safe_positions,
-                        }
+                        },
+                        "16": {
+                            "passes_40x_no_wrap_with_margin": True,
+                            "safe_global_scheduled_positions": safe_positions,
+                        },
                     },
                 }
             },
@@ -728,6 +872,17 @@ def test_topology_gate_is_bound_to_selected_capacity_world(tmp_path: Path) -> No
     )
     preflight_path = tmp_path / "preflight.json"
     write_json_atomic(preflight_path, preflight)
+    smoke8 = _write_fixed_topology_smoke(
+        tmp_path,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight_sha=preflight["canonical_sha256"],
+        attention_sha=attention_sha,
+        approval_sha=approval_sha,
+        capacity_sha=capacity_sha,
+        world_size=8,
+        throughput=100_000.0,
+    )
     gate = seal_manifest(
         {
             "kind": "d32_production_topology_gate",
@@ -747,15 +902,19 @@ def test_topology_gate_is_bound_to_selected_capacity_world(tmp_path: Path) -> No
             "require_single_world_size_for_entire_lineage": True,
             "required_speedup": 1.7,
             "signal_resume_gate_sha256": "5" * 64,
-            "smoke_8gpu_sha256": "6" * 64,
+            "smoke_8gpu_sha256": smoke8["canonical_sha256"],
             "smoke_16gpu_sha256": None,
             "throughput_8gpu": 100_000.0,
             "throughput_16gpu": None,
+            "speedup_8_to_16": None,
+            "parallel_efficiency": None,
             "preferred_topology_accepted": False,
-            "selection_reason": "use measured ws8 fallback",
+            "selection_reason": (
+                "no_clean_16gpu_smoke_receipt_supplied_use_8gpu_fallback"
+            ),
             "cost_projection": {
                 "version": "measured_smoke_v1",
-                "selected_smoke_sha256": "6" * 64,
+                "selected_smoke_sha256": smoke8["canonical_sha256"],
                 "world_size": 8,
                 "nodes": 2,
                 "global_batch_tokens": 2_097_152,
@@ -771,26 +930,18 @@ def test_topology_gate_is_bound_to_selected_capacity_world(tmp_path: Path) -> No
                 "operational_ceiling_cpu_saat": 40_000,
                 "passed": True,
             },
-            "storage_calibration": {"safety_factor": 1.25},
+            "storage_calibration": {
+                "safety_factor": 1.25,
+                "maximum_measured_full_transaction_bytes": 1_200,
+                "maximum_measured_model_bundle_bytes": 500,
+                "calibrated_full_transaction_bytes": 1_500,
+                "calibrated_model_bundle_bytes": 625,
+            },
             "canonical_sha256": None,
         }
     )
-    gate_path = tmp_path / "gate.json"
+    gate_path = tmp_path / "production_topology_gate.json"
     write_json_atomic(gate_path, gate)
-    recipe = {
-        "family_id": "tr_d32_general_bpe32k_v1",
-        "distributed_gate": {
-            "minimum_8_to_16_gpu_speedup": 1.7,
-            "minimum_parallel_efficiency": 0.85,
-        },
-        "training": {"global_batch_tokens": 2_097_152},
-        "stages": [{"source_step": None, "target_step": 34_560}],
-        "uhem_budget": {
-            "cpu_saat_per_4gpu_node_hour": 64,
-            "proxy_and_smoke_reserve_cpu_saat": 4_000,
-            "operational_ceiling_cpu_saat": 40_000,
-        },
-    }
     selected = {"safe_global_scheduled_positions": safe_positions}
     _loaded, digest = validate_production_topology_gate(
         gate_path,
@@ -806,6 +957,24 @@ def test_topology_gate_is_bound_to_selected_capacity_world(tmp_path: Path) -> No
         selected_capacity=selected,
     )
     assert digest == gate["canonical_sha256"]
+    drifted_throughput_gate = dict(gate)
+    drifted_throughput_gate["throughput_8gpu"] = 100_001.0
+    write_json_atomic(gate_path, seal_manifest(drifted_throughput_gate))
+    with pytest.raises(StrictTrainingError, match="fixed smoke evidence at throughput_8gpu"):
+        validate_production_topology_gate(
+            gate_path,
+            preflight_path,
+            recipe=recipe,
+            recipe_sha256=recipe_sha,
+            attention_probe_sha256=attention_sha,
+            proxy_approval_sha256=approval_sha,
+            accepted_base_weight_decay=0.1,
+            accepted_weight_decay_cooldown_policy="constant",
+            world_size=8,
+            packing_capacity_receipt_sha256=capacity_sha,
+            selected_capacity=selected,
+        )
+    write_json_atomic(gate_path, gate)
     tampered_gate = dict(gate)
     tampered_gate["cost_projection"] = dict(gate["cost_projection"])
     tampered_gate["cost_projection"]["raw_training_cpu_saat_ceiling"] -= 1
@@ -837,6 +1006,139 @@ def test_topology_gate_is_bound_to_selected_capacity_world(tmp_path: Path) -> No
             accepted_weight_decay_cooldown_policy="constant",
             world_size=8,
             packing_capacity_receipt_sha256="f" * 64,
+            selected_capacity=selected,
+        )
+    smoke16 = _write_fixed_topology_smoke(
+        tmp_path,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight_sha=preflight["canonical_sha256"],
+        attention_sha=attention_sha,
+        approval_sha=approval_sha,
+        capacity_sha=capacity_sha,
+        world_size=16,
+        throughput=170_000.0,
+    )
+    gate16 = dict(gate)
+    gate16.update(
+        {
+            "authorized_production_world_size": 16,
+            "authorized_production_nodes": 4,
+            "authorized_packing_capacity_world_size": 16,
+            "smoke_16gpu_sha256": smoke16["canonical_sha256"],
+            "throughput_16gpu": 170_000.0,
+            "speedup_8_to_16": 1.7,
+            "parallel_efficiency": 0.85,
+            "preferred_topology_accepted": True,
+            "selection_reason": "clean_16gpu_smoke_meets_minimum_1.7_speedup",
+            "cost_projection": {
+                "version": "measured_smoke_v1",
+                "selected_smoke_sha256": smoke16["canonical_sha256"],
+                "world_size": 16,
+                "nodes": 4,
+                "global_batch_tokens": 2_097_152,
+                "full_shared_updates": 34_560,
+                "full_scheduled_positions": 72_477_573_120,
+                "measured_positions_per_second": 170_000.0,
+                "billing_cpu_saat_per_node_hour": 64,
+                "reserve_fraction": 0.15,
+                "raw_training_cpu_saat_ceiling": 30_318,
+                "reserved_training_cpu_saat": 34_866,
+                "proxy_smoke_allowance_cpu_saat": 4_000,
+                "projected_total_package_cpu_saat": 38_866,
+                "operational_ceiling_cpu_saat": 40_000,
+                "passed": True,
+            },
+        }
+    )
+    gate16 = seal_manifest(gate16)
+    write_json_atomic(gate_path, gate16)
+    _loaded, digest = validate_production_topology_gate(
+        gate_path,
+        preflight_path,
+        recipe=recipe,
+        recipe_sha256=recipe_sha,
+        attention_probe_sha256=attention_sha,
+        proxy_approval_sha256=approval_sha,
+        accepted_base_weight_decay=0.1,
+        accepted_weight_decay_cooldown_policy="constant",
+        world_size=16,
+        packing_capacity_receipt_sha256=capacity_sha,
+        selected_capacity=selected,
+    )
+    assert digest == gate16["canonical_sha256"]
+    drifted_boundary_gate = dict(gate16)
+    drifted_boundary_gate["speedup_8_to_16"] = 1.699999
+    write_json_atomic(gate_path, seal_manifest(drifted_boundary_gate))
+    with pytest.raises(
+        StrictTrainingError, match="fixed smoke evidence at speedup_8_to_16"
+    ):
+        validate_production_topology_gate(
+            gate_path,
+            preflight_path,
+            recipe=recipe,
+            recipe_sha256=recipe_sha,
+            attention_probe_sha256=attention_sha,
+            proxy_approval_sha256=approval_sha,
+            accepted_base_weight_decay=0.1,
+            accepted_weight_decay_cooldown_policy="constant",
+            world_size=16,
+            packing_capacity_receipt_sha256=capacity_sha,
+            selected_capacity=selected,
+        )
+    write_json_atomic(gate_path, gate16)
+    mismatched_launcher_smoke16 = _write_fixed_topology_smoke(
+        tmp_path,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        preflight_sha=preflight["canonical_sha256"],
+        attention_sha=attention_sha,
+        approval_sha=approval_sha,
+        capacity_sha=capacity_sha,
+        world_size=16,
+        throughput=170_000.0,
+        launcher_gate_sha="f" * 64,
+    )
+    mismatched_launcher_gate = dict(gate16)
+    mismatched_launcher_gate["smoke_16gpu_sha256"] = mismatched_launcher_smoke16[
+        "canonical_sha256"
+    ]
+    mismatched_launcher_gate["cost_projection"] = dict(gate16["cost_projection"])
+    mismatched_launcher_gate["cost_projection"]["selected_smoke_sha256"] = (
+        mismatched_launcher_smoke16["canonical_sha256"]
+    )
+    write_json_atomic(gate_path, seal_manifest(mismatched_launcher_gate))
+    with pytest.raises(StrictTrainingError, match="mixed lineage"):
+        validate_production_topology_gate(
+            gate_path,
+            preflight_path,
+            recipe=recipe,
+            recipe_sha256=recipe_sha,
+            attention_probe_sha256=attention_sha,
+            proxy_approval_sha256=approval_sha,
+            accepted_base_weight_decay=0.1,
+            accepted_weight_decay_cooldown_policy="constant",
+            world_size=16,
+            packing_capacity_receipt_sha256=capacity_sha,
+            selected_capacity=selected,
+        )
+    write_json_atomic(tmp_path / "smoke_ws16.json", smoke16)
+    write_json_atomic(gate_path, gate16)
+    tampered_smoke = dict(smoke8)
+    tampered_smoke["duration_seconds"] = smoke8["duration_seconds"] * 2
+    write_json_atomic(tmp_path / "smoke_ws8.json", seal_manifest(tampered_smoke))
+    with pytest.raises(StrictTrainingError, match="throughput arithmetic drifted"):
+        validate_production_topology_gate(
+            gate_path,
+            preflight_path,
+            recipe=recipe,
+            recipe_sha256=recipe_sha,
+            attention_probe_sha256=attention_sha,
+            proxy_approval_sha256=approval_sha,
+            accepted_base_weight_decay=0.1,
+            accepted_weight_decay_cooldown_policy="constant",
+            world_size=16,
+            packing_capacity_receipt_sha256=capacity_sha,
             selected_capacity=selected,
         )
 

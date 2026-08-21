@@ -186,7 +186,7 @@
         "final_step": 9600,
         "cooldown_steps": 960,
         "scheduled_tokens": 20132659200,
-        "retention": "model_metadata_provenance_required_optimizer_explicit"
+        "retention": "full_resumable"
       },
       {
         "label": "s20",
@@ -196,7 +196,7 @@
         "final_step": 16000,
         "cooldown_steps": 1600,
         "scheduled_tokens": 33554432000,
-        "retention": "model_metadata_provenance_required_optimizer_explicit"
+        "retention": "full_resumable"
       },
       {
         "label": "s40",
@@ -206,7 +206,7 @@
         "final_step": 32000,
         "cooldown_steps": 3200,
         "scheduled_tokens": 67108864000,
-        "retention": "model_metadata_provenance_required_optimizer_explicit"
+        "retention": "full_resumable"
       }
     ]
   },
@@ -492,17 +492,17 @@
     "estimated_full_resumable_transaction_bytes": 34359738368,
     "full_resumable_stable_forks_retained": 3,
     "estimated_cooled_final_model_bundle_bytes": 12884901888,
-    "cooled_final_model_bundles_retained": 3,
-    "full_cooled_final_transactions_at_peak": 1,
+    "cooled_final_model_bundles_retained": 0,
+    "full_cooled_final_transactions_at_peak": 3,
     "atomic_write_transient_transactions": 1,
     "maximum_retained_preemption_transactions": 6,
     "estimated_logs_and_evaluations_bytes": 17179869184,
     "estimated_proxy_and_smoke_retained_bytes": 68719476736,
     "minimum_free_headroom_bytes": 68719476736,
     "smoke_measurement_safety_factor": 1.25,
-    "required_free_bytes_at_training_preflight": 571230650368,
-    "estimated_end_to_end_peak_project_bytes": 820338753536,
-    "policy": "measure actual corpus/tokenizer bytes; seed estimates at 32 GiB/full and 12 GiB/model bundle, then raise them to measured d32 smoke bytes times 1.25; retain proxy/smoke transactions, three full-resumable stable forks, up to six immutable preemption transactions, and three model-only cooled-final bundles; allow one full final plus one atomic-write transient; retain logs/evals and 64 GiB headroom; optimizer removal from a cooled final is a separate explicit verified operation and never automatic"
+    "required_free_bytes_at_training_preflight": 601295421440,
+    "estimated_end_to_end_peak_project_bytes": 850403524608,
+    "policy": "measure actual corpus/tokenizer bytes; seed estimates at 32 GiB/full and 12 GiB/model bundle, then raise them to measured d32 smoke bytes times 1.25; retain proxy/smoke transactions, three full-resumable stable forks, all three full-resumable cooled-final transactions, up to six immutable preemption transactions, and one atomic-write transient; retain logs/evals and 64 GiB headroom; remote optimizer omission is an explicit export policy and never deletes or weakens the local final transactions"
   },
   "uhem_budget": {
     "account": "nakane",
@@ -575,7 +575,8 @@
     "require_corpus_and_validation_provenance": true,
     "require_lineage_receipts": true,
     "require_code_revision": true,
+    "require_manual_final_quality_approval": true,
     "final_optimizer_policy": "explicit_include_or_explicit_omit_with_retention_class"
   },
-  "canonical_sha256": "1e18cae744b7aa269a283332555312cdf1fb9ace677f3963218ce10508811c7b"
+  "canonical_sha256": "1934a927d116806f82c14a24e898dd8c2512a37903a2190a6e108873b171393a"
 }

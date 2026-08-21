@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -9,6 +10,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import nanochat.strict_checkpoint as strict_checkpoint
 from nanochat.experiment_manifest import seal_manifest, write_json_atomic
 from nanochat.strict_runtime import (
     StrictTrainingError,
@@ -22,6 +24,7 @@ from scripts import d32_family_workflow as workflow
 ROOT = Path(__file__).resolve().parents[1]
 RECIPE = ROOT / "configs" / "pretrain" / "tr_d32_turkish_general_wsd_v1.json"
 RECIPE_V2 = ROOT / "configs" / "pretrain" / "tr_d32_turkish_general_wsd_v2.json"
+RECIPE_V3 = ROOT / "configs" / "pretrain" / "tr_d32_turkish_general_wsd_v3.json"
 
 
 @pytest.mark.parametrize("recipe_path", [RECIPE, RECIPE_V2])
@@ -149,6 +152,338 @@ def test_measured_smoke_cost_projection_is_exact_and_fail_closed() -> None:
     )
     assert too_slow["projected_total_package_cpu_saat"] > 40_000
     assert too_slow["passed"] is False
+
+
+def _write_comparison_smoke(
+    root: Path,
+    *,
+    recipe: dict,
+    recipe_sha: str,
+    world_size: int,
+    throughput: float,
+    identity_suffix: str = "",
+    launcher_gate_sha: str = "d" * 64,
+) -> dict:
+    identity = {
+        "recipe_sha256": recipe_sha,
+        "fixture_identity": f"shared{identity_suffix}",
+        "attention_probe_sha256": "1" * 64,
+        "wsd_proxy_approval_sha256": "2" * 64,
+        "wsd_base_weight_decay": 0.1,
+        "wsd_weight_decay_cooldown": "constant",
+    }
+    identity_sha = hashlib.sha256(
+        json.dumps(identity, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    receipt = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "d32_distributed_smoke_receipt",
+            "family_id": recipe["family_id"],
+            "world_size": world_size,
+            "packing_capacity_world_size": world_size,
+            "packing_capacity_receipt_sha256": "c" * 64,
+            "packing_capacity_safe_global_scheduled_positions": 68_451_041_280,
+            "preflight_receipt_sha256": "a" * 64,
+            "signal_resume_gate_sha256": "b" * 64,
+            "static_launcher_gate_sha256": launcher_gate_sha,
+            "production_identity": identity,
+            "production_identity_sha256": identity_sha,
+            "scheduled_positions_per_second": throughput,
+            "checkpoint_storage": {
+                "forced_resume": {
+                    "full_transaction_bytes": 1_000,
+                    "model_metadata_completion_bytes": 400,
+                },
+                "final": {
+                    "full_transaction_bytes": 1_200,
+                    "model_metadata_completion_bytes": 500,
+                },
+            },
+            "canonical_sha256": None,
+        }
+    )
+    write_json_atomic(root / f"smoke_ws{world_size}.json", receipt)
+    return receipt
+
+
+@pytest.mark.parametrize(
+    ("throughput16", "selected_world_size"),
+    [(170_000.0, 16), (169_999.0, 8)],
+)
+def test_compare_smokes_enforces_exact_1_7_boundary(
+    tmp_path: Path, throughput16: float, selected_world_size: int
+) -> None:
+    recipe, recipe_sha = workflow.load_recipe(RECIPE_V3)
+    smoke8 = _write_comparison_smoke(
+        tmp_path,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        world_size=8,
+        throughput=100_000.0,
+    )
+    smoke16 = _write_comparison_smoke(
+        tmp_path,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        world_size=16,
+        throughput=throughput16,
+    )
+    output = tmp_path / "production_topology_gate.json"
+    workflow.command_compare_smokes(
+        argparse.Namespace(
+            recipe=RECIPE_V3,
+            smoke_8gpu=tmp_path / "smoke_ws8.json",
+            smoke_16gpu=tmp_path / "smoke_ws16.json",
+            output=output,
+        )
+    )
+    gate = json.loads(output.read_text(encoding="utf-8"))
+    assert gate["smoke_8gpu_sha256"] == smoke8["canonical_sha256"]
+    assert gate["smoke_16gpu_sha256"] == smoke16["canonical_sha256"]
+    assert gate["authorized_production_world_size"] == selected_world_size
+    assert gate["preferred_topology_accepted"] is (selected_world_size == 16)
+    assert gate["speedup_8_to_16"] == throughput16 / 100_000.0
+
+
+def test_compare_smokes_rejects_mixed_identity_and_nonfinite_throughput(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    recipe, recipe_sha = workflow.load_recipe(RECIPE_V3)
+    smoke8 = _write_comparison_smoke(
+        tmp_path,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        world_size=8,
+        throughput=100_000.0,
+    )
+    _write_comparison_smoke(
+        tmp_path,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        world_size=16,
+        throughput=170_000.0,
+        identity_suffix="-drift",
+    )
+    args = argparse.Namespace(
+        recipe=RECIPE_V3,
+        smoke_8gpu=tmp_path / "smoke_ws8.json",
+        smoke_16gpu=tmp_path / "smoke_ws16.json",
+        output=tmp_path / "production_topology_gate.json",
+    )
+    alternate_smoke8 = tmp_path / "renamed_ws8.json"
+    write_json_atomic(alternate_smoke8, smoke8)
+    args.smoke_8gpu = alternate_smoke8
+    with pytest.raises(workflow.FamilyWorkflowError, match="fixed sibling smoke_ws8"):
+        workflow.command_compare_smokes(args)
+    args.smoke_8gpu = tmp_path / "smoke_ws8.json"
+    args.smoke_16gpu = None
+    with pytest.raises(workflow.FamilyWorkflowError, match="exists but was omitted"):
+        workflow.command_compare_smokes(args)
+    args.smoke_16gpu = tmp_path / "smoke_ws16.json"
+    with pytest.raises(workflow.FamilyWorkflowError, match="same production identity"):
+        workflow.command_compare_smokes(args)
+
+    _write_comparison_smoke(
+        tmp_path,
+        recipe=recipe,
+        recipe_sha=recipe_sha,
+        world_size=16,
+        throughput=170_000.0,
+        launcher_gate_sha="e" * 64,
+    )
+    with pytest.raises(workflow.FamilyWorkflowError, match="different static launcher"):
+        workflow.command_compare_smokes(args)
+
+    smoke8["scheduled_positions_per_second"] = math.nan
+
+    def load_nonfinite_smoke(path: Path, _kind: str) -> tuple[dict, str]:
+        if path.name == "smoke_ws8.json":
+            return smoke8, "d" * 64
+        smoke16 = _write_comparison_smoke(
+            tmp_path,
+            recipe=recipe,
+            recipe_sha=recipe_sha,
+            world_size=16,
+            throughput=170_000.0,
+        )
+        return smoke16, "e" * 64
+
+    monkeypatch.setattr(
+        workflow,
+        "_load_receipt",
+        load_nonfinite_smoke,
+    )
+    with pytest.raises(workflow.FamilyWorkflowError, match="positive finite"):
+        workflow.command_compare_smokes(args)
+
+
+def _seal_smoke_fixture(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> tuple[argparse.Namespace, list[dict]]:
+    recipe, recipe_sha = workflow.load_recipe(RECIPE_V3)
+    preflight = seal_manifest(
+        {
+            "schema_version": "1.0",
+            "kind": "d32_family_preflight_receipt",
+            "recipe": {"canonical_sha256": recipe_sha},
+            "mixture_config": {"sha256": "1" * 64},
+            "corpus": {
+                "manifest_sha256": "2" * 64,
+                "dataset_manifest_sha256": "3" * 64,
+                "validation_file_sha256": "4" * 64,
+                "training_exposure_plans": {
+                    "smoke_ws8": {"sha256": "5" * 64}
+                },
+            },
+            "tokenizer": {"package_manifest_sha256": "6" * 64},
+            "code": {"git_commit": "7" * 40},
+            "canonical_sha256": None,
+        }
+    )
+    preflight_path = tmp_path / "preflight.json"
+    write_json_atomic(preflight_path, preflight)
+    proxy = {
+        "accepted_base_weight_decay": 0.1,
+        "accepted_weight_decay_cooldown_policy": "constant",
+    }
+    monkeypatch.setattr(
+        workflow, "_verify_static_launcher_gate", lambda *_args, **_kwargs: ({}, "8" * 64)
+    )
+    monkeypatch.setattr(
+        workflow, "_verify_signal_resume_gate", lambda *_args, **_kwargs: ({}, "9" * 64)
+    )
+    monkeypatch.setattr(
+        workflow, "_verify_attention_probe", lambda *_args, **_kwargs: ({}, "a" * 64)
+    )
+    monkeypatch.setattr(
+        workflow,
+        "_verify_proxy_acceptance",
+        lambda *_args, **_kwargs: (proxy, "b" * 64),
+    )
+    monkeypatch.setattr(
+        workflow,
+        "_preflight_capacity_world",
+        lambda *_args, **_kwargs: (
+            "c" * 64,
+            {"authorized_global_scheduled_positions": 1_000_000_000},
+        ),
+    )
+    monkeypatch.setattr(
+        workflow,
+        "_live_slurm_completed_job",
+        lambda *_args, **_kwargs: {
+            "state": "COMPLETED",
+            "exit_code": "0:0",
+            "nodes": 2,
+        },
+    )
+    monkeypatch.setattr(
+        workflow, "_verify_static_probe_receipt", lambda *_args, **_kwargs: ({}, "d" * 64)
+    )
+    monkeypatch.setattr(
+        workflow, "_verify_static_launch_receipt", lambda *_args, **_kwargs: ({}, "e" * 64)
+    )
+    monkeypatch.setattr(workflow, "_verify_frozen_protocol", lambda *_args, **_kwargs: None)
+    storage = {
+        "full_transaction_bytes": 1_000,
+        "declared_payload_bytes": 900,
+        "model_metadata_completion_bytes": 400,
+    }
+    monkeypatch.setattr(
+        workflow, "_checkpoint_storage_observation", lambda *_args, **_kwargs: storage
+    )
+
+    run_id = f"{recipe['family_id']}_smoke_ws8"
+    protocol = {
+        "optimizer": {"muon_base_weight_decay": 0.1},
+        "schedule": {
+            "name": "wsd",
+            "recipe_version": recipe["weight_decay_proxy_ablation"]["recipe_version"],
+            "cooldown_start_step": None,
+            "weight_decay_cooldown_policy": "constant",
+            "proxy_approval_sha256": "b" * 64,
+        },
+    }
+    final_identity = {
+        "study_id": recipe["family_id"],
+        "run_id": run_id,
+        "study_manifest_sha256": recipe_sha,
+        "tokenizer_artifact_sha256": "6" * 64,
+        "exposure_plan_sha256": "5" * 64,
+        "protocol": protocol,
+    }
+    resume_checkpoint = seal_manifest(
+        {"identity": {"fixture": "resume"}, "canonical_sha256": None}
+    )
+    final_checkpoint = seal_manifest(
+        {"identity": final_identity, "canonical_sha256": None}
+    )
+    monkeypatch.setattr(
+        strict_checkpoint,
+        "inspect_strict_checkpoint",
+        lambda _root, step: resume_checkpoint if step == 50 else final_checkpoint,
+    )
+    checkpoint_root = tmp_path / "checkpoints"
+    final_step_dir = checkpoint_root / "strict_000100"
+    final_step_dir.mkdir(parents=True)
+    write_json_atomic(final_step_dir / "meta.json", {"user_config": {"resume_from_step": 50}})
+    curve_log = tmp_path / "training_curve.jsonl"
+    curve_log.write_text("", encoding="utf-8")
+    events = [
+        {
+            "event_type": "train_update",
+            "updates_completed": update,
+            "metrics": {
+                "train/duration_seconds": 1.0,
+                "train/scheduled_positions": 2_097_152,
+                "train/loader_seconds": 0.1,
+                "train/loader_scheduled_positions_per_second": 20_971_520.0,
+                "train/loader_fraction_of_update": 0.1,
+            },
+        }
+        for update in range(21, 101)
+    ]
+    monkeypatch.setattr(
+        workflow,
+        "read_training_log",
+        lambda *_args, **_kwargs: (
+            events,
+            SimpleNamespace(event_count=len(events), last_event_sha256="f" * 64),
+        ),
+    )
+    args = argparse.Namespace(
+        recipe=RECIPE_V3,
+        preflight_receipt=preflight_path,
+        attention_probe=tmp_path / "attention.json",
+        wd_proxy_approval=tmp_path / "proxy.json",
+        nodes=2,
+        curve_log=curve_log,
+        checkpoint_root=checkpoint_root,
+        static_probe_receipt=tmp_path / "static.json",
+        static_launcher_gate=tmp_path / "static_gate.json",
+        signal_resume_gate=tmp_path / "signal_gate.json",
+        launch_receipt=[tmp_path / "initial.json", tmp_path / "resume.json"],
+        slurm_job_id="123",
+        output=tmp_path / "smoke_ws8.json",
+    )
+    return args, events
+
+
+def test_seal_smoke_directly_aggregates_benchmark_and_rejects_nonfinite_duration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    args, events = _seal_smoke_fixture(tmp_path, monkeypatch)
+    workflow.command_seal_smoke(args)
+    receipt = json.loads(args.output.read_text(encoding="utf-8"))
+    assert receipt["measured_updates"] == 80
+    assert receipt["scheduled_positions"] == 80 * 2_097_152
+    assert receipt["scheduled_positions_per_second"] == 2_097_152
+
+    events[0]["metrics"]["train/duration_seconds"] = math.nan
+    args.output = tmp_path / "invalid_smoke_ws8.json"
+    with pytest.raises(workflow.FamilyWorkflowError, match="non-finite update duration"):
+        workflow.command_seal_smoke(args)
 
 
 def test_uhem_quota_cross_checks_raw_usage_seconds(monkeypatch, tmp_path: Path) -> None:

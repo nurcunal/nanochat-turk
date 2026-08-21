@@ -127,6 +127,13 @@ Data preparation is deliberately excluded: its sampled/extrapolated sealed
 CPU-saat value is added before preflight because inventing a fixed estimate
 before the real source mix exists would be unsafe.
 
+The v3 storage envelope keeps all three stable forks and all three cooled
+finals as full resumable checkpoint transactions on UHeM. The static training
+preflight therefore requires 601,295,421,440 bytes (560 GiB) free, and the
+corpus/tokenizer-inclusive project envelope is 850,403,524,608 bytes (792 GiB).
+Choosing a model-only Hugging Face export never deletes optimizer, loader, or
+RNG state from the local finals.
+
 The data `resource-report` command requires `--billable-cpus-per-job 128`.
 Its sealed `cpu2dq` contract bills projected stage wall time at 128 CPUs for
 each one-node job; process CPU time is retained only as an efficiency diagnostic.
@@ -361,6 +368,50 @@ proxy, signal/resume, and smoke submissions. It cannot submit production.
 
 The Hugging Face family export defaults to a private, dry-run verification via
 `runs/uhem_d32_family_upload.sbatch`. Stable fork transactions always include
-optimizer/loader/RNG state. Final optimizer inclusion or omission must be an
-explicit `FINAL_OPTIMIZER_POLICY` choice, and remote mutation additionally
-requires `DRY_RUN=0`.
+optimizer/loader/RNG state, and all three local cooled-final transactions remain
+fully resumable. Before export, inspect the terminal fixed-validation BPB and
+complete validation evidence for s12, s20, and s40, then seal one explicit
+manual decision:
+
+```bash
+.venv/bin/python scripts/d32_family_workflow.py seal-final-quality-approval \
+  --recipe "$RECIPE" --preflight-receipt "$CONTROL_DIR/preflight.json" \
+  --gate "$CONTROL_DIR/production_topology_gate.json" \
+  --base-dir "$NANOCHAT_BASE_DIR" --lineage-dir "$CONTROL_DIR/lineage" \
+  --reviewer "$REVIEWER" --reviewed-at-utc "$REVIEWED_AT_UTC" \
+  --decision accepted --notes "$NOTES" \
+  --output "$CONTROL_DIR/final_quality_approval.json"
+```
+
+No automatic BPB cutoff is invented: a rejected decision is retained for
+audit, while publication fails closed unless the exact checkpoint, lineage,
+curve-log, and full-validation evidence has an accepted approval. The export
+also includes and hash-binds the MaCoCu, MOT, and ParlaMint preparation
+manifests plus the source plan, backend calibration, backend resource report,
+mixture/resource approvals, production pack plan, writer probe, storage
+sample/gate, and the fixed ws8/ws16 smoke receipts used by the topology gate.
+The MaCoCu export check rehashes every prepared shard and the retained upstream
+gzip; a valid manifest by itself is insufficient.
+
+The bounded sample-audit report, copied cluster/object/bucket launch receipts,
+and accepted/rejected JSONL and plaintext review examples are exported beneath
+the mixture approval's original relative evidence root. This makes its
+relative links usable after download. The live sample Parquets and the full
+training corpus are intentionally not copied into the model repository; their
+immutable hashes and source URIs remain in the archived receipts. Set
+`BACKEND_RESOURCE_REPORT`, `DATA_PREP_STORAGE_SAMPLE`, and `WRITER_PROBE` only
+when their defaults under `control/data_v3` do not apply.
+
+The `reviewer` fields are trusted-operator self-attestations, not
+cryptographically authenticated identities. Canonical hashes bind each
+decision to exact evidence and reject later drift or stale substitution, but
+they cannot prevent a person or process with write access to the control tree
+from creating a new self-consistent approval under another reviewer name.
+Restrict write access, preserve scheduler/audit logs, and perform publication
+from the reviewed operator account. A detached signature would require a
+separate, explicitly designed key-verification policy; this workflow does not
+claim to provide one.
+
+Final optimizer inclusion or omission must be an explicit
+`FINAL_OPTIMIZER_POLICY` choice, and remote mutation additionally requires
+`DRY_RUN=0`.

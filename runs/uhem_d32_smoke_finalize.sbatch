@@ -38,7 +38,12 @@ if [ "$SMOKE_NODES" -ne 2 ] && [ "$SMOKE_NODES" -ne 4 ]; then
     exit 2
 fi
 WORLD_SIZE=$((SMOKE_NODES * 4))
-FAMILY_ID="${FAMILY_ID:-$(.venv/bin/python -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["family_id"])' "$RECIPE")}"
+RECIPE_FAMILY_ID="$(.venv/bin/python -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["family_id"])' "$RECIPE")"
+if [ -n "${FAMILY_ID:-}" ] && [ "$FAMILY_ID" != "$RECIPE_FAMILY_ID" ]; then
+    echo "FAMILY_ID differs from the validated recipe family_id: $RECIPE_FAMILY_ID" >&2
+    exit 2
+fi
+FAMILY_ID="$RECIPE_FAMILY_ID"
 RUN_ID="${FAMILY_ID}_smoke_ws${WORLD_SIZE}"
 CONTROL_ROOT="$NANOCHAT_BASE_DIR/control/d32/launcher/job${SMOKE_JOB_ID}"
 
