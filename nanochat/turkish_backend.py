@@ -1296,6 +1296,7 @@ def validate_source_plan(plan: Mapping[str, Any], policy: Mapping[str, Any]) -> 
         raise TurkishCorpusError("source-plan HPLT control/bin contract drift")
     seen_sources: set[str] = set()
     seen_uris: set[str] = set()
+    seen_hplt_bins: set[int] = set()
     for rank, raw in enumerate(objects):
         item = _require_mapping(raw, f"objects[{rank}]")
         if item.get("rank") != rank:
@@ -1314,6 +1315,15 @@ def validate_source_plan(plan: Mapping[str, Any], policy: Mapping[str, Any]) -> 
         if uri in seen_uris or scheme != allowed_scheme:
             raise TurkishCorpusError("source plan has duplicate/unsupported object URI")
         seen_uris.add(uri)
+        if source_id == "hplt3_tr":
+            wds_bin = item.get("wds_bin")
+            if (
+                isinstance(wds_bin, bool)
+                or not isinstance(wds_bin, int)
+                or wds_bin not in expected_hplt_bins
+            ):
+                raise TurkishCorpusError("source-plan HPLT object/bin contract drift")
+            seen_hplt_bins.add(wds_bin)
         _require_positive_int(item.get("size_bytes"), "source object size")
         checksums = item.get("expected_checksums")
         if not isinstance(checksums, list) or not checksums:
@@ -1356,6 +1366,8 @@ def validate_source_plan(plan: Mapping[str, Any], policy: Mapping[str, Any]) -> 
                 raise TurkishCorpusError("anchor source-plan shard inventory drift")
     if seen_sources != expected_sources:
         raise TurkishCorpusError("source plan does not cover every configured source")
+    if hplt_source is not None and seen_hplt_bins != set(expected_hplt_bins):
+        raise TurkishCorpusError("source plan does not cover every selected HPLT WDS bin")
     if macocu_manifest_objects and {
         uri for uri in seen_uris if uri in macocu_manifest_objects
     } != set(macocu_manifest_objects):
@@ -1561,6 +1573,82 @@ def select_resource_sample_ranks(plan: Mapping[str, Any]) -> list[int]:
                 ]["rank"]
             )
     return sorted(selected)
+
+
+def _hplt_sample_bin_coverage(plan: Mapping[str, Any]) -> list[int]:
+    """Return exact selected HPLT bins only when the bounded sample covers each once."""
+
+    hplt_objects = [
+        item for item in plan["objects"] if item.get("source_id") == "hplt3_tr"
+    ]
+    if not hplt_objects:
+        return []
+    control = _require_mapping(plan.get("hplt_control"), "source-plan HPLT control")
+    configured = control.get("selected_wds_bins")
+    if (
+        not isinstance(configured, list)
+        or not configured
+        or any(isinstance(value, bool) or not isinstance(value, int) for value in configured)
+        or len(configured) != len(set(configured))
+    ):
+        raise TurkishCorpusError("source-plan selected HPLT WDS bins are malformed")
+    expected = sorted(configured)
+    observed = sorted({int(item["wds_bin"]) for item in hplt_objects})
+    sample_ranks = set(select_resource_sample_ranks(plan))
+    sampled = [item for item in hplt_objects if int(item["rank"]) in sample_ranks]
+    sampled_bins = sorted(int(item["wds_bin"]) for item in sampled)
+    if observed != expected or sampled_bins != expected:
+        raise TurkishCorpusError(
+            "bounded resource sample must cover each configured HPLT WDS bin exactly once"
+        )
+    return expected
+
+
+def _resource_sample_contract(plan: Mapping[str, Any]) -> dict[str, Any]:
+    """Recompute the exact bounded sample inventory from a sealed source plan."""
+
+    objects = plan.get("objects")
+    if not isinstance(objects, list) or any(
+        not isinstance(item, Mapping) for item in objects
+    ):
+        raise TurkishCorpusError("source-plan object inventory is malformed")
+    sample_ranks = select_resource_sample_ranks(plan)
+    sample_rank_set = set(sample_ranks)
+    hplt_selected_objects: list[dict[str, Any]] = []
+    for item in objects:
+        if item.get("source_id") != "hplt3_tr" or item.get("rank") not in sample_rank_set:
+            continue
+        rank = item.get("rank")
+        wds_bin = item.get("wds_bin")
+        size_bytes = item.get("size_bytes")
+        uri = item.get("uri")
+        if (
+            isinstance(rank, bool)
+            or not isinstance(rank, int)
+            or rank < 0
+            or isinstance(wds_bin, bool)
+            or not isinstance(wds_bin, int)
+            or isinstance(size_bytes, bool)
+            or not isinstance(size_bytes, int)
+            or size_bytes <= 0
+            or not isinstance(uri, str)
+            or not uri
+        ):
+            raise TurkishCorpusError("source-plan HPLT sample inventory is malformed")
+        hplt_selected_objects.append(
+            {
+                "rank": rank,
+                "wds_bin": wds_bin,
+                "size_bytes": size_bytes,
+                "uri": uri,
+            }
+        )
+    hplt_selected_objects.sort(key=lambda item: item["rank"])
+    return {
+        "ranks": sample_ranks,
+        "covers_hplt_wds_bins": _hplt_sample_bin_coverage(plan),
+        "hplt_selected_objects": hplt_selected_objects,
+    }
 
 
 def _verify_datatrove_runtime() -> dict[str, Any]:
@@ -4345,10 +4433,13 @@ def _resource_projection_accounting(
     }
 
 
-def validate_resource_projection(report: Mapping[str, Any]) -> str:
-    """Validate the sealed wall-time billing arithmetic used for manual approval."""
+def validate_resource_projection(
+    report: Mapping[str, Any], *, plan: Mapping[str, Any]
+) -> str:
+    """Validate projection arithmetic and its exact bound source-plan sample."""
 
     report_hash = verify_manifest_hash(report)
+    plan_hash = verify_manifest_hash(plan)
     if report.get("schema_version") != "2.0" or report.get("kind") != RESOURCE_REPORT_KIND:
         raise TurkishCorpusError("unexpected resource projection kind/version")
     for key in (
@@ -4362,6 +4453,36 @@ def validate_resource_projection(report: Mapping[str, Any]) -> str:
     contract = _require_mapping(report.get("billing_contract"), "billing_contract")
     if dict(contract) != RESOURCE_BILLING_CONTRACT:
         raise TurkishCorpusError("resource projection billing contract drift")
+    sample_selection = _require_mapping(
+        report.get("sample_selection"), "resource projection sample_selection"
+    )
+    if report.get("source_plan_sha256") != plan_hash:
+        raise TurkishCorpusError("resource projection source-plan binding drift")
+    expected_sample = _resource_sample_contract(plan)
+    for key in ("ranks", "covers_hplt_wds_bins", "hplt_selected_objects"):
+        if canonical_json(sample_selection.get(key)) != canonical_json(
+            expected_sample[key]
+        ):
+            raise TurkishCorpusError(
+                f"resource projection {key} does not match the bound source plan"
+            )
+    selected_hplt = sample_selection.get("hplt_selected_objects")
+    if not isinstance(selected_hplt, list) or any(
+        not isinstance(item, Mapping) for item in selected_hplt
+    ):
+        raise TurkishCorpusError("resource projection HPLT sample inventory drift")
+    selected_hplt_bins: list[int] = []
+    for item in selected_hplt:
+        wds_bin = item.get("wds_bin")
+        if isinstance(wds_bin, bool) or not isinstance(wds_bin, int):
+            raise TurkishCorpusError("resource projection HPLT sample bin drift")
+        selected_hplt_bins.append(wds_bin)
+    if (
+        len(selected_hplt_bins) != len(set(selected_hplt_bins))
+        or sample_selection.get("covers_hplt_wds_bins")
+        != sorted(selected_hplt_bins)
+    ):
+        raise TurkishCorpusError("resource projection HPLT bin coverage drift")
     projection = _require_mapping(report.get("projection"), "projection")
     diagnostics = _require_mapping(
         projection.get("diagnostic_process_cpu"), "projection.diagnostic_process_cpu"
@@ -4727,6 +4848,7 @@ def build_resource_projection(
         and projected_cluster_peak_rss_with_safety < cluster_memory_limit
         and projected_cluster_wall_with_safety <= 172_800
     )
+    sample_contract = _resource_sample_contract(plan)
     report = seal_manifest(
         {
             "schema_version": "2.0",
@@ -4743,26 +4865,20 @@ def build_resource_projection(
                     "non_hplt_uri_quartiles_plus_hplt_smallest_complete_shard_"
                     "per_wds_bin_plus_macocu_genres_v5"
                 ),
-                "ranks": select_resource_sample_ranks(plan),
+                "ranks": sample_contract["ranks"],
                 "covers_every_source": True,
                 "object_order": "source_plan_uri_ascending",
                 "size_based_selection": True,
                 "size_based_selection_scope": "hplt3_tr_only",
                 "non_hplt_per_source_stream_spread_quantiles": [0.25, 0.5, 0.75],
-                "covers_hplt_wds_bins": [8, 9, 10],
+                "covers_hplt_wds_bins": sample_contract[
+                    "covers_hplt_wds_bins"
+                ],
                 "hplt_per_wds_bin_selection": (
                     "minimum_size_complete_shard_then_uri_v1"
                 ),
-                "hplt_selected_objects": [
-                    {
-                        "rank": item["rank"],
-                        "wds_bin": item["wds_bin"],
-                        "size_bytes": item["size_bytes"],
-                        "uri": item["uri"],
-                    }
-                    for item in plan["objects"]
-                    if item["source_id"] == "hplt3_tr"
-                    and item["rank"] in select_resource_sample_ranks(plan)
+                "hplt_selected_objects": sample_contract[
+                    "hplt_selected_objects"
                 ],
                 "covers_macocu_selected_genres": (
                     sorted(MACOCU_CONVERSATION_GENRES | MACOCU_GENERAL_GENRES)
@@ -4834,7 +4950,7 @@ def build_resource_projection(
             "canonical_sha256": None,
         }
     )
-    validate_resource_projection(report)
+    validate_resource_projection(report, plan=plan)
     write_json_atomic(destination, report)
     return report
 
@@ -4859,12 +4975,12 @@ def seal_resource_approval(
         max_bytes=_MAX_AUDIT_REPORT_BYTES,
     )
     report = _load_json_snapshot(report_raw, "resource report")
-    report_hash = validate_resource_projection(report)
     policy = load_corpus_policy(policy_path)
     plan = load_json_strict(source_plan_path)
     calibration = load_json_strict(calibration_path)
     validate_source_plan(plan, policy)
     validate_backend_calibration(calibration, policy)
+    report_hash = validate_resource_projection(report, plan=plan)
     if (
         report.get("policy_sha256") != _policy_sha256(policy)
         or report.get("source_plan_sha256") != plan["canonical_sha256"]
@@ -5003,7 +5119,7 @@ def validate_resource_approval(
         max_bytes=_MAX_AUDIT_REPORT_BYTES,
     )
     report = _load_json_snapshot(report_raw, "resource report")
-    report_sha = validate_resource_projection(report)
+    report_sha = validate_resource_projection(report, plan=plan)
     if (
         report_sha != approval.get("resource_report_sha256")
         or report.get("automated_gate_passed") is not True

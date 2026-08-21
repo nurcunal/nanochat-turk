@@ -164,6 +164,34 @@ MACOCU_SOURCE_ID = "macocu_genre_tr"
 FINEWEB2_STRICT_SOURCE_ID = "fineweb2_strict_tr_v3"
 MOT_SOURCE_ID = "mot_tr_v1_11"
 PARLAMINT_SOURCE_ID = "parlamint_tr_v5_0"
+HPLT_WEB_REGISTER_KEYS = (
+    "MT",
+    "LY",
+    "SP",
+    "ID",
+    "NA",
+    "HI",
+    "IN",
+    "OP",
+    "IP",
+    "it",
+    "ne",
+    "sr",
+    "nb",
+    "re",
+    "en",
+    "ra",
+    "dtp",
+    "fi",
+    "lt",
+    "rv",
+    "ob",
+    "rs",
+    "av",
+    "ds",
+    "ed",
+)
+_HPLT_WEB_REGISTER_KEY_SET = frozenset(HPLT_WEB_REGISTER_KEYS)
 V3_SOURCE_IDS = frozenset(
     {
         "hplt3_tr",
@@ -222,6 +250,96 @@ V3_TEXT_INTEGRITY_LIMITS = {
     "max_mojibake_sequence_hits": 0,
     "max_c1_control_characters": 0,
     "max_unicode_surrogate_characters": 0,
+}
+V3_INDEPENDENT_TURKISH_THRESHOLDS = {
+    "document_min_probability": 0.8,
+    "document_min_margin": 0.2,
+    "paragraph_min_probability": 0.65,
+    "paragraph_min_margin": 0.1,
+    "paragraph_min_chars": 240,
+    "max_failed_long_paragraph_fraction": 0.1,
+}
+V3_CONTENT_QUALITY_LIMITS = {
+    "min_chars": 160,
+    "max_chars": 100_000,
+    "min_words": 24,
+    "min_turkish_confidence": 0.58,
+    "min_alphabetic_fraction": 0.45,
+    "max_foreign_script_fraction": 0.02,
+    "min_foreign_script_characters": 32,
+    "max_code_line_fraction": 0.02,
+    "max_code_punctuation_fraction": 0.012,
+    "max_programming_term_hits": 1,
+    "max_duplicate_line_fraction": 0.2,
+    "max_common_word_fraction": 0.12,
+    "max_boilerplate_hits": 2,
+}
+V3_HPLT_ADAPTER = {
+    "format": "jsonl.zst",
+    "text_field": "text",
+    "id_field": "id",
+    "url_field": "u",
+    "language_field": "lang",
+    "language_probability_field": "prob",
+    "register_field": "web-register",
+    "source_lid_min_probability": 0.9,
+    "turkish_values": ["tur", "tur_Latn"],
+}
+V3_SOURCE_LID_CONTRACTS = {
+    "hplt3_tr": {
+        "language_field": "lang",
+        "language_probability_field": "prob",
+        "source_lid_min_probability": 0.9,
+        "turkish_values": ["tur", "tur_Latn"],
+    },
+    "fineweb2_hq_tr": {
+        "language_field": "language",
+        "language_probability_field": "language_score",
+        "source_lid_min_probability": 0.9,
+        "turkish_values": ["tur"],
+    },
+    FINEWEB2_STRICT_SOURCE_ID: {
+        "language_field": "language",
+        "language_probability_field": "language_score",
+        "source_lid_min_probability": 0.92,
+        "turkish_values": ["tur"],
+    },
+    MACOCU_SOURCE_ID: {
+        "language_field": "$partition",
+        "partition_language": "tur_Latn",
+        "turkish_values": ["tur_Latn"],
+    },
+    "finewiki_tr": {
+        "language_field": "$partition",
+        "partition_language": "tur_Latn",
+        "turkish_values": ["tur_Latn"],
+    },
+    MOT_SOURCE_ID: {
+        "language_field": "$partition",
+        "partition_language": "tur_Latn",
+        "turkish_values": ["tur_Latn"],
+    },
+    PARLAMINT_SOURCE_ID: {
+        "language_field": "$partition",
+        "partition_language": "tur_Latn",
+        "turkish_values": ["tur_Latn"],
+    },
+}
+V3_HPLT_SELECTORS = {
+    "hplt_wds8_general": {
+        "wds_bins": [8],
+        "register_any": ["IN", "NA", "HI", "IP"],
+        "register_min_probability": 0.4,
+        "max_machine_translated_probability": 0.1,
+        "max_lyrical_probability": 0.1,
+    },
+    "hplt_wds9_general": {
+        "wds_bins": [9],
+        "register_any": ["IN", "NA", "HI", "IP"],
+        "register_min_probability": 0.4,
+        "max_machine_translated_probability": 0.1,
+        "max_lyrical_probability": 0.1,
+    },
 }
 V3_REPEAT_CAPACITY_GATE = {
     "implementation": "nanochat_upstream_bos_bestfit_repeat_capacity_v3",
@@ -680,6 +798,12 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
         raise TurkishCorpusError("GlotLID required label must be tur_Latn")
     if independent.get("calibration_required_before_seal") is not True:
         raise TurkishCorpusError("GlotLID confusion-set calibration is mandatory")
+    if policy["name"] == CORPUS_NAME_V3:
+        for key, expected in V3_INDEPENDENT_TURKISH_THRESHOLDS.items():
+            if independent.get(key) != expected:
+                raise TurkishCorpusError(
+                    f"independent_audit.{key} must be frozen to {expected!r} for v3"
+                )
 
     content = _require_mapping(policy["content_policy"], "content_policy")
     if content.get("allow_code") is not False:
@@ -707,6 +831,11 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
                     f"content_policy.{key} must be frozen to {expected!r} for v2"
                 )
     if policy["name"] == CORPUS_NAME_V3:
+        for key, expected in V3_CONTENT_QUALITY_LIMITS.items():
+            if content.get(key) != expected:
+                raise TurkishCorpusError(
+                    f"content_policy.{key} must be frozen to {expected!r} for v3"
+                )
         for key, expected in V3_TEXT_INTEGRITY_LIMITS.items():
             value = content.get(key)
             if isinstance(value, bool) or not isinstance(value, int) or value != expected:
@@ -865,6 +994,15 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
                     raise TurkishCorpusError(
                         "fineweb2_strict_tr_v3 upstream identity drift"
                     )
+            source_lid_contract = V3_SOURCE_LID_CONTRACTS.get(source_id)
+            if source_lid_contract is None or {
+                key: adapter.get(key) for key in source_lid_contract
+            } != source_lid_contract:
+                raise TurkishCorpusError(f"{source_id}: v3 source-LID contract drift")
+            if source_id == "hplt3_tr" and dict(adapter) != V3_HPLT_ADAPTER:
+                raise TurkishCorpusError(
+                    "v3 HPLT adapter/source-LID contract drift"
+                )
             if source_id == "hplt3_tr" and source.get("selected_wds_bins") != [8, 9]:
                 raise TurkishCorpusError("v3 HPLT acquisition must be exactly WDS 8 and 9")
             if source_id in {MOT_SOURCE_ID, PARLAMINT_SOURCE_ID}:
@@ -976,7 +1114,13 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
             raise TurkishCorpusError(f"{bucket_id}: fallback must be a unique array")
         selector = _require_mapping(bucket.get("selector"), f"{bucket_id}.selector")
         allowed_selector_keys = (
-            {"wds_bins", "register_any", "register_min_probability", "max_machine_translated_probability"}
+            {
+                "wds_bins",
+                "register_any",
+                "register_min_probability",
+                "max_machine_translated_probability",
+                "max_lyrical_probability",
+            }
             if bucket.get("source_id") == "hplt3_tr"
             else ({"genre_any"} if bucket.get("source_id") == MACOCU_SOURCE_ID else set())
         )
@@ -1057,16 +1201,13 @@ def validate_corpus_policy(value: Mapping[str, Any]) -> None:
             str(bucket["id"]): str(bucket["source_id"]) for bucket in mixture
         } != expected_v3_sources:
             raise TurkishCorpusError("v3 mixture source routing drift")
-        hplt_lanes = {
-            str(bucket["id"]): list(bucket["selector"]["wds_bins"])
+        hplt_selectors = {
+            str(bucket["id"]): dict(bucket["selector"])
             for bucket in mixture
             if bucket["source_id"] == "hplt3_tr"
         }
-        if hplt_lanes != {
-            "hplt_wds8_general": [8],
-            "hplt_wds9_general": [9],
-        }:
-            raise TurkishCorpusError("v3 HPLT lane/bin contract drift")
+        if hplt_selectors != V3_HPLT_SELECTORS:
+            raise TurkishCorpusError("v3 HPLT selector contract drift")
         if any(bucket["fallback"] for bucket in mixture):
             raise TurkishCorpusError(
                 "v3 lanes may not silently fall back across quality tiers"
@@ -2935,17 +3076,23 @@ def strict_hplt_register_scores(
             raw = json.loads(raw)
         except json.JSONDecodeError as exc:
             raise TurkishCorpusError("HPLT web-register is malformed JSON") from exc
-    if not isinstance(raw, Mapping) or not raw:
-        raise TurkishCorpusError("HPLT web-register must be a non-empty score mapping")
+    if not isinstance(raw, Mapping):
+        raise TurkishCorpusError("HPLT web-register must be a score mapping")
+    if (
+        any(not isinstance(label, str) for label in raw)
+        or frozenset(raw) != _HPLT_WEB_REGISTER_KEY_SET
+    ):
+        raise TurkishCorpusError(
+            "HPLT web-register label inventory must match the official 25-key schema"
+        )
     scores: dict[str, float] = {}
-    for raw_label, raw_probability in raw.items():
-        label = str(raw_label).strip()
-        if not label or isinstance(raw_probability, bool):
-            raise TurkishCorpusError("HPLT web-register contains an invalid label/score")
-        try:
-            probability = float(raw_probability)
-        except (TypeError, ValueError) as exc:
-            raise TurkishCorpusError("HPLT web-register score is not numeric") from exc
+    for label in HPLT_WEB_REGISTER_KEYS:
+        raw_probability = raw[label]
+        if isinstance(raw_probability, bool) or not isinstance(
+            raw_probability, (int, float)
+        ):
+            raise TurkishCorpusError("HPLT web-register score is not numeric")
+        probability = float(raw_probability)
         if not math.isfinite(probability) or not 0.0 <= probability <= 1.0:
             raise TurkishCorpusError("HPLT web-register score is outside [0,1]")
         scores[label] = probability
@@ -2959,6 +3106,9 @@ def select_mixture_bucket(
 ) -> tuple[str, float] | None:
     """Route a post-audit document into the first matching disjoint bucket."""
 
+    hplt_registers = (
+        strict_hplt_register_scores(record) if source_id == "hplt3_tr" else None
+    )
     for bucket in policy["mixture"]:
         if bucket["source_id"] != source_id:
             continue
@@ -2970,13 +3120,19 @@ def select_mixture_bucket(
             if genre not in selector["genre_any"]:
                 continue
             return bucket["id"], float(record.get("quality_score", 0.0) or 0.0)
-        registers = register_scores(record)
         if "register_any" in selector:
-            desired = max(float(registers.get(label, 0.0) or 0.0) for label in selector["register_any"])
+            registers = hplt_registers or register_scores(record)
+            desired = max(
+                float(registers.get(label, 0.0) or 0.0)
+                for label in selector["register_any"]
+            )
             mt = float(registers.get("MT", 0.0) or 0.0)
+            lyrical = float(registers.get("LY", 0.0) or 0.0)
             if desired < float(selector.get("register_min_probability", 0.0)):
                 continue
             if mt > float(selector.get("max_machine_translated_probability", 1.0)):
+                continue
+            if lyrical > float(selector.get("max_lyrical_probability", 1.0)):
                 continue
             return bucket["id"], desired
         return bucket["id"], float(record.get("quality_score", 0.0) or 0.0)
@@ -6521,6 +6677,7 @@ __all__ = [
     "D32_EXPOSURE_MATRIX_V1",
     "D32_GLOBAL_BATCH_TOKENS",
     "FINEWEB2_STRICT_SOURCE_ID",
+    "HPLT_WEB_REGISTER_KEYS",
     "SQLiteMinHashDeduper",
     "TOKENIZER_NAME",
     "TOKENIZER_NAME_V1",

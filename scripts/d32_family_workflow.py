@@ -2458,7 +2458,9 @@ def command_seal_data_prep_writer_probe(args: argparse.Namespace) -> None:
 
     backend_report = _load_object(args.backend_resource_report, "backend resource report")
     try:
-        backend_report_sha = validate_resource_projection(backend_report)
+        backend_report_sha = validate_resource_projection(
+            backend_report, plan=source_plan
+        )
     except ValueError as exc:
         raise FamilyWorkflowError(f"invalid backend resource report: {exc}") from exc
     for field, expected in {
@@ -3334,7 +3336,7 @@ def _validate_storage_approval_evidence(
     validate_source_plan(source_plan, policy)
     validate_backend_calibration(calibration, policy)
     report = _load_json_snapshot(report_raw, "storage evidence backend report")
-    report_sha = validate_resource_projection(report)
+    report_sha = validate_resource_projection(report, plan=source_plan)
     mixture = _load_json_snapshot(mixture_raw, "storage evidence mixture approval")
     mixture_sha = validate_mixture_quality_approval(
         mixture,
@@ -3410,7 +3412,9 @@ def command_seal_data_prep_storage_sample(args: argparse.Namespace) -> None:
 
     backend_report = _load_object(args.backend_resource_report, "backend resource report")
     try:
-        backend_report_sha = validate_resource_projection(backend_report)
+        backend_report_sha = validate_resource_projection(
+            backend_report, plan=source_plan
+        )
     except ValueError as exc:
         raise FamilyWorkflowError(f"invalid backend resource report: {exc}") from exc
     expected_report_bindings = {

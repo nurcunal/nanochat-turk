@@ -640,7 +640,11 @@ def test_post_cluster_writer_probe_generator_emits_valid_bounded_receipt(
             "a" * 64,
         ),
     )
-    monkeypatch.setattr(backend, "validate_resource_projection", lambda value: value["canonical_sha256"])
+    monkeypatch.setattr(
+        backend,
+        "validate_resource_projection",
+        lambda value, **_kwargs: value["canonical_sha256"],
+    )
     monkeypatch.setattr(
         workflow,
         "_load_sample_receipt_inventory",

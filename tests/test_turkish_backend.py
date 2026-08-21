@@ -35,6 +35,7 @@ from nanochat.turkish_backend import (
     validate_mixture_quality_approval,
 )
 from nanochat.turkish_corpus import (
+    HPLT_WEB_REGISTER_KEYS,
     TurkishCorpusError,
     audit_document,
     dominant_register,
@@ -88,6 +89,11 @@ def _sealed_resource_report(policy: dict, plan_sha256: str) -> dict:
             "calibration_sha256": "c" * 64,
             "sample_cluster_receipt_sha256": "e" * 64,
             "billing_contract": dict(RESOURCE_BILLING_CONTRACT),
+            "sample_selection": {
+                "ranks": [],
+                "covers_hplt_wds_bins": [],
+                "hplt_selected_objects": [],
+            },
             "projection": {
                 "safety_factor": 1.5,
                 "candidate_documents": 200.0,
@@ -138,6 +144,12 @@ def _hplt_adapter():
     return next(item for item in policy["sources"] if item["id"] == "hplt3_tr")[
         "adapter"
     ]
+
+
+def _hplt_registers(**overrides: float) -> dict[str, float]:
+    scores = dict.fromkeys(HPLT_WEB_REGISTER_KEYS, 0.0)
+    scores.update(overrides)
+    return scores
 
 
 def test_v3_hplt_resolver_fetches_only_wds8_and_wds9(monkeypatch):
@@ -325,23 +337,116 @@ def test_literal_web_register_and_mt_gate_are_enforced():
     policy = load_corpus_policy(POLICY)
     accepted = {
         "wds_bin": 10,
-        "web-register": {"SP": 0.70, "MT": 0.10, "IN": 0.05},
+        "web-register": _hplt_registers(SP=0.70, MT=0.10, IN=0.05),
     }
-    assert strict_hplt_register_scores(accepted) == {
-        "SP": 0.70,
-        "MT": 0.10,
-        "IN": 0.05,
-    }
+    assert strict_hplt_register_scores(accepted) == accepted["web-register"]
     assert select_mixture_bucket("hplt3_tr", accepted, policy)[0] == (
         "hplt_conversation"
     )
     rejected_mt = {
         "wds_bin": 10,
-        "web-register": {"SP": 0.70, "MT": 0.20},
+        "web-register": _hplt_registers(SP=0.70, MT=0.20),
     }
     assert select_mixture_bucket("hplt3_tr", rejected_mt, policy) is None
     with pytest.raises(TurkishCorpusError, match="literal 'web-register'"):
         strict_hplt_register_scores({"web_register": {"SP": 0.9}})
+
+
+def test_hplt_web_register_inventory_is_the_frozen_official_schema():
+    assert HPLT_WEB_REGISTER_KEYS == (
+        "MT",
+        "LY",
+        "SP",
+        "ID",
+        "NA",
+        "HI",
+        "IN",
+        "OP",
+        "IP",
+        "it",
+        "ne",
+        "sr",
+        "nb",
+        "re",
+        "en",
+        "ra",
+        "dtp",
+        "fi",
+        "lt",
+        "rv",
+        "ob",
+        "rs",
+        "av",
+        "ds",
+        "ed",
+    )
+
+
+@pytest.mark.parametrize("missing_label", ["LY", "MT", "IN"])
+def test_hplt_web_register_requires_every_official_label(missing_label):
+    scores = _hplt_registers(IN=0.7)
+    del scores[missing_label]
+    with pytest.raises(TurkishCorpusError, match="official 25-key schema"):
+        strict_hplt_register_scores({"web-register": scores})
+    with pytest.raises(TurkishCorpusError, match="official 25-key schema"):
+        select_mixture_bucket(
+            "hplt3_tr",
+            {"wds_bin": 8, "web-register": scores},
+            load_corpus_policy(POLICY_V3),
+        )
+
+
+def test_hplt_web_register_rejects_unknown_extra_label():
+    scores = _hplt_registers(IN=0.7)
+    scores["unknown"] = 0.0
+    with pytest.raises(TurkishCorpusError, match="official 25-key schema"):
+        strict_hplt_register_scores({"web-register": scores})
+
+
+@pytest.mark.parametrize("invalid", [float("nan"), float("inf"), -0.0001, 1.0001])
+def test_hplt_web_register_scores_remain_finite_probabilities(invalid):
+    scores = _hplt_registers(IN=invalid)
+    with pytest.raises(TurkishCorpusError, match=r"outside \[0,1\]"):
+        strict_hplt_register_scores({"web-register": scores})
+
+
+def test_hplt_web_register_rejects_numeric_strings():
+    scores = _hplt_registers(IN=0.7)
+    scores["IN"] = "0.7"
+    with pytest.raises(TurkishCorpusError, match="score is not numeric"):
+        strict_hplt_register_scores({"web-register": scores})
+
+
+@pytest.mark.parametrize(
+    ("wds_bin", "expected_bucket"),
+    [(8, "hplt_wds8_general"), (9, "hplt_wds9_general")],
+)
+def test_v3_hplt_selector_enforces_exact_register_mt_and_lyrical_bounds(
+    wds_bin, expected_bucket
+):
+    policy = load_corpus_policy(POLICY_V3)
+    accepted = {
+        "wds_bin": wds_bin,
+        "web-register": _hplt_registers(IN=0.4, MT=0.1, LY=0.1),
+    }
+    assert select_mixture_bucket("hplt3_tr", accepted, policy) == (
+        expected_bucket,
+        0.4,
+    )
+
+    for scores in (
+        _hplt_registers(IN=0.399999, MT=0.0, LY=0.0),
+        _hplt_registers(IN=0.4, MT=0.100001, LY=0.0),
+        _hplt_registers(IN=0.4, MT=0.0, LY=0.100001),
+    ):
+        assert (
+            select_mixture_bucket(
+                "hplt3_tr",
+                {"wds_bin": wds_bin, "web-register": scores},
+                policy,
+            )
+            is None
+        )
 
 
 def test_macocu_v2_routes_only_frozen_genres_and_non_macocu_genre_is_safe():
@@ -608,6 +713,115 @@ def test_resource_sample_uses_smallest_complete_hplt_shard_per_wds_bin():
     assert all(objects[item]["size_bytes"] == 1 for item in selected)
 
 
+def test_hplt_sample_bin_coverage_is_derived_from_the_source_plan():
+    plan = {
+        "hplt_control": {"selected_wds_bins": [8, 9]},
+        "objects": [
+            {
+                "rank": 0,
+                "source_id": "hplt3_tr",
+                "wds_bin": 8,
+                "size_bytes": 100,
+                "uri": "https://example.test/8_1.jsonl.zst",
+            },
+            {
+                "rank": 1,
+                "source_id": "hplt3_tr",
+                "wds_bin": 8,
+                "size_bytes": 10,
+                "uri": "https://example.test/8_2.jsonl.zst",
+            },
+            {
+                "rank": 2,
+                "source_id": "hplt3_tr",
+                "wds_bin": 9,
+                "size_bytes": 20,
+                "uri": "https://example.test/9_1.jsonl.zst",
+            },
+        ],
+    }
+
+    assert backend._hplt_sample_bin_coverage(plan) == [8, 9]
+
+    drifted = copy.deepcopy(plan)
+    drifted["hplt_control"]["selected_wds_bins"] = [8, 9, 10]
+    with pytest.raises(TurkishCorpusError, match="cover each configured HPLT"):
+        backend._hplt_sample_bin_coverage(drifted)
+
+
+def _sealed_hplt_resource_plan(wds_bins: list[int]) -> dict:
+    objects = []
+    for rank, wds_bin in enumerate(wds_bins):
+        objects.append(
+            {
+                "rank": rank,
+                "source_id": "hplt3_tr",
+                "wds_bin": wds_bin,
+                "size_bytes": 100 + rank,
+                "uri": f"https://example.test/{wds_bin}_{rank}.jsonl.zst",
+            }
+        )
+    return seal_manifest(
+        {
+            "hplt_control": {"selected_wds_bins": wds_bins},
+            "objects": objects,
+            "canonical_sha256": None,
+        }
+    )
+
+
+@pytest.mark.parametrize("wds_bins", [[8, 9], [8, 9, 10]])
+def test_resource_projection_accepts_exact_plan_derived_hplt_sample(wds_bins):
+    policy = load_corpus_policy(POLICY)
+    plan = _sealed_hplt_resource_plan(wds_bins)
+    report = _sealed_resource_report(policy, plan["canonical_sha256"])
+    report["sample_selection"] = backend._resource_sample_contract(plan)
+    report["canonical_sha256"] = None
+    report = seal_manifest(report)
+
+    assert validate_resource_projection(report, plan=plan) == report[
+        "canonical_sha256"
+    ]
+
+
+@pytest.mark.parametrize("field", ["rank", "wds_bin", "uri", "size_bytes"])
+def test_resource_projection_rejects_hplt_inventory_drift_from_bound_plan(field):
+    policy = load_corpus_policy(POLICY_V3)
+    plan = _sealed_hplt_resource_plan([8, 9])
+    report = _sealed_resource_report(policy, plan["canonical_sha256"])
+    report["sample_selection"] = backend._resource_sample_contract(plan)
+    selected = report["sample_selection"]["hplt_selected_objects"]
+    if field == "rank":
+        selected[0][field] = 99
+        report["sample_selection"]["ranks"][0] = 99
+    elif field == "wds_bin":
+        selected[0][field] = 99
+        report["sample_selection"]["covers_hplt_wds_bins"] = [9, 99]
+    elif field == "uri":
+        selected[0][field] = "https://attacker.test/replaced.jsonl.zst"
+    else:
+        selected[0][field] += 1
+    report["canonical_sha256"] = None
+
+    with pytest.raises(TurkishCorpusError, match="bound source plan"):
+        validate_resource_projection(seal_manifest(report), plan=plan)
+
+
+def test_resource_projection_rejects_different_sealed_source_plan():
+    policy = load_corpus_policy(POLICY_V3)
+    plan = _sealed_hplt_resource_plan([8, 9])
+    report = _sealed_resource_report(policy, plan["canonical_sha256"])
+    report["sample_selection"] = backend._resource_sample_contract(plan)
+    report["canonical_sha256"] = None
+    report = seal_manifest(report)
+    other_plan = copy.deepcopy(plan)
+    other_plan["objects"][0]["uri"] = "https://example.test/replaced.jsonl.zst"
+    other_plan["canonical_sha256"] = None
+
+    with pytest.raises(TurkishCorpusError, match="source-plan binding drift"):
+        validate_resource_projection(report, plan=seal_manifest(other_plan))
+
+
 def test_resource_sample_spreads_across_macocu_and_avoids_tiny_tail():
     objects = [
         {
@@ -651,17 +865,19 @@ def test_resource_projection_uses_stage_wall_not_process_cpu(
         "sources": [{"id": "source"}],
         "materialization": {"max_peak_disk_bytes": 10_000_000_000},
     }
-    plan = {
-        "canonical_sha256": "a" * 64,
-        "objects": [
-            {
-                "rank": 0,
-                "source_id": "source",
-                "size_bytes": 1_000,
-                "uri": "https://example.test/source",
-            }
-        ],
-    }
+    plan = seal_manifest(
+        {
+            "canonical_sha256": None,
+            "objects": [
+                {
+                    "rank": 0,
+                    "source_id": "source",
+                    "size_bytes": 1_000,
+                    "uri": "https://example.test/source",
+                }
+            ],
+        }
+    )
     calibration = {"canonical_sha256": "c" * 64}
     objects = [
         {
@@ -764,6 +980,12 @@ def test_resource_projection_uses_stage_wall_not_process_cpu(
         "minimum_size_complete_shard_then_uri_v1"
     )
     assert report["sample_selection"]["hplt_selected_objects"] == []
+    assert report["sample_selection"]["covers_hplt_wds_bins"] == []
+    stale = copy.deepcopy(report)
+    stale["sample_selection"]["covers_hplt_wds_bins"] = [8, 9, 10]
+    stale["canonical_sha256"] = None
+    with pytest.raises(TurkishCorpusError, match="bound source plan"):
+        validate_resource_projection(seal_manifest(stale), plan=plan)
     diagnostic_cpu = report["projection"]["diagnostic_process_cpu"][
         "stage_process_cpu_seconds_before_safety_factor"
     ]
@@ -777,7 +999,9 @@ def test_resource_report_and_approval_bind_billed_cpu_contract(
     policy = load_corpus_policy(POLICY)
     plan_path = tmp_path / "source-plan.json"
     calibration_path = tmp_path / "calibration.json"
-    plan = seal_manifest({"fixture": "plan", "canonical_sha256": None})
+    plan = seal_manifest(
+        {"fixture": "plan", "objects": [], "canonical_sha256": None}
+    )
     calibration = seal_manifest(
         {"fixture": "calibration", "canonical_sha256": None}
     )
@@ -787,7 +1011,9 @@ def test_resource_report_and_approval_bind_billed_cpu_contract(
     report = _sealed_resource_report(policy, plan_sha256)
     report["calibration_sha256"] = calibration["canonical_sha256"]
     report = seal_manifest(report)
-    assert validate_resource_projection(report) == report["canonical_sha256"]
+    assert validate_resource_projection(report, plan=plan) == report[
+        "canonical_sha256"
+    ]
     report_path = tmp_path / "resource-report.json"
     quality_path = tmp_path / "mixture-quality-approval.json"
     approval_path = tmp_path / "resource-approval.json"
@@ -833,6 +1059,36 @@ def test_resource_report_and_approval_bind_billed_cpu_contract(
         lambda approval, **_kwargs: approval["canonical_sha256"],
     )
 
+    drifted_report = copy.deepcopy(report)
+    drifted_report["sample_selection"] = {
+        "ranks": [99],
+        "covers_hplt_wds_bins": [99],
+        "hplt_selected_objects": [
+            {
+                "rank": 99,
+                "wds_bin": 99,
+                "size_bytes": 123,
+                "uri": "https://attacker.test/99_0.jsonl.zst",
+            }
+        ],
+    }
+    drifted_report["canonical_sha256"] = None
+    drifted_report = seal_manifest(drifted_report)
+    drifted_report_path = tmp_path / "drifted-resource-report.json"
+    write_json_atomic(drifted_report_path, drifted_report)
+    with pytest.raises(TurkishCorpusError, match="bound source plan"):
+        seal_resource_approval(
+            drifted_report_path,
+            quality_path,
+            tmp_path / "drifted-resource-approval.json",
+            policy_path=POLICY,
+            source_plan_path=plan_path,
+            calibration_path=calibration_path,
+            reviewer="resource-reviewer",
+            reviewed_at_utc="2026-08-20T18:00:00Z",
+            decision="accepted",
+        )
+
     cross_quality = copy.deepcopy(quality)
     cross_quality["cluster_receipt_sha256"] = "9" * 64
     cross_quality["sample_cluster_receipt_sha256"] = "9" * 64
@@ -877,23 +1133,46 @@ def test_resource_report_and_approval_bind_billed_cpu_contract(
         approval_path=approval_path,
     )
 
+    drifted_approval = copy.deepcopy(approval)
+    drifted_report_raw = drifted_report_path.read_bytes()
+    drifted_approval["resource_report_sha256"] = drifted_report[
+        "canonical_sha256"
+    ]
+    drifted_approval["evidence_bundle"]["resource_report"] = {
+        "path": drifted_report_path.name,
+        "size_bytes": len(drifted_report_raw),
+        "sha256": hashlib.sha256(drifted_report_raw).hexdigest(),
+    }
+    drifted_approval["canonical_sha256"] = None
+    drifted_approval = seal_manifest(drifted_approval)
+    drifted_approval_path = tmp_path / "drifted-validation-approval.json"
+    write_json_atomic(drifted_approval_path, drifted_approval)
+    with pytest.raises(TurkishCorpusError, match="bound source plan"):
+        validate_resource_approval(
+            drifted_approval,
+            plan=plan,
+            policy=policy,
+            calibration=calibration,
+            approval_path=drifted_approval_path,
+        )
+
     bad_report = copy.deepcopy(report)
     bad_report["projection"]["billed_cpu_saat_with_safety_factor"] = 0.025
     bad_report = seal_manifest(bad_report)
     with pytest.raises(TurkishCorpusError, match="billed_cpu_saat.*arithmetic drift"):
-        validate_resource_projection(bad_report)
+        validate_resource_projection(bad_report, plan=plan)
 
     bad_peak = copy.deepcopy(report)
     bad_peak["projection"]["peak_disk_bytes_with_safety_factor"] = 0.0
     bad_peak = seal_manifest(bad_peak)
     with pytest.raises(TurkishCorpusError, match="peak disk with safety factor"):
-        validate_resource_projection(bad_peak)
+        validate_resource_projection(bad_peak, plan=plan)
 
     bad_component = copy.deepcopy(report)
     bad_component["projection"]["candidate_bytes"] = 0.0
     bad_component = seal_manifest(bad_component)
     with pytest.raises(TurkishCorpusError, match="candidate_bytes arithmetic drift"):
-        validate_resource_projection(bad_component)
+        validate_resource_projection(bad_component, plan=plan)
 
     bad_approval = copy.deepcopy(approval)
     bad_approval["approved_projection"]["billing_contract"][

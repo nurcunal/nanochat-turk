@@ -229,6 +229,27 @@ def test_v3_policy_freezes_pdf_ocr_free_sources_mix_and_tokenizer():
         "structured_text",
     }
     assert sources["hplt3_tr"]["selected_wds_bins"] == [8, 9]
+    hplt_selectors = {
+        bucket["id"]: bucket["selector"]
+        for bucket in policy["mixture"]
+        if bucket["source_id"] == "hplt3_tr"
+    }
+    assert hplt_selectors == {
+        "hplt_wds8_general": {
+            "wds_bins": [8],
+            "register_any": ["IN", "NA", "HI", "IP"],
+            "register_min_probability": 0.4,
+            "max_machine_translated_probability": 0.1,
+            "max_lyrical_probability": 0.1,
+        },
+        "hplt_wds9_general": {
+            "wds_bins": [9],
+            "register_any": ["IN", "NA", "HI", "IP"],
+            "register_min_probability": 0.4,
+            "max_machine_translated_probability": 0.1,
+            "max_lyrical_probability": 0.1,
+        },
+    }
     strict = sources["fineweb2_strict_tr_v3"]["derivation"]
     assert strict["expected_object_count"] == 30
     assert strict["expected_total_bytes"] == 134_789_283_815
@@ -270,6 +291,50 @@ def test_v3_policy_freezes_pdf_ocr_free_sources_mix_and_tokenizer():
                 "max_mojibake_sequence_hits", 1
             ),
             "integer zero",
+        ),
+        (
+            lambda policy: policy["language_policy"]["independent_audit"].__setitem__(
+                "document_min_probability", 0.0
+            ),
+            "independent_audit.document_min_probability",
+        ),
+        (
+            lambda policy: next(
+                source
+                for source in policy["sources"]
+                if source["id"] == "hplt3_tr"
+            )["adapter"].__setitem__("source_lid_min_probability", 0.0),
+            "source-LID contract",
+        ),
+        (
+            lambda policy: next(
+                source
+                for source in policy["sources"]
+                if source["id"] == "fineweb2_strict_tr_v3"
+            )["adapter"].__setitem__("source_lid_min_probability", 0.0),
+            "source-LID contract",
+        ),
+        (
+            lambda policy: policy["content_policy"].__setitem__(
+                "max_code_line_fraction", 1.0
+            ),
+            "content_policy.max_code_line_fraction",
+        ),
+        (
+            lambda policy: next(
+                bucket
+                for bucket in policy["mixture"]
+                if bucket["id"] == "hplt_wds8_general"
+            )["selector"].__setitem__("register_any", ["SP"]),
+            "HPLT selector contract",
+        ),
+        (
+            lambda policy: next(
+                bucket
+                for bucket in policy["mixture"]
+                if bucket["id"] == "hplt_wds9_general"
+            )["selector"].__setitem__("max_lyrical_probability", 1.0),
+            "HPLT selector contract",
         ),
     ],
 )

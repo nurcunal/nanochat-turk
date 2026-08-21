@@ -18,6 +18,7 @@ from nanochat.experiment_manifest import (
     verify_manifest_hash,
     write_json_atomic,
 )
+from nanochat.turkish_corpus import HPLT_WEB_REGISTER_KEYS
 from scripts import audit_turkish_backend_sample as sample_audit
 from scripts import d32_family_workflow as workflow
 
@@ -40,8 +41,10 @@ def _row(
     flags: tuple[str, ...] = (),
     registers: dict[str, float] | None = None,
 ) -> dict[str, object]:
-    if registers is None:
-        registers = {"IN": 0.82, "MT": 0.03}
+    if source_id == "hplt3_tr":
+        overrides = registers or {"IN": 0.82, "MT": 0.03}
+        registers = dict.fromkeys(HPLT_WEB_REGISTER_KEYS, 0.0)
+        registers.update(overrides)
     return {
         "text": text,
         "source_id": source_id,

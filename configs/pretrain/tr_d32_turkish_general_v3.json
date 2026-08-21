@@ -399,7 +399,8 @@
           "IP"
         ],
         "register_min_probability": 0.4,
-        "max_machine_translated_probability": 0.1
+        "max_machine_translated_probability": 0.1,
+        "max_lyrical_probability": 0.1
       }
     },
     {
@@ -421,7 +422,8 @@
           "IP"
         ],
         "register_min_probability": 0.4,
-        "max_machine_translated_probability": 0.1
+        "max_machine_translated_probability": 0.1,
+        "max_lyrical_probability": 0.1
       }
     },
     {
