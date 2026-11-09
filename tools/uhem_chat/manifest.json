@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0.0",
+  "version": "1",
+  "release_tag": "dsai-uhem-launcher-v1",
+  "model_tag": "tr_d32_bpe32k_capability_calibration_eff020_v1",
+  "checkpoint_step": 32,
+  "checkpoint_sha256": "4238d6271c8723460d20abec1ae88bb95da44cdae2087e01c90bd75d7bc49bf0",
+  "files": {
+    "DSAI-3B-Instruct.command": {
+      "sha256": "a3b357b91c97f0f47cfb87d767c0e633eba286980df550c6b2fd9da5cf881901",
+      "size_bytes": 305
+    },
+    "uhem_chat_launcher.py": {
+      "sha256": "7b898ec56acfabab13a6828feb4536f1c4cfd515bc7455380ee5f4ae32a79884",
+      "size_bytes": 13621
+    },
+    "remote_control.py": {
+      "sha256": "af27d2cf646f7a7174019ae98401c91fc2cd7d02563da9a11bd740418806b0e3",
+      "size_bytes": 16411
+    },
+    "launch_chat.sbatch": {
+      "sha256": "282f954130b8d42a8b07ef5ffee53643f5b77dc201c3c0e970d8199576f0c5e3",
+      "size_bytes": 5432
+    },
+    "chat_web.py": {
+      "sha256": "61a490134a6f372bed918f4059b515084ff769533a9190017482441186885839",
+      "size_bytes": 21080
+    },
+    "README.md": {
+      "sha256": "d47fd99c73b574caae6d8b9fe6e1fd55738a82a5301c055a669b9d4414ec5320",
+      "size_bytes": 4450
+    }
+  }
+}

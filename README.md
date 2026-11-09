@@ -42,7 +42,7 @@ receipts and interpretation notes are published in
 [`artifacts/dsai-3b-base-benchmarks_2026-11-09`](artifacts/dsai-3b-base-benchmarks_2026-11-09/).
 This GitHub publication contains benchmark evidence, not model weights.
 
-### Try the SFT model on UHeM
+## Try the SFT model on UHeM
 
 [**Download the Mac launcher**](https://github.com/nurcunal/nanochat-turk/releases/download/dsai-uhem-launcher-v1/DSAI-3B-Instruct-macOS.zip)
 to connect with your UHeM VPN/SSH login and open the SFT trial on one A100.
