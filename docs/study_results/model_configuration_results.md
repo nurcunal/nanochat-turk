@@ -11,6 +11,8 @@ These existing checkpoints and experiment outputs were recovered from UHeM on 9 
 | d20 raw-BPE continuation | 20 / 1280 / 10 | 896,533,746 | 34,200 | 1,048,576 | 35,861,299,200 | 0.59145082 | 33.203 |
 | d32 raw-BPE FineWeb-2 | 32 / 2048 / 16 | 2,818,575,450 | 28,000 | 2,097,152 | 58,720,256,000 | 0.51903967 | 120.750 |
 
+**Interpretation.** Continuing d20 lowers its recorded BPB from 0.62321265 to 0.59145082 with twice the scheduled token budget and a changed learning-rate policy. There is no paired continuation benchmark to show whether that translates into downstream improvement. The larger d32 records 0.51903967 on training-overlap text, so that value cannot demonstrate a held-out advantage over d20 or any tokenizer treatment.
+
 Both use raw BPE with 32,768 entries, 2,048-token context and full attention. d20 continues the 17,100-step baseline to 34,200 cumulative steps with an explicitly changed continuation learning-rate schedule (start fraction 0.05, peak 0.25, 1,000-step warmup). Its BPB changes from archived 0.62321265 to 0.59145082; there is no recovered continuation CETVEL result. The checkpoint time counter is cumulative state and is not attributed solely to the continuation phase.
 
 d32 uses 2,818,575,450 parameters, BF16, eight A100 GPUs, SDPA and 58,720,256,000 scheduled positions. Its 28,000 steps are a coverage-oriented budget; the legacy loader/resume behavior does not establish exactly-once exposure. Training-loop hours exclude initial compile/warmup steps, evaluation, checkpointing and launch overhead. Exact metadata and the original launch manifest are preserved in JSON.
@@ -23,6 +25,8 @@ d32 uses 2,818,575,450 parameters, BF16, eight A100 GPUs, SDPA and 58,720,256,00
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | d20 raw-BPE continuation | 512018 / FAILED (exit code 1) | 12:11:58 | 416325.5 | token positions/s | 2518.64 | 54.05 | 17847.49 |
 | d32 raw-BPE FineWeb-2 | 512605 / COMPLETED (exit code 0) | 5-01:19:15 | 135456.5 | valid targets/s | 15482.08 | 63.37 | 51900.56 |
+
+**Interpretation.** On eight A100s, d32 has a much longer measured step and substantially larger peak memory than the d20 continuation; its higher MFU does not make it the cheaper configuration. The throughput columns use different units, so their ratio is not a precise speedup. Job duration also includes different training phases: d20 retains a usable final checkpoint despite a failed scheduler exit, while d32 finished cleanly.
 
 The medians use the final 100 printed iterations: d20 steps 34,100–34,199 and d32 updates 27,901–28,000. Both use eight A100s. The d20 logger measures token positions/s, whereas d32 measures valid prediction targets/s; preserve this distinction. The d20 job wall time is 12:11:58, while its inherited cumulative training-time counter is 33.203 hours. These durations cover different phases and must not be divided into the same token budget. Whole-log hashes and selected line numbers are retained in the evidence bundle.
 
@@ -45,6 +49,8 @@ The following preserves the original eleven classification/log-likelihood metric
 | `xfact_tr` | acc_norm | 0.3373 | 0.2781 | -5.92 |
 | **Core-11 mean** | mean | 0.4514 | 0.4180 | -3.34 |
 
+**Interpretation.** The larger d32 has a lower recorded legacy core-11 mean (0.4180 versus 0.4514), so these observations do not show a universal gain from scaling. It has higher recorded scores on 5 of the eleven tasks and lower scores on 6, with Offenseval contributing the largest drop. This contrast remains provisional because the legacy likelihood scorer is flawed, and size, data eligibility and training budget all change together.
+
 ## Generation protocol: corrected XQuAD
 
 The legacy adapter misread generation kwargs, ignoring actual stop strings and task generation limits; its XQuAD values cannot support absolute QA or tokenizer-effect conclusions. The original scores are retained as historical evidence. Only the raw-BPE d20 reference and d32 have recovered corrected-generation runs in this bundle. They do not establish corrected scores for the other ten tokenizer-trained models.
@@ -55,6 +61,8 @@ The legacy adapter misread generation kwargs, ignoring actual stop strings and t
 | d20 baseline · corrected | 128 | 1190 | 4.5378 | 11.3369 |
 | d32 · corrected | 128 | 1190 | 8.2353 | 15.8833 |
 | d32 · Kumru comparison protocol | 256 | 1190 | 8.2353 | 15.1717 |
+
+**Interpretation.** Correcting the evaluator raises the unchanged d20 checkpoint from 3.0985 to 11.3369 XQuAD F1, so that increase comes from decoding/scoring behavior, not training or tokenization. With the corrected 128-token setup, d32 scores higher than d20 (15.8833 versus 11.3369), but both use raw BPE and also differ in model size and training exposure. The separate 256-token d32 result is lower (15.1717) under different recorded runner/protocol settings; this is not an isolated generation-cap experiment. None of these comparisons establishes a MorphBPE benefit.
 
 The corrected 128-token d20/d32 comparison gives F1 11.3369 versus 15.8833. The later 256-token d32 QA run gives 15.1717; both are retained with their own source paths and settings. Generation limits and the recorded protocol must accompany any score. The same-checkpoint d20 change is an evaluator correction, not a training gain; the d20/d32 contrast also changes model scale and training exposure. See [the evaluator audit](later_model_results.md) for the recovered bug mechanisms.
 
@@ -74,6 +82,8 @@ Classification uses raw accuracy, QA normalized exact match, summarization TabiB
 | MT | 58.6223 |
 | GEC | 0.9678 |
 | **Overall** | **37.1709** |
+
+**Interpretation.** The d32 receipt has its highest category score in summarization (81.0680) and its lowest in grammatical correction (0.9678), with QA also low at 8.3129. The categories use different metrics and task difficulties, so their numerical order is a profile of this protocol rather than a common measure of capability. The 37.1709 overall score has no same-protocol competing model here and cannot establish a tokenizer or model-size winner.
 
 ### All table-compatible protocol task scores
 
@@ -111,6 +121,8 @@ Classification uses raw accuracy, QA normalized exact match, summarization TabiB
 | `xnli_tr` | accuracy | 5010 | 34.2715 |
 | `xquad_tr` | SQuAD normalized exact match | 1190 | 8.2353 |
 
+**Interpretation.** This table describes one d32 model, so it has no cross-model winner. Among its raw-accuracy tasks, news classification (70.0) and XCOPA (69.0) have higher recorded accuracy than TurkishMMLU (18.22) and proverbs (0.0), although these tasks differ in difficulty and chance level. The high summarization BERTScores and low QA exact-match/GEC scores use different definitions; they must not be ranked together as if they measured the same thing. A same-protocol baseline is needed to turn this task profile into a configuration comparison.
+
 The MCQA definition includes both the Turkish-PLU aggregate and its listed component tasks, as specified by the archived table-compatible receipt. The translation task identifiers have counterintuitive direction names; use the receipt’s explicit source/target-language fields. The seven-category macro deliberately weights categories equally.
 
 ## Other recovered d32 metrics
@@ -137,6 +149,8 @@ The earlier Kumru-comparison output files also contain auxiliary metrics. These 
 | `tr-wikihow-summ` | rougeL | 5984 | 0.112428 | native output |
 | `tr-wikihow-summ` | rougeLsum | 5984 | 0.112428 | native output |
 
+**Interpretation.** These are alternative metrics for the same d32 model, not competing tokenizer/configuration rows. Its recorded TQuAD overlap F1 is higher than XQuAD F1, but the tasks differ; translation WER and BLEU likewise measure different aspects of output. ROUGE, QA F1, exact match and the later BERTScore/COMET receipt must retain their native scales and protocols rather than being combined into a new ranking.
+
 The `kumru20_sum_fixed` file is a partial suite result containing complete outputs for the two listed summarization tasks; it is not a completed full-suite evaluation. The later table-compatible receipt includes four summarization tasks under BERTScore.
 
 ## Evidence coverage and unavailable results
@@ -153,5 +167,7 @@ The `kumru20_sum_fixed` file is a partial suite result containing complete outpu
 | Later d32 SFT configuration screens | Reported in the separate [SFT screen report](sft_configuration_screens.md); these vary post-training settings on one raw-BPE model. |
 | General-corpus d32 WSD | Separate production-plan documents; not the completed FineWeb-2 d32 model reported here. |
 | June 7 d2 pipeline smoke | Separate archived infrastructure result; see model report. |
+
+**Reading note.** The inventory distinguishes saved results, missing checkpoints, malformed files and smoke checks. Missing entries are not zero scores, and a two-example smoke result is not a capability estimate. The available continuation/d32/SFT evidence broadens the configuration record without filling the missing matched 32k TurkishDelight cell.
 
 Rebuild all tables with `python -m scripts.build_model_study_results`. The builder verifies recovered primary task values, full-precision macros, checkpoint identity and receipt category/overall arithmetic. Source artifacts retain retrieval timestamps, UHeM paths, original source-file hashes, settings and reported errors.

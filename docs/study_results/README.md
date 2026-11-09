@@ -48,6 +48,10 @@ multi-tokenizer SFT effect or independent held-out capability improvements.
 
 ## Findings that can be defended
 
+**Best for morphology: TRmorph MorphBPE.** On the matched validation sample it has the highest intact-morpheme preservation, internal-boundary F1 and one-token word coverage at every vocabulary size. For example, at 32k it preserves **44.30%** of morphemes versus **31.57%** for raw BPE, and reaches **38.38%** boundary F1 versus **24.96%**. This is performance against automatic TRmorph annotations, which can favor the same analyzer used in training. The older pairwise-consistency metric has an exception: **TurkishDelight wins at 128k on the training/full-corpus diagnostic** (0.3971 versus TRmorph's 0.3786); TRmorph leads that metric on the matched validation sample. The metric and split determine the winner.
+
+**Best for document compression: raw BPE.** It uses the fewest document tokens per word and the most bytes per token within every vocabulary tier. Among MorphBPE treatments, TurkishDelight is the most compact. Larger vocabulary improves compression, but that alone does not establish a better language model. Isolated-word fertility is a different objective: on validation, Zemberek is slightly best at 32k, while TRmorph is best at 64k and 128k.
+
 MorphBPE improves the recorded automatic morphology diagnostics relative to
 same-vocabulary raw BPE. This comes with higher **document** token fertility;
 isolated-word fertility can move in the opposite direction because whitespace
@@ -68,6 +72,10 @@ correction, not a training or tokenizer gain. The original eleven-model table
 is preserved, but a complete rerun under one corrected protocol is still needed
 before making downstream tokenizer-effect claims. The adapter fixes and
 regression tests are included in the consolidated source.
+
+**Recorded model leaders:** raw BPE has the lowest validation BPB at 32k, 64k and 128k (**0.6232 / 0.6409 / 0.6749**). In the legacy downstream tables, Zemberek is the 32k core-11 leader (**0.4618**, +1.04 percentage points over raw BPE); raw BPE leads at 64k (**0.4590**) and 128k (**0.4651**). These are archived rankings, not confirmed downstream tokenizer advantages, because the corrected common benchmark matrix is still missing.
+
+**What the configuration studies show:** continuing raw-BPE d20 from 17,100 to 34,200 steps lowers recorded BPB from **0.62321 to 0.59145** (about 5.1%), with a changed learning-rate schedule; no continuation benchmark establishes a downstream gain. The larger d32 has higher corrected XQuAD F1 (**15.8833 versus 11.3369** for d20 under the 128-token protocol), but model size, data exposure and budget also change. Its training-overlap BPB cannot establish held-out superiority. The shallower d16/d12 configurations train faster than d20, while also changing vocabulary and width; this is a configuration trade-off, not an isolated vocabulary effect. SFT screens show that lower SFT BPB or a higher total probe score can still fail behavior/category gates; the recorded decisions retain the source checkpoint.
 
 The later d32 run reached 28,000 steps and 58.72B scheduled token positions.
 Its **0.519040 BPB is a train-overlap diagnostic** because its validation shard
@@ -103,6 +111,8 @@ missing completed model cell.
 
 <!-- END GENERATED TOKENIZER MODEL OVERVIEW -->
 
+**Interpretation.** Raw BPE wins this table's document compression and validation-BPB columns in every tier. TRmorph has the highest historical pairwise-consistency F1 at 32k/64k, while TurkishDelight leads it at 128k. The recorded legacy core-11 leaders are Zemberek at 32k and raw BPE at 64k/128k, subject to the evaluator caveat above. Training-throughput differences between tokenizer families inside a tier are small (under 1% in these final-step medians); the much larger speed change across tiers accompanies a different depth/width/vocabulary configuration. No single tokenizer wins all objectives.
+
 ## Requested metrics and interpretation
 
 | Requested quantity | Reported definition |
@@ -115,6 +125,8 @@ missing completed model cell.
 | Character-only coverage | Words represented entirely by single Unicode-character tokens, with a second rate excluding trivial one-character words |
 | Byte-only coverage | Words represented entirely by single-byte tokens; distinct from Unicode characters |
 | Unknown tokens | Architecture-aware count/incidence where UNK exists; N/A for these twelve byte-complete BPE tokenizers |
+
+**Interpretation.** “Best coverage” needs a definition: TRmorph leads one-token coverage on the matched validation sample, all twelve local tokenizers tie on zero observed roundtrip failures, and UNK does not apply to these byte-complete tokenizers. Character-only segmentation is a fragmentation diagnostic, not a separate measure of whether the tokenizer can represent a word. Boundary F1 and the older pairwise morphology-consistency F1 must be interpreted separately.
 
 Previously reported edit distance, normalized edit distance, exact morpheme
 sequence match, pairwise consistency P/R/F1, contextual boundary crossing,

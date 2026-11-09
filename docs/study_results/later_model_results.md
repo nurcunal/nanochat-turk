@@ -19,6 +19,8 @@ The old eleven-model benchmark values remain visible as **legacy evaluator measu
 | d32 BPE32k, step 28000 | generation-fixed, CLI cap 128 | 15.8833 | 8.2353 |
 | d32 BPE32k, step 28000 | comparison runner, CLI cap 256 | 15.1717 | 8.2353 |
 
+**Interpretation.** Correcting the evaluator raises the unchanged d20 checkpoint from 3.0985 to 11.3369 XQuAD F1, so that increase comes from decoding/scoring behavior, not training or tokenization. With the corrected 128-token setup, d32 scores higher than d20 (15.8833 versus 11.3369), but both use raw BPE and also differ in model size and training exposure. The separate 256-token d32 result is lower (15.1717) under different recorded runner/protocol settings; this is not an isolated generation-cap experiment. None of these comparisons establishes a MorphBPE benefit.
+
 The two d32 F1 values use distinct recorded runner/generation settings and must not be mixed. The d20-versus-d32 rows also differ in scale and training exposure; they do not isolate a tokenizer effect. The fixed d20 run records the original `tr_d20_bpe_32768_chinchilla20` step-17,100 model in its evaluator arguments; its original checkpoint metadata path is now absent from UHeM, while the evaluation record remains.
 
 ## Additional pretraining
@@ -27,6 +29,8 @@ The two d32 F1 values use distinct recorded runner/generation settings and must 
 | --- | ---: | ---: | ---: | ---: | --- |
 | `tr_d20_bpe_32768_cont40x` | 20 | 34,200 | 35,861,299,200 | 0.591451 | Continued d20 run; doubled budget |
 | `tr_d32_bpe_32768_fineweb2_all_v1` | 32 | 28,000 | 58,720,256,000 | 0.519040 | Train-overlap diagnostic; not held out |
+
+**Interpretation.** Continuing d20 lowers its recorded BPB from 0.62321265 to 0.59145082 with twice the scheduled token budget and a changed learning-rate policy. There is no paired continuation benchmark to show whether that translates into downstream improvement. The larger d32 records 0.51903967 on training-overlap text, so that value cannot demonstrate a held-out advantage over d20 or any tokenizer treatment.
 
 The d20 continuation uses a distinct learning-rate continuation policy and step 34,200; it must not replace the step-17,100 baseline in the original matrix. Its final checkpoint was saved, but the later recovered Slurm record reports job 512018 FAILED (exit 1); checkpoint availability does not establish a cleanly completed job. Its training-time counter is cumulative and must not be attributed only to the continuation phase.
 
@@ -49,6 +53,8 @@ The recovered scoring receipt reports **37.1709/100**, the unweighted mean of se
 | SUM | 81.0680 |
 | MT | 58.6223 |
 | GEC | 0.9678 |
+
+**Interpretation.** The d32 receipt has its highest category score in summarization (81.0680) and its lowest in grammatical correction (0.9678), with QA also low at 8.3129. The categories use different metrics and task difficulties, so their numerical order is a profile of this protocol rather than a common measure of capability. The 37.1709 overall score has no same-protocol competing model here and cannot establish a tokenizer or model-size winner.
 
 The receipt pins CETVEL `6119c517e06cce23aaeac103ce3504c9380655e3`, lm-eval `6e49b1f6910931882a4b3b105794c6faf96b74e5`, and the metric provenance. Its compatibility warnings are retained: GECTurk uses stripped exact match; MCQA includes check-worthiness and relevance-judgment; summarization BERTScore uses pinned TabiBERT F1/final layer 22 with no baseline rescaling. These metrics differ from the legacy table's normalized accuracy, XQuAD F1 and ROUGE; do not compare their numerical scales directly.
 
@@ -87,6 +93,8 @@ All task scores in that receipt are preserved below. The receipt's QA values use
 | `xlsum_tr` | 80.3629 |
 | `xnli_tr` | 34.2715 |
 | `xquad_tr` | 8.2353 |
+
+**Interpretation.** This table describes one d32 model, so it has no cross-model winner. Among its raw-accuracy tasks, news classification (70.0) and XCOPA (69.0) have higher recorded accuracy than TurkishMMLU (18.22) and proverbs (0.0), although these tasks differ in difficulty and chance level. The high summarization BERTScores and low QA exact-match/GEC scores use different definitions; they must not be ranked together as if they measured the same thing. A same-protocol baseline is needed to turn this task profile into a configuration comparison.
 
 Intermediate `kumru20_*` directories describe evaluation task suites, not a recovered Kumru model run: their model arguments identify the nanochat d32 checkpoint. Their full extracted metrics, including QA F1, GEC exact match, translation WER/BLEU and partial summarization ROUGE, remain in the source JSON; the table-compatible receipt uses its own documented aggregations.
 

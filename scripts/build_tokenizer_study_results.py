@@ -11,6 +11,8 @@ import json
 import math
 from pathlib import Path
 
+from scripts.tokenizer_table_interpretation import interpret_tables
+
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "docs/tokenizer_tests/tokenizer_metrics"
 OUT = ROOT / "docs/study_results"
@@ -249,7 +251,7 @@ def build_additional() -> None:
     payload = {"schema_version": 1, "evidence_status": "recovered_archived_measurements", "report_date": "2026-11-09",
                "manifest": str(manifest_path.relative_to(ROOT)), "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(), "groups": sections}
     (OUT / "tokenizer_additional.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
-    (OUT / "tokenizer_additional.md").write_text("\n".join(lines) + "\n")
+    (OUT / "tokenizer_additional.md").write_text("\n".join(interpret_tables(lines, scope="additional")) + "\n")
     columns = [k for k in all_rows[0] if k != "original_metrics"]
     with (OUT / "tokenizer_additional.csv").open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=columns, lineterminator="\n")
@@ -348,7 +350,7 @@ def build() -> None:
         "At every vocabulary size, MorphBPE preserves more TRmorph reference boundaries and has better recorded morphology edit distance and consistency than raw BPE, while requiring more document tokens per word. TRmorph training and evaluation share an analyzer, so these are automatic-reference results. The 32k morphology and isolated-word caps differ across treatments, preventing a fully matched word-level estimate. Corpus-level fertility and boundary counts use the common 50,000 documents.", "",
         "Isolated-word fertility often improves with MorphBPE even though document tokens/word rises; the two measures capture different contexts. Job 496882 has now been verified COMPLETED and recovered separately in the [full-corpus report](tokenizer_full_corpus.md). The [completed matched evaluation](tokenizer_fresh_results.md) adds separate training/validation results and the previously absent coverage/boundary metrics for all twelve local tokenizers; no historical null is overwritten. No significance or causal advantage is claimed from these single-run diagnostics.", "",
         "Rebuild: `python -m scripts.build_tokenizer_study_results`."]
-    (OUT / "tokenizer_results.md").write_text("\n".join(lines) + "\n")
+    (OUT / "tokenizer_results.md").write_text("\n".join(interpret_tables(lines, scope="archived_sample")) + "\n")
 
     full_dir = ROOT / "artifacts/tokenizer_metrics_full_2026-06-23"
     if full_dir.exists():
@@ -393,7 +395,7 @@ def build() -> None:
         lines += ["", "## Interpretation and reproduction", "",
             "The recovered generated comparison uses a diagnostic sorting order, not an official paper ranking. Compare each treatment with raw BPE of the same vocabulary size; avoid a single synthetic overall winner. All nine MorphBPE variants preserve more automatic reference boundaries and improve recorded morphology edit/consistency diagnostics while using more corpus tokens per word than same-size raw BPE. These training-corpus diagnostics do not establish a downstream model advantage.", "",
             "The report JSON retains original distributions, unique-word metrics, vocabulary shape, elapsed times and actual consistency clusters/pairs. Rebuild with `python -m scripts.build_tokenizer_study_results`; the builder verifies all recovered source hashes, sample counts and derived ratios before producing tables."]
-        (OUT / "tokenizer_full_corpus.md").write_text("\n".join(lines) + "\n")
+        (OUT / "tokenizer_full_corpus.md").write_text("\n".join(interpret_tables(lines, scope="full")) + "\n")
     build_additional()
 
 

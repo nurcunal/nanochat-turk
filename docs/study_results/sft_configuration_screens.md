@@ -15,6 +15,8 @@ The common retained SFT source is `tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fas
 | Final polish v1 | 21,414 | 1,557 | 41-case probe + 512-case production suite | Checkpoint complete; rejected by selection gates |
 | Combined SmolTalk2-Turk SFT | 55,873 | 1,557 | Completion receipt only | Checkpoint 139 complete; no score inferred |
 
+**Reading note.** These curricula have different training sizes and, for calibration, a different validation set. The inventory identifies what each screen measured; larger datasets and later checkpoint numbers are not evidence of better behavior. Repair/calibration/polish start from the retained SFT source, while the combined SmolTalk2 checkpoint is a separate run from the base model.
+
 Targeted repair and final polish share the exact 1,557-row validation file (SHA-256 `2cae224e5cbfa297c8b6e8ebd3226bd99ed426e876a936053bdc1f670b8cfb6d`). Capability calibration uses a different 400-row set. Both curriculum manifests specify a 2,048-token maximum. Bounded-recovery data-row counts are not present in the selected receipts and are left unspecified.
 
 ## Bounded recovery: nine learning-rate/checkpoint candidates
@@ -32,6 +34,8 @@ The recovered selection reuses completed training and probe outputs after the in
 | high | 8 | 0.444666 | 5/41 | No |
 | high | 16 | 0.441746 | 6/41 | No |
 | high | 24 | 0.441730 | 6/41 | No |
+
+**Interpretation.** The high-rate arm at step 24 gives the lowest BPB (0.441730), but its probe score is only 6/41. The low-rate steps 8 and 16 lead the candidates at 8/41, still below the retained source at 9/41, and none passes the full selection gates. Here a lower validation loss does not identify the behaviorally better checkpoint.
 
 Evidence: [probe scores](../../artifacts/uhem_sft_screens_2026-11-09/sources/bounded-recovery-v1r2__probe-selection-summary.json), [checkpoint BPB and hashes](../../artifacts/uhem_sft_screens_2026-11-09/sources/bounded-recovery-v1r2__recovery-admission-summary.json), [final decision](../../artifacts/uhem_sft_screens_2026-11-09/sources/bounded-recovery-v1r2__recovery-decision.json).
 
@@ -51,6 +55,8 @@ The table reports the declared matrix learning rate and the receipt’s effectiv
 | eff020 | 8 | 0.0040 | 0.0080 | 0.456307 | 9/41 | No |
 | eff020 | 12 | 0.0040 | 0.0080 | 0.456318 | 10/41 | No |
 
+**Interpretation.** The strongest-rate arm gives the lowest BPB at step 8 (0.456307) and the highest probe count at step 12 (10/41). Although 10/41 exceeds the source’s 9/41 overall count, the candidate fails the required category/selection gates, so the decision remains retain source. Extra steps and a higher rate therefore do not establish an acceptable improvement on this screen.
+
 Evidence: [probe selection](../../artifacts/uhem_sft_screens_2026-11-09/sources/targeted-repair-screen-v3-probe-recovery-v1__probe-selection.json), [decision](../../artifacts/uhem_sft_screens_2026-11-09/sources/targeted-repair-screen-v3-probe-recovery-v1__screen-decision-summary.json). Each checkpoint verifier is linked through the source manifest.
 
 ## Capability calibration: completed checkpoints
@@ -65,6 +71,8 @@ This is a separate 7,600-training/400-validation-row curriculum. These rows esta
 | eff020 | 32 | 0.0040 | 0.0080 | 0.105042 | Pass |
 | eff040 | 8 | 0.0080 | 0.0160 | 0.398625 | Pass |
 
+**Interpretation.** Within eff020, additional updates reduce validation BPB from 0.575542 at step 8 to 0.105042 at step 32. At step 8, eff040 has lower BPB than eff020. These are loss-only observations: the imported receipts do not show a passing behavior probe, and the incomplete eff040 trajectory prevents a full rate-by-horizon comparison. The lowest BPB row is not a selected best model.
+
 ## Final polish: source versus candidate
 
 The candidate is `tr_d32_bpe32k_final_instruct_polish_v1`, checkpoint **64**. Both checkpoints use raw BPE 32k. The saved selection rejects the candidate and retains source checkpoint 84. Pass counts below are custom behavior checks. Diagnostics such as echo and repetition are independent counts and need not sum to the suite size.
@@ -75,6 +83,8 @@ The candidate is `tr_d32_bpe32k_final_instruct_polish_v1`, checkpoint **64**. Bo
 | Source | production | 68/512 | 13.28% | 0 | 179 | 15 | 490 |
 | Candidate | probe | 5/41 | 12.20% | 0 | 3 | 4 | 37 |
 | Candidate | production | 36/512 | 7.03% | 0 | 163 | 34 | 474 |
+
+**Interpretation.** The retained source wins both behavior suites: 9 versus 5 passes on the probe and 68 versus 36 on the production suite. The candidate reduces prompt-echo counts in the production suite but increases repetition and loses overall passes, so its selection rejection follows the measured behavior. This is a post-training configuration result on one tokenizer, not a tokenizer-family comparison.
 
 Evidence: [selection receipt](../../artifacts/uhem_sft_screens_2026-11-09/sources/final-polish-v1__selection-summary.json) and [checkpoint/data receipt](../../artifacts/uhem_sft_screens_2026-11-09/sources/final-polish-v1__checkpoint-summary.json).
 

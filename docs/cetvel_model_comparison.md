@@ -32,6 +32,8 @@ The macro score averages the 11 classification/loglikelihood tasks. `xquad_tr` i
 | 128k | MorphBPE + Zemberek d12 | `morphbpe_zemberek_128k` | Zemberek | `496904` | 35m19s | 18.61 | 0.997x | 0.6940 | 0.6940 | 2.6000 | 0.4618 | -0.0033 | 2.9685 | +0.7011 | [ablation artifact](../artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/) |
 | 128k | MorphBPE + TurkishDelightNLP d12 | `morphbpe_tdelight_128k` | TurkishDelightNLP | `496905` | 33m25s | 19.67 | 1.054x | 0.6820 | 0.6820 | 2.6477 | 0.4481 | -0.0170 | 2.2498 | -0.0176 | [ablation artifact](../artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/) |
 
+**Interpretation.** Raw BPE has the lowest validation BPB at each vocabulary size. Zemberek is the recorded 32k core-11 leader (0.4618, +1.04 percentage points over raw BPE); raw BPE leads core-11 at 64k and 128k. The table therefore contains no uniform downstream MorphBPE winner, and the evaluator defects require a corrected common rerun before any recorded lead is interpreted as a tokenizer benefit. Speed is end-to-end harness throughput, with model depth also changing across vocabulary tiers.
+
 ## Recorded Tier Rankings — Legacy Protocol
 
 These describe the archived table only; the evaluator correction prevents

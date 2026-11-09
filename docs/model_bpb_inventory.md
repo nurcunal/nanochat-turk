@@ -36,12 +36,14 @@ omitted from model tags, and vocabulary sizes are written as `32k`, `64k`, and
 | 128k | d12 | `morphbpe_zemberek_128k` | `tr_d12_morphbpe_zemberek_128k` | 17100 | 0.6940 | 0.6940 | CETVEL core compared |
 | 128k | d12 | `morphbpe_tdelight_128k` | `tr_d12_morphbpe_tdelight_128k` | 17100 | 0.6820 | 0.6820 | CETVEL core compared |
 
+**Interpretation.** Raw BPE has the lowest recorded validation BPB in all three same-vocabulary comparisons: 0.6232, 0.6409 and 0.6749. Among MorphBPE models, Zemberek is closest at 32k and TurkishDelight is closest at 64k/128k, but none beats its raw-BPE baseline. The missing 32k TurkishDelight model has no score. Raw BPE32k/d20 is the lowest-BPB configuration in this original matrix; changing vocabulary also changes depth, so that cross-tier result does not isolate vocabulary size.
+
 ## Reading The BPB Matrix
 
 Validation BPB is the comparable loss metric across tokenizers because it is
 normalized by bytes rather than tokenizer-specific prediction units. The raw
-BPE 32k d20 model currently has the best checked-in final validation BPB
-overall. The larger-vocabulary d16/d12 rows now have CETVEL core-12 comparisons, so
+BPE 32k d20 model has the best recorded final validation BPB
+within this original step-17,100 matrix. The larger-vocabulary d16/d12 rows now have CETVEL core-12 comparisons, so
 the table can be read as a fixed-parameter-budget BPB plus benchmark inventory.
 Downstream quality claims still need post-SFT or broader generation-oriented
 evaluation.

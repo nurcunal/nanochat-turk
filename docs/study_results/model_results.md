@@ -20,6 +20,8 @@ Compare tokenizer families **within a vocabulary tier**. The documented design h
 | 65,536 | 16 | 872.4M | 17,100 | 1,048,576 | 17,930,649,600 |
 | 131,072 | 12 | 890.2M | 17,100 | 1,048,576 | 17,930,649,600 |
 
+**Reading note.** Each vocabulary tier keeps the training horizon and approximate parameter budget fixed, while depth falls from 20 to 16 to 12. This supports comparisons among tokenizers inside a tier. A comparison across tiers changes both vocabulary and model architecture, so it cannot identify the effect of vocabulary size alone.
+
 Recovered original reports/configurations document four A100 GPUs and 2,048-token context. Ten original checkpoint metadata files survive; the raw-BPE32k run is supported by its historical training log and archived metadata values. The ten original report headers record Python 3.12.4 and PyTorch 2.9.1+cu128, but their Git revision is unknown. Source initialization uses seed 42; complete per-run code/environment fingerprints and repeated-seed experiments remain absent. See the [design](../tokenizer_ablation_plan.md) and [launch record](../tokenizer_tests/vocab64_128_uhem_launch.md).
 
 Fixed token positions do **not** mean equal raw bytes, documents, or characters of context. The compact results lack per-run exposure counts. Validation also uses a fixed token budget, so BPB normalization alone does not guarantee the exact same raw-text evaluation spans. Cross-tier results combine vocabulary allocation and model-depth effects.
@@ -43,6 +45,8 @@ BPB is bits per UTF-8 byte after excluding special tokens; lower is better. Fina
 | 128k/d12 | MorphBPE · Zemberek | 0.6940 | +0.0191 | 2.6000 | Complete |
 | 128k/d12 | MorphBPE · TurkishDelight | 0.6820 | +0.0071 | 2.6477 | Complete |
 
+**Interpretation.** Raw BPE records the lowest validation BPB at every tier: 0.6232, 0.6409 and 0.6749. The closest MorphBPE alternatives are Zemberek at 32k and TurkishDelight at 64k/128k, with BPB gaps of 0.0018, 0.0101 and 0.0071. Lower MorphBPE token-level losses do not reverse that ordering because token losses use different prediction units. BPB comparisons still depend on the unmatched raw-text evaluation-span caveat; the absent 32k TurkishDelight model has no ranking.
+
 ## Recovered training cost and hardware metrics
 
 Training-loop time is separate from Slurm job elapsed time and CETVEL benchmark time. All eleven original jobs were recovered as `COMPLETED`, exit `0:0`; original training used four A100 GPUs. FLOPs and MFU are implementation estimates. Cross-tier speed also changes model depth and cannot isolate tokenizer efficiency.
@@ -60,6 +64,8 @@ Training-loop time is separate from Slurm job elapsed time and CETVEL benchmark 
 | 128k/d12 | MorphBPE · TRmorph | 890,241,506 | 658.31 | 11:19:34 | 2.402855e+19 | 13065.79 | 48.81 |
 | 128k/d12 | MorphBPE · Zemberek | 890,241,506 | 658.23 | 11:19:37 | 2.402855e+19 | 13068.04 | 48.85 |
 | 128k/d12 | MorphBPE · TurkishDelight | 890,241,506 | 659.88 | 11:21:12 | 2.402855e+19 | 13066.91 | 48.69 |
+
+**Interpretation.** The shortest recorded training-loop time within each tier belongs to TRmorph at 32k, TurkishDelight at 64k and Zemberek at 128k. Differences among tokenizers in the same tier are small, whereas the shallower 64k/128k models need much less time, estimated compute and peak memory than d20. Those larger cross-tier savings combine architecture and vocabulary changes; a single timing run does not establish a tokenizer speed advantage.
 
 The raw-BPE32k report directory was overwritten by its later continuation. Its original 1,267.66-minute training time and memory/FLOP values come from job 492421's surviving log, not that overwritten report. The recovered excerpt does not include its final aggregate MFU, so that cell remains unavailable. Source text and job accounting are retained in the [November audit artifact](../../artifacts/uhem_model_audit_2026-11-09/).
 
@@ -82,6 +88,8 @@ These original values are retained, not silently replaced with results from a di
 | 128k/d12 | MorphBPE · Zemberek | 0.4618 | -0.33 | 2.9685 | +0.7011 | 35m19s | 18.61 | 0.997× | 496904 |
 | 128k/d12 | MorphBPE · TurkishDelight | 0.4481 | -1.70 | 2.2498 | -0.0176 | 33m25s | 19.67 | 1.054× | 496905 |
 
+**Interpretation.** The recorded core-11 leader is Zemberek at 32k (0.4618), then raw BPE at 64k (0.4590) and 128k (0.4651). Thus the legacy aggregate contains no consistent MorphBPE winner. The likelihood-boundary error requires a corrected rerun before treating those leads as model-quality or tokenizer effects, and the generation bug prevents interpreting the XQuAD leads as tokenizer gains. CETVEL throughput describes the entire legacy harness, with depth also changing across tiers.
+
 The low legacy XQuAD scores are affected by the generation bug and should not be used to judge absolute QA ability or tokenizer gains. Recovered raw task standard errors do not provide paired confidence intervals for model differences. The 128k TurkishDelight result file was complete at import time while Slurm was still finishing uploads; that archived job-state qualification is retained in JSON.
 
 ## Per-task legacy results: 32k
@@ -103,6 +111,8 @@ Legacy adapter values. Classification metrics use 0–1; the final XQuAD row use
 | `xfact_tr` | `acc_norm` | 0.3373 | 0.3373 | 0.3254 |
 | `xquad_tr` | `f1` | 3.0985 | 3.4786 | 3.2633 |
 
+**Interpretation.** Across the eleven classification tasks, outright first-place counts at the displayed precision are raw BPE 4, TRmorph 3, Zemberek 3; the tied first places are `xfact_tr` (raw BPE and TRmorph). These counts describe the recorded table, while the macro weights score magnitudes rather than task wins. The legacy continuation-boundary error makes every ranking provisional pending a corrected common rerun. XQuAD is excluded from these counts because its legacy generation bug prevents a tokenizer-benefit conclusion.
+
 ## Per-task legacy results: 64k
 
 Legacy adapter values. Classification metrics use 0–1; the final XQuAD row uses 0–100. `acc_norm` is the benchmark's length-normalized choice score; it is not F1. Interpretation requires the evaluator caveat above.
@@ -121,6 +131,8 @@ Legacy adapter values. Classification metrics use 0–1; the final XQuAD row use
 | `trclaim19` | `acc_norm` | 0.5976 | 0.5932 | 0.6017 | 0.5583 |
 | `xfact_tr` | `acc_norm` | 0.3373 | 0.3373 | 0.3373 | 0.3373 |
 | `xquad_tr` | `f1` | 2.8576 | 3.2778 | 2.8956 | 3.3280 |
+
+**Interpretation.** Across the eleven classification tasks, outright first-place counts at the displayed precision are raw BPE 1, TRmorph 2, Zemberek 2, TurkishDelight 3; the tied first places are `mnli_tr` (raw BPE and TRmorph); `offenseval_tr` (raw BPE and Zemberek and TurkishDelight); `xfact_tr` (all four tokenizers). These counts describe the recorded table, while the macro weights score magnitudes rather than task wins. The legacy continuation-boundary error makes every ranking provisional pending a corrected common rerun. XQuAD is excluded from these counts because its legacy generation bug prevents a tokenizer-benefit conclusion.
 
 ## Per-task legacy results: 128k
 
@@ -141,6 +153,8 @@ Legacy adapter values. Classification metrics use 0–1; the final XQuAD row use
 | `xfact_tr` | `acc_norm` | 0.3964 | 0.3373 | 0.3136 | 0.3373 |
 | `xquad_tr` | `f1` | 2.2674 | 2.3517 | 2.9685 | 2.2498 |
 
+**Interpretation.** Across the eleven classification tasks, outright first-place counts at the displayed precision are raw BPE 5, TRmorph 0, Zemberek 3, TurkishDelight 2; the tied first places are `offenseval_tr` (all four tokenizers). These counts describe the recorded table, while the macro weights score magnitudes rather than task wins. The legacy continuation-boundary error makes every ranking provisional pending a corrected common rerun. XQuAD is excluded from these counts because its legacy generation bug prevents a tokenizer-benefit conclusion.
+
 ## Historical evidence retained
 
 The [June 12 comparison](../../artifacts/cetvel_core12_model_comparison_2026-06-12/) contains the same three 32k models. Shared summaries match the June 22 artifact at four decimal places, and all 36 task cells match exactly; these are not additional independent runs. Its higher-precision 32k BPB and train-loss values are preserved separately in JSON (raw-BPE BPB 0.6232126545832695, TRmorph 0.6265726039416546, Zemberek 0.6249791391940578).
@@ -155,6 +169,8 @@ The earlier [raw-BPE-only archive](../../artifacts/cetvel_base_subset_2026-06-09
 | `relevance_judgment` | `acc_norm` | 0.558958 |
 | `tquad` | `exact` | 0.000000 |
 | `tquad` | `f1` | 5.260303 |
+
+**Reading note.** This historical table contains only the raw-BPE baseline, so it cannot by itself rank tokenizers. Additional check-worthiness and relevance-judgment submetrics for the other models are preserved in the all-metric CSV. Accuracy and normalized accuracy are different scoring rules; the TQuAD exact/F1 values also retain the legacy generation limitation.
 
 The [June 7 pipeline smoke test](../../artifacts/uhem_smoke_2026-06-07_job492393/metrics.json) is also retained: depth 2, 12,976,182 parameters, 259,522,560 training token positions, final/minimum validation BPB 1.239557, separate base-eval validation BPB 1.239951. It validates the training pipeline and is excluded from the controlled model comparison.
 
@@ -188,6 +204,8 @@ The table reports `loop_state.total_training_time`, an accumulated training-loop
 | morphbpe_zemberek_131072 | 12 | 768 | 6 | 0.69403741 | 10.970 |
 | morphbpe_tdelight_131072 | 12 | 768 | 6 | 0.68201767 | 10.998 |
 
+**Interpretation.** The higher-precision metadata preserves the same BPB ordering: Zemberek is the better of the two recovered 32k MorphBPE models, and raw BPE leads the recovered 64k/128k rows. The missing raw-BPE32k metadata cells do not erase its archived 0.6232 result. Shorter training counters at larger vocabularies coincide with fewer layers and narrower hidden states, so this table is not an isolated vocabulary ablation.
+
 All ten recovered configurations use context 2,048, full attention (`L`), matching query/KV heads, global batch 1,048,576 token positions, per-device batch 4, and FP8 disabled. The original raw-BPE d20 final metadata path was absent at recovery; its archived BPB and existing benchmark remain valid historical evidence. A dash means the value is unavailable from this metadata source.
 
 The [additional model-configuration report](model_configuration_results.md) contains the d20 continuation, completed d32 FineWeb-2 model, fixed-generation comparisons and full EACL table-compatible benchmark. It explicitly separates protocols and the d32 training-overlap BPB diagnostic from the controlled tokenizer ablation.
@@ -211,6 +229,8 @@ Fresh log recovery preserves all eleven completed runs. Tokens/s, step time and 
 | morphbpe_zemberek_131072 | 890,241,506 | 658.23 | 11:19:37 | 455047.0 | 2304.32 | 48.86 | 13068.04 |
 | morphbpe_tdelight_131072 | 890,241,506 | 659.88 | 11:21:12 | 453685.0 | 2311.24 | 48.72 | 13066.91 |
 
+**Interpretation.** The fastest final-100-step median is TRmorph within 32k, TurkishDelight within 64k and Zemberek within 128k. Each lead over its raw-BPE baseline is under 1%, and memory use is nearly unchanged within a tier. The large speed increase from d20 to d12 comes with a different architecture; higher d20 MFU does not imply higher tokens/s or shorter training.
+
 ### Standalone base-evaluation BPB from training logs
 
 These logged train/validation evaluations run after the final checkpoint. They are a separate evaluation call and are preserved separately from checkpoint validation BPB; they must not silently replace the earlier measurement.
@@ -229,6 +249,8 @@ These logged train/validation evaluations run after the final checkpoint. They a
 | morphbpe_zemberek_131072 | 0.694037 | 0.820229 | 0.694084 |
 | morphbpe_tdelight_131072 | 0.682018 | 0.818073 | 0.682060 |
 
+**Interpretation.** Raw BPE also has the lowest standalone validation BPB within all three tiers, so the separate evaluation call agrees with the checkpoint BPB ordering. Small last-decimal changes between the two validation calls are evaluation differences, not evidence of another training improvement. Training-set BPB and token-level loss should not substitute for the validation comparison.
+
 ### Archived d2 pipeline smoke performance
 
 This separate June 7 job validates the pipeline, not the controlled tokenizer comparison. Its tokenizer was trained on a 50-million-character cap and is named `bpe_32768_uhem_smoke`.
@@ -236,4 +258,6 @@ This separate June 7 job validates the pipeline, not the controlled tokenizer co
 | Depth / width / heads | Context | Parameters | Steps | Training positions | Training min | Slurm wall time | MFU % | Peak MiB |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2 / 128 / 2 | 256 | 12,976,182 | 1980 | 259,522,560 | 11.60 | 00:17:38 | 2.51 | 1,420.94 |
+
+**Reading note.** This single d2 run demonstrates that tokenization, training, checkpointing and evaluation completed on the cluster. Its short context, small model and separate tokenizer-training cap make its time, MFU and BPB unsuitable for ranking the d20/d16/d12 treatments.
 The smoke artifact also records tokenizer-training time 6.3158 s, 7.347524e15 training FLOPs, 19.79 GB job memory utilized, and standalone train BPB 1.295173 / validation BPB 1.239951. Its checkpoint validation BPB is 1.239557.

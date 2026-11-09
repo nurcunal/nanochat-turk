@@ -188,6 +188,8 @@ the best MorphBPE value for that metric, not one synthetic winner.
 | 64k | 1.4328 | 1.5651-1.6712 | 1.4627 | 1.1697 | 0.2863 | 0.4421 |
 | 128k | 1.3473 | 1.4715-1.5952 | 1.2623 | 1.0045 | 0.2412 | 0.3971 |
 
+**Interpretation.** Raw BPE has the lowest corpus fertility at every size; TurkishDelight has the lowest fertility among MorphBPE treatments. TRmorph supplies the best edit-distance value in all three rows and the best pairwise-consistency F1 at 32k/64k. The 128k consistency winner is TurkishDelight (0.3971), not TRmorph (0.3786). Thus the table’s “best Morph” columns do not identify one winning tokenizer, and the automatic-reference advantage should not be generalized to independent human annotations.
+
 Across the currently checked outputs, all nine MorphBPE rows improve both
 morphology metrics over same-size raw BPE, and all nine spend more tokens per
 word. This matches the paper's directional intrinsic trade-off on the current
@@ -217,6 +219,8 @@ results are in [the model report](docs/study_results/model_results.md).
 | 32k/d20 | raw 0.6232 | 2.4899 / 2.0106 | 0.4514 / **0.4618** | **0.2522** / 0.2433 | 3.0985 / **3.4786** |
 | 64k/d16 | raw 0.6409 | 2.5812 / 2.2754 | **0.4590** / 0.4568 | **0.2433** / 0.2356 | 2.8576 / **3.3280** |
 | 128k/d12 | raw 0.6749 | 3.0976 / 2.5947 | **0.4651** / 0.4618 | 0.2389 / **0.2633** | 2.2674 / **2.9685** |
+
+**Interpretation.** Raw BPE wins archived validation BPB within every tier. The recorded legacy core-11 leaders are Zemberek at 32k and raw BPE at 64k/128k; 128k Zemberek also supplies the displayed best MorphBPE Belebele value. The legacy XQuAD leaders are TRmorph, TurkishDelight and Zemberek at 32k, 64k and 128k respectively. These downstream labels describe the saved values only: generation and continuation-scoring errors prevent treating them as confirmed tokenizer advantages.
 
 "Best Morph" may name a different segmenter in each metric. These are
 descriptive selections, not a composite rank or significance-tested model

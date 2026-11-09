@@ -49,6 +49,8 @@ superseded. A corrected common eleven-model rerun is still needed.
 | 64k / d16 | **0.6409** | 0.6510 | **0.4590** | 0.4568 | Raw BPE has lower archived BPB; legacy macro ranking needs reevaluation. |
 | 128k / d12 | **0.6749** | 0.6820 | **0.4651** | 0.4618 | Raw BPE has lower archived BPB; legacy macro ranking needs reevaluation. |
 
+**Interpretation.** Raw BPE is the validation-BPB winner in every tier. Among MorphBPE models, Zemberek has the best BPB at 32k and TurkishDelight at 64k/128k, but all remain above their raw-BPE baseline. The recorded legacy core-11 winner is Zemberek at 32k and raw BPE at 64k/128k; those downstream rankings require the corrected common rerun before they can establish a tokenizer advantage. Intrinsically, TRmorph leads matched-validation morpheme preservation and boundary F1, while raw BPE leads document compression. See the [metric-specific findings](docs/study_results/README.md#findings-that-can-be-defended).
+
 Lower BPB is better. Core-11 is the mean of the common CETVEL
 classification/log-likelihood tasks; XQuAD is reported separately because its
 F1 scale is different. See the

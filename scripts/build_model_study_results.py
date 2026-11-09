@@ -295,9 +295,10 @@ def build():
     training_rows = [{"run_id": row["run_id"], "tokenizer": row["tokenizer"], "depth": row["depth"], **row["training_statistics"]} for row in runs if row["model_step"] is not None]
     training_fields = ["run_id", "tokenizer", "depth", "parameters", "training_minutes", "estimated_training_flops", "peak_memory_mib", "mfu_percent", "gpu_count", "training_job_id", "scheduler_state", "scheduler_elapsed", "source_artifact", "source_report_path", "source_report_sha256"]
     (OUT / "model_training_statistics.csv").write_text(csv_text(training_rows, training_fields))
-    (OUT / "model_results.md").write_text(markdown(result) + recovered_sections)
+    from scripts.model_table_interpretation import annotate_tables, model_notes, later_notes
+    (OUT / "model_results.md").write_text(annotate_tables(markdown(result) + recovered_sections, model_notes(result)))
     (OUT / "later_model_results.json").write_text(json.dumps(later, indent=2, ensure_ascii=False) + "\n")
-    (OUT / "later_model_results.md").write_text(later_markdown(later))
+    (OUT / "later_model_results.md").write_text(annotate_tables(later_markdown(later), later_notes()))
     print(f"Verified 11 models × 12 tasks; wrote model_results.json/.md/.csv and model_task_metrics.csv to {OUT}")
 
 

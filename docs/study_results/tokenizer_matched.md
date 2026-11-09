@@ -36,6 +36,8 @@ Automatic TRmorph annotations may favor the TRmorph-trained treatment. These are
 | 131,072 | MorphBPE / Zemberek | 1.6248 | 1.6026 | 50.17 | 2.02 | 47.77 | 35.67 | 39.99 | 37.71 |
 | 131,072 | MorphBPE / TurkishDelight | 1.5109 | 1.6481 | 48.56 | 2.02 | 46.27 | 34.58 | 41.69 | 37.80 |
 
+**Interpretation:** Lowest corpus fertility: Raw BPE at 32k, 64k and 128k. Lowest isolated fertility: Zemberek at 32k, 64k and 128k. The lead at 64k and 128k is at most 0.001 token/word at the displayed precision. Highest one-token coverage, intact-morpheme preservation and boundary P/R/F1: TRmorph at 32k, 64k and 128k. TurkishDelight at 128k has both higher isolated fertility and lower one-token coverage than same-size raw BPE, despite its morphology improvements. These morphology rankings use the automatic TRmorph reference.
+
 ### Compression and original morphology diagnostics
 
 | Vocab | Tokenizer | Bytes/token ↑ | Morph edit ↓ | Normalized edit ↓ | Exact morph sequence % | Consistency P | Consistency R | Consistency F1 | Document boundaries preserved % |
@@ -52,6 +54,8 @@ Automatic TRmorph annotations may favor the TRmorph-trained treatment. These are
 | 131,072 | MorphBPE / TRmorph | 4.9597 | 1.0045 | 0.6388 | 56.66 | 0.9955 | 0.2338 | 0.3786 | 46.49 |
 | 131,072 | MorphBPE / Zemberek | 4.9770 | 1.0859 | 0.6982 | 53.80 | 0.9933 | 0.2001 | 0.3330 | 34.13 |
 | 131,072 | MorphBPE / TurkishDelight | 5.3521 | 1.1345 | 0.7437 | 51.37 | 0.9933 | 0.2482 | 0.3971 | 21.89 |
+
+**Interpretation:** Best corpus compression (most bytes/token): Raw BPE at 32k, 64k and 128k. Lowest raw and normalized morphology edit distance: TRmorph at 32k, 64k and 128k. Highest pairwise consistency precision: TRmorph at 32k, 64k and 128k. Highest pairwise consistency recall: TRmorph at 32k and 64k; TurkishDelight at 128k. Highest original pairwise consistency F1: TRmorph at 32k and 64k; TurkishDelight at 128k. Highest exact-morpheme agreement: TRmorph at 32k, 64k and 128k. Highest document-boundary preservation: TRmorph at 32k, 64k and 128k. This pairwise consistency metric is distinct from literal boundary F1.
 
 ### Coverage exclusions and recorded runtime
 
@@ -72,6 +76,8 @@ All use one metric worker and eight tokenizer threads per process, with four tok
 | 131,072 | MorphBPE / Zemberek | 1.91 | 0.09 | 0 | 0 | 0 | 4.569 | 106.21 |
 | 131,072 | MorphBPE / TurkishDelight | 1.92 | 0.09 | 0 | 0 | 0 | 4.623 | 98.94 |
 
+**Interpretation:** All rows tie at zero roundtrip failures and zero alignment exclusions. Lowest multi-character character-only rate: TRmorph and Zemberek (tied at displayed precision) at 32k and 64k; TRmorph at 128k. Highest recorded encoding tokens/s: TRmorph at 32k and 64k; TurkishDelight at 128k. These timings include concurrent-process contention, and more tokens/s can reflect producing more tokens rather than processing raw text faster.
+
 ## Reserved validation-shard prefix
 
 50,000 documents; 161,056,183 UTF-8 bytes; 19,832,065 regex words. Source: `004_00005.segmented.parquet`. Percentages below use the denominators defined above.
@@ -91,6 +97,8 @@ All use one metric worker and eight tokenizer threads per process, with four tok
 | 131,072 | MorphBPE / Zemberek | 1.5989 | 1.5639 | 52.42 | 2.23 | 49.83 | 36.78 | 40.23 | 38.43 |
 | 131,072 | MorphBPE / TurkishDelight | 1.4809 | 1.6022 | 51.07 | 2.22 | 48.26 | 35.52 | 41.49 | 38.27 |
 
+**Interpretation:** Lowest corpus fertility: Raw BPE at 32k, 64k and 128k. Lowest isolated fertility: Zemberek at 32k; TRmorph at 64k and 128k. Highest one-token coverage, intact-morpheme preservation and boundary P/R/F1: TRmorph at 32k, 64k and 128k. TurkishDelight at 128k has both higher isolated fertility and lower one-token coverage than same-size raw BPE, despite its morphology improvements. These morphology rankings use the automatic TRmorph reference.
+
 ### Compression and original morphology diagnostics
 
 | Vocab | Tokenizer | Bytes/token ↑ | Morph edit ↓ | Normalized edit ↓ | Exact morph sequence % | Consistency P | Consistency R | Consistency F1 | Document boundaries preserved % |
@@ -107,6 +115,8 @@ All use one metric worker and eight tokenizer threads per process, with four tok
 | 131,072 | MorphBPE / TRmorph | 5.0752 | 0.9283 | 0.5818 | 59.66 | 0.9930 | 0.2569 | 0.4082 | 46.35 |
 | 131,072 | MorphBPE / Zemberek | 5.0790 | 1.0144 | 0.6469 | 56.51 | 0.9923 | 0.2361 | 0.3814 | 33.67 |
 | 131,072 | MorphBPE / TurkishDelight | 5.4839 | 1.0610 | 0.6900 | 54.15 | 0.9911 | 0.2479 | 0.3965 | 20.43 |
+
+**Interpretation:** Best corpus compression (most bytes/token): Raw BPE at 32k, 64k and 128k. Lowest raw and normalized morphology edit distance: TRmorph at 32k, 64k and 128k. Highest pairwise consistency precision: TRmorph at 32k, 64k and 128k. Highest pairwise consistency recall: TRmorph at 32k, 64k and 128k. Highest original pairwise consistency F1: TRmorph at 32k, 64k and 128k. Highest exact-morpheme agreement: TRmorph at 32k, 64k and 128k. Highest document-boundary preservation: TRmorph at 32k, 64k and 128k. This pairwise consistency metric is distinct from literal boundary F1.
 
 ### Coverage exclusions and recorded runtime
 
@@ -126,6 +136,8 @@ All use one metric worker and eight tokenizer threads per process, with four tok
 | 131,072 | MorphBPE / TRmorph | 2.09 | 0.09 | 0 | 0 | 0 | 5.466 | 86.19 |
 | 131,072 | MorphBPE / Zemberek | 2.09 | 0.09 | 0 | 0 | 0 | 5.482 | 86.24 |
 | 131,072 | MorphBPE / TurkishDelight | 2.09 | 0.08 | 0 | 0 | 0 | 5.216 | 87.30 |
+
+**Interpretation:** All rows tie at zero roundtrip failures and zero alignment exclusions. Lowest multi-character character-only rate: TRmorph and Zemberek (tied at displayed precision) at 32k; TRmorph, Zemberek and TurkishDelight (tied at displayed precision) at 64k; TurkishDelight at 128k. Highest recorded encoding tokens/s: Zemberek at 32k and 128k; TRmorph at 64k. These timings include concurrent-process contention, and more tokens/s can reflect producing more tokens rather than processing raw text faster.
 
 ## Provenance and rebuild
 
@@ -159,3 +171,5 @@ Rebuild these tables from completed measurements with `python -m scripts.build_t
 | val | morphbpe_trmorph_131072 | [morphbpe_trmorph_131072_metrics.json](../../artifacts/tokenizer_metrics_matched_2026-11-09/results/val/morphbpe_trmorph_131072_metrics.json) |
 | val | morphbpe_zemberek_131072 | [morphbpe_zemberek_131072_metrics.json](../../artifacts/tokenizer_metrics_matched_2026-11-09/results/val/morphbpe_zemberek_131072_metrics.json) |
 | val | morphbpe_tdelight_131072 | [morphbpe_tdelight_131072_metrics.json](../../artifacts/tokenizer_metrics_matched_2026-11-09/results/val/morphbpe_tdelight_131072_metrics.json) |
+
+**Reading note:** These links identify the original evidence for each row; their order is not a performance ranking.

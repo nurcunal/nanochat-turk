@@ -12,6 +12,7 @@ import math
 from pathlib import Path
 
 from scripts.build_tokenizer_study_results import FAMILIES, OUT, ROOT, label, row_from_file, verify_rows
+from scripts.tokenizer_table_interpretation import interpret_tables
 
 ARTIFACT = ROOT / "artifacts/tokenizer_metrics_matched_2026-11-09"
 
@@ -177,7 +178,7 @@ def build() -> None:
         "| Split | Tokenizer | Original JSON |", "|---|---|---|"]
     for r in all_rows:
         lines.append(f'| {r["split"]} | {r["tokenizer"]} | [{Path(r["source_file"]).name}](../../{r["source_file"]}) |')
-    (OUT / "tokenizer_matched.md").write_text("\n".join(lines) + "\n")
+    (OUT / "tokenizer_matched.md").write_text("\n".join(interpret_tables(lines, scope="matched")) + "\n")
 
 
 if __name__ == "__main__":

@@ -23,6 +23,8 @@ The validation file is withheld by the repository's configured file split; train
 | 131,072 | Zemberek | 1.5989 | 1.5639 | 52.42 | 2.23 | 49.83 | 36.78 | 40.23 | 38.43 |
 | 131,072 | TurkishDelight | 1.4809 | 1.6022 | 51.07 | 2.22 | 48.26 | 35.52 | 41.49 | 38.27 |
 
+**Interpretation:** Lowest corpus fertility: Raw BPE at 32k, 64k and 128k. Lowest isolated fertility: Zemberek at 32k; TRmorph at 64k and 128k. Highest one-token coverage, intact-morpheme preservation and boundary P/R/F1: TRmorph at 32k, 64k and 128k. TurkishDelight at 128k has both higher isolated fertility and lower one-token coverage than same-size raw BPE, despite its morphology improvements. These morphology rankings use the automatic TRmorph reference.
+
 | Vocab | Tokenizer | Multi-character words split only into characters % | Byte-only words % | Roundtrip failures | UNK count | Scored / excluded morphology words |
 |---:|---|---:|---:|---:|---|---|
 | 32,768 | Raw BPE | 0.29 | 2.27 | 0 | N/A (byte-complete) | 500,000 / 0 |
@@ -37,6 +39,8 @@ The validation file is withheld by the repository's configured file split; train
 | 131,072 | TRmorph | 0.09 | 2.09 | 0 | N/A (byte-complete) | 500,000 / 0 |
 | 131,072 | Zemberek | 0.09 | 2.09 | 0 | N/A (byte-complete) | 500,000 / 0 |
 | 131,072 | TurkishDelight | 0.08 | 2.09 | 0 | N/A (byte-complete) | 500,000 / 0 |
+
+**Interpretation:** All twelve tokenizers tie on observed roundtrip success and score all 500,000 morphology words without exclusions; UNK is N/A for every byte-complete tokenizer. Lowest multi-character character-only rate: TRmorph and Zemberek (tied at displayed precision) at 32k; TRmorph, Zemberek and TurkishDelight (tied at displayed precision) at 64k; TurkishDelight at 128k. Character-only and byte-only rates describe fragmentation, not independent evidence of linguistic quality.
 
 ## Training sample
 
@@ -57,6 +61,8 @@ The validation file is withheld by the repository's configured file split; train
 | 131,072 | Zemberek | 1.6248 | 1.6026 | 50.17 | 2.02 | 47.77 | 35.67 | 39.99 | 37.71 |
 | 131,072 | TurkishDelight | 1.5109 | 1.6481 | 48.56 | 2.02 | 46.27 | 34.58 | 41.69 | 37.80 |
 
+**Interpretation:** Lowest corpus fertility: Raw BPE at 32k, 64k and 128k. Lowest isolated fertility: Zemberek at 32k, 64k and 128k. The lead at 64k and 128k is at most 0.001 token/word at the displayed precision. Highest one-token coverage, intact-morpheme preservation and boundary P/R/F1: TRmorph at 32k, 64k and 128k. TurkishDelight at 128k has both higher isolated fertility and lower one-token coverage than same-size raw BPE, despite its morphology improvements. These morphology rankings use the automatic TRmorph reference.
+
 | Vocab | Tokenizer | Multi-character words split only into characters % | Byte-only words % | Roundtrip failures | UNK count | Scored / excluded morphology words |
 |---:|---|---:|---:|---:|---|---|
 | 32,768 | Raw BPE | 0.39 | 2.21 | 0 | N/A (byte-complete) | 500,000 / 0 |
@@ -71,6 +77,8 @@ The validation file is withheld by the repository's configured file split; train
 | 131,072 | TRmorph | 0.08 | 1.91 | 0 | N/A (byte-complete) | 500,000 / 0 |
 | 131,072 | Zemberek | 0.09 | 1.91 | 0 | N/A (byte-complete) | 500,000 / 0 |
 | 131,072 | TurkishDelight | 0.09 | 1.92 | 0 | N/A (byte-complete) | 500,000 / 0 |
+
+**Interpretation:** All twelve tokenizers tie on observed roundtrip success and score all 500,000 morphology words without exclusions; UNK is N/A for every byte-complete tokenizer. Lowest multi-character character-only rate: TRmorph and Zemberek (tied at displayed precision) at 32k and 64k; TRmorph at 128k. Character-only and byte-only rates describe fragmentation, not independent evidence of linguistic quality.
 
 ## Definitions
 

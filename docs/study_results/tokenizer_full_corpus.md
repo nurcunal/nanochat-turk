@@ -19,6 +19,8 @@ All twelve rows cover the same **93,211,827 training documents**, **36,699,889,7
 | 131,072 | MorphBPE / Zemberek | 1.5916 | 1.6026 | 50.17 | 5.1219 | 53.80 | 33.63 | 1.0859 | 0.3330 |
 | 131,072 | MorphBPE / TurkishDelight | 1.4715 | 1.6481 | 48.56 | 5.5399 | 51.37 | 20.64 | 1.1345 | 0.3971 |
 
+**Interpretation:** Lowest corpus fertility: Raw BPE at 32k, 64k and 128k. Lowest isolated fertility: Zemberek at 32k, 64k and 128k. The lead at 64k and 128k is at most 0.001 token/word at the displayed precision. Lowest morphology edit distance: TRmorph at 32k, 64k and 128k. Highest one-token coverage, exact-morpheme agreement and boundary preservation: TRmorph at 32k, 64k and 128k. Highest original pairwise consistency F1: TRmorph at 32k and 64k; TurkishDelight at 128k. TurkishDelight at 128k has both higher isolated fertility and lower one-token coverage than same-size raw BPE, despite its morphology improvements.
+
 All twelve rows record zero roundtrip failures. Per-morpheme intact-token preservation, character-only coverage and explicit boundary P/R/F1 were absent from these June outputs; they are now separately measured in the [completed matched train/validation evaluation](tokenizer_fresh_results.md), while the historical missing fields remain null. The full-corpus word caps resolve the earlier 32k 200k/500k cap mismatch, while retaining the automatic TRmorph-reference limitation. The repeated consistency values are expected because this metric remains capped at the same 50,000 word types; they are not independent replications.
 
 ## Additional morphology diagnostics
@@ -40,6 +42,8 @@ Morph consistency is shared-token/shared-morpheme pair precision/recall/F1. `F1 
 | 131,072 | MorphBPE / Zemberek | 0.6982 | 0.9933 | 0.2001 | 0.0091 | 66.37 |
 | 131,072 | MorphBPE / TurkishDelight | 0.7437 | 0.9933 | 0.2482 | 0.0062 | 79.36 |
 
+**Interpretation:** Lowest normalized morphology edit distance: TRmorph at 32k, 64k and 128k. Highest pairwise consistency precision: TRmorph at 32k, 64k and 128k. Highest pairwise consistency recall: TRmorph at 32k and 64k; TurkishDelight at 128k. Lowest crossed-boundary rate: TRmorph at 32k, 64k and 128k. Lower resample SD is not a quality win or a confidence interval; it measures variability of the sampled consistency calculation.
+
 ## Archived encoding and evaluator performance
 
 These are recorded timings, not a controlled tokenizer speed benchmark. `Encode M tok/s` divides token count by accumulated encoding time across workers; `Evaluator wall s` includes the rest of metric computation. The two use different time denominators. Worker/thread settings are shown so they are not mistaken for like-for-like speed measurements.
@@ -59,6 +63,8 @@ These are recorded timings, not a controlled tokenizer speed benchmark. `Encode 
 | 131,072 | MorphBPE / Zemberek | 1.105 | 52872.38 | 8795.26 | 32 × 1 | 99.96 | 0 |
 | 131,072 | MorphBPE / TurkishDelight | 1.049 | 51477.29 | 8953.76 | 32 × 1 | 99.95 | 0 |
 
+**Interpretation:** Among the local tokenizer rows, highest recorded encoding tokens/s: Zemberek at 32k; TRmorph at 64k and 128k. All rows tie at zero observed roundtrip failures. These timings use tokenizer-dependent token counts, so they do not establish a controlled raw-text-speed ranking. High vocabulary usage alone is not evidence of better morphology.
+
 ## Row-level source files
 
 Every file below is copied in full into the report JSON with its SHA-256 hash; the CSV carries the same path and hash. Original result files are preserved unchanged.
@@ -77,6 +83,8 @@ Every file below is copied in full into the report JSON with its SHA-256 hash; t
 | 131,072 | MorphBPE / TRmorph | [morphbpe_trmorph_131072_metrics.json](../../artifacts/tokenizer_metrics_full_2026-06-23/morphbpe_trmorph_131072_metrics.json) |
 | 131,072 | MorphBPE / Zemberek | [morphbpe_zemberek_131072_metrics.json](../../artifacts/tokenizer_metrics_full_2026-06-23/morphbpe_zemberek_131072_metrics.json) |
 | 131,072 | MorphBPE / TurkishDelight | [morphbpe_tdelight_131072_metrics.json](../../artifacts/tokenizer_metrics_full_2026-06-23/morphbpe_tdelight_131072_metrics.json) |
+
+**Reading note:** These links identify the original evidence for each row; their order is not a performance ranking.
 
 ## Interpretation and reproduction
 

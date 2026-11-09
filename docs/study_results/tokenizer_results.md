@@ -21,6 +21,8 @@ Archived measurements, consolidated 9 November 2026. This report retains the ear
 | 131,072 | MorphBPE / Zemberek | 1.6248 | 1.6026 | 50.17 | 53.80 | 34.13 | 0.3330 | 500,000 |
 | 131,072 | MorphBPE / TurkishDelight | 1.5109 | 1.6481 | 48.56 | 51.37 | 21.89 | 0.3971 | 500,000 |
 
+**Interpretation:** Lowest corpus fertility: Raw BPE at 32k, 64k and 128k. Lowest isolated fertility: Zemberek at 32k, 64k and 128k. The lead at 64k and 128k is at most 0.001 token/word at the displayed precision. Highest one-token coverage, exact-morpheme agreement and boundary preservation: TRmorph at 32k, 64k and 128k. Highest original pairwise consistency F1: TRmorph at 32k and 64k; TurkishDelight at 128k. TurkishDelight at 128k has both higher isolated fertility and lower one-token coverage than same-size raw BPE, despite its morphology improvements. The mixed 32k word caps make its word-level rankings descriptive rather than fully matched.
+
 ### Definitions and coverage
 
 - **Vocabulary size:** actual vocabulary including nine special tokens for every local tokenizer.
@@ -50,6 +52,8 @@ Archived measurements, consolidated 9 November 2026. This report retains the ear
 | 131,072 | MorphBPE / Zemberek | 4.9770 | 1.0859 | 0.6982 | 0.9933 | 0.2001 | 65.87 | 97.53 | 3.351 |
 | 131,072 | MorphBPE / TurkishDelight | 5.3521 | 1.1345 | 0.7437 | 0.9933 | 0.2482 | 78.11 | 96.34 | 3.271 |
 
+**Interpretation:** Best corpus compression (most bytes/token): Raw BPE at 32k, 64k and 128k. Lowest raw and normalized morphology edit distance: TRmorph at 32k, 64k and 128k. Highest pairwise consistency precision: TRmorph at 32k, 64k and 128k. Highest pairwise consistency recall: TRmorph at 32k and 64k; TurkishDelight at 128k. Lowest crossed-boundary rate: TRmorph at 32k, 64k and 128k. Recorded encoding rates are not controlled raw-text speed comparisons.
+
 The JSON also preserves all original distributions, unique-word measurements, resampling standard deviations, vocabulary shape, worker/thread counts and timing. The original [comparison](../tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md) remains available.
 
 ## External tokenizer references
@@ -61,10 +65,14 @@ These are tokenizer-only diagnostics; their pretrained models are **not** part o
 | kumru_2b | 50,176 | 1.6677 | 1.6648 | 50.86 | 45.15 | 22.55 | 0.3436 |
 | cosmos_turkish_gpt2 | 50,257 | 1.5570 | 1.8678 | 38.47 | 39.65 | 13.06 | 0.3001 |
 
+**Interpretation:** Cosmos uses fewer corpus tokens per word; Kumru has lower isolated fertility and higher one-token coverage, exact-morpheme agreement, boundary preservation and pairwise consistency F1. The preferred reference depends on the metric; their different vocabularies prevent treating this as a controlled tokenizer-family ablation.
+
 | Tokenizer | Bytes/token | Morph edit ↓ | Normalized edit ↓ | Consistency P | Consistency R | Crossed boundaries % |
 |---|---:|---:|---:|---:|---:|---:|
 | kumru_2b | 4.8488 | 1.3500 | 0.9195 | 0.9893 | 0.2079 | 77.45 |
 | cosmos_turkish_gpt2 | 5.1938 | 1.4839 | 1.0309 | 0.9768 | 0.1773 | 86.94 |
+
+**Interpretation:** Cosmos compresses the corpus into more bytes per token. Kumru has lower morphology edit distance and stronger consistency precision/recall, with fewer crossed reference boundaries. This repeats the compression-versus-morphology trade-off rather than identifying one universal winner.
 
 ## Archived encoding and evaluator performance
 
@@ -87,6 +95,8 @@ These are recorded timings, not a controlled tokenizer speed benchmark. `Encode 
 | 50,176 | kumru_2b | 0.414 | 92.71 | 14.96 | 32 × 1 | 98.81 | 0 |
 | 50,257 | cosmos_turkish_gpt2 | 0.364 | 98.55 | 11.84 | 32 × 1 | 99.13 | 0 |
 
+**Interpretation:** Among the local tokenizer rows, highest recorded encoding tokens/s: TRmorph at 32k and 64k; Zemberek at 128k. All rows tie at zero observed roundtrip failures. These timings use tokenizer-dependent token counts, so they do not establish a controlled raw-text-speed ranking. High vocabulary usage alone is not evidence of better morphology.
+
 ## Earlier normalizing-tokenizer references from Git history
 
 BERTurk, TURNA and VBART were published in [commit 2ff5305](https://github.com/nurcunal/nanochat-turk/commit/2ff53058540b5d2d00a9e832e7f02a19582faed4), then removed when the primary comparison narrowed to lossless raw-text BPE. The [three original files and immutable source links](../../artifacts/tokenizer_metrics_historical_normalizing_references/) are restored separately for completeness. All use the same 50,000 training documents and 500,000 isolated word occurrences.
@@ -99,11 +109,15 @@ BERTurk, TURNA and VBART were published in [commit 2ff5305](https://github.com/n
 | turna | 32,100 | 1.5603 | 1.3966 | 71.81 | 5.1827 | 47,607 | 95.214 |
 | vbart_large_base | 32,001 | 1.5603 | 1.3966 | 71.81 | 5.1827 | 47,607 | 95.214 |
 
+**Interpretation:** TURNA and VBART have similar recorded token counts and one-token rates, but lose exact roundtrip on 95.214% of documents; BERTurk fails on 99.292%. These values cannot establish a lossless compression or whole-word-coverage winner.
+
 | Tokenizer | Recorded boundary crossed % | Encode M tok/s | Used vocab % |
 |---|---:|---:|---:|
 | berturk_cased | 80.45 | 0.863 | 95.54 |
 | turna | 80.15 | 0.541 | 99.55 |
 | vbart_large_base | 80.15 | 0.580 | 99.87 |
+
+**Interpretation:** BERTurk has the highest recorded encoding rate, while the boundary figures belong to tokenizers that normalize or alter text. Neither column supports a fair morphology or speed ranking against the lossless BPE tokenizers.
 
 Boundary-crossing fields are preserved as historical diagnostics, not used in the lossless morphology ranking. Morphological edit/consistency measurements and worker/thread settings were absent. Original IDs: `dbmdz/bert-base-turkish-cased`, `boun-tabi-LMG/TURNA`, `vngrs-ai/VBART-Large-Base`.
 
@@ -114,6 +128,8 @@ The earlier Zemberek 32k diagnostic uses **10,000 raw training documents**, 48,9
 | Tokenizer | Tokens/word | Isolated tokens/word | One-token words % | Bytes/token | Encode M tok/s | Roundtrip failures |
 |---|---:|---:|---:|---:|---:|---:|
 | MorphBPE / Zemberek 32k | 1.8268 | 1.9748 | 34.79 | 4.4109 | 9.687 | 0 |
+
+**Interpretation:** This single Zemberek diagnostic demonstrates lossless roundtrip on its 10,000-document sample. Without other tokenizers on this same diagnostic scope, it cannot identify the best tokenizer, and its absent morphology reference cannot establish boundary quality.
 
 ## Earlier morphology analyzer screening
 
@@ -128,6 +144,8 @@ These measurements evaluate the upstream analyzers that supplied training bounda
 | Zemberek | hash-100k, corrected wrapper | 100,000 | 29.99 | 3,335 | 1.447 | 31.6 | 42.5 | 23.3 |
 | TurkishDelight | hash-100k | 100,000 | 65.29 | 1,532 | 1.503 | 36.2 | 0.0 | 0.0 |
 
+**Interpretation:** On the common hash-100k screen, TRmorph has the highest measured processing rate (9,223 forms/s), while TurkishDelight has the lowest fallback rate (0%). Identity is a no-segmentation control. These analyzer readiness results do not rank the finished tokenizers or their LLMs.
+
 The common hash-100k screen represents 12,095,210 weighted word occurrences; the full first shard represents 1,282,426,655 and the 1k smoke sample 76,484. The full TRmorph row predates case-only surface repair and analysis-tag filtering; its fallback rate is not a current-wrapper result. Different wrappers and scopes prevent a single speed ranking.
 
 ### Archived 500-item blind segmentation judge
@@ -140,6 +158,8 @@ The [judge report](../tokenizer_tests/codex_local_judge_results.md) used a disag
 | TurkishDelight | 173 | 34.6 | 219 | 43.8 |
 | Zemberek | 86 | 17.2 | 200 | 40.0 |
 | Identity | 0 | 0.0 | 4 | 0.8 |
+
+**Interpretation:** TRmorph leads both best selections (48.2%) and acceptability (51.0%); TurkishDelight is second on both. This supports TRmorph under this disagreement-focused scripted rubric, not a universal linguistic-quality or downstream-model win.
 
 Confidence counts: high 148, medium 287, low 65; invalid judgments: 0. Screening source hashes and the full judge summary are retained in the consolidated JSON.
 
@@ -167,6 +187,8 @@ Every file below is copied in full into the report JSON with its SHA-256 hash; t
 | 32,000 | berturk_cased | [berturk_cased_metrics.json](../../artifacts/tokenizer_metrics_historical_normalizing_references/berturk_cased_metrics.json) |
 | 32,100 | turna | [turna_metrics.json](../../artifacts/tokenizer_metrics_historical_normalizing_references/turna_metrics.json) |
 | 32,001 | vbart_large_base | [vbart_large_base_metrics.json](../../artifacts/tokenizer_metrics_historical_normalizing_references/vbart_large_base_metrics.json) |
+
+**Reading note:** These links identify the original evidence for each row; their order is not a performance ranking.
 
 ## Interpretation and limits
 

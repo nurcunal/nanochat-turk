@@ -6,6 +6,8 @@ import hashlib
 import json
 from pathlib import Path
 
+from scripts.tokenizer_table_interpretation import interpret_tables
+
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs/study_results"
 SOURCE = OUT / "fresh_tokenizer_metrics"
@@ -106,7 +108,7 @@ def build():
         "- Unalignable words are excluded from morphology denominators and reported explicitly. Undefined denominators produce null/N/A. Rates are occurrence-weighted, not unique-type weighted.", "",
         "Source sample preparation records ordered raw/annotated document hashes. The same morphology analyzer supplies reference labels and TRmorph tokenizer training supervision; interpretation must retain that bias limitation. Earlier train-corpus diagnostics and the full-corpus archive remain separate in [the index](README.md).", "",
         "Rebuild: `python -m scripts.build_fresh_tokenizer_results`."]
-    (OUT / "tokenizer_fresh_results.md").write_text("\n".join(lines)+"\n")
+    (OUT / "tokenizer_fresh_results.md").write_text("\n".join(interpret_tables(lines, scope="fresh"))+"\n")
 
 
 if __name__ == "__main__":

@@ -213,7 +213,8 @@ def later_models(root, out, bundle, source_path, all_task_rows):
     dump_csv(out / 'model_configuration_results.csv', rows)
     official_rows = [{'task': task, **detail} for task, detail in official['task_details'].items()]
     dump_csv(out / 'model_official_task_metrics.csv', official_rows)
-    (out / 'model_configuration_results.md').write_text(later_markdown(result, records))
+    from scripts.model_table_interpretation import annotate_tables, configuration_notes
+    (out / 'model_configuration_results.md').write_text(annotate_tables(later_markdown(result, records), configuration_notes(result)))
     return {'report': 'model_configuration_results.md', 'json': 'model_configuration_results.json', 'experiments': rows, 'official_overall_score': official['overall_score'], 'official_protocol': official['protocol']['id']}
 
 
