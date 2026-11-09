@@ -1,5 +1,9 @@
 # CETVEL Model Comparison
 
+> Historical June tokenizer-ablation snapshot, retained for provenance. See the
+> [consolidated model results](study_results/model_results.md) for recovered full-precision
+> metrics, training performance, later d20/d32 configurations and separately labeled QA protocols.
+
 This page tracks model-facing CETVEL evidence for the tokenizer ablation. It is separate from tokenizer-only diagnostics: these rows compare trained base models at the same checkpoint step, within each vocabulary/depth tier.
 
 ## Current Comparable Slice

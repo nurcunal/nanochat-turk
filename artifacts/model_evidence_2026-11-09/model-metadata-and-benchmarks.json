@@ -1,0 +1,5143 @@
+{
+  "retrieved_at_utc": "2026-11-09T12:36:55.467635+00:00",
+  "host": "altay.uhem.itu.edu.tr",
+  "records": [
+    {
+      "run_id": "raw_bpe_d20",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d20_bpe_32768_chinchilla20",
+      "source_meta_path": {
+        "path": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_checkpoints/tr_d20_bpe_32768_chinchilla20/meta_017100.json",
+        "exists": false
+      },
+      "source_results_path": {
+        "path": "/ari/users/nunal/nanochat-turk-d20-bpe32k/cetvel_out/full_kvcache_20260609_185114/cetvel_full_partial_results.json",
+        "exists": true,
+        "size_bytes": 121867820,
+        "mtime_utc": "2026-06-09T17:06:07+00:00",
+        "sha256": "20b1aec4215acb535f986e6d9d505e1e858441ecac22441786285a006e6bb681",
+        "data": {
+          "results": {
+            "exams_tr": {
+              "acc,none": 0.27989821882951654,
+              "acc_stderr,none": 0.02267534881071746,
+              "acc_norm,none": 0.3104325699745547,
+              "acc_norm_stderr,none": 0.023368399945309665,
+              "alias": "exams_tr"
+            },
+            "belebele_tr": {
+              "acc,none": 0.25222222222222224,
+              "acc_stderr,none": 0.014484319811433867,
+              "acc_norm,none": 0.25222222222222224,
+              "acc_norm_stderr,none": 0.014484319811433867,
+              "alias": "belebele_tr"
+            },
+            "turkish_plu": {
+              "acc_norm,none": 0.50272,
+              "acc_norm_stderr,none": 0.008893344438781701,
+              "acc,none": 0.46048,
+              "acc_stderr,none": 0.00881446403283729,
+              "alias": "turkish_plu"
+            },
+            "turkish_plu_goal_inference": {
+              "acc,none": 0.4253285543608124,
+              "acc_stderr,none": 0.017098930239005182,
+              "acc_norm,none": 0.4241338112305854,
+              "acc_norm_stderr,none": 0.01709263815765492,
+              "alias": " - turkish_plu_goal_inference"
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc,none": 0.44580152671755724,
+              "acc_stderr,none": 0.01943634342434951,
+              "acc_norm,none": 0.5343511450381679,
+              "acc_norm_stderr,none": 0.019505350902106894,
+              "alias": " - turkish_plu_next_event_prediction"
+            },
+            "turkish_plu_step_inference": {
+              "acc,none": 0.3545751633986928,
+              "acc_stderr,none": 0.01935336054755364,
+              "acc_norm,none": 0.477124183006536,
+              "acc_norm_stderr,none": 0.020206653187884744,
+              "alias": " - turkish_plu_step_inference"
+            },
+            "turkish_plu_step_ordering": {
+              "acc,none": 0.5621939275220372,
+              "acc_stderr,none": 0.015534020709125906,
+              "acc_norm,none": 0.5621939275220372,
+              "acc_norm_stderr,none": 0.015534020709125906,
+              "alias": " - turkish_plu_step_ordering"
+            },
+            "cetvel_xcopa_tr": {
+              "acc,none": 0.618,
+              "acc_stderr,none": 0.02175082059125093,
+              "alias": "cetvel_xcopa_tr"
+            },
+            "cetvel_xnli_tr": {
+              "acc,none": 0.3327345309381238,
+              "acc_stderr,none": 0.006657677385484938,
+              "acc_norm,none": 0.3335329341317365,
+              "acc_norm_stderr,none": 0.0066616711899316425,
+              "alias": "cetvel_xnli_tr"
+            },
+            "mnli_tr": {
+              "acc,none": 0.3216,
+              "acc_stderr,none": 0.004671137543746198,
+              "acc_norm,none": 0.321,
+              "acc_norm_stderr,none": 0.0046688413774705175,
+              "alias": "mnli_tr"
+            },
+            "snli_tr": {
+              "acc,none": 0.3235,
+              "acc_stderr,none": 0.004678350531583716,
+              "acc_norm,none": 0.3234,
+              "acc_norm_stderr,none": 0.004677973102021251,
+              "alias": "snli_tr"
+            },
+            "news_cat": {
+              "acc,none": 0.816,
+              "acc_stderr,none": 0.02455581299422255,
+              "f1,none": 0.8131421521642601,
+              "f1_stderr,none": "N/A",
+              "acc_norm,none": 0.676,
+              "acc_norm_stderr,none": 0.029658294924545567,
+              "alias": "news_cat"
+            },
+            "offenseval_tr": {
+              "acc,none": 0.4631519274376417,
+              "acc_stderr,none": 0.008396237352918483,
+              "f1,none": 0.28850488354620585,
+              "f1_stderr,none": 0.011512938590091396,
+              "acc_norm,none": 0.7970521541950113,
+              "acc_norm_stderr,none": 0.006772248146961342,
+              "alias": "offenseval_tr"
+            },
+            "trclaim19": {
+              "acc_norm,none": 0.4938299817184644,
+              "acc_norm_stderr,none": 0.0074951634809359655,
+              "acc,none": 0.39876599634369286,
+              "acc_stderr,none": 0.007395667521812318,
+              "alias": "trclaim19"
+            },
+            "check_worthiness": {
+              "acc,none": 0.37614259597806216,
+              "acc_stderr,none": 0.010358444277077068,
+              "acc_norm,none": 0.4287020109689214,
+              "acc_norm_stderr,none": 0.0105824132380386,
+              "alias": " - check_worthiness"
+            },
+            "relevance_judgment": {
+              "acc,none": 0.42138939670932357,
+              "acc_stderr,none": 0.01055870373348204,
+              "acc_norm,none": 0.5589579524680073,
+              "acc_norm_stderr,none": 0.01061708210777377,
+              "alias": " - relevance_judgment"
+            },
+            "xfact_tr": {
+              "acc,none": 0.33727810650887574,
+              "acc_stderr,none": 0.036475822502775014,
+              "acc_norm,none": 0.33727810650887574,
+              "acc_norm_stderr,none": 0.036475822502775014,
+              "alias": "xfact_tr"
+            },
+            "xquad_tr": {
+              "exact,none": 0.0,
+              "exact_stderr,none": "N/A",
+              "f1,none": 3.098479567420523,
+              "f1_stderr,none": "N/A",
+              "HasAns_exact,none": 0.0,
+              "HasAns_exact_stderr,none": "N/A",
+              "HasAns_f1,none": 3.098479567420523,
+              "HasAns_f1_stderr,none": "N/A",
+              "NoAns_exact,none": 0,
+              "NoAns_exact_stderr,none": "N/A",
+              "NoAns_f1,none": 0,
+              "NoAns_f1_stderr,none": "N/A",
+              "best_exact,none": 0.0,
+              "best_exact_stderr,none": "N/A",
+              "best_f1,none": 3.0984795674205254,
+              "best_f1_stderr,none": "N/A",
+              "alias": "xquad_tr"
+            },
+            "tquad": {
+              "exact,none": 0.0,
+              "exact_stderr,none": "N/A",
+              "f1,none": 5.260303248073273,
+              "f1_stderr,none": "N/A",
+              "HasAns_exact,none": 0.0,
+              "HasAns_exact_stderr,none": "N/A",
+              "HasAns_f1,none": 5.260303248073273,
+              "HasAns_f1_stderr,none": "N/A",
+              "NoAns_exact,none": 0,
+              "NoAns_exact_stderr,none": "N/A",
+              "NoAns_f1,none": 0,
+              "NoAns_f1_stderr,none": "N/A",
+              "best_exact,none": 0.0,
+              "best_exact_stderr,none": "N/A",
+              "best_f1,none": 5.260303248073279,
+              "best_f1_stderr,none": "N/A",
+              "alias": "tquad"
+            }
+          },
+          "versions": {
+            "exams_tr": 0.0,
+            "belebele_tr": 0.0,
+            "turkish_plu_goal_inference": 0.0,
+            "turkish_plu_next_event_prediction": 0.0,
+            "turkish_plu_step_inference": 0.0,
+            "turkish_plu_step_ordering": 0.0,
+            "cetvel_xcopa_tr": 1.0,
+            "cetvel_xnli_tr": 0.0,
+            "mnli_tr": 0.0,
+            "snli_tr": 0.0,
+            "news_cat": 0.0,
+            "offenseval_tr": 0.0,
+            "check_worthiness": 0.0,
+            "relevance_judgment": 0.0,
+            "xfact_tr": 0.0,
+            "xquad_tr": 1,
+            "tquad": 1
+          },
+          "higher_is_better": {
+            "exams_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "belebele_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_goal_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_ordering": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "cetvel_xcopa_tr": {
+              "acc": true
+            },
+            "cetvel_xnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "mnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "snli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "news_cat": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "offenseval_tr": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "check_worthiness": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "relevance_judgment": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "trclaim19": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xfact_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xquad_tr": {
+              "exact": true,
+              "f1": true,
+              "HasAns_exact": true,
+              "HasAns_f1": true,
+              "NoAns_exact": true,
+              "NoAns_f1": true,
+              "best_exact": true,
+              "best_f1": true
+            },
+            "tquad": {
+              "exact": true,
+              "f1": true,
+              "HasAns_exact": true,
+              "HasAns_f1": true,
+              "NoAns_exact": true,
+              "NoAns_f1": true,
+              "best_exact": true,
+              "best_f1": true
+            }
+          },
+          "n-samples": {
+            "exams_tr": {
+              "original": 393,
+              "effective": 393
+            },
+            "belebele_tr": {
+              "original": 900,
+              "effective": 900
+            },
+            "turkish_plu_goal_inference": {
+              "original": 837,
+              "effective": 837
+            },
+            "turkish_plu_step_inference": {
+              "original": 612,
+              "effective": 612
+            },
+            "turkish_plu_step_ordering": {
+              "original": 1021,
+              "effective": 1021
+            },
+            "turkish_plu_next_event_prediction": {
+              "original": 655,
+              "effective": 655
+            },
+            "cetvel_xcopa_tr": {
+              "original": 500,
+              "effective": 500
+            },
+            "cetvel_xnli_tr": {
+              "original": 5010,
+              "effective": 5010
+            },
+            "mnli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "snli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "news_cat": {
+              "original": 250,
+              "effective": 250
+            },
+            "offenseval_tr": {
+              "original": 3528,
+              "effective": 3528
+            },
+            "check_worthiness": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "relevance_judgment": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "xfact_tr": {
+              "original": 169,
+              "effective": 169
+            },
+            "xquad_tr": {
+              "original": 1190,
+              "effective": 1190
+            },
+            "tquad": {
+              "original": 892,
+              "effective": 892
+            }
+          },
+          "config": {
+            "model": "nanochat",
+            "model_args": "base_dir=/ari/users/nunal/nanochat-turk-d20-bpe32k,max_gen_tokens=128,model_tag=tr_d20_bpe_32768_chinchilla20,model_step=17100",
+            "batch_size": "1",
+            "batch_sizes": [],
+            "device": "cuda:0",
+            "use_cache": null,
+            "limit": null,
+            "bootstrap_iters": 100000,
+            "gen_kwargs": null,
+            "random_seed": 0,
+            "numpy_seed": 1234,
+            "torch_seed": 1234,
+            "fewshot_seed": 1234
+          },
+          "git_hash": null,
+          "date": 1781023465.099249
+        },
+        "top_level_keys": [
+          "results",
+          "group_subtasks",
+          "configs",
+          "versions",
+          "n-shot",
+          "higher_is_better",
+          "n-samples",
+          "samples",
+          "config",
+          "git_hash",
+          "date",
+          "pretty_env_info",
+          "transformers_version",
+          "upper_git_hash",
+          "tokenizer_pad_token",
+          "tokenizer_eos_token",
+          "tokenizer_bos_token",
+          "eot_token_id",
+          "max_length",
+          "groups"
+        ]
+      },
+      "source_training_log": {
+        "path": "/ari/users/nunal/nanochat-turk/nanochat-tr-d20-bpe32k-492421.out",
+        "exists": true,
+        "size_bytes": 2931064,
+        "mtime_utc": "2026-06-08T10:55:46+00:00"
+      },
+      "source_cetvel_log": {
+        "path": "/ari/users/nunal/nanochat-turk/nanochat-cetvel-full-493293.out",
+        "exists": true,
+        "size_bytes": 218485,
+        "mtime_utc": "2026-06-09T17:08:08+00:00"
+      },
+      "checkpoint_inventory": []
+    },
+    {
+      "run_id": "morphbpe_trmorph_d20",
+      "tokenizer": "morphbpe_trmorph_32768",
+      "model_tag": "tr_d20_morphbpe_trmorph_32768_chinchilla20",
+      "source_meta_path": {
+        "path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/base_checkpoints/tr_d20_morphbpe_trmorph_32768_chinchilla20/meta_017100.json",
+        "exists": true,
+        "size_bytes": 2512,
+        "mtime_utc": "2026-06-11T17:23:09+00:00",
+        "sha256": "bfe29fa2ad991e2619177cdd09b9f7031798590dc28731521cbefd81e0023f8d",
+        "data": {
+          "step": 17100,
+          "val_bpb": 0.6265726039416546,
+          "model_config": {
+            "sequence_len": 2048,
+            "vocab_size": 32768,
+            "n_layer": 20,
+            "n_head": 10,
+            "n_kv_head": 10,
+            "n_embd": 1280,
+            "window_pattern": "L"
+          },
+          "tokenizer_name": "morphbpe_trmorph_32768",
+          "tokenizer_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/tokenizers/morphbpe_trmorph_32768",
+          "tokenizer_config": {
+            "name": "morphbpe_trmorph_32768",
+            "implementation": "morphbpe",
+            "vocab_size": 32768,
+            "max_chars": 2000000000,
+            "doc_cap": 10000,
+            "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph",
+            "text_column": "segmented_text",
+            "morph_boundary": "\ue000",
+            "morph_boundary_codepoints": "U+E000",
+            "requires_runtime_segmentation": false,
+            "training_uses_morph_boundaries": true,
+            "training_boundary_semantics": "merge_constraint_only",
+            "decode_strip": "",
+            "iterator_stats": {
+              "docs": 734628,
+              "chars": 2000003945,
+              "docs_with_boundary": 734624
+            },
+            "morphbpe_iterator_stats": {
+              "docs": 734628,
+              "docs_with_boundary": 734624,
+              "visible_chars": 1858612668,
+              "regex_chunks": 297199201,
+              "training_chunks": 438575477,
+              "boundary_splits": 141376276
+            }
+          },
+          "user_config": {
+            "run": "tr-d20-morphbpe-trmorph-32k",
+            "device_type": "",
+            "fp8": false,
+            "fp8_recipe": "tensorwise",
+            "depth": 20,
+            "aspect_ratio": 64,
+            "head_dim": 128,
+            "max_seq_len": 2048,
+            "window_pattern": "L",
+            "num_iterations": 17100,
+            "target_flops": -1.0,
+            "target_param_data_ratio": 20.0,
+            "target_param_count": "total",
+            "device_batch_size": 4,
+            "total_batch_size": 1048576,
+            "embedding_lr": 0.3,
+            "unembedding_lr": 0.008,
+            "weight_decay": 0.28,
+            "matrix_lr": 0.02,
+            "scalar_lr": 0.5,
+            "warmup_steps": 40,
+            "warmdown_ratio": 0.65,
+            "final_lr_frac": 0.05,
+            "resume_from_step": -1,
+            "eval_every": 1000,
+            "eval_tokens": 4194304,
+            "core_metric_every": -1,
+            "core_metric_max_per_task": 500,
+            "sample_every": 1000,
+            "save_every": 2500,
+            "model_tag": "tr_d20_morphbpe_trmorph_32768_chinchilla20"
+          },
+          "device_batch_size": 4,
+          "max_seq_len": 2048,
+          "total_batch_size": 1048576,
+          "dataloader_state_dict": {
+            "pq_idx": 9,
+            "rg_idx": 1556,
+            "epoch": 1
+          },
+          "loop_state": {
+            "min_val_bpb": 0.6265726039416546,
+            "smooth_train_loss": 2.0106331972018534,
+            "total_training_time": 75946.11124801636
+          }
+        }
+      },
+      "source_results_path": {
+        "path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+        "exists": true,
+        "size_bytes": 106873118,
+        "mtime_utc": "2026-06-12T08:45:20+00:00",
+        "sha256": "aee9db8133f429a1a1667f084233e976efdf49ab7fc448ec020a2e5595c842e3",
+        "data": {
+          "results": {
+            "exams_tr": {
+              "acc,none": 0.2697201017811705,
+              "acc_stderr,none": 0.022416009247920806,
+              "acc_norm,none": 0.2875318066157761,
+              "acc_norm_stderr,none": 0.022860338325743544,
+              "alias": "exams_tr"
+            },
+            "belebele_tr": {
+              "acc,none": 0.23555555555555555,
+              "acc_stderr,none": 0.014152716079132644,
+              "acc_norm,none": 0.23555555555555555,
+              "acc_norm_stderr,none": 0.014152716079132644,
+              "alias": "belebele_tr"
+            },
+            "turkish_plu": {
+              "acc_norm,none": 0.51456,
+              "acc_norm_stderr,none": 0.008798180809146077,
+              "acc,none": 0.46688,
+              "acc_stderr,none": 0.008718468819908488,
+              "alias": "turkish_plu"
+            },
+            "turkish_plu_goal_inference": {
+              "acc,none": 0.3763440860215054,
+              "acc_stderr,none": 0.01675567514150175,
+              "acc_norm,none": 0.3835125448028674,
+              "acc_norm_stderr,none": 0.016817009530457054,
+              "alias": " - turkish_plu_goal_inference"
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc,none": 0.44732824427480916,
+              "acc_stderr,none": 0.019442760267849496,
+              "acc_norm,none": 0.5419847328244275,
+              "acc_norm_stderr,none": 0.019482497524719606,
+              "alias": " - turkish_plu_next_event_prediction"
+            },
+            "turkish_plu_step_inference": {
+              "acc,none": 0.3627450980392157,
+              "acc_stderr,none": 0.01945076843250548,
+              "acc_norm,none": 0.4950980392156863,
+              "acc_norm_stderr,none": 0.02022686271003944,
+              "alias": " - turkish_plu_step_inference"
+            },
+            "turkish_plu_step_ordering": {
+              "acc,none": 0.6160626836434868,
+              "acc_stderr,none": 0.015227988082625371,
+              "acc_norm,none": 0.6160626836434868,
+              "acc_norm_stderr,none": 0.015227988082625371,
+              "alias": " - turkish_plu_step_ordering"
+            },
+            "cetvel_xcopa_tr": {
+              "acc,none": 0.608,
+              "acc_stderr,none": 0.02185468495561119,
+              "alias": "cetvel_xcopa_tr"
+            },
+            "cetvel_xnli_tr": {
+              "acc,none": 0.3283433133732535,
+              "acc_stderr,none": 0.006635325674224285,
+              "acc_norm,none": 0.33013972055888224,
+              "acc_norm_stderr,none": 0.0066445486712760375,
+              "alias": "cetvel_xnli_tr"
+            },
+            "mnli_tr": {
+              "acc,none": 0.344,
+              "acc_stderr,none": 0.00475064804691808,
+              "acc_norm,none": 0.3215,
+              "acc_norm_stderr,none": 0.004670755463055154,
+              "alias": "mnli_tr"
+            },
+            "snli_tr": {
+              "acc,none": 0.3334,
+              "acc_stderr,none": 0.004714516588863239,
+              "acc_norm,none": 0.3235,
+              "acc_norm_stderr,none": 0.004678350531583716,
+              "alias": "snli_tr"
+            },
+            "news_cat": {
+              "acc,none": 0.824,
+              "acc_stderr,none": 0.024133497525457123,
+              "f1,none": 0.82327842302702,
+              "f1_stderr,none": "N/A",
+              "acc_norm,none": 0.732,
+              "acc_norm_stderr,none": 0.02806876238252672,
+              "alias": "news_cat"
+            },
+            "offenseval_tr": {
+              "acc,none": 0.3344671201814059,
+              "acc_stderr,none": 0.007944356846126701,
+              "f1,none": 0.30819092516205066,
+              "f1_stderr,none": 0.010317323131759077,
+              "acc_norm,none": 0.7763605442176871,
+              "acc_norm_stderr,none": 0.007016220212697576,
+              "alias": "offenseval_tr"
+            },
+            "trclaim19": {
+              "acc_norm,none": 0.5283363802559415,
+              "acc_norm_stderr,none": 0.0075103236016076805,
+              "acc,none": 0.47783363802559414,
+              "acc_stderr,none": 0.007398830909467799,
+              "alias": "trclaim19"
+            },
+            "check_worthiness": {
+              "acc,none": 0.37751371115173676,
+              "acc_stderr,none": 0.010365896500667089,
+              "acc_norm,none": 0.47851919561243145,
+              "acc_norm_stderr,none": 0.010681800286394578,
+              "alias": " - check_worthiness"
+            },
+            "relevance_judgment": {
+              "acc,none": 0.5781535648994516,
+              "acc_stderr,none": 0.010560254970645461,
+              "acc_norm,none": 0.5781535648994516,
+              "acc_norm_stderr,none": 0.010560254970645461,
+              "alias": " - relevance_judgment"
+            },
+            "xfact_tr": {
+              "acc,none": 0.33727810650887574,
+              "acc_stderr,none": 0.036475822502775014,
+              "acc_norm,none": 0.33727810650887574,
+              "acc_norm_stderr,none": 0.036475822502775014,
+              "alias": "xfact_tr"
+            },
+            "xquad_tr": {
+              "exact,none": 0.0,
+              "exact_stderr,none": "N/A",
+              "f1,none": 3.4785565721402296,
+              "f1_stderr,none": "N/A",
+              "HasAns_exact,none": 0.0,
+              "HasAns_exact_stderr,none": "N/A",
+              "HasAns_f1,none": 3.4785565721402296,
+              "HasAns_f1_stderr,none": "N/A",
+              "NoAns_exact,none": 0,
+              "NoAns_exact_stderr,none": "N/A",
+              "NoAns_f1,none": 0,
+              "NoAns_f1_stderr,none": "N/A",
+              "best_exact,none": 0.0,
+              "best_exact_stderr,none": "N/A",
+              "best_f1,none": 3.478556572140232,
+              "best_f1_stderr,none": "N/A",
+              "alias": "xquad_tr"
+            }
+          },
+          "versions": {
+            "exams_tr": 0.0,
+            "belebele_tr": 0.0,
+            "turkish_plu_goal_inference": 0.0,
+            "turkish_plu_next_event_prediction": 0.0,
+            "turkish_plu_step_inference": 0.0,
+            "turkish_plu_step_ordering": 0.0,
+            "cetvel_xcopa_tr": 1.0,
+            "cetvel_xnli_tr": 0.0,
+            "mnli_tr": 0.0,
+            "snli_tr": 0.0,
+            "news_cat": 0.0,
+            "offenseval_tr": 0.0,
+            "check_worthiness": 0.0,
+            "relevance_judgment": 0.0,
+            "xfact_tr": 0.0,
+            "xquad_tr": 1
+          },
+          "higher_is_better": {
+            "exams_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "belebele_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_goal_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_ordering": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "cetvel_xcopa_tr": {
+              "acc": true
+            },
+            "cetvel_xnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "mnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "snli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "news_cat": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "offenseval_tr": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "check_worthiness": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "relevance_judgment": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "trclaim19": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xfact_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xquad_tr": {
+              "exact": true,
+              "f1": true,
+              "HasAns_exact": true,
+              "HasAns_f1": true,
+              "NoAns_exact": true,
+              "NoAns_f1": true,
+              "best_exact": true,
+              "best_f1": true
+            }
+          },
+          "n-samples": {
+            "exams_tr": {
+              "original": 393,
+              "effective": 393
+            },
+            "belebele_tr": {
+              "original": 900,
+              "effective": 900
+            },
+            "turkish_plu_goal_inference": {
+              "original": 837,
+              "effective": 837
+            },
+            "turkish_plu_step_inference": {
+              "original": 612,
+              "effective": 612
+            },
+            "turkish_plu_step_ordering": {
+              "original": 1021,
+              "effective": 1021
+            },
+            "turkish_plu_next_event_prediction": {
+              "original": 655,
+              "effective": 655
+            },
+            "cetvel_xcopa_tr": {
+              "original": 500,
+              "effective": 500
+            },
+            "cetvel_xnli_tr": {
+              "original": 5010,
+              "effective": 5010
+            },
+            "mnli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "snli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "news_cat": {
+              "original": 250,
+              "effective": 250
+            },
+            "offenseval_tr": {
+              "original": 3528,
+              "effective": 3528
+            },
+            "check_worthiness": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "relevance_judgment": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "xfact_tr": {
+              "original": 169,
+              "effective": 169
+            },
+            "xquad_tr": {
+              "original": 1190,
+              "effective": 1190
+            }
+          },
+          "config": {
+            "model": "nanochat",
+            "model_args": "base_dir=/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768,max_gen_tokens=128,model_tag=tr_d20_morphbpe_trmorph_32768_chinchilla20,model_step=17100",
+            "batch_size": "1",
+            "batch_sizes": [],
+            "device": "cuda:0",
+            "use_cache": null,
+            "limit": null,
+            "bootstrap_iters": 100000,
+            "gen_kwargs": null,
+            "random_seed": 0,
+            "numpy_seed": 1234,
+            "torch_seed": 1234,
+            "fewshot_seed": 1234
+          },
+          "git_hash": null,
+          "date": 1781252147.9319153
+        },
+        "top_level_keys": [
+          "results",
+          "group_subtasks",
+          "configs",
+          "versions",
+          "n-shot",
+          "higher_is_better",
+          "n-samples",
+          "samples",
+          "config",
+          "git_hash",
+          "date",
+          "pretty_env_info",
+          "transformers_version",
+          "upper_git_hash",
+          "tokenizer_pad_token",
+          "tokenizer_eos_token",
+          "tokenizer_bos_token",
+          "eot_token_id",
+          "max_length",
+          "groups"
+        ]
+      },
+      "source_training_log": {
+        "path": "/ari/users/nunal/nanochat-turk/nanochat-tr-mbpe-trm32k-493660.out",
+        "exists": true,
+        "size_bytes": 2944125,
+        "mtime_utc": "2026-06-11T17:41:33+00:00"
+      },
+      "source_cetvel_log": {
+        "path": "/ari/users/nunal/nanochat-turk/cetvel-core12-trmorph-d20-494056.out",
+        "exists": true,
+        "size_bytes": 4015,
+        "mtime_utc": "2026-06-12T09:17:47+00:00"
+      },
+      "checkpoint_inventory": [
+        {
+          "name": "meta_017100.json",
+          "bytes": 2512
+        }
+      ]
+    },
+    {
+      "run_id": "morphbpe_zemberek_d20",
+      "tokenizer": "morphbpe_zemberek_32768",
+      "model_tag": "tr_d20_morphbpe_zemberek_32768_chinchilla20",
+      "source_meta_path": {
+        "path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/base_checkpoints/tr_d20_morphbpe_zemberek_32768_chinchilla20/meta_017100.json",
+        "exists": true,
+        "size_bytes": 2529,
+        "mtime_utc": "2026-06-12T05:01:06+00:00",
+        "sha256": "edee05cb849ef216d71e528ccebe4324024cf63093f4afa3c2c01565e0c24dc7",
+        "data": {
+          "step": 17100,
+          "val_bpb": 0.6249791391940578,
+          "model_config": {
+            "sequence_len": 2048,
+            "vocab_size": 32768,
+            "n_layer": 20,
+            "n_head": 10,
+            "n_kv_head": 10,
+            "n_embd": 1280,
+            "window_pattern": "L"
+          },
+          "tokenizer_name": "morphbpe_zemberek_32768",
+          "tokenizer_dir": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/tokenizers/morphbpe_zemberek_32768",
+          "tokenizer_config": {
+            "name": "morphbpe_zemberek_32768",
+            "implementation": "morphbpe",
+            "vocab_size": 32768,
+            "max_chars": 2000000000,
+            "doc_cap": 10000,
+            "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/segmented/zemberek-segmented",
+            "text_column": "segmented_text",
+            "morph_boundary": "\ue000",
+            "morph_boundary_codepoints": "U+E000",
+            "requires_runtime_segmentation": false,
+            "training_uses_morph_boundaries": true,
+            "training_boundary_semantics": "merge_constraint_only",
+            "decode_strip": "",
+            "iterator_stats": {
+              "docs": 737406,
+              "chars": 2000007497,
+              "docs_with_boundary": 737406
+            },
+            "morphbpe_iterator_stats": {
+              "docs": 737406,
+              "docs_with_boundary": 737406,
+              "visible_chars": 1867844008,
+              "regex_chunks": 298657152,
+              "training_chunks": 430818566,
+              "boundary_splits": 132161414
+            }
+          },
+          "user_config": {
+            "run": "tr-d20-morphbpe-zemberek-32k",
+            "device_type": "",
+            "fp8": false,
+            "fp8_recipe": "tensorwise",
+            "depth": 20,
+            "aspect_ratio": 64,
+            "head_dim": 128,
+            "max_seq_len": 2048,
+            "window_pattern": "L",
+            "num_iterations": 17100,
+            "target_flops": -1.0,
+            "target_param_data_ratio": 20.0,
+            "target_param_count": "total",
+            "device_batch_size": 4,
+            "total_batch_size": 1048576,
+            "embedding_lr": 0.3,
+            "unembedding_lr": 0.008,
+            "weight_decay": 0.28,
+            "matrix_lr": 0.02,
+            "scalar_lr": 0.5,
+            "warmup_steps": 40,
+            "warmdown_ratio": 0.65,
+            "final_lr_frac": 0.05,
+            "resume_from_step": -1,
+            "eval_every": 1000,
+            "eval_tokens": 4194304,
+            "core_metric_every": -1,
+            "core_metric_max_per_task": 500,
+            "sample_every": 1000,
+            "save_every": 2500,
+            "model_tag": "tr_d20_morphbpe_zemberek_32768_chinchilla20"
+          },
+          "device_batch_size": 4,
+          "max_seq_len": 2048,
+          "total_batch_size": 1048576,
+          "dataloader_state_dict": {
+            "pq_idx": 9,
+            "rg_idx": 1820,
+            "epoch": 1
+          },
+          "loop_state": {
+            "min_val_bpb": 0.6249791391940578,
+            "smooth_train_loss": 2.322695809202597,
+            "total_training_time": 76225.74489617348
+          }
+        }
+      },
+      "source_results_path": {
+        "path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+        "exists": true,
+        "size_bytes": 107084838,
+        "mtime_utc": "2026-06-12T08:43:11+00:00",
+        "sha256": "e474cf48ddb662fd2b1ee05b98a425d31cf3625e642314c25955fd0b04bbe37b",
+        "data": {
+          "results": {
+            "exams_tr": {
+              "acc,none": 0.2697201017811705,
+              "acc_stderr,none": 0.022416009247920806,
+              "acc_norm,none": 0.2951653944020356,
+              "acc_norm_stderr,none": 0.023037391098966718,
+              "alias": "exams_tr"
+            },
+            "belebele_tr": {
+              "acc,none": 0.24333333333333335,
+              "acc_stderr,none": 0.01431110796368294,
+              "acc_norm,none": 0.24333333333333335,
+              "acc_norm_stderr,none": 0.01431110796368294,
+              "alias": "belebele_tr"
+            },
+            "turkish_plu": {
+              "acc,none": 0.47904,
+              "acc_stderr,none": 0.008757810533413414,
+              "acc_norm,none": 0.50112,
+              "acc_norm_stderr,none": 0.008802780185497808,
+              "alias": "turkish_plu"
+            },
+            "turkish_plu_goal_inference": {
+              "acc,none": 0.41935483870967744,
+              "acc_stderr,none": 0.01706644620526203,
+              "acc_norm,none": 0.38948626045400236,
+              "acc_norm_stderr,none": 0.016865167288507087,
+              "alias": " - turkish_plu_goal_inference"
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc,none": 0.4442748091603053,
+              "acc_stderr,none": 0.019429741031556053,
+              "acc_norm,none": 0.4946564885496183,
+              "acc_norm_stderr,none": 0.01955043062812758,
+              "alias": " - turkish_plu_next_event_prediction"
+            },
+            "turkish_plu_step_inference": {
+              "acc,none": 0.36437908496732024,
+              "acc_stderr,none": 0.0194695182215738,
+              "acc_norm,none": 0.46405228758169936,
+              "acc_norm_stderr,none": 0.020175488765484025,
+              "alias": " - turkish_plu_step_inference"
+            },
+            "turkish_plu_step_ordering": {
+              "acc,none": 0.6190009794319294,
+              "acc_stderr,none": 0.01520573830326221,
+              "acc_norm,none": 0.6190009794319294,
+              "acc_norm_stderr,none": 0.01520573830326221,
+              "alias": " - turkish_plu_step_ordering"
+            },
+            "cetvel_xcopa_tr": {
+              "acc,none": 0.622,
+              "acc_stderr,none": 0.02170655082451827,
+              "alias": "cetvel_xcopa_tr"
+            },
+            "cetvel_xnli_tr": {
+              "acc,none": 0.33652694610778444,
+              "acc_stderr,none": 0.006676456919028655,
+              "acc_norm,none": 0.3325349301397206,
+              "acc_norm_stderr,none": 0.0066566755728299475,
+              "alias": "cetvel_xnli_tr"
+            },
+            "mnli_tr": {
+              "acc,none": 0.3345,
+              "acc_stderr,none": 0.004718389695662283,
+              "acc_norm,none": 0.3216,
+              "acc_norm_stderr,none": 0.004671137543746198,
+              "alias": "mnli_tr"
+            },
+            "snli_tr": {
+              "acc,none": 0.3099,
+              "acc_stderr,none": 0.004624752732177513,
+              "acc_norm,none": 0.3195,
+              "acc_norm_stderr,none": 0.004663062235799721,
+              "alias": "snli_tr"
+            },
+            "news_cat": {
+              "acc,none": 0.8,
+              "acc_stderr,none": 0.02534897002097912,
+              "f1,none": 0.8021438756080694,
+              "f1_stderr,none": "N/A",
+              "acc_norm,none": 0.724,
+              "acc_norm_stderr,none": 0.02832853727421142,
+              "alias": "news_cat"
+            },
+            "offenseval_tr": {
+              "acc,none": 0.3373015873015873,
+              "acc_stderr,none": 0.007960941412826548,
+              "f1,none": 0.32388663967611336,
+              "f1_stderr,none": 0.01033109080452969,
+              "acc_norm,none": 0.7936507936507936,
+              "acc_norm_stderr,none": 0.006814176823404532,
+              "alias": "offenseval_tr"
+            },
+            "trclaim19": {
+              "acc,none": 0.5189670932358318,
+              "acc_stderr,none": 0.007501519598321073,
+              "acc_norm,none": 0.6010054844606947,
+              "acc_norm_stderr,none": 0.0073962212123210745,
+              "alias": "trclaim19"
+            },
+            "check_worthiness": {
+              "acc,none": 0.45978062157221206,
+              "acc_stderr,none": 0.01065702585578821,
+              "acc_norm,none": 0.6238574040219378,
+              "acc_norm_stderr,none": 0.01035844427707707,
+              "alias": " - check_worthiness"
+            },
+            "relevance_judgment": {
+              "acc,none": 0.5781535648994516,
+              "acc_stderr,none": 0.010560254970645461,
+              "acc_norm,none": 0.5781535648994516,
+              "acc_norm_stderr,none": 0.010560254970645461,
+              "alias": " - relevance_judgment"
+            },
+            "xfact_tr": {
+              "acc,none": 0.33727810650887574,
+              "acc_stderr,none": 0.036475822502775014,
+              "acc_norm,none": 0.3254437869822485,
+              "acc_norm_stderr,none": 0.036148678472922066,
+              "alias": "xfact_tr"
+            },
+            "xquad_tr": {
+              "exact,none": 0.0,
+              "exact_stderr,none": "N/A",
+              "f1,none": 3.2632997162720114,
+              "f1_stderr,none": "N/A",
+              "HasAns_exact,none": 0.0,
+              "HasAns_exact_stderr,none": "N/A",
+              "HasAns_f1,none": 3.2632997162720114,
+              "HasAns_f1_stderr,none": "N/A",
+              "NoAns_exact,none": 0,
+              "NoAns_exact_stderr,none": "N/A",
+              "NoAns_f1,none": 0,
+              "NoAns_f1_stderr,none": "N/A",
+              "best_exact,none": 0.0,
+              "best_exact_stderr,none": "N/A",
+              "best_f1,none": 3.2632997162720154,
+              "best_f1_stderr,none": "N/A",
+              "alias": "xquad_tr"
+            }
+          },
+          "versions": {
+            "exams_tr": 0.0,
+            "belebele_tr": 0.0,
+            "turkish_plu_goal_inference": 0.0,
+            "turkish_plu_next_event_prediction": 0.0,
+            "turkish_plu_step_inference": 0.0,
+            "turkish_plu_step_ordering": 0.0,
+            "cetvel_xcopa_tr": 1.0,
+            "cetvel_xnli_tr": 0.0,
+            "mnli_tr": 0.0,
+            "snli_tr": 0.0,
+            "news_cat": 0.0,
+            "offenseval_tr": 0.0,
+            "check_worthiness": 0.0,
+            "relevance_judgment": 0.0,
+            "xfact_tr": 0.0,
+            "xquad_tr": 1
+          },
+          "higher_is_better": {
+            "exams_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "belebele_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_goal_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_ordering": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "cetvel_xcopa_tr": {
+              "acc": true
+            },
+            "cetvel_xnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "mnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "snli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "news_cat": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "offenseval_tr": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "check_worthiness": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "relevance_judgment": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "trclaim19": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xfact_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xquad_tr": {
+              "exact": true,
+              "f1": true,
+              "HasAns_exact": true,
+              "HasAns_f1": true,
+              "NoAns_exact": true,
+              "NoAns_f1": true,
+              "best_exact": true,
+              "best_f1": true
+            }
+          },
+          "n-samples": {
+            "exams_tr": {
+              "original": 393,
+              "effective": 393
+            },
+            "belebele_tr": {
+              "original": 900,
+              "effective": 900
+            },
+            "turkish_plu_goal_inference": {
+              "original": 837,
+              "effective": 837
+            },
+            "turkish_plu_step_inference": {
+              "original": 612,
+              "effective": 612
+            },
+            "turkish_plu_step_ordering": {
+              "original": 1021,
+              "effective": 1021
+            },
+            "turkish_plu_next_event_prediction": {
+              "original": 655,
+              "effective": 655
+            },
+            "cetvel_xcopa_tr": {
+              "original": 500,
+              "effective": 500
+            },
+            "cetvel_xnli_tr": {
+              "original": 5010,
+              "effective": 5010
+            },
+            "mnli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "snli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "news_cat": {
+              "original": 250,
+              "effective": 250
+            },
+            "offenseval_tr": {
+              "original": 3528,
+              "effective": 3528
+            },
+            "check_worthiness": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "relevance_judgment": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "xfact_tr": {
+              "original": 169,
+              "effective": 169
+            },
+            "xquad_tr": {
+              "original": 1190,
+              "effective": 1190
+            }
+          },
+          "config": {
+            "model": "nanochat",
+            "model_args": "base_dir=/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768,max_gen_tokens=128,model_tag=tr_d20_morphbpe_zemberek_32768_chinchilla20,model_step=17100",
+            "batch_size": "1",
+            "batch_sizes": [],
+            "device": "cuda:0",
+            "use_cache": null,
+            "limit": null,
+            "bootstrap_iters": 100000,
+            "gen_kwargs": null,
+            "random_seed": 0,
+            "numpy_seed": 1234,
+            "torch_seed": 1234,
+            "fewshot_seed": 1234
+          },
+          "git_hash": null,
+          "date": 1781252140.643528
+        },
+        "top_level_keys": [
+          "results",
+          "group_subtasks",
+          "configs",
+          "versions",
+          "n-shot",
+          "higher_is_better",
+          "n-samples",
+          "samples",
+          "config",
+          "git_hash",
+          "date",
+          "pretty_env_info",
+          "transformers_version",
+          "upper_git_hash",
+          "tokenizer_pad_token",
+          "tokenizer_eos_token",
+          "tokenizer_bos_token",
+          "eot_token_id",
+          "max_length",
+          "groups"
+        ]
+      },
+      "source_training_log": {
+        "path": "/ari/users/nunal/nanochat-turk/nanochat-tr-mbpe-zemb32k-493760.out",
+        "exists": true,
+        "size_bytes": 2944610,
+        "mtime_utc": "2026-06-12T05:19:52+00:00"
+      },
+      "source_cetvel_log": {
+        "path": "/ari/users/nunal/nanochat-turk/cetvel-core12-zemberek-d20-494057.out",
+        "exists": true,
+        "size_bytes": 5979,
+        "mtime_utc": "2026-06-12T09:15:37+00:00"
+      },
+      "checkpoint_inventory": [
+        {
+          "name": "meta_017100.json",
+          "bytes": 2529
+        }
+      ]
+    },
+    {
+      "run_id": "raw_bpe_d16_64k",
+      "tokenizer": "bpe_65536",
+      "model_tag": "tr_d16_bpe_65536_chinchilla20",
+      "source_meta_path": {
+        "path": "/ari/users/nunal/nanochat-turk-bpe-65536/base_checkpoints/tr_d16_bpe_65536_chinchilla20/meta_017100.json",
+        "exists": true,
+        "size_bytes": 2178,
+        "mtime_utc": "2026-06-13T05:17:25+00:00",
+        "sha256": "b2746a7db0882135aa2cd1a648fdf7d31056d35fc5defa15bfad7ef8dde7f9ba",
+        "data": {
+          "step": 17100,
+          "val_bpb": 0.6408762423935958,
+          "model_config": {
+            "sequence_len": 2048,
+            "vocab_size": 65536,
+            "n_layer": 16,
+            "n_head": 8,
+            "n_kv_head": 8,
+            "n_embd": 1024,
+            "window_pattern": "L"
+          },
+          "tokenizer_name": "bpe_65536",
+          "tokenizer_dir": "/ari/users/nunal/nanochat-turk-bpe-65536/tokenizers/bpe_65536",
+          "tokenizer_config": {
+            "name": "bpe_65536",
+            "implementation": "bpe",
+            "vocab_size": 65536,
+            "max_chars": 2000000000,
+            "doc_cap": 10000,
+            "data_dir": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_data_fineweb2_tur_latn",
+            "text_column": "text",
+            "morph_boundary": "",
+            "morph_boundary_codepoints": "",
+            "requires_runtime_segmentation": false,
+            "training_uses_morph_boundaries": false,
+            "training_boundary_semantics": "",
+            "decode_strip": "",
+            "iterator_stats": {
+              "docs": 777394,
+              "chars": 2000001023,
+              "docs_with_boundary": 0
+            },
+            "morphbpe_iterator_stats": {}
+          },
+          "user_config": {
+            "run": "tr-d16-bpe-64k",
+            "device_type": "",
+            "fp8": false,
+            "fp8_recipe": "tensorwise",
+            "depth": 16,
+            "aspect_ratio": 64,
+            "head_dim": 128,
+            "max_seq_len": 2048,
+            "window_pattern": "L",
+            "num_iterations": 17100,
+            "target_flops": -1.0,
+            "target_param_data_ratio": 20.0,
+            "target_param_count": "total",
+            "device_batch_size": 4,
+            "total_batch_size": 1048576,
+            "embedding_lr": 0.3,
+            "unembedding_lr": 0.008,
+            "weight_decay": 0.28,
+            "matrix_lr": 0.02,
+            "scalar_lr": 0.5,
+            "warmup_steps": 40,
+            "warmdown_ratio": 0.65,
+            "final_lr_frac": 0.05,
+            "resume_from_step": -1,
+            "eval_every": 1000,
+            "eval_tokens": 4194304,
+            "core_metric_every": -1,
+            "core_metric_max_per_task": 500,
+            "sample_every": 1000,
+            "save_every": 2500,
+            "model_tag": "tr_d16_bpe_65536_chinchilla20"
+          },
+          "device_batch_size": 4,
+          "max_seq_len": 2048,
+          "total_batch_size": 1048576,
+          "dataloader_state_dict": {
+            "pq_idx": 11,
+            "rg_idx": 1020,
+            "epoch": 1
+          },
+          "loop_state": {
+            "min_val_bpb": 0.6408762423935958,
+            "smooth_train_loss": 2.5812073217998948,
+            "total_training_time": 54443.149883031845
+          }
+        }
+      },
+      "source_results_path": {
+        "path": "/ari/users/nunal/nanochat-turk-bpe-65536/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+        "exists": true,
+        "size_bytes": 108029093,
+        "mtime_utc": "2026-06-22T09:33:49+00:00",
+        "sha256": "9f6a061623cd15048eae9301c59332fc27ab7f61904377992b418ef5ebfb98b9",
+        "data": {
+          "results": {
+            "exams_tr": {
+              "acc,none": 0.27735368956743,
+              "acc_stderr,none": 0.02261188849145306,
+              "acc_norm,none": 0.30279898218829515,
+              "acc_norm_stderr,none": 0.023206688788484687,
+              "alias": "exams_tr"
+            },
+            "belebele_tr": {
+              "acc,none": 0.24333333333333335,
+              "acc_stderr,none": 0.01431110796368294,
+              "acc_norm,none": 0.24333333333333335,
+              "acc_norm_stderr,none": 0.01431110796368294,
+              "alias": "belebele_tr"
+            },
+            "turkish_plu": {
+              "acc,none": 0.43776,
+              "acc_stderr,none": 0.008687464434649168,
+              "acc_norm,none": 0.49056,
+              "acc_norm_stderr,none": 0.008827810396731561,
+              "alias": "turkish_plu"
+            },
+            "turkish_plu_goal_inference": {
+              "acc,none": 0.3428912783751493,
+              "acc_stderr,none": 0.016416996152364555,
+              "acc_norm,none": 0.36917562724014336,
+              "acc_norm_stderr,none": 0.01669043302063359,
+              "alias": " - turkish_plu_goal_inference"
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc,none": 0.4076335877862595,
+              "acc_stderr,none": 0.01921504117035751,
+              "acc_norm,none": 0.49312977099236643,
+              "acc_norm_stderr,none": 0.019549701420144328,
+              "alias": " - turkish_plu_next_event_prediction"
+            },
+            "turkish_plu_step_inference": {
+              "acc,none": 0.35947712418300654,
+              "acc_stderr,none": 0.019412539242032196,
+              "acc_norm,none": 0.5016339869281046,
+              "acc_norm_stderr,none": 0.020227726838150144,
+              "alias": " - turkish_plu_step_inference"
+            },
+            "turkish_plu_step_ordering": {
+              "acc,none": 0.5817825661116552,
+              "acc_stderr,none": 0.015444765973007596,
+              "acc_norm,none": 0.5817825661116552,
+              "acc_norm_stderr,none": 0.015444765973007596,
+              "alias": " - turkish_plu_step_ordering"
+            },
+            "cetvel_xcopa_tr": {
+              "acc,none": 0.61,
+              "acc_stderr,none": 0.021834685869369132,
+              "alias": "cetvel_xcopa_tr"
+            },
+            "cetvel_xnli_tr": {
+              "acc,none": 0.3315369261477046,
+              "acc_stderr,none": 0.006651646309907752,
+              "acc_norm,none": 0.3333333333333333,
+              "acc_norm_stderr,none": 0.0066606747545357725,
+              "alias": "cetvel_xnli_tr"
+            },
+            "mnli_tr": {
+              "acc,none": 0.3207,
+              "acc_stderr,none": 0.004667689978241196,
+              "acc_norm,none": 0.3213,
+              "acc_norm_stderr,none": 0.00466999056542817,
+              "alias": "mnli_tr"
+            },
+            "snli_tr": {
+              "acc,none": 0.3209,
+              "acc_stderr,none": 0.004668457823504994,
+              "acc_norm,none": 0.3237,
+              "acc_norm_stderr,none": 0.004679104658162735,
+              "alias": "snli_tr"
+            },
+            "news_cat": {
+              "acc,none": 0.828,
+              "acc_stderr,none": 0.02391551394448624,
+              "f1,none": 0.8299297539359995,
+              "f1_stderr,none": "N/A",
+              "acc_norm,none": 0.692,
+              "acc_norm_stderr,none": 0.02925692860650181,
+              "alias": "news_cat"
+            },
+            "offenseval_tr": {
+              "acc,none": 0.7945011337868481,
+              "acc_stderr,none": 0.00680376407684328,
+              "f1,none": 0.002751031636863824,
+              "f1_stderr,none": 0.00273335171122589,
+              "acc_norm,none": 0.7970521541950113,
+              "acc_norm_stderr,none": 0.006772248146961342,
+              "alias": "offenseval_tr"
+            },
+            "trclaim19": {
+              "acc,none": 0.4812614259597806,
+              "acc_stderr,none": 0.007411430686013881,
+              "acc_norm,none": 0.5975776965265083,
+              "acc_norm_stderr,none": 0.007408970456248476,
+              "alias": "trclaim19"
+            },
+            "check_worthiness": {
+              "acc,none": 0.3843692870201097,
+              "acc_stderr,none": 0.010401838020720693,
+              "acc_norm,none": 0.6170018281535649,
+              "acc_norm_stderr,none": 0.01039482505101499,
+              "alias": " - check_worthiness"
+            },
+            "relevance_judgment": {
+              "acc,none": 0.5781535648994516,
+              "acc_stderr,none": 0.010560254970645461,
+              "acc_norm,none": 0.5781535648994516,
+              "acc_norm_stderr,none": 0.010560254970645461,
+              "alias": " - relevance_judgment"
+            },
+            "xfact_tr": {
+              "acc,none": 0.33727810650887574,
+              "acc_stderr,none": 0.036475822502775014,
+              "acc_norm,none": 0.33727810650887574,
+              "acc_norm_stderr,none": 0.036475822502775014,
+              "alias": "xfact_tr"
+            },
+            "xquad_tr": {
+              "exact,none": 0.0,
+              "exact_stderr,none": "N/A",
+              "f1,none": 2.857639729294241,
+              "f1_stderr,none": "N/A",
+              "HasAns_exact,none": 0.0,
+              "HasAns_exact_stderr,none": "N/A",
+              "HasAns_f1,none": 2.857639729294241,
+              "HasAns_f1_stderr,none": "N/A",
+              "NoAns_exact,none": 0,
+              "NoAns_exact_stderr,none": "N/A",
+              "NoAns_f1,none": 0,
+              "NoAns_f1_stderr,none": "N/A",
+              "best_exact,none": 0.0,
+              "best_exact_stderr,none": "N/A",
+              "best_f1,none": 2.8576397292942417,
+              "best_f1_stderr,none": "N/A",
+              "alias": "xquad_tr"
+            }
+          },
+          "versions": {
+            "exams_tr": 0.0,
+            "belebele_tr": 0.0,
+            "turkish_plu_goal_inference": 0.0,
+            "turkish_plu_next_event_prediction": 0.0,
+            "turkish_plu_step_inference": 0.0,
+            "turkish_plu_step_ordering": 0.0,
+            "cetvel_xcopa_tr": 1.0,
+            "cetvel_xnli_tr": 0.0,
+            "mnli_tr": 0.0,
+            "snli_tr": 0.0,
+            "news_cat": 0.0,
+            "offenseval_tr": 0.0,
+            "check_worthiness": 0.0,
+            "relevance_judgment": 0.0,
+            "xfact_tr": 0.0,
+            "xquad_tr": 1
+          },
+          "higher_is_better": {
+            "exams_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "belebele_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_goal_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_ordering": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "cetvel_xcopa_tr": {
+              "acc": true
+            },
+            "cetvel_xnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "mnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "snli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "news_cat": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "offenseval_tr": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "check_worthiness": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "relevance_judgment": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "trclaim19": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xfact_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xquad_tr": {
+              "exact": true,
+              "f1": true,
+              "HasAns_exact": true,
+              "HasAns_f1": true,
+              "NoAns_exact": true,
+              "NoAns_f1": true,
+              "best_exact": true,
+              "best_f1": true
+            }
+          },
+          "n-samples": {
+            "exams_tr": {
+              "original": 393,
+              "effective": 393
+            },
+            "belebele_tr": {
+              "original": 900,
+              "effective": 900
+            },
+            "turkish_plu_goal_inference": {
+              "original": 837,
+              "effective": 837
+            },
+            "turkish_plu_step_inference": {
+              "original": 612,
+              "effective": 612
+            },
+            "turkish_plu_step_ordering": {
+              "original": 1021,
+              "effective": 1021
+            },
+            "turkish_plu_next_event_prediction": {
+              "original": 655,
+              "effective": 655
+            },
+            "cetvel_xcopa_tr": {
+              "original": 500,
+              "effective": 500
+            },
+            "cetvel_xnli_tr": {
+              "original": 5010,
+              "effective": 5010
+            },
+            "mnli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "snli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "news_cat": {
+              "original": 250,
+              "effective": 250
+            },
+            "offenseval_tr": {
+              "original": 3528,
+              "effective": 3528
+            },
+            "check_worthiness": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "relevance_judgment": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "xfact_tr": {
+              "original": 169,
+              "effective": 169
+            },
+            "xquad_tr": {
+              "original": 1190,
+              "effective": 1190
+            }
+          },
+          "config": {
+            "model": "nanochat",
+            "model_args": "base_dir=/ari/users/nunal/nanochat-turk-bpe-65536,max_gen_tokens=128,model_tag=tr_d16_bpe_65536_chinchilla20,model_step=17100",
+            "batch_size": "1",
+            "batch_sizes": [],
+            "device": "cuda:0",
+            "use_cache": null,
+            "limit": null,
+            "bootstrap_iters": 100000,
+            "gen_kwargs": null,
+            "random_seed": 0,
+            "numpy_seed": 1234,
+            "torch_seed": 1234,
+            "fewshot_seed": 1234
+          },
+          "git_hash": null,
+          "date": 1782119487.8021927
+        },
+        "top_level_keys": [
+          "results",
+          "group_subtasks",
+          "configs",
+          "versions",
+          "n-shot",
+          "higher_is_better",
+          "n-samples",
+          "samples",
+          "config",
+          "git_hash",
+          "date",
+          "pretty_env_info",
+          "transformers_version",
+          "upper_git_hash",
+          "tokenizer_pad_token",
+          "tokenizer_eos_token",
+          "tokenizer_bos_token",
+          "eot_token_id",
+          "max_length",
+          "groups"
+        ]
+      },
+      "source_training_log": {
+        "path": "/ari/users/nunal/nanochat-turk/tr-d16-bpe-64k-494189.out",
+        "exists": true,
+        "size_bytes": 2942376,
+        "mtime_utc": "2026-06-13T05:35:40+00:00"
+      },
+      "source_cetvel_log": {
+        "path": "/ari/users/nunal/nanochat-turk/cetvel-bpe64-496898.out",
+        "exists": true,
+        "size_bytes": 128719,
+        "mtime_utc": "2026-06-22T10:06:18+00:00"
+      },
+      "checkpoint_inventory": [
+        {
+          "name": "meta_017100.json",
+          "bytes": 2178
+        }
+      ]
+    },
+    {
+      "run_id": "morphbpe_trmorph_d16_64k",
+      "tokenizer": "morphbpe_trmorph_65536",
+      "model_tag": "tr_d16_morphbpe_trmorph_65536_chinchilla20",
+      "source_meta_path": {
+        "path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-65536/base_checkpoints/tr_d16_morphbpe_trmorph_65536_chinchilla20/meta_017100.json",
+        "exists": true,
+        "size_bytes": 2508,
+        "mtime_utc": "2026-06-13T16:42:34+00:00",
+        "sha256": "96aabab8676c0308104a7c94263918e18a7f671a7d8c264ce52535001c08430f",
+        "data": {
+          "step": 17100,
+          "val_bpb": 0.652117580861248,
+          "model_config": {
+            "sequence_len": 2048,
+            "vocab_size": 65536,
+            "n_layer": 16,
+            "n_head": 8,
+            "n_kv_head": 8,
+            "n_embd": 1024,
+            "window_pattern": "L"
+          },
+          "tokenizer_name": "morphbpe_trmorph_65536",
+          "tokenizer_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-65536/tokenizers/morphbpe_trmorph_65536",
+          "tokenizer_config": {
+            "name": "morphbpe_trmorph_65536",
+            "implementation": "morphbpe",
+            "vocab_size": 65536,
+            "max_chars": 2000000000,
+            "doc_cap": 10000,
+            "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph",
+            "text_column": "segmented_text",
+            "morph_boundary": "\ue000",
+            "morph_boundary_codepoints": "U+E000",
+            "requires_runtime_segmentation": false,
+            "training_uses_morph_boundaries": true,
+            "training_boundary_semantics": "merge_constraint_only",
+            "decode_strip": "",
+            "iterator_stats": {
+              "docs": 734628,
+              "chars": 2000003945,
+              "docs_with_boundary": 734624
+            },
+            "morphbpe_iterator_stats": {
+              "docs": 734628,
+              "docs_with_boundary": 734624,
+              "visible_chars": 1858612668,
+              "regex_chunks": 297199201,
+              "training_chunks": 438575477,
+              "boundary_splits": 141376276
+            }
+          },
+          "user_config": {
+            "run": "tr-d16-morphbpe-trmorph-64k",
+            "device_type": "",
+            "fp8": false,
+            "fp8_recipe": "tensorwise",
+            "depth": 16,
+            "aspect_ratio": 64,
+            "head_dim": 128,
+            "max_seq_len": 2048,
+            "window_pattern": "L",
+            "num_iterations": 17100,
+            "target_flops": -1.0,
+            "target_param_data_ratio": 20.0,
+            "target_param_count": "total",
+            "device_batch_size": 4,
+            "total_batch_size": 1048576,
+            "embedding_lr": 0.3,
+            "unembedding_lr": 0.008,
+            "weight_decay": 0.28,
+            "matrix_lr": 0.02,
+            "scalar_lr": 0.5,
+            "warmup_steps": 40,
+            "warmdown_ratio": 0.65,
+            "final_lr_frac": 0.05,
+            "resume_from_step": -1,
+            "eval_every": 1000,
+            "eval_tokens": 4194304,
+            "core_metric_every": -1,
+            "core_metric_max_per_task": 500,
+            "sample_every": 1000,
+            "save_every": 2500,
+            "model_tag": "tr_d16_morphbpe_trmorph_65536_chinchilla20"
+          },
+          "device_batch_size": 4,
+          "max_seq_len": 2048,
+          "total_batch_size": 1048576,
+          "dataloader_state_dict": {
+            "pq_idx": 9,
+            "rg_idx": 3056,
+            "epoch": 1
+          },
+          "loop_state": {
+            "min_val_bpb": 0.652117580861248,
+            "smooth_train_loss": 2.2754316967186927,
+            "total_training_time": 54358.34647512436
+          }
+        }
+      },
+      "source_results_path": {
+        "path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-65536/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+        "exists": true,
+        "size_bytes": 107221962,
+        "mtime_utc": "2026-06-22T09:33:31+00:00",
+        "sha256": "89f0e5361612a61627ae825f0ffed365e54e4113b6c462b137295ca192ded944",
+        "data": {
+          "results": {
+            "exams_tr": {
+              "acc,none": 0.26463104325699743,
+              "acc_stderr,none": 0.02228076033547358,
+              "acc_norm,none": 0.30788804071246817,
+              "acc_norm_stderr,none": 0.023315329277825626,
+              "alias": "exams_tr"
+            },
+            "belebele_tr": {
+              "acc,none": 0.22333333333333333,
+              "acc_stderr,none": 0.013890384297198764,
+              "acc_norm,none": 0.22333333333333333,
+              "acc_norm_stderr,none": 0.013890384297198764,
+              "alias": "belebele_tr"
+            },
+            "turkish_plu": {
+              "acc,none": 0.42944,
+              "acc_stderr,none": 0.0085746217446823,
+              "acc_norm,none": 0.4928,
+              "acc_norm_stderr,none": 0.008797754542055983,
+              "alias": "turkish_plu"
+            },
+            "turkish_plu_goal_inference": {
+              "acc,none": 0.3034647550776583,
+              "acc_stderr,none": 0.015900930485822844,
+              "acc_norm,none": 0.3632019115890084,
+              "acc_norm_stderr,none": 0.01663304642156931,
+              "alias": " - turkish_plu_goal_inference"
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc,none": 0.40458015267175573,
+              "acc_stderr,none": 0.019192213505198806,
+              "acc_norm,none": 0.49923664122137407,
+              "acc_norm_stderr,none": 0.019551524389107938,
+              "alias": " - turkish_plu_next_event_prediction"
+            },
+            "turkish_plu_step_inference": {
+              "acc,none": 0.3415032679738562,
+              "acc_stderr,none": 0.019184639328092404,
+              "acc_norm,none": 0.4820261437908497,
+              "acc_norm_stderr,none": 0.020214761037872446,
+              "alias": " - turkish_plu_step_inference"
+            },
+            "turkish_plu_step_ordering": {
+              "acc,none": 0.6013712047012733,
+              "acc_stderr,none": 0.01533047326877165,
+              "acc_norm,none": 0.6013712047012733,
+              "acc_norm_stderr,none": 0.01533047326877165,
+              "alias": " - turkish_plu_step_ordering"
+            },
+            "cetvel_xcopa_tr": {
+              "acc,none": 0.616,
+              "acc_stderr,none": 0.021772369465547118,
+              "alias": "cetvel_xcopa_tr"
+            },
+            "cetvel_xnli_tr": {
+              "acc,none": 0.33532934131736525,
+              "acc_stderr,none": 0.006670578754212888,
+              "acc_norm,none": 0.3333333333333333,
+              "acc_norm_stderr,none": 0.0066606747545357725,
+              "alias": "cetvel_xnli_tr"
+            },
+            "mnli_tr": {
+              "acc,none": 0.3249,
+              "acc_stderr,none": 0.004683608931076754,
+              "acc_norm,none": 0.3213,
+              "acc_norm_stderr,none": 0.00466999056542817,
+              "alias": "mnli_tr"
+            },
+            "snli_tr": {
+              "acc,none": 0.3236,
+              "acc_stderr,none": 0.004678727716944526,
+              "acc_norm,none": 0.3237,
+              "acc_norm_stderr,none": 0.004679104658162735,
+              "alias": "snli_tr"
+            },
+            "news_cat": {
+              "acc,none": 0.836,
+              "acc_stderr,none": 0.023465261002076715,
+              "f1,none": 0.8346376680243663,
+              "f1_stderr,none": "N/A",
+              "acc_norm,none": 0.64,
+              "acc_norm_stderr,none": 0.03041876402517494,
+              "alias": "news_cat"
+            },
+            "offenseval_tr": {
+              "acc,none": 0.7672902494331065,
+              "acc_stderr,none": 0.007115155569247414,
+              "f1,none": 0.07856341189674523,
+              "f1_stderr,none": 0.012493545458996592,
+              "acc_norm,none": 0.7967687074829932,
+              "acc_norm_stderr,none": 0.006775770603356854,
+              "alias": "offenseval_tr"
+            },
+            "trclaim19": {
+              "acc,none": 0.4773765996343693,
+              "acc_stderr,none": 0.007397094441685075,
+              "acc_norm,none": 0.593235831809872,
+              "acc_norm_stderr,none": 0.007424049282461309,
+              "alias": "trclaim19"
+            },
+            "check_worthiness": {
+              "acc,none": 0.376599634369287,
+              "acc_stderr,none": 0.010360938165619497,
+              "acc_norm,none": 0.6083180987202925,
+              "acc_norm_stderr,none": 0.010437770161706713,
+              "alias": " - check_worthiness"
+            },
+            "relevance_judgment": {
+              "acc,none": 0.5781535648994516,
+              "acc_stderr,none": 0.010560254970645461,
+              "acc_norm,none": 0.5781535648994516,
+              "acc_norm_stderr,none": 0.010560254970645461,
+              "alias": " - relevance_judgment"
+            },
+            "xfact_tr": {
+              "acc,none": 0.33727810650887574,
+              "acc_stderr,none": 0.036475822502775014,
+              "acc_norm,none": 0.33727810650887574,
+              "acc_norm_stderr,none": 0.036475822502775014,
+              "alias": "xfact_tr"
+            },
+            "xquad_tr": {
+              "exact,none": 0.0,
+              "exact_stderr,none": "N/A",
+              "f1,none": 3.277792487482228,
+              "f1_stderr,none": "N/A",
+              "HasAns_exact,none": 0.0,
+              "HasAns_exact_stderr,none": "N/A",
+              "HasAns_f1,none": 3.277792487482228,
+              "HasAns_f1_stderr,none": "N/A",
+              "NoAns_exact,none": 0,
+              "NoAns_exact_stderr,none": "N/A",
+              "NoAns_f1,none": 0,
+              "NoAns_f1_stderr,none": "N/A",
+              "best_exact,none": 0.0,
+              "best_exact_stderr,none": "N/A",
+              "best_f1,none": 3.277792487482233,
+              "best_f1_stderr,none": "N/A",
+              "alias": "xquad_tr"
+            }
+          },
+          "versions": {
+            "exams_tr": 0.0,
+            "belebele_tr": 0.0,
+            "turkish_plu_goal_inference": 0.0,
+            "turkish_plu_next_event_prediction": 0.0,
+            "turkish_plu_step_inference": 0.0,
+            "turkish_plu_step_ordering": 0.0,
+            "cetvel_xcopa_tr": 1.0,
+            "cetvel_xnli_tr": 0.0,
+            "mnli_tr": 0.0,
+            "snli_tr": 0.0,
+            "news_cat": 0.0,
+            "offenseval_tr": 0.0,
+            "check_worthiness": 0.0,
+            "relevance_judgment": 0.0,
+            "xfact_tr": 0.0,
+            "xquad_tr": 1
+          },
+          "higher_is_better": {
+            "exams_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "belebele_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_goal_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_ordering": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "cetvel_xcopa_tr": {
+              "acc": true
+            },
+            "cetvel_xnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "mnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "snli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "news_cat": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "offenseval_tr": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "check_worthiness": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "relevance_judgment": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "trclaim19": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xfact_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xquad_tr": {
+              "exact": true,
+              "f1": true,
+              "HasAns_exact": true,
+              "HasAns_f1": true,
+              "NoAns_exact": true,
+              "NoAns_f1": true,
+              "best_exact": true,
+              "best_f1": true
+            }
+          },
+          "n-samples": {
+            "exams_tr": {
+              "original": 393,
+              "effective": 393
+            },
+            "belebele_tr": {
+              "original": 900,
+              "effective": 900
+            },
+            "turkish_plu_goal_inference": {
+              "original": 837,
+              "effective": 837
+            },
+            "turkish_plu_step_inference": {
+              "original": 612,
+              "effective": 612
+            },
+            "turkish_plu_step_ordering": {
+              "original": 1021,
+              "effective": 1021
+            },
+            "turkish_plu_next_event_prediction": {
+              "original": 655,
+              "effective": 655
+            },
+            "cetvel_xcopa_tr": {
+              "original": 500,
+              "effective": 500
+            },
+            "cetvel_xnli_tr": {
+              "original": 5010,
+              "effective": 5010
+            },
+            "mnli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "snli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "news_cat": {
+              "original": 250,
+              "effective": 250
+            },
+            "offenseval_tr": {
+              "original": 3528,
+              "effective": 3528
+            },
+            "check_worthiness": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "relevance_judgment": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "xfact_tr": {
+              "original": 169,
+              "effective": 169
+            },
+            "xquad_tr": {
+              "original": 1190,
+              "effective": 1190
+            }
+          },
+          "config": {
+            "model": "nanochat",
+            "model_args": "base_dir=/ari/users/nunal/nanochat-turk-morphbpe-trmorph-65536,max_gen_tokens=128,model_tag=tr_d16_morphbpe_trmorph_65536_chinchilla20,model_step=17100",
+            "batch_size": "1",
+            "batch_sizes": [],
+            "device": "cuda:0",
+            "use_cache": null,
+            "limit": null,
+            "bootstrap_iters": 100000,
+            "gen_kwargs": null,
+            "random_seed": 0,
+            "numpy_seed": 1234,
+            "torch_seed": 1234,
+            "fewshot_seed": 1234
+          },
+          "git_hash": null,
+          "date": 1782119486.7543726
+        },
+        "top_level_keys": [
+          "results",
+          "group_subtasks",
+          "configs",
+          "versions",
+          "n-shot",
+          "higher_is_better",
+          "n-samples",
+          "samples",
+          "config",
+          "git_hash",
+          "date",
+          "pretty_env_info",
+          "transformers_version",
+          "upper_git_hash",
+          "tokenizer_pad_token",
+          "tokenizer_eos_token",
+          "tokenizer_bos_token",
+          "eot_token_id",
+          "max_length",
+          "groups"
+        ]
+      },
+      "source_training_log": {
+        "path": "/ari/users/nunal/nanochat-turk/tr-d16-mbpe-trmorph-64k-494190.out",
+        "exists": true,
+        "size_bytes": 2939952,
+        "mtime_utc": "2026-06-13T17:00:50+00:00"
+      },
+      "source_cetvel_log": {
+        "path": "/ari/users/nunal/nanochat-turk/cetvel-trm64-496899.out",
+        "exists": true,
+        "size_bytes": 129016,
+        "mtime_utc": "2026-06-22T10:06:00+00:00"
+      },
+      "checkpoint_inventory": [
+        {
+          "name": "meta_017100.json",
+          "bytes": 2508
+        }
+      ]
+    },
+    {
+      "run_id": "morphbpe_zemberek_d16_64k",
+      "tokenizer": "morphbpe_zemberek_65536",
+      "model_tag": "tr_d16_morphbpe_zemberek_65536_chinchilla20",
+      "source_meta_path": {
+        "path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-65536/base_checkpoints/tr_d16_morphbpe_zemberek_65536_chinchilla20/meta_017100.json",
+        "exists": true,
+        "size_bytes": 2527,
+        "mtime_utc": "2026-06-13T09:56:25+00:00",
+        "sha256": "504735c29993b1679d888f5b4e153c61e3a6b966a817185a0e72600b6a0471ae",
+        "data": {
+          "step": 17100,
+          "val_bpb": 0.651403153317041,
+          "model_config": {
+            "sequence_len": 2048,
+            "vocab_size": 65536,
+            "n_layer": 16,
+            "n_head": 8,
+            "n_kv_head": 8,
+            "n_embd": 1024,
+            "window_pattern": "L"
+          },
+          "tokenizer_name": "morphbpe_zemberek_65536",
+          "tokenizer_dir": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-65536/tokenizers/morphbpe_zemberek_65536",
+          "tokenizer_config": {
+            "name": "morphbpe_zemberek_65536",
+            "implementation": "morphbpe",
+            "vocab_size": 65536,
+            "max_chars": 2000000000,
+            "doc_cap": 10000,
+            "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/segmented/zemberek-segmented",
+            "text_column": "segmented_text",
+            "morph_boundary": "\ue000",
+            "morph_boundary_codepoints": "U+E000",
+            "requires_runtime_segmentation": false,
+            "training_uses_morph_boundaries": true,
+            "training_boundary_semantics": "merge_constraint_only",
+            "decode_strip": "",
+            "iterator_stats": {
+              "docs": 737406,
+              "chars": 2000007497,
+              "docs_with_boundary": 737406
+            },
+            "morphbpe_iterator_stats": {
+              "docs": 737406,
+              "docs_with_boundary": 737406,
+              "visible_chars": 1867844008,
+              "regex_chunks": 298657152,
+              "training_chunks": 430818566,
+              "boundary_splits": 132161414
+            }
+          },
+          "user_config": {
+            "run": "tr-d16-morphbpe-zemberek-64k",
+            "device_type": "",
+            "fp8": false,
+            "fp8_recipe": "tensorwise",
+            "depth": 16,
+            "aspect_ratio": 64,
+            "head_dim": 128,
+            "max_seq_len": 2048,
+            "window_pattern": "L",
+            "num_iterations": 17100,
+            "target_flops": -1.0,
+            "target_param_data_ratio": 20.0,
+            "target_param_count": "total",
+            "device_batch_size": 4,
+            "total_batch_size": 1048576,
+            "embedding_lr": 0.3,
+            "unembedding_lr": 0.008,
+            "weight_decay": 0.28,
+            "matrix_lr": 0.02,
+            "scalar_lr": 0.5,
+            "warmup_steps": 40,
+            "warmdown_ratio": 0.65,
+            "final_lr_frac": 0.05,
+            "resume_from_step": -1,
+            "eval_every": 1000,
+            "eval_tokens": 4194304,
+            "core_metric_every": -1,
+            "core_metric_max_per_task": 500,
+            "sample_every": 1000,
+            "save_every": 2500,
+            "model_tag": "tr_d16_morphbpe_zemberek_65536_chinchilla20"
+          },
+          "device_batch_size": 4,
+          "max_seq_len": 2048,
+          "total_batch_size": 1048576,
+          "dataloader_state_dict": {
+            "pq_idx": 9,
+            "rg_idx": 3208,
+            "epoch": 1
+          },
+          "loop_state": {
+            "min_val_bpb": 0.651403153317041,
+            "smooth_train_loss": 2.3013232196644386,
+            "total_training_time": 54349.131207466125
+          }
+        }
+      },
+      "source_results_path": {
+        "path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-65536/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+        "exists": true,
+        "size_bytes": 107290111,
+        "mtime_utc": "2026-06-22T09:33:06+00:00",
+        "sha256": "961e64d67cffc916bf1ee618d169fe500451c3fa60f41b74c7f4b0dd2032f0c7",
+        "data": {
+          "results": {
+            "exams_tr": {
+              "acc,none": 0.27989821882951654,
+              "acc_stderr,none": 0.02267534881071746,
+              "acc_norm,none": 0.2926208651399491,
+              "acc_norm_stderr,none": 0.022979243874474937,
+              "alias": "exams_tr"
+            },
+            "belebele_tr": {
+              "acc,none": 0.23,
+              "acc_stderr,none": 0.014035549969945715,
+              "acc_norm,none": 0.23,
+              "acc_norm_stderr,none": 0.014035549969945715,
+              "alias": "belebele_tr"
+            },
+            "turkish_plu": {
+              "acc_norm,none": 0.49088,
+              "acc_norm_stderr,none": 0.008816078127088173,
+              "acc,none": 0.44832,
+              "acc_stderr,none": 0.008695455414191818,
+              "alias": "turkish_plu"
+            },
+            "turkish_plu_goal_inference": {
+              "acc,none": 0.35722819593787336,
+              "acc_stderr,none": 0.016572885706110627,
+              "acc_norm,none": 0.3763440860215054,
+              "acc_norm_stderr,none": 0.01675567514150175,
+              "alias": " - turkish_plu_goal_inference"
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc,none": 0.4122137404580153,
+              "acc_stderr,none": 0.019247843226237467,
+              "acc_norm,none": 0.48091603053435117,
+              "acc_norm_stderr,none": 0.019537300720247557,
+              "alias": " - turkish_plu_next_event_prediction"
+            },
+            "turkish_plu_step_inference": {
+              "acc,none": 0.3611111111111111,
+              "acc_stderr,none": 0.019431775677037348,
+              "acc_norm,none": 0.47875816993464054,
+              "acc_norm_stderr,none": 0.020209572388600227,
+              "alias": " - turkish_plu_step_inference"
+            },
+            "turkish_plu_step_ordering": {
+              "acc,none": 0.5984329089128305,
+              "acc_stderr,none": 0.015349233947895058,
+              "acc_norm,none": 0.5984329089128305,
+              "acc_norm_stderr,none": 0.015349233947895058,
+              "alias": " - turkish_plu_step_ordering"
+            },
+            "cetvel_xcopa_tr": {
+              "acc,none": 0.614,
+              "acc_stderr,none": 0.021793529219281196,
+              "alias": "cetvel_xcopa_tr"
+            },
+            "cetvel_xnli_tr": {
+              "acc,none": 0.3187624750499002,
+              "acc_stderr,none": 0.006584265889743523,
+              "acc_norm,none": 0.32994011976047904,
+              "acc_norm_stderr,none": 0.006643529315011489,
+              "alias": "cetvel_xnli_tr"
+            },
+            "mnli_tr": {
+              "acc,none": 0.3147,
+              "acc_stderr,none": 0.004644195070707676,
+              "acc_norm,none": 0.3064,
+              "acc_norm_stderr,none": 0.004610209258042447,
+              "alias": "mnli_tr"
+            },
+            "snli_tr": {
+              "acc,none": 0.3119,
+              "acc_stderr,none": 0.004632924065699744,
+              "acc_norm,none": 0.3209,
+              "acc_norm_stderr,none": 0.004668457823504994,
+              "alias": "snli_tr"
+            },
+            "news_cat": {
+              "acc,none": 0.892,
+              "acc_stderr,none": 0.019669559381568776,
+              "f1,none": 0.8917183485302201,
+              "f1_stderr,none": "N/A",
+              "acc_norm,none": 0.704,
+              "acc_norm_stderr,none": 0.028928939388379697,
+              "alias": "news_cat"
+            },
+            "offenseval_tr": {
+              "acc,none": 0.520124716553288,
+              "acc_stderr,none": 0.008412308811936917,
+              "f1,none": 0.27803837953091687,
+              "f1_stderr,none": 0.012118077489083359,
+              "acc_norm,none": 0.7970521541950113,
+              "acc_norm_stderr,none": 0.006772248146961342,
+              "alias": "offenseval_tr"
+            },
+            "trclaim19": {
+              "acc_norm,none": 0.601691042047532,
+              "acc_norm_stderr,none": 0.007393581528165077,
+              "acc,none": 0.504798903107861,
+              "acc_stderr,none": 0.007474893640077781,
+              "alias": "trclaim19"
+            },
+            "check_worthiness": {
+              "acc,none": 0.43007312614259596,
+              "acc_stderr,none": 0.010586595736489197,
+              "acc_norm,none": 0.6252285191956124,
+              "acc_norm_stderr,none": 0.01035090364216831,
+              "alias": " - check_worthiness"
+            },
+            "relevance_judgment": {
+              "acc,none": 0.5795246800731262,
+              "acc_stderr,none": 0.010555573429901844,
+              "acc_norm,none": 0.5781535648994516,
+              "acc_norm_stderr,none": 0.010560254970645461,
+              "alias": " - relevance_judgment"
+            },
+            "xfact_tr": {
+              "acc,none": 0.33727810650887574,
+              "acc_stderr,none": 0.036475822502775014,
+              "acc_norm,none": 0.33727810650887574,
+              "acc_norm_stderr,none": 0.036475822502775014,
+              "alias": "xfact_tr"
+            },
+            "xquad_tr": {
+              "exact,none": 0.0,
+              "exact_stderr,none": "N/A",
+              "f1,none": 2.8956045123279432,
+              "f1_stderr,none": "N/A",
+              "HasAns_exact,none": 0.0,
+              "HasAns_exact_stderr,none": "N/A",
+              "HasAns_f1,none": 2.8956045123279432,
+              "HasAns_f1_stderr,none": "N/A",
+              "NoAns_exact,none": 0,
+              "NoAns_exact_stderr,none": "N/A",
+              "NoAns_f1,none": 0,
+              "NoAns_f1_stderr,none": "N/A",
+              "best_exact,none": 0.0,
+              "best_exact_stderr,none": "N/A",
+              "best_f1,none": 2.8956045123279472,
+              "best_f1_stderr,none": "N/A",
+              "alias": "xquad_tr"
+            }
+          },
+          "versions": {
+            "exams_tr": 0.0,
+            "belebele_tr": 0.0,
+            "turkish_plu_goal_inference": 0.0,
+            "turkish_plu_next_event_prediction": 0.0,
+            "turkish_plu_step_inference": 0.0,
+            "turkish_plu_step_ordering": 0.0,
+            "cetvel_xcopa_tr": 1.0,
+            "cetvel_xnli_tr": 0.0,
+            "mnli_tr": 0.0,
+            "snli_tr": 0.0,
+            "news_cat": 0.0,
+            "offenseval_tr": 0.0,
+            "check_worthiness": 0.0,
+            "relevance_judgment": 0.0,
+            "xfact_tr": 0.0,
+            "xquad_tr": 1
+          },
+          "higher_is_better": {
+            "exams_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "belebele_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_goal_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_ordering": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "cetvel_xcopa_tr": {
+              "acc": true
+            },
+            "cetvel_xnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "mnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "snli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "news_cat": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "offenseval_tr": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "check_worthiness": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "relevance_judgment": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "trclaim19": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xfact_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xquad_tr": {
+              "exact": true,
+              "f1": true,
+              "HasAns_exact": true,
+              "HasAns_f1": true,
+              "NoAns_exact": true,
+              "NoAns_f1": true,
+              "best_exact": true,
+              "best_f1": true
+            }
+          },
+          "n-samples": {
+            "exams_tr": {
+              "original": 393,
+              "effective": 393
+            },
+            "belebele_tr": {
+              "original": 900,
+              "effective": 900
+            },
+            "turkish_plu_goal_inference": {
+              "original": 837,
+              "effective": 837
+            },
+            "turkish_plu_step_inference": {
+              "original": 612,
+              "effective": 612
+            },
+            "turkish_plu_step_ordering": {
+              "original": 1021,
+              "effective": 1021
+            },
+            "turkish_plu_next_event_prediction": {
+              "original": 655,
+              "effective": 655
+            },
+            "cetvel_xcopa_tr": {
+              "original": 500,
+              "effective": 500
+            },
+            "cetvel_xnli_tr": {
+              "original": 5010,
+              "effective": 5010
+            },
+            "mnli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "snli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "news_cat": {
+              "original": 250,
+              "effective": 250
+            },
+            "offenseval_tr": {
+              "original": 3528,
+              "effective": 3528
+            },
+            "check_worthiness": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "relevance_judgment": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "xfact_tr": {
+              "original": 169,
+              "effective": 169
+            },
+            "xquad_tr": {
+              "original": 1190,
+              "effective": 1190
+            }
+          },
+          "config": {
+            "model": "nanochat",
+            "model_args": "base_dir=/ari/users/nunal/nanochat-turk-morphbpe-zemberek-65536,max_gen_tokens=128,model_tag=tr_d16_morphbpe_zemberek_65536_chinchilla20,model_step=17100",
+            "batch_size": "1",
+            "batch_sizes": [],
+            "device": "cuda:0",
+            "use_cache": null,
+            "limit": null,
+            "bootstrap_iters": 100000,
+            "gen_kwargs": null,
+            "random_seed": 0,
+            "numpy_seed": 1234,
+            "torch_seed": 1234,
+            "fewshot_seed": 1234
+          },
+          "git_hash": null,
+          "date": 1782119467.9232605
+        },
+        "top_level_keys": [
+          "results",
+          "group_subtasks",
+          "configs",
+          "versions",
+          "n-shot",
+          "higher_is_better",
+          "n-samples",
+          "samples",
+          "config",
+          "git_hash",
+          "date",
+          "pretty_env_info",
+          "transformers_version",
+          "upper_git_hash",
+          "tokenizer_pad_token",
+          "tokenizer_eos_token",
+          "tokenizer_bos_token",
+          "eot_token_id",
+          "max_length",
+          "groups"
+        ]
+      },
+      "source_training_log": {
+        "path": "/ari/users/nunal/nanochat-turk/tr-d16-mbpe-zemberek-64k-494191.out",
+        "exists": true,
+        "size_bytes": 2939723,
+        "mtime_utc": "2026-06-13T10:14:38+00:00"
+      },
+      "source_cetvel_log": {
+        "path": "/ari/users/nunal/nanochat-turk/cetvel-zem64-496900.out",
+        "exists": true,
+        "size_bytes": 129050,
+        "mtime_utc": "2026-06-22T10:05:40+00:00"
+      },
+      "checkpoint_inventory": [
+        {
+          "name": "meta_017100.json",
+          "bytes": 2527
+        }
+      ]
+    },
+    {
+      "run_id": "morphbpe_tdelight_d16_64k",
+      "tokenizer": "morphbpe_tdelight_65536",
+      "model_tag": "tr_d16_morphbpe_tdelight_65536_chinchilla20",
+      "source_meta_path": {
+        "path": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-65536/base_checkpoints/tr_d16_morphbpe_tdelight_65536_chinchilla20/meta_017100.json",
+        "exists": true,
+        "size_bytes": 2528,
+        "mtime_utc": "2026-06-13T19:32:45+00:00",
+        "sha256": "a11f87c4dc5c7b78c466bd7b42ea261c78fbd7af44db277e7620026faec531ef",
+        "data": {
+          "step": 17100,
+          "val_bpb": 0.6510196647741414,
+          "model_config": {
+            "sequence_len": 2048,
+            "vocab_size": 65536,
+            "n_layer": 16,
+            "n_head": 8,
+            "n_kv_head": 8,
+            "n_embd": 1024,
+            "window_pattern": "L"
+          },
+          "tokenizer_name": "morphbpe_tdelight_65536",
+          "tokenizer_dir": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-65536/tokenizers/morphbpe_tdelight_65536",
+          "tokenizer_config": {
+            "name": "morphbpe_tdelight_65536",
+            "implementation": "morphbpe",
+            "vocab_size": 65536,
+            "max_chars": 2000000000,
+            "doc_cap": 10000,
+            "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-32768/segmented/tdelight-segmented",
+            "text_column": "segmented_text",
+            "morph_boundary": "\ue000",
+            "morph_boundary_codepoints": "U+E000",
+            "requires_runtime_segmentation": false,
+            "training_uses_morph_boundaries": true,
+            "training_boundary_semantics": "merge_constraint_only",
+            "decode_strip": "",
+            "iterator_stats": {
+              "docs": 735229,
+              "chars": 2000001793,
+              "docs_with_boundary": 735229
+            },
+            "morphbpe_iterator_stats": {
+              "docs": 735229,
+              "docs_with_boundary": 735229,
+              "visible_chars": 1860663994,
+              "regex_chunks": 297521010,
+              "training_chunks": 436854926,
+              "boundary_splits": 139333916
+            }
+          },
+          "user_config": {
+            "run": "tr-d16-morphbpe-tdelight-64k",
+            "device_type": "",
+            "fp8": false,
+            "fp8_recipe": "tensorwise",
+            "depth": 16,
+            "aspect_ratio": 64,
+            "head_dim": 128,
+            "max_seq_len": 2048,
+            "window_pattern": "L",
+            "num_iterations": 17100,
+            "target_flops": -1.0,
+            "target_param_data_ratio": 20.0,
+            "target_param_count": "total",
+            "device_batch_size": 4,
+            "total_batch_size": 1048576,
+            "embedding_lr": 0.3,
+            "unembedding_lr": 0.008,
+            "weight_decay": 0.28,
+            "matrix_lr": 0.02,
+            "scalar_lr": 0.5,
+            "warmup_steps": 40,
+            "warmdown_ratio": 0.65,
+            "final_lr_frac": 0.05,
+            "resume_from_step": -1,
+            "eval_every": 1000,
+            "eval_tokens": 4194304,
+            "core_metric_every": -1,
+            "core_metric_max_per_task": 500,
+            "sample_every": 1000,
+            "save_every": 2500,
+            "model_tag": "tr_d16_morphbpe_tdelight_65536_chinchilla20"
+          },
+          "device_batch_size": 4,
+          "max_seq_len": 2048,
+          "total_batch_size": 1048576,
+          "dataloader_state_dict": {
+            "pq_idx": 10,
+            "rg_idx": 1568,
+            "epoch": 1
+          },
+          "loop_state": {
+            "min_val_bpb": 0.6510196647741414,
+            "smooth_train_loss": 2.486881414483697,
+            "total_training_time": 54210.07783651352
+          }
+        }
+      },
+      "source_results_path": {
+        "path": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-65536/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+        "exists": true,
+        "size_bytes": 107411457,
+        "mtime_utc": "2026-06-22T09:38:04+00:00",
+        "sha256": "60cf1a3ec909925174f49ee4c41ca9cdbf6080bda3934d79fdb02ff13daf9082",
+        "data": {
+          "results": {
+            "exams_tr": {
+              "acc,none": 0.2951653944020356,
+              "acc_stderr,none": 0.023037391098966718,
+              "acc_norm,none": 0.30279898218829515,
+              "acc_norm_stderr,none": 0.023206688788484687,
+              "alias": "exams_tr"
+            },
+            "belebele_tr": {
+              "acc,none": 0.23555555555555555,
+              "acc_stderr,none": 0.014152716079132644,
+              "acc_norm,none": 0.23555555555555555,
+              "acc_norm_stderr,none": 0.014152716079132644,
+              "alias": "belebele_tr"
+            },
+            "turkish_plu": {
+              "acc_norm,none": 0.50464,
+              "acc_norm_stderr,none": 0.00881180345522036,
+              "acc,none": 0.46592,
+              "acc_stderr,none": 0.008731047884324801,
+              "alias": "turkish_plu"
+            },
+            "turkish_plu_goal_inference": {
+              "acc,none": 0.38948626045400236,
+              "acc_stderr,none": 0.016865167288507087,
+              "acc_norm,none": 0.3870967741935484,
+              "acc_norm_stderr,none": 0.016846224769906243,
+              "alias": " - turkish_plu_goal_inference"
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc,none": 0.433587786259542,
+              "acc_stderr,none": 0.019378312299135635,
+              "acc_norm,none": 0.5129770992366413,
+              "acc_norm_stderr,none": 0.01954496090510188,
+              "alias": " - turkish_plu_next_event_prediction"
+            },
+            "turkish_plu_step_inference": {
+              "acc,none": 0.3611111111111111,
+              "acc_stderr,none": 0.019431775677037348,
+              "acc_norm,none": 0.477124183006536,
+              "acc_norm_stderr,none": 0.020206653187884744,
+              "alias": " - turkish_plu_step_inference"
+            },
+            "turkish_plu_step_ordering": {
+              "acc,none": 0.6121449559255632,
+              "acc_stderr,none": 0.015256741000017698,
+              "acc_norm,none": 0.6121449559255632,
+              "acc_norm_stderr,none": 0.015256741000017698,
+              "alias": " - turkish_plu_step_ordering"
+            },
+            "cetvel_xcopa_tr": {
+              "acc,none": 0.61,
+              "acc_stderr,none": 0.021834685869369132,
+              "alias": "cetvel_xcopa_tr"
+            },
+            "cetvel_xnli_tr": {
+              "acc,none": 0.3343313373253493,
+              "acc_stderr,none": 0.006665643509475048,
+              "acc_norm,none": 0.3335329341317365,
+              "acc_norm_stderr,none": 0.0066616711899316425,
+              "alias": "cetvel_xnli_tr"
+            },
+            "mnli_tr": {
+              "acc,none": 0.322,
+              "acc_stderr,none": 0.004672663413764984,
+              "acc_norm,none": 0.3211,
+              "acc_norm_stderr,none": 0.004669224685739228,
+              "alias": "mnli_tr"
+            },
+            "snli_tr": {
+              "acc,none": 0.3368,
+              "acc_stderr,none": 0.004726395019567038,
+              "acc_norm,none": 0.324,
+              "acc_norm_stderr,none": 0.004680234017551462,
+              "alias": "snli_tr"
+            },
+            "news_cat": {
+              "acc,none": 0.864,
+              "acc_stderr,none": 0.021723342617052086,
+              "f1,none": 0.8617982367994905,
+              "f1_stderr,none": "N/A",
+              "acc_norm,none": 0.7,
+              "acc_norm_stderr,none": 0.029040893477575786,
+              "alias": "news_cat"
+            },
+            "offenseval_tr": {
+              "acc,none": 0.5263605442176871,
+              "acc_stderr,none": 0.00840742245865088,
+              "f1,none": 0.3086470831609433,
+              "f1_stderr,none": 0.012219984743625033,
+              "acc_norm,none": 0.7970521541950113,
+              "acc_norm_stderr,none": 0.006772248146961342,
+              "alias": "offenseval_tr"
+            },
+            "trclaim19": {
+              "acc_norm,none": 0.55827239488117,
+              "acc_norm_stderr,none": 0.007502614497403099,
+              "acc,none": 0.47554844606946983,
+              "acc_stderr,none": 0.007397184825528454,
+              "alias": "trclaim19"
+            },
+            "check_worthiness": {
+              "acc,none": 0.37522851919561245,
+              "acc_stderr,none": 0.01035342702249559,
+              "acc_norm,none": 0.5383912248628885,
+              "acc_norm_stderr,none": 0.010660108448863474,
+              "alias": " - check_worthiness"
+            },
+            "relevance_judgment": {
+              "acc,none": 0.5758683729433273,
+              "acc_stderr,none": 0.010567872172862982,
+              "acc_norm,none": 0.5781535648994516,
+              "acc_norm_stderr,none": 0.010560254970645461,
+              "alias": " - relevance_judgment"
+            },
+            "xfact_tr": {
+              "acc,none": 0.33727810650887574,
+              "acc_stderr,none": 0.036475822502775014,
+              "acc_norm,none": 0.33727810650887574,
+              "acc_norm_stderr,none": 0.036475822502775014,
+              "alias": "xfact_tr"
+            },
+            "xquad_tr": {
+              "exact,none": 0.16806722689075632,
+              "exact_stderr,none": "N/A",
+              "f1,none": 3.327996731885908,
+              "f1_stderr,none": "N/A",
+              "HasAns_exact,none": 0.16806722689075632,
+              "HasAns_exact_stderr,none": "N/A",
+              "HasAns_f1,none": 3.327996731885908,
+              "HasAns_f1_stderr,none": "N/A",
+              "NoAns_exact,none": 0,
+              "NoAns_exact_stderr,none": "N/A",
+              "NoAns_f1,none": 0,
+              "NoAns_f1_stderr,none": "N/A",
+              "best_exact,none": 0.16806722689075632,
+              "best_exact_stderr,none": "N/A",
+              "best_f1,none": 3.32799673188591,
+              "best_f1_stderr,none": "N/A",
+              "alias": "xquad_tr"
+            }
+          },
+          "versions": {
+            "exams_tr": 0.0,
+            "belebele_tr": 0.0,
+            "turkish_plu_goal_inference": 0.0,
+            "turkish_plu_next_event_prediction": 0.0,
+            "turkish_plu_step_inference": 0.0,
+            "turkish_plu_step_ordering": 0.0,
+            "cetvel_xcopa_tr": 1.0,
+            "cetvel_xnli_tr": 0.0,
+            "mnli_tr": 0.0,
+            "snli_tr": 0.0,
+            "news_cat": 0.0,
+            "offenseval_tr": 0.0,
+            "check_worthiness": 0.0,
+            "relevance_judgment": 0.0,
+            "xfact_tr": 0.0,
+            "xquad_tr": 1
+          },
+          "higher_is_better": {
+            "exams_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "belebele_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_goal_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_ordering": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "cetvel_xcopa_tr": {
+              "acc": true
+            },
+            "cetvel_xnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "mnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "snli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "news_cat": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "offenseval_tr": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "check_worthiness": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "relevance_judgment": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "trclaim19": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xfact_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xquad_tr": {
+              "exact": true,
+              "f1": true,
+              "HasAns_exact": true,
+              "HasAns_f1": true,
+              "NoAns_exact": true,
+              "NoAns_f1": true,
+              "best_exact": true,
+              "best_f1": true
+            }
+          },
+          "n-samples": {
+            "exams_tr": {
+              "original": 393,
+              "effective": 393
+            },
+            "belebele_tr": {
+              "original": 900,
+              "effective": 900
+            },
+            "turkish_plu_goal_inference": {
+              "original": 837,
+              "effective": 837
+            },
+            "turkish_plu_step_inference": {
+              "original": 612,
+              "effective": 612
+            },
+            "turkish_plu_step_ordering": {
+              "original": 1021,
+              "effective": 1021
+            },
+            "turkish_plu_next_event_prediction": {
+              "original": 655,
+              "effective": 655
+            },
+            "cetvel_xcopa_tr": {
+              "original": 500,
+              "effective": 500
+            },
+            "cetvel_xnli_tr": {
+              "original": 5010,
+              "effective": 5010
+            },
+            "mnli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "snli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "news_cat": {
+              "original": 250,
+              "effective": 250
+            },
+            "offenseval_tr": {
+              "original": 3528,
+              "effective": 3528
+            },
+            "check_worthiness": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "relevance_judgment": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "xfact_tr": {
+              "original": 169,
+              "effective": 169
+            },
+            "xquad_tr": {
+              "original": 1190,
+              "effective": 1190
+            }
+          },
+          "config": {
+            "model": "nanochat",
+            "model_args": "base_dir=/ari/users/nunal/nanochat-turk-morphbpe-tdelight-65536,max_gen_tokens=128,model_tag=tr_d16_morphbpe_tdelight_65536_chinchilla20,model_step=17100",
+            "batch_size": "1",
+            "batch_sizes": [],
+            "device": "cuda:0",
+            "use_cache": null,
+            "limit": null,
+            "bootstrap_iters": 100000,
+            "gen_kwargs": null,
+            "random_seed": 0,
+            "numpy_seed": 1234,
+            "torch_seed": 1234,
+            "fewshot_seed": 1234
+          },
+          "git_hash": null,
+          "date": 1782119802.693144
+        },
+        "top_level_keys": [
+          "results",
+          "group_subtasks",
+          "configs",
+          "versions",
+          "n-shot",
+          "higher_is_better",
+          "n-samples",
+          "samples",
+          "config",
+          "git_hash",
+          "date",
+          "pretty_env_info",
+          "transformers_version",
+          "upper_git_hash",
+          "tokenizer_pad_token",
+          "tokenizer_eos_token",
+          "tokenizer_bos_token",
+          "eot_token_id",
+          "max_length",
+          "groups"
+        ]
+      },
+      "source_training_log": {
+        "path": "/ari/users/nunal/nanochat-turk/tr-d16-mbpe-tdelight-64k-494192.out",
+        "exists": true,
+        "size_bytes": 2940651,
+        "mtime_utc": "2026-06-13T19:51:05+00:00"
+      },
+      "source_cetvel_log": {
+        "path": "/ari/users/nunal/nanochat-turk/cetvel-tdl64-496901.out",
+        "exists": true,
+        "size_bytes": 128969,
+        "mtime_utc": "2026-06-22T10:10:29+00:00"
+      },
+      "checkpoint_inventory": [
+        {
+          "name": "meta_017100.json",
+          "bytes": 2528
+        }
+      ]
+    },
+    {
+      "run_id": "raw_bpe_d12_128k",
+      "tokenizer": "bpe_131072",
+      "model_tag": "tr_d12_bpe_131072_chinchilla20",
+      "source_meta_path": {
+        "path": "/ari/users/nunal/nanochat-turk-bpe-131072/base_checkpoints/tr_d12_bpe_131072_chinchilla20/meta_017100.json",
+        "exists": true,
+        "size_bytes": 2184,
+        "mtime_utc": "2026-06-13T01:12:54+00:00",
+        "sha256": "33a13b89af1cae3120bd7dcc2c74d287372c475c8776201e71fc9f4dbc3dbe25",
+        "data": {
+          "step": 17100,
+          "val_bpb": 0.6748740953412145,
+          "model_config": {
+            "sequence_len": 2048,
+            "vocab_size": 131072,
+            "n_layer": 12,
+            "n_head": 6,
+            "n_kv_head": 6,
+            "n_embd": 768,
+            "window_pattern": "L"
+          },
+          "tokenizer_name": "bpe_131072",
+          "tokenizer_dir": "/ari/users/nunal/nanochat-turk-bpe-131072/tokenizers/bpe_131072",
+          "tokenizer_config": {
+            "name": "bpe_131072",
+            "implementation": "bpe",
+            "vocab_size": 131072,
+            "max_chars": 2000000000,
+            "doc_cap": 10000,
+            "data_dir": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_data_fineweb2_tur_latn",
+            "text_column": "text",
+            "morph_boundary": "",
+            "morph_boundary_codepoints": "",
+            "requires_runtime_segmentation": false,
+            "training_uses_morph_boundaries": false,
+            "training_boundary_semantics": "",
+            "decode_strip": "",
+            "iterator_stats": {
+              "docs": 777394,
+              "chars": 2000001023,
+              "docs_with_boundary": 0
+            },
+            "morphbpe_iterator_stats": {}
+          },
+          "user_config": {
+            "run": "tr-d12-bpe-128k",
+            "device_type": "",
+            "fp8": false,
+            "fp8_recipe": "tensorwise",
+            "depth": 12,
+            "aspect_ratio": 64,
+            "head_dim": 128,
+            "max_seq_len": 2048,
+            "window_pattern": "L",
+            "num_iterations": 17100,
+            "target_flops": -1.0,
+            "target_param_data_ratio": 20.0,
+            "target_param_count": "total",
+            "device_batch_size": 4,
+            "total_batch_size": 1048576,
+            "embedding_lr": 0.3,
+            "unembedding_lr": 0.008,
+            "weight_decay": 0.28,
+            "matrix_lr": 0.02,
+            "scalar_lr": 0.5,
+            "warmup_steps": 40,
+            "warmdown_ratio": 0.65,
+            "final_lr_frac": 0.05,
+            "resume_from_step": -1,
+            "eval_every": 1000,
+            "eval_tokens": 4194304,
+            "core_metric_every": -1,
+            "core_metric_max_per_task": 500,
+            "sample_every": 1000,
+            "save_every": 2500,
+            "model_tag": "tr_d12_bpe_131072_chinchilla20"
+          },
+          "device_batch_size": 4,
+          "max_seq_len": 2048,
+          "total_batch_size": 1048576,
+          "dataloader_state_dict": {
+            "pq_idx": 11,
+            "rg_idx": 3052,
+            "epoch": 1
+          },
+          "loop_state": {
+            "min_val_bpb": 0.6748740953412145,
+            "smooth_train_loss": 3.0976091195453654,
+            "total_training_time": 39820.95611667633
+          }
+        }
+      },
+      "source_results_path": {
+        "path": "/ari/users/nunal/nanochat-turk-bpe-131072/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+        "exists": true,
+        "size_bytes": 108138915,
+        "mtime_utc": "2026-06-22T09:32:25+00:00",
+        "sha256": "e61253e5d1ce182b1d79fffa88fd61ea6c90f161a2be2fe6bf26b7f2fc8bcf68",
+        "data": {
+          "results": {
+            "exams_tr": {
+              "acc,none": 0.2875318066157761,
+              "acc_stderr,none": 0.022860338325743544,
+              "acc_norm,none": 0.3104325699745547,
+              "acc_norm_stderr,none": 0.023368399945309665,
+              "alias": "exams_tr"
+            },
+            "belebele_tr": {
+              "acc,none": 0.2388888888888889,
+              "acc_stderr,none": 0.014221393731276089,
+              "acc_norm,none": 0.2388888888888889,
+              "acc_norm_stderr,none": 0.014221393731276089,
+              "alias": "belebele_tr"
+            },
+            "turkish_plu": {
+              "acc_norm,none": 0.46528,
+              "acc_norm_stderr,none": 0.008834802887968679,
+              "acc,none": 0.41856,
+              "acc_stderr,none": 0.008639601853412513,
+              "alias": "turkish_plu"
+            },
+            "turkish_plu_goal_inference": {
+              "acc,none": 0.37037037037037035,
+              "acc_stderr,none": 0.016701579987219165,
+              "acc_norm,none": 0.37753882915173237,
+              "acc_norm_stderr,none": 0.016766167717923497,
+              "alias": " - turkish_plu_goal_inference"
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc,none": 0.36946564885496186,
+              "acc_stderr,none": 0.01887350387659193,
+              "acc_norm,none": 0.45648854961832064,
+              "acc_norm_stderr,none": 0.019477374692233436,
+              "alias": " - turkish_plu_next_event_prediction"
+            },
+            "turkish_plu_step_inference": {
+              "acc,none": 0.3006535947712418,
+              "acc_stderr,none": 0.01855063450295291,
+              "acc_norm,none": 0.4362745098039216,
+              "acc_norm_stderr,none": 0.020062874243539024,
+              "alias": " - turkish_plu_step_inference"
+            },
+            "turkish_plu_step_ordering": {
+              "acc,none": 0.5602350636630754,
+              "acc_stderr,none": 0.01554158675074355,
+              "acc_norm,none": 0.5602350636630754,
+              "acc_norm_stderr,none": 0.01554158675074355,
+              "alias": " - turkish_plu_step_ordering"
+            },
+            "cetvel_xcopa_tr": {
+              "acc,none": 0.6,
+              "acc_stderr,none": 0.02193084412072858,
+              "alias": "cetvel_xcopa_tr"
+            },
+            "cetvel_xnli_tr": {
+              "acc,none": 0.32914171656686625,
+              "acc_stderr,none": 0.006639438345348315,
+              "acc_norm,none": 0.3325349301397206,
+              "acc_norm_stderr,none": 0.0066566755728299475,
+              "alias": "cetvel_xnli_tr"
+            },
+            "mnli_tr": {
+              "acc,none": 0.3219,
+              "acc_stderr,none": 0.004672282314051904,
+              "acc_norm,none": 0.3214,
+              "acc_norm_stderr,none": 0.004670373136969235,
+              "alias": "mnli_tr"
+            },
+            "snli_tr": {
+              "acc,none": 0.323,
+              "acc_stderr,none": 0.004676460940571713,
+              "acc_norm,none": 0.3241,
+              "acc_norm_stderr,none": 0.004680609982788685,
+              "alias": "snli_tr"
+            },
+            "news_cat": {
+              "acc,none": 0.848,
+              "acc_stderr,none": 0.022752024491765464,
+              "f1,none": 0.8513276080853581,
+              "f1_stderr,none": "N/A",
+              "acc_norm,none": 0.728,
+              "acc_norm_stderr,none": 0.028200088296309975,
+              "alias": "news_cat"
+            },
+            "offenseval_tr": {
+              "acc,none": 0.7970521541950113,
+              "acc_stderr,none": 0.006772248146961342,
+              "f1,none": 0.0,
+              "f1_stderr,none": 0.0,
+              "acc_norm,none": 0.7970521541950113,
+              "acc_norm_stderr,none": 0.006772248146961342,
+              "alias": "offenseval_tr"
+            },
+            "trclaim19": {
+              "acc_norm,none": 0.6021480804387569,
+              "acc_norm_stderr,none": 0.007392141009491249,
+              "acc,none": 0.49657221206581353,
+              "acc_stderr,none": 0.00749914464584844,
+              "alias": "trclaim19"
+            },
+            "check_worthiness": {
+              "acc,none": 0.43327239488117003,
+              "acc_stderr,none": 0.010596032997257471,
+              "acc_norm,none": 0.6256855575868373,
+              "acc_norm_stderr,none": 0.010348370416899542,
+              "alias": " - check_worthiness"
+            },
+            "relevance_judgment": {
+              "acc,none": 0.5598720292504571,
+              "acc_stderr,none": 0.010614742879526578,
+              "acc_norm,none": 0.5786106032906764,
+              "acc_norm_stderr,none": 0.01055870373348204,
+              "alias": " - relevance_judgment"
+            },
+            "xfact_tr": {
+              "acc,none": 0.3431952662721893,
+              "acc_stderr,none": 0.03662976569681106,
+              "acc_norm,none": 0.39644970414201186,
+              "acc_norm_stderr,none": 0.037739499976792906,
+              "alias": "xfact_tr"
+            },
+            "xquad_tr": {
+              "exact,none": 0.0,
+              "exact_stderr,none": "N/A",
+              "f1,none": 2.267363605231426,
+              "f1_stderr,none": "N/A",
+              "HasAns_exact,none": 0.0,
+              "HasAns_exact_stderr,none": "N/A",
+              "HasAns_f1,none": 2.267363605231426,
+              "HasAns_f1_stderr,none": "N/A",
+              "NoAns_exact,none": 0,
+              "NoAns_exact_stderr,none": "N/A",
+              "NoAns_f1,none": 0,
+              "NoAns_f1_stderr,none": "N/A",
+              "best_exact,none": 0.0,
+              "best_exact_stderr,none": "N/A",
+              "best_f1,none": 2.267363605231428,
+              "best_f1_stderr,none": "N/A",
+              "alias": "xquad_tr"
+            }
+          },
+          "versions": {
+            "exams_tr": 0.0,
+            "belebele_tr": 0.0,
+            "turkish_plu_goal_inference": 0.0,
+            "turkish_plu_next_event_prediction": 0.0,
+            "turkish_plu_step_inference": 0.0,
+            "turkish_plu_step_ordering": 0.0,
+            "cetvel_xcopa_tr": 1.0,
+            "cetvel_xnli_tr": 0.0,
+            "mnli_tr": 0.0,
+            "snli_tr": 0.0,
+            "news_cat": 0.0,
+            "offenseval_tr": 0.0,
+            "check_worthiness": 0.0,
+            "relevance_judgment": 0.0,
+            "xfact_tr": 0.0,
+            "xquad_tr": 1
+          },
+          "higher_is_better": {
+            "exams_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "belebele_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_goal_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_ordering": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "cetvel_xcopa_tr": {
+              "acc": true
+            },
+            "cetvel_xnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "mnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "snli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "news_cat": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "offenseval_tr": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "check_worthiness": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "relevance_judgment": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "trclaim19": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xfact_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xquad_tr": {
+              "exact": true,
+              "f1": true,
+              "HasAns_exact": true,
+              "HasAns_f1": true,
+              "NoAns_exact": true,
+              "NoAns_f1": true,
+              "best_exact": true,
+              "best_f1": true
+            }
+          },
+          "n-samples": {
+            "exams_tr": {
+              "original": 393,
+              "effective": 393
+            },
+            "belebele_tr": {
+              "original": 900,
+              "effective": 900
+            },
+            "turkish_plu_goal_inference": {
+              "original": 837,
+              "effective": 837
+            },
+            "turkish_plu_step_inference": {
+              "original": 612,
+              "effective": 612
+            },
+            "turkish_plu_step_ordering": {
+              "original": 1021,
+              "effective": 1021
+            },
+            "turkish_plu_next_event_prediction": {
+              "original": 655,
+              "effective": 655
+            },
+            "cetvel_xcopa_tr": {
+              "original": 500,
+              "effective": 500
+            },
+            "cetvel_xnli_tr": {
+              "original": 5010,
+              "effective": 5010
+            },
+            "mnli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "snli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "news_cat": {
+              "original": 250,
+              "effective": 250
+            },
+            "offenseval_tr": {
+              "original": 3528,
+              "effective": 3528
+            },
+            "check_worthiness": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "relevance_judgment": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "xfact_tr": {
+              "original": 169,
+              "effective": 169
+            },
+            "xquad_tr": {
+              "original": 1190,
+              "effective": 1190
+            }
+          },
+          "config": {
+            "model": "nanochat",
+            "model_args": "base_dir=/ari/users/nunal/nanochat-turk-bpe-131072,max_gen_tokens=128,model_tag=tr_d12_bpe_131072_chinchilla20,model_step=17100",
+            "batch_size": "1",
+            "batch_sizes": [],
+            "device": "cuda:0",
+            "use_cache": null,
+            "limit": null,
+            "bootstrap_iters": 100000,
+            "gen_kwargs": null,
+            "random_seed": 0,
+            "numpy_seed": 1234,
+            "torch_seed": 1234,
+            "fewshot_seed": 1234
+          },
+          "git_hash": null,
+          "date": 1782119727.0171406
+        },
+        "top_level_keys": [
+          "results",
+          "group_subtasks",
+          "configs",
+          "versions",
+          "n-shot",
+          "higher_is_better",
+          "n-samples",
+          "samples",
+          "config",
+          "git_hash",
+          "date",
+          "pretty_env_info",
+          "transformers_version",
+          "upper_git_hash",
+          "tokenizer_pad_token",
+          "tokenizer_eos_token",
+          "tokenizer_bos_token",
+          "eot_token_id",
+          "max_length",
+          "groups"
+        ]
+      },
+      "source_training_log": {
+        "path": "/ari/users/nunal/nanochat-turk/tr-d12-bpe-128k-494193.out",
+        "exists": true,
+        "size_bytes": 2942818,
+        "mtime_utc": "2026-06-13T01:31:09+00:00"
+      },
+      "source_cetvel_log": {
+        "path": "/ari/users/nunal/nanochat-turk/cetvel-bpe128-496902.out",
+        "exists": true,
+        "size_bytes": 128431,
+        "mtime_utc": "2026-06-22T10:04:56+00:00"
+      },
+      "checkpoint_inventory": [
+        {
+          "name": "meta_017100.json",
+          "bytes": 2184
+        }
+      ]
+    },
+    {
+      "run_id": "morphbpe_trmorph_d12_128k",
+      "tokenizer": "morphbpe_trmorph_131072",
+      "model_tag": "tr_d12_morphbpe_trmorph_131072_chinchilla20",
+      "source_meta_path": {
+        "path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-131072/base_checkpoints/tr_d12_morphbpe_trmorph_131072_chinchilla20/meta_017100.json",
+        "exists": true,
+        "size_bytes": 2517,
+        "mtime_utc": "2026-06-13T13:56:31+00:00",
+        "sha256": "61861df7f801eca8392c679f08c8388764b3e924cc7f524845ff324eb09e91bc",
+        "data": {
+          "step": 17100,
+          "val_bpb": 0.6917138591836433,
+          "model_config": {
+            "sequence_len": 2048,
+            "vocab_size": 131072,
+            "n_layer": 12,
+            "n_head": 6,
+            "n_kv_head": 6,
+            "n_embd": 768,
+            "window_pattern": "L"
+          },
+          "tokenizer_name": "morphbpe_trmorph_131072",
+          "tokenizer_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-131072/tokenizers/morphbpe_trmorph_131072",
+          "tokenizer_config": {
+            "name": "morphbpe_trmorph_131072",
+            "implementation": "morphbpe",
+            "vocab_size": 131072,
+            "max_chars": 2000000000,
+            "doc_cap": 10000,
+            "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph",
+            "text_column": "segmented_text",
+            "morph_boundary": "\ue000",
+            "morph_boundary_codepoints": "U+E000",
+            "requires_runtime_segmentation": false,
+            "training_uses_morph_boundaries": true,
+            "training_boundary_semantics": "merge_constraint_only",
+            "decode_strip": "",
+            "iterator_stats": {
+              "docs": 734628,
+              "chars": 2000003945,
+              "docs_with_boundary": 734624
+            },
+            "morphbpe_iterator_stats": {
+              "docs": 734628,
+              "docs_with_boundary": 734624,
+              "visible_chars": 1858612668,
+              "regex_chunks": 297199201,
+              "training_chunks": 438575477,
+              "boundary_splits": 141376276
+            }
+          },
+          "user_config": {
+            "run": "tr-d12-morphbpe-trmorph-128k",
+            "device_type": "",
+            "fp8": false,
+            "fp8_recipe": "tensorwise",
+            "depth": 12,
+            "aspect_ratio": 64,
+            "head_dim": 128,
+            "max_seq_len": 2048,
+            "window_pattern": "L",
+            "num_iterations": 17100,
+            "target_flops": -1.0,
+            "target_param_data_ratio": 20.0,
+            "target_param_count": "total",
+            "device_batch_size": 4,
+            "total_batch_size": 1048576,
+            "embedding_lr": 0.3,
+            "unembedding_lr": 0.008,
+            "weight_decay": 0.28,
+            "matrix_lr": 0.02,
+            "scalar_lr": 0.5,
+            "warmup_steps": 40,
+            "warmdown_ratio": 0.65,
+            "final_lr_frac": 0.05,
+            "resume_from_step": -1,
+            "eval_every": 1000,
+            "eval_tokens": 4194304,
+            "core_metric_every": -1,
+            "core_metric_max_per_task": 500,
+            "sample_every": 1000,
+            "save_every": 2500,
+            "model_tag": "tr_d12_morphbpe_trmorph_131072_chinchilla20"
+          },
+          "device_batch_size": 4,
+          "max_seq_len": 2048,
+          "total_batch_size": 1048576,
+          "dataloader_state_dict": {
+            "pq_idx": 10,
+            "rg_idx": 868,
+            "epoch": 1
+          },
+          "loop_state": {
+            "min_val_bpb": 0.6917138591836433,
+            "smooth_train_loss": 2.5947281069640544,
+            "total_training_time": 39498.67734122276
+          }
+        }
+      },
+      "source_results_path": {
+        "path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-131072/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+        "exists": true,
+        "size_bytes": 107259400,
+        "mtime_utc": "2026-06-22T09:32:21+00:00",
+        "sha256": "0556d0bdd1cb3147d430e6b6f0ba916019497c88fdca1bf119bdce33862cad9f",
+        "data": {
+          "results": {
+            "exams_tr": {
+              "acc,none": 0.26717557251908397,
+              "acc_stderr,none": 0.022348856632409157,
+              "acc_norm,none": 0.2926208651399491,
+              "acc_norm_stderr,none": 0.022979243874474937,
+              "alias": "exams_tr"
+            },
+            "belebele_tr": {
+              "acc,none": 0.24,
+              "acc_stderr,none": 0.014244019879792671,
+              "acc_norm,none": 0.24,
+              "acc_norm_stderr,none": 0.014244019879792671,
+              "alias": "belebele_tr"
+            },
+            "turkish_plu": {
+              "acc,none": 0.43072,
+              "acc_stderr,none": 0.008604363378832728,
+              "acc_norm,none": 0.46112,
+              "acc_norm_stderr,none": 0.008709712591934699,
+              "alias": "turkish_plu"
+            },
+            "turkish_plu_goal_inference": {
+              "acc,none": 0.3632019115890084,
+              "acc_stderr,none": 0.01663304642156931,
+              "acc_norm,none": 0.3201911589008363,
+              "acc_norm_stderr,none": 0.01613596463988256,
+              "alias": " - turkish_plu_goal_inference"
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc,none": 0.37709923664122136,
+              "acc_stderr,none": 0.01895170920800913,
+              "acc_norm,none": 0.467175572519084,
+              "acc_norm_stderr,none": 0.01950937032609507,
+              "alias": " - turkish_plu_next_event_prediction"
+            },
+            "turkish_plu_step_inference": {
+              "acc,none": 0.3022875816993464,
+              "acc_stderr,none": 0.018579232711113967,
+              "acc_norm,none": 0.4199346405228758,
+              "acc_norm_stderr,none": 0.0199668111782565,
+              "alias": " - turkish_plu_step_inference"
+            },
+            "turkish_plu_step_ordering": {
+              "acc,none": 0.5974534769833496,
+              "acc_stderr,none": 0.01535535991954217,
+              "acc_norm,none": 0.5974534769833496,
+              "acc_norm_stderr,none": 0.01535535991954217,
+              "alias": " - turkish_plu_step_ordering"
+            },
+            "cetvel_xcopa_tr": {
+              "acc,none": 0.596,
+              "acc_stderr,none": 0.021966635293832883,
+              "alias": "cetvel_xcopa_tr"
+            },
+            "cetvel_xnli_tr": {
+              "acc,none": 0.33572854291417165,
+              "acc_stderr,none": 0.006672543485924313,
+              "acc_norm,none": 0.3323353293413174,
+              "acc_norm_stderr,none": 0.006655672414344503,
+              "alias": "cetvel_xnli_tr"
+            },
+            "mnli_tr": {
+              "acc,none": 0.3271,
+              "acc_stderr,none": 0.004691775812635085,
+              "acc_norm,none": 0.3209,
+              "acc_norm_stderr,none": 0.004668457823504994,
+              "alias": "mnli_tr"
+            },
+            "snli_tr": {
+              "acc,none": 0.3201,
+              "acc_stderr,none": 0.004665380539415596,
+              "acc_norm,none": 0.3234,
+              "acc_norm_stderr,none": 0.004677973102021251,
+              "alias": "snli_tr"
+            },
+            "news_cat": {
+              "acc,none": 0.808,
+              "acc_stderr,none": 0.02496069198917196,
+              "f1,none": 0.8052905721768276,
+              "f1_stderr,none": "N/A",
+              "acc_norm,none": 0.652,
+              "acc_norm_stderr,none": 0.030186568464511673,
+              "alias": "news_cat"
+            },
+            "offenseval_tr": {
+              "acc,none": 0.7692743764172335,
+              "acc_stderr,none": 0.007093912344131252,
+              "f1,none": 0.06651376146788991,
+              "f1_stderr,none": 0.011744465133603672,
+              "acc_norm,none": 0.7970521541950113,
+              "acc_norm_stderr,none": 0.006772248146961342,
+              "alias": "offenseval_tr"
+            },
+            "trclaim19": {
+              "acc,none": 0.4826325411334552,
+              "acc_stderr,none": 0.007413556749298139,
+              "acc_norm,none": 0.6010054844606947,
+              "acc_norm_stderr,none": 0.0073962212123210745,
+              "alias": "trclaim19"
+            },
+            "check_worthiness": {
+              "acc,none": 0.38619744058500916,
+              "acc_stderr,none": 0.01041105286250175,
+              "acc_norm,none": 0.6238574040219378,
+              "acc_norm_stderr,none": 0.01035844427707707,
+              "alias": " - check_worthiness"
+            },
+            "relevance_judgment": {
+              "acc,none": 0.5790676416819013,
+              "acc_stderr,none": 0.010557143221272039,
+              "acc_norm,none": 0.5781535648994516,
+              "acc_norm_stderr,none": 0.010560254970645461,
+              "alias": " - relevance_judgment"
+            },
+            "xfact_tr": {
+              "acc,none": 0.33727810650887574,
+              "acc_stderr,none": 0.036475822502775014,
+              "acc_norm,none": 0.33727810650887574,
+              "acc_norm_stderr,none": 0.036475822502775014,
+              "alias": "xfact_tr"
+            },
+            "xquad_tr": {
+              "exact,none": 0.0,
+              "exact_stderr,none": "N/A",
+              "f1,none": 2.3516723544895624,
+              "f1_stderr,none": "N/A",
+              "HasAns_exact,none": 0.0,
+              "HasAns_exact_stderr,none": "N/A",
+              "HasAns_f1,none": 2.3516723544895624,
+              "HasAns_f1_stderr,none": "N/A",
+              "NoAns_exact,none": 0,
+              "NoAns_exact_stderr,none": "N/A",
+              "NoAns_f1,none": 0,
+              "NoAns_f1_stderr,none": "N/A",
+              "best_exact,none": 0.0,
+              "best_exact_stderr,none": "N/A",
+              "best_f1,none": 2.351672354489563,
+              "best_f1_stderr,none": "N/A",
+              "alias": "xquad_tr"
+            }
+          },
+          "versions": {
+            "exams_tr": 0.0,
+            "belebele_tr": 0.0,
+            "turkish_plu_goal_inference": 0.0,
+            "turkish_plu_next_event_prediction": 0.0,
+            "turkish_plu_step_inference": 0.0,
+            "turkish_plu_step_ordering": 0.0,
+            "cetvel_xcopa_tr": 1.0,
+            "cetvel_xnli_tr": 0.0,
+            "mnli_tr": 0.0,
+            "snli_tr": 0.0,
+            "news_cat": 0.0,
+            "offenseval_tr": 0.0,
+            "check_worthiness": 0.0,
+            "relevance_judgment": 0.0,
+            "xfact_tr": 0.0,
+            "xquad_tr": 1
+          },
+          "higher_is_better": {
+            "exams_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "belebele_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_goal_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_ordering": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "cetvel_xcopa_tr": {
+              "acc": true
+            },
+            "cetvel_xnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "mnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "snli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "news_cat": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "offenseval_tr": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "check_worthiness": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "relevance_judgment": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "trclaim19": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xfact_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xquad_tr": {
+              "exact": true,
+              "f1": true,
+              "HasAns_exact": true,
+              "HasAns_f1": true,
+              "NoAns_exact": true,
+              "NoAns_f1": true,
+              "best_exact": true,
+              "best_f1": true
+            }
+          },
+          "n-samples": {
+            "exams_tr": {
+              "original": 393,
+              "effective": 393
+            },
+            "belebele_tr": {
+              "original": 900,
+              "effective": 900
+            },
+            "turkish_plu_goal_inference": {
+              "original": 837,
+              "effective": 837
+            },
+            "turkish_plu_step_inference": {
+              "original": 612,
+              "effective": 612
+            },
+            "turkish_plu_step_ordering": {
+              "original": 1021,
+              "effective": 1021
+            },
+            "turkish_plu_next_event_prediction": {
+              "original": 655,
+              "effective": 655
+            },
+            "cetvel_xcopa_tr": {
+              "original": 500,
+              "effective": 500
+            },
+            "cetvel_xnli_tr": {
+              "original": 5010,
+              "effective": 5010
+            },
+            "mnli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "snli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "news_cat": {
+              "original": 250,
+              "effective": 250
+            },
+            "offenseval_tr": {
+              "original": 3528,
+              "effective": 3528
+            },
+            "check_worthiness": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "relevance_judgment": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "xfact_tr": {
+              "original": 169,
+              "effective": 169
+            },
+            "xquad_tr": {
+              "original": 1190,
+              "effective": 1190
+            }
+          },
+          "config": {
+            "model": "nanochat",
+            "model_args": "base_dir=/ari/users/nunal/nanochat-turk-morphbpe-trmorph-131072,max_gen_tokens=128,model_tag=tr_d12_morphbpe_trmorph_131072_chinchilla20,model_step=17100",
+            "batch_size": "1",
+            "batch_sizes": [],
+            "device": "cuda:0",
+            "use_cache": null,
+            "limit": null,
+            "bootstrap_iters": 100000,
+            "gen_kwargs": null,
+            "random_seed": 0,
+            "numpy_seed": 1234,
+            "torch_seed": 1234,
+            "fewshot_seed": 1234
+          },
+          "git_hash": null,
+          "date": 1782119640.5736027
+        },
+        "top_level_keys": [
+          "results",
+          "group_subtasks",
+          "configs",
+          "versions",
+          "n-shot",
+          "higher_is_better",
+          "n-samples",
+          "samples",
+          "config",
+          "git_hash",
+          "date",
+          "pretty_env_info",
+          "transformers_version",
+          "upper_git_hash",
+          "tokenizer_pad_token",
+          "tokenizer_eos_token",
+          "tokenizer_bos_token",
+          "eot_token_id",
+          "max_length",
+          "groups"
+        ]
+      },
+      "source_training_log": {
+        "path": "/ari/users/nunal/nanochat-turk/tr-d12-mbpe-trmorph-128k-494194.out",
+        "exists": true,
+        "size_bytes": 2939285,
+        "mtime_utc": "2026-06-13T14:14:42+00:00"
+      },
+      "source_cetvel_log": {
+        "path": "/ari/users/nunal/nanochat-turk/cetvel-trm128-496903.out",
+        "exists": true,
+        "size_bytes": 128838,
+        "mtime_utc": "2026-06-22T10:04:53+00:00"
+      },
+      "checkpoint_inventory": [
+        {
+          "name": "meta_017100.json",
+          "bytes": 2517
+        }
+      ]
+    },
+    {
+      "run_id": "morphbpe_zemberek_d12_128k",
+      "tokenizer": "morphbpe_zemberek_131072",
+      "model_tag": "tr_d12_morphbpe_zemberek_131072_chinchilla20",
+      "source_meta_path": {
+        "path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-131072/base_checkpoints/tr_d12_morphbpe_zemberek_131072_chinchilla20/meta_017100.json",
+        "exists": true,
+        "size_bytes": 2534,
+        "mtime_utc": "2026-06-13T04:05:34+00:00",
+        "sha256": "5c6492f05ec39b10c161b2cb772ea0574490a8f2b7d8603a786ed86d404bc59d",
+        "data": {
+          "step": 17100,
+          "val_bpb": 0.6940374096112558,
+          "model_config": {
+            "sequence_len": 2048,
+            "vocab_size": 131072,
+            "n_layer": 12,
+            "n_head": 6,
+            "n_kv_head": 6,
+            "n_embd": 768,
+            "window_pattern": "L"
+          },
+          "tokenizer_name": "morphbpe_zemberek_131072",
+          "tokenizer_dir": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-131072/tokenizers/morphbpe_zemberek_131072",
+          "tokenizer_config": {
+            "name": "morphbpe_zemberek_131072",
+            "implementation": "morphbpe",
+            "vocab_size": 131072,
+            "max_chars": 2000000000,
+            "doc_cap": 10000,
+            "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/segmented/zemberek-segmented",
+            "text_column": "segmented_text",
+            "morph_boundary": "\ue000",
+            "morph_boundary_codepoints": "U+E000",
+            "requires_runtime_segmentation": false,
+            "training_uses_morph_boundaries": true,
+            "training_boundary_semantics": "merge_constraint_only",
+            "decode_strip": "",
+            "iterator_stats": {
+              "docs": 737406,
+              "chars": 2000007497,
+              "docs_with_boundary": 737406
+            },
+            "morphbpe_iterator_stats": {
+              "docs": 737406,
+              "docs_with_boundary": 737406,
+              "visible_chars": 1867844008,
+              "regex_chunks": 298657152,
+              "training_chunks": 430818566,
+              "boundary_splits": 132161414
+            }
+          },
+          "user_config": {
+            "run": "tr-d12-morphbpe-zemberek-128k",
+            "device_type": "",
+            "fp8": false,
+            "fp8_recipe": "tensorwise",
+            "depth": 12,
+            "aspect_ratio": 64,
+            "head_dim": 128,
+            "max_seq_len": 2048,
+            "window_pattern": "L",
+            "num_iterations": 17100,
+            "target_flops": -1.0,
+            "target_param_data_ratio": 20.0,
+            "target_param_count": "total",
+            "device_batch_size": 4,
+            "total_batch_size": 1048576,
+            "embedding_lr": 0.3,
+            "unembedding_lr": 0.008,
+            "weight_decay": 0.28,
+            "matrix_lr": 0.02,
+            "scalar_lr": 0.5,
+            "warmup_steps": 40,
+            "warmdown_ratio": 0.65,
+            "final_lr_frac": 0.05,
+            "resume_from_step": -1,
+            "eval_every": 1000,
+            "eval_tokens": 4194304,
+            "core_metric_every": -1,
+            "core_metric_max_per_task": 500,
+            "sample_every": 1000,
+            "save_every": 2500,
+            "model_tag": "tr_d12_morphbpe_zemberek_131072_chinchilla20"
+          },
+          "device_batch_size": 4,
+          "max_seq_len": 2048,
+          "total_batch_size": 1048576,
+          "dataloader_state_dict": {
+            "pq_idx": 10,
+            "rg_idx": 964,
+            "epoch": 1
+          },
+          "loop_state": {
+            "min_val_bpb": 0.6940374096112558,
+            "smooth_train_loss": 2.600004600923029,
+            "total_training_time": 39493.69031953812
+          }
+        }
+      },
+      "source_results_path": {
+        "path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-131072/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+        "exists": true,
+        "size_bytes": 107448708,
+        "mtime_utc": "2026-06-22T09:37:44+00:00",
+        "sha256": "e43c56bd7b1ae28e3c8b9af21c127593534b1d1c9017edbd9359c4d6634bbf1d",
+        "data": {
+          "results": {
+            "exams_tr": {
+              "acc,none": 0.27735368956743,
+              "acc_stderr,none": 0.02261188849145306,
+              "acc_norm,none": 0.30788804071246817,
+              "acc_norm_stderr,none": 0.023315329277825626,
+              "alias": "exams_tr"
+            },
+            "belebele_tr": {
+              "acc,none": 0.2633333333333333,
+              "acc_stderr,none": 0.014689553047342468,
+              "acc_norm,none": 0.2633333333333333,
+              "acc_norm_stderr,none": 0.014689553047342468,
+              "alias": "belebele_tr"
+            },
+            "turkish_plu": {
+              "acc_norm,none": 0.48928,
+              "acc_norm_stderr,none": 0.008847785243999852,
+              "acc,none": 0.4448,
+              "acc_stderr,none": 0.008673632355566186,
+              "alias": "turkish_plu"
+            },
+            "turkish_plu_goal_inference": {
+              "acc,none": 0.4121863799283154,
+              "acc_stderr,none": 0.017024074149094237,
+              "acc_norm,none": 0.4241338112305854,
+              "acc_norm_stderr,none": 0.01709263815765492,
+              "alias": " - turkish_plu_goal_inference"
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc,none": 0.3969465648854962,
+              "acc_stderr,none": 0.019131765438498666,
+              "acc_norm,none": 0.47938931297709925,
+              "acc_norm_stderr,none": 0.019534929101892577,
+              "alias": " - turkish_plu_next_event_prediction"
+            },
+            "turkish_plu_step_inference": {
+              "acc,none": 0.2957516339869281,
+              "acc_stderr,none": 0.01846315413263271,
+              "acc_norm,none": 0.41830065359477125,
+              "acc_norm_stderr,none": 0.01995597514583561,
+              "alias": " - turkish_plu_step_inference"
+            },
+            "turkish_plu_step_ordering": {
+              "acc,none": 0.5915768854064642,
+              "acc_stderr,none": 0.015390781365430466,
+              "acc_norm,none": 0.5915768854064642,
+              "acc_norm_stderr,none": 0.015390781365430466,
+              "alias": " - turkish_plu_step_ordering"
+            },
+            "cetvel_xcopa_tr": {
+              "acc,none": 0.618,
+              "acc_stderr,none": 0.02175082059125093,
+              "alias": "cetvel_xcopa_tr"
+            },
+            "cetvel_xnli_tr": {
+              "acc,none": 0.33053892215568864,
+              "acc_stderr,none": 0.006646583324788819,
+              "acc_norm,none": 0.332934131736527,
+              "acc_norm_stderr,none": 0.006658677852916923,
+              "alias": "cetvel_xnli_tr"
+            },
+            "mnli_tr": {
+              "acc,none": 0.3218,
+              "acc_stderr,none": 0.0046719009691844485,
+              "acc_norm,none": 0.3212,
+              "acc_norm_stderr,none": 0.00466960774837163,
+              "alias": "mnli_tr"
+            },
+            "snli_tr": {
+              "acc,none": 0.3236,
+              "acc_stderr,none": 0.004678727716944526,
+              "acc_norm,none": 0.3237,
+              "acc_norm_stderr,none": 0.004679104658162735,
+              "alias": "snli_tr"
+            },
+            "news_cat": {
+              "acc,none": 0.82,
+              "acc_stderr,none": 0.02434689065029351,
+              "f1,none": 0.8195181245804692,
+              "f1_stderr,none": "N/A",
+              "acc_norm,none": 0.712,
+              "acc_norm_stderr,none": 0.028697004587398257,
+              "alias": "news_cat"
+            },
+            "offenseval_tr": {
+              "acc,none": 0.796201814058957,
+              "acc_stderr,none": 0.006782799953193519,
+              "f1,none": 0.0,
+              "f1_stderr,none": 0.0,
+              "acc_norm,none": 0.7970521541950113,
+              "acc_norm_stderr,none": 0.006772248146961342,
+              "alias": "offenseval_tr"
+            },
+            "trclaim19": {
+              "acc_norm,none": 0.6003199268738574,
+              "acc_norm_stderr,none": 0.007398830909467799,
+              "acc,none": 0.4860603290676417,
+              "acc_stderr,none": 0.007426520593096967,
+              "alias": "trclaim19"
+            },
+            "check_worthiness": {
+              "acc,none": 0.39351005484460694,
+              "acc_stderr,none": 0.010446368170197992,
+              "acc_norm,none": 0.6224862888482633,
+              "acc_norm_stderr,none": 0.010365896500667089,
+              "alias": " - check_worthiness"
+            },
+            "relevance_judgment": {
+              "acc,none": 0.5786106032906764,
+              "acc_stderr,none": 0.01055870373348204,
+              "acc_norm,none": 0.5781535648994516,
+              "acc_norm_stderr,none": 0.010560254970645461,
+              "alias": " - relevance_judgment"
+            },
+            "xfact_tr": {
+              "acc,none": 0.33727810650887574,
+              "acc_stderr,none": 0.036475822502775014,
+              "acc_norm,none": 0.3136094674556213,
+              "acc_norm_stderr,none": 0.03579526516456229,
+              "alias": "xfact_tr"
+            },
+            "xquad_tr": {
+              "exact,none": 0.08403361344537816,
+              "exact_stderr,none": "N/A",
+              "f1,none": 2.9685399931957224,
+              "f1_stderr,none": "N/A",
+              "HasAns_exact,none": 0.08403361344537816,
+              "HasAns_exact_stderr,none": "N/A",
+              "HasAns_f1,none": 2.9685399931957224,
+              "HasAns_f1_stderr,none": "N/A",
+              "NoAns_exact,none": 0,
+              "NoAns_exact_stderr,none": "N/A",
+              "NoAns_f1,none": 0,
+              "NoAns_f1_stderr,none": "N/A",
+              "best_exact,none": 0.08403361344537816,
+              "best_exact_stderr,none": "N/A",
+              "best_f1,none": 2.968539993195724,
+              "best_f1_stderr,none": "N/A",
+              "alias": "xquad_tr"
+            }
+          },
+          "versions": {
+            "exams_tr": 0.0,
+            "belebele_tr": 0.0,
+            "turkish_plu_goal_inference": 0.0,
+            "turkish_plu_next_event_prediction": 0.0,
+            "turkish_plu_step_inference": 0.0,
+            "turkish_plu_step_ordering": 0.0,
+            "cetvel_xcopa_tr": 1.0,
+            "cetvel_xnli_tr": 0.0,
+            "mnli_tr": 0.0,
+            "snli_tr": 0.0,
+            "news_cat": 0.0,
+            "offenseval_tr": 0.0,
+            "check_worthiness": 0.0,
+            "relevance_judgment": 0.0,
+            "xfact_tr": 0.0,
+            "xquad_tr": 1
+          },
+          "higher_is_better": {
+            "exams_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "belebele_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_goal_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_ordering": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "cetvel_xcopa_tr": {
+              "acc": true
+            },
+            "cetvel_xnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "mnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "snli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "news_cat": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "offenseval_tr": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "check_worthiness": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "relevance_judgment": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "trclaim19": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xfact_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xquad_tr": {
+              "exact": true,
+              "f1": true,
+              "HasAns_exact": true,
+              "HasAns_f1": true,
+              "NoAns_exact": true,
+              "NoAns_f1": true,
+              "best_exact": true,
+              "best_f1": true
+            }
+          },
+          "n-samples": {
+            "exams_tr": {
+              "original": 393,
+              "effective": 393
+            },
+            "belebele_tr": {
+              "original": 900,
+              "effective": 900
+            },
+            "turkish_plu_goal_inference": {
+              "original": 837,
+              "effective": 837
+            },
+            "turkish_plu_step_inference": {
+              "original": 612,
+              "effective": 612
+            },
+            "turkish_plu_step_ordering": {
+              "original": 1021,
+              "effective": 1021
+            },
+            "turkish_plu_next_event_prediction": {
+              "original": 655,
+              "effective": 655
+            },
+            "cetvel_xcopa_tr": {
+              "original": 500,
+              "effective": 500
+            },
+            "cetvel_xnli_tr": {
+              "original": 5010,
+              "effective": 5010
+            },
+            "mnli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "snli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "news_cat": {
+              "original": 250,
+              "effective": 250
+            },
+            "offenseval_tr": {
+              "original": 3528,
+              "effective": 3528
+            },
+            "check_worthiness": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "relevance_judgment": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "xfact_tr": {
+              "original": 169,
+              "effective": 169
+            },
+            "xquad_tr": {
+              "original": 1190,
+              "effective": 1190
+            }
+          },
+          "config": {
+            "model": "nanochat",
+            "model_args": "base_dir=/ari/users/nunal/nanochat-turk-morphbpe-zemberek-131072,max_gen_tokens=128,model_tag=tr_d12_morphbpe_zemberek_131072_chinchilla20,model_step=17100",
+            "batch_size": "1",
+            "batch_sizes": [],
+            "device": "cuda:0",
+            "use_cache": null,
+            "limit": null,
+            "bootstrap_iters": 100000,
+            "gen_kwargs": null,
+            "random_seed": 0,
+            "numpy_seed": 1234,
+            "torch_seed": 1234,
+            "fewshot_seed": 1234
+          },
+          "git_hash": null,
+          "date": 1782119987.4999042
+        },
+        "top_level_keys": [
+          "results",
+          "group_subtasks",
+          "configs",
+          "versions",
+          "n-shot",
+          "higher_is_better",
+          "n-samples",
+          "samples",
+          "config",
+          "git_hash",
+          "date",
+          "pretty_env_info",
+          "transformers_version",
+          "upper_git_hash",
+          "tokenizer_pad_token",
+          "tokenizer_eos_token",
+          "tokenizer_bos_token",
+          "eot_token_id",
+          "max_length",
+          "groups"
+        ]
+      },
+      "source_training_log": {
+        "path": "/ari/users/nunal/nanochat-turk/tr-d12-mbpe-zemberek-128k-494195.out",
+        "exists": true,
+        "size_bytes": 2938744,
+        "mtime_utc": "2026-06-13T04:23:45+00:00"
+      },
+      "source_cetvel_log": {
+        "path": "/ari/users/nunal/nanochat-turk/cetvel-zem128-496904.out",
+        "exists": true,
+        "size_bytes": 128822,
+        "mtime_utc": "2026-06-22T10:10:17+00:00"
+      },
+      "checkpoint_inventory": [
+        {
+          "name": "meta_017100.json",
+          "bytes": 2534
+        }
+      ]
+    },
+    {
+      "run_id": "morphbpe_tdelight_d12_128k",
+      "tokenizer": "morphbpe_tdelight_131072",
+      "model_tag": "tr_d12_morphbpe_tdelight_131072_chinchilla20",
+      "source_meta_path": {
+        "path": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-131072/base_checkpoints/tr_d12_morphbpe_tdelight_131072_chinchilla20/meta_017100.json",
+        "exists": true,
+        "size_bytes": 2536,
+        "mtime_utc": "2026-06-13T16:40:02+00:00",
+        "sha256": "d7167a49d951715899be64cc26a8ad857999dffe9c0617e4cbe28e992f371b9e",
+        "data": {
+          "step": 17100,
+          "val_bpb": 0.6820176680445071,
+          "model_config": {
+            "sequence_len": 2048,
+            "vocab_size": 131072,
+            "n_layer": 12,
+            "n_head": 6,
+            "n_kv_head": 6,
+            "n_embd": 768,
+            "window_pattern": "L"
+          },
+          "tokenizer_name": "morphbpe_tdelight_131072",
+          "tokenizer_dir": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-131072/tokenizers/morphbpe_tdelight_131072",
+          "tokenizer_config": {
+            "name": "morphbpe_tdelight_131072",
+            "implementation": "morphbpe",
+            "vocab_size": 131072,
+            "max_chars": 2000000000,
+            "doc_cap": 10000,
+            "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-32768/segmented/tdelight-segmented",
+            "text_column": "segmented_text",
+            "morph_boundary": "\ue000",
+            "morph_boundary_codepoints": "U+E000",
+            "requires_runtime_segmentation": false,
+            "training_uses_morph_boundaries": true,
+            "training_boundary_semantics": "merge_constraint_only",
+            "decode_strip": "",
+            "iterator_stats": {
+              "docs": 735229,
+              "chars": 2000001793,
+              "docs_with_boundary": 735229
+            },
+            "morphbpe_iterator_stats": {
+              "docs": 735229,
+              "docs_with_boundary": 735229,
+              "visible_chars": 1860663994,
+              "regex_chunks": 297521010,
+              "training_chunks": 436854926,
+              "boundary_splits": 139333916
+            }
+          },
+          "user_config": {
+            "run": "tr-d12-morphbpe-tdelight-128k",
+            "device_type": "",
+            "fp8": false,
+            "fp8_recipe": "tensorwise",
+            "depth": 12,
+            "aspect_ratio": 64,
+            "head_dim": 128,
+            "max_seq_len": 2048,
+            "window_pattern": "L",
+            "num_iterations": 17100,
+            "target_flops": -1.0,
+            "target_param_data_ratio": 20.0,
+            "target_param_count": "total",
+            "device_batch_size": 4,
+            "total_batch_size": 1048576,
+            "embedding_lr": 0.3,
+            "unembedding_lr": 0.008,
+            "weight_decay": 0.28,
+            "matrix_lr": 0.02,
+            "scalar_lr": 0.5,
+            "warmup_steps": 40,
+            "warmdown_ratio": 0.65,
+            "final_lr_frac": 0.05,
+            "resume_from_step": -1,
+            "eval_every": 1000,
+            "eval_tokens": 4194304,
+            "core_metric_every": -1,
+            "core_metric_max_per_task": 500,
+            "sample_every": 1000,
+            "save_every": 2500,
+            "model_tag": "tr_d12_morphbpe_tdelight_131072_chinchilla20"
+          },
+          "device_batch_size": 4,
+          "max_seq_len": 2048,
+          "total_batch_size": 1048576,
+          "dataloader_state_dict": {
+            "pq_idx": 10,
+            "rg_idx": 3428,
+            "epoch": 1
+          },
+          "loop_state": {
+            "min_val_bpb": 0.6820176680445071,
+            "smooth_train_loss": 2.647748287552866,
+            "total_training_time": 39592.928904533386
+          }
+        }
+      },
+      "source_results_path": {
+        "path": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-131072/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+        "exists": true,
+        "size_bytes": 107900543,
+        "mtime_utc": "2026-06-22T10:39:18+00:00",
+        "sha256": "26b406cd85b92f8c0fed74707ca419cfe2226c796c4891331583dfe609d0849e",
+        "data": {
+          "results": {
+            "exams_tr": {
+              "acc,none": 0.27735368956743,
+              "acc_stderr,none": 0.02261188849145306,
+              "acc_norm,none": 0.2951653944020356,
+              "acc_norm_stderr,none": 0.023037391098966718,
+              "alias": "exams_tr"
+            },
+            "belebele_tr": {
+              "acc,none": 0.22333333333333333,
+              "acc_stderr,none": 0.013890384297198764,
+              "acc_norm,none": 0.22333333333333333,
+              "acc_norm_stderr,none": 0.013890384297198764,
+              "alias": "belebele_tr"
+            },
+            "turkish_plu": {
+              "acc,none": 0.42656,
+              "acc_stderr,none": 0.008682468887023946,
+              "acc_norm,none": 0.46784,
+              "acc_norm_stderr,none": 0.008839060533509859,
+              "alias": "turkish_plu"
+            },
+            "turkish_plu_goal_inference": {
+              "acc,none": 0.37037037037037035,
+              "acc_stderr,none": 0.016701579987219165,
+              "acc_norm,none": 0.3763440860215054,
+              "acc_norm_stderr,none": 0.01675567514150175,
+              "alias": " - turkish_plu_goal_inference"
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc,none": 0.3938931297709924,
+              "acc_stderr,none": 0.019106226953399464,
+              "acc_norm,none": 0.4595419847328244,
+              "acc_norm_stderr,none": 0.019487436123503954,
+              "alias": " - turkish_plu_next_event_prediction"
+            },
+            "turkish_plu_step_inference": {
+              "acc,none": 0.315359477124183,
+              "acc_stderr,none": 0.01879808628488684,
+              "acc_norm,none": 0.4477124183006536,
+              "acc_norm_stderr,none": 0.020116925347422532,
+              "alias": " - turkish_plu_step_inference"
+            },
+            "turkish_plu_step_ordering": {
+              "acc,none": 0.5602350636630754,
+              "acc_stderr,none": 0.01554158675074355,
+              "acc_norm,none": 0.5602350636630754,
+              "acc_norm_stderr,none": 0.01554158675074355,
+              "alias": " - turkish_plu_step_ordering"
+            },
+            "cetvel_xcopa_tr": {
+              "acc,none": 0.602,
+              "acc_stderr,none": 0.021912377885779953,
+              "alias": "cetvel_xcopa_tr"
+            },
+            "cetvel_xnli_tr": {
+              "acc,none": 0.33592814371257484,
+              "acc_stderr,none": 0.006673523847107423,
+              "acc_norm,none": 0.3339321357285429,
+              "acc_norm_stderr,none": 0.006663660032909979,
+              "alias": "cetvel_xnli_tr"
+            },
+            "mnli_tr": {
+              "acc,none": 0.3428,
+              "acc_stderr,none": 0.0047466903318955506,
+              "acc_norm,none": 0.321,
+              "acc_norm_stderr,none": 0.0046688413774705175,
+              "alias": "mnli_tr"
+            },
+            "snli_tr": {
+              "acc,none": 0.3449,
+              "acc_stderr,none": 0.004753594289152849,
+              "acc_norm,none": 0.3243,
+              "acc_norm_stderr,none": 0.004681361181777307,
+              "alias": "snli_tr"
+            },
+            "news_cat": {
+              "acc,none": 0.82,
+              "acc_stderr,none": 0.02434689065029351,
+              "f1,none": 0.8162042683884542,
+              "f1_stderr,none": "N/A",
+              "acc_norm,none": 0.628,
+              "acc_norm_stderr,none": 0.03063032594455827,
+              "alias": "news_cat"
+            },
+            "offenseval_tr": {
+              "acc,none": 0.7482993197278912,
+              "acc_stderr,none": 0.0073076399275450845,
+              "f1,none": 0.0975609756097561,
+              "f1_stderr,none": 0.013056009418612126,
+              "acc_norm,none": 0.7970521541950113,
+              "acc_norm_stderr,none": 0.006772248146961342,
+              "alias": "offenseval_tr"
+            },
+            "trclaim19": {
+              "acc,none": 0.48811700182815354,
+              "acc_stderr,none": 0.007434398535707898,
+              "acc_norm,none": 0.5996343692870201,
+              "acc_norm_stderr,none": 0.007401410651325022,
+              "alias": "trclaim19"
+            },
+            "check_worthiness": {
+              "acc,none": 0.39808043875685556,
+              "acc_stderr,none": 0.010467193573537311,
+              "acc_norm,none": 0.6211151736745887,
+              "acc_norm_stderr,none": 0.01037326050348432,
+              "alias": " - check_worthiness"
+            },
+            "relevance_judgment": {
+              "acc,none": 0.5781535648994516,
+              "acc_stderr,none": 0.010560254970645461,
+              "acc_norm,none": 0.5781535648994516,
+              "acc_norm_stderr,none": 0.010560254970645461,
+              "alias": " - relevance_judgment"
+            },
+            "xfact_tr": {
+              "acc,none": 0.33727810650887574,
+              "acc_stderr,none": 0.036475822502775014,
+              "acc_norm,none": 0.33727810650887574,
+              "acc_norm_stderr,none": 0.036475822502775014,
+              "alias": "xfact_tr"
+            },
+            "xquad_tr": {
+              "exact,none": 0.0,
+              "exact_stderr,none": "N/A",
+              "f1,none": 2.2498043232850464,
+              "f1_stderr,none": "N/A",
+              "HasAns_exact,none": 0.0,
+              "HasAns_exact_stderr,none": "N/A",
+              "HasAns_f1,none": 2.2498043232850464,
+              "HasAns_f1_stderr,none": "N/A",
+              "NoAns_exact,none": 0,
+              "NoAns_exact_stderr,none": "N/A",
+              "NoAns_f1,none": 0,
+              "NoAns_f1_stderr,none": "N/A",
+              "best_exact,none": 0.0,
+              "best_exact_stderr,none": "N/A",
+              "best_f1,none": 2.2498043232850464,
+              "best_f1_stderr,none": "N/A",
+              "alias": "xquad_tr"
+            }
+          },
+          "versions": {
+            "exams_tr": 0.0,
+            "belebele_tr": 0.0,
+            "turkish_plu_goal_inference": 0.0,
+            "turkish_plu_next_event_prediction": 0.0,
+            "turkish_plu_step_inference": 0.0,
+            "turkish_plu_step_ordering": 0.0,
+            "cetvel_xcopa_tr": 1.0,
+            "cetvel_xnli_tr": 0.0,
+            "mnli_tr": 0.0,
+            "snli_tr": 0.0,
+            "news_cat": 0.0,
+            "offenseval_tr": 0.0,
+            "check_worthiness": 0.0,
+            "relevance_judgment": 0.0,
+            "xfact_tr": 0.0,
+            "xquad_tr": 1
+          },
+          "higher_is_better": {
+            "exams_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "belebele_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_goal_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_next_event_prediction": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_inference": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "turkish_plu_step_ordering": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "cetvel_xcopa_tr": {
+              "acc": true
+            },
+            "cetvel_xnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "mnli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "snli_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "news_cat": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "offenseval_tr": {
+              "acc": true,
+              "acc_norm": true,
+              "f1": true
+            },
+            "check_worthiness": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "relevance_judgment": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "trclaim19": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xfact_tr": {
+              "acc": true,
+              "acc_norm": true
+            },
+            "xquad_tr": {
+              "exact": true,
+              "f1": true,
+              "HasAns_exact": true,
+              "HasAns_f1": true,
+              "NoAns_exact": true,
+              "NoAns_f1": true,
+              "best_exact": true,
+              "best_f1": true
+            }
+          },
+          "n-samples": {
+            "exams_tr": {
+              "original": 393,
+              "effective": 393
+            },
+            "belebele_tr": {
+              "original": 900,
+              "effective": 900
+            },
+            "turkish_plu_goal_inference": {
+              "original": 837,
+              "effective": 837
+            },
+            "turkish_plu_step_inference": {
+              "original": 612,
+              "effective": 612
+            },
+            "turkish_plu_step_ordering": {
+              "original": 1021,
+              "effective": 1021
+            },
+            "turkish_plu_next_event_prediction": {
+              "original": 655,
+              "effective": 655
+            },
+            "cetvel_xcopa_tr": {
+              "original": 500,
+              "effective": 500
+            },
+            "cetvel_xnli_tr": {
+              "original": 5010,
+              "effective": 5010
+            },
+            "mnli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "snli_tr": {
+              "original": 10000,
+              "effective": 10000
+            },
+            "news_cat": {
+              "original": 250,
+              "effective": 250
+            },
+            "offenseval_tr": {
+              "original": 3528,
+              "effective": 3528
+            },
+            "check_worthiness": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "relevance_judgment": {
+              "original": 2188,
+              "effective": 2188
+            },
+            "xfact_tr": {
+              "original": 169,
+              "effective": 169
+            },
+            "xquad_tr": {
+              "original": 1190,
+              "effective": 1190
+            }
+          },
+          "config": {
+            "model": "nanochat",
+            "model_args": "base_dir=/ari/users/nunal/nanochat-turk-morphbpe-tdelight-131072,max_gen_tokens=128,model_tag=tr_d12_morphbpe_tdelight_131072_chinchilla20,model_step=17100",
+            "batch_size": "1",
+            "batch_sizes": [],
+            "device": "cuda:0",
+            "use_cache": null,
+            "limit": null,
+            "bootstrap_iters": 100000,
+            "gen_kwargs": null,
+            "random_seed": 0,
+            "numpy_seed": 1234,
+            "torch_seed": 1234,
+            "fewshot_seed": 1234
+          },
+          "git_hash": null,
+          "date": 1782123754.5012648
+        },
+        "top_level_keys": [
+          "results",
+          "group_subtasks",
+          "configs",
+          "versions",
+          "n-shot",
+          "higher_is_better",
+          "n-samples",
+          "samples",
+          "config",
+          "git_hash",
+          "date",
+          "pretty_env_info",
+          "transformers_version",
+          "upper_git_hash",
+          "tokenizer_pad_token",
+          "tokenizer_eos_token",
+          "tokenizer_bos_token",
+          "eot_token_id",
+          "max_length",
+          "groups"
+        ]
+      },
+      "source_training_log": {
+        "path": "/ari/users/nunal/nanochat-turk/tr-d12-mbpe-tdelight-128k-494196.out",
+        "exists": true,
+        "size_bytes": 2941082,
+        "mtime_utc": "2026-06-13T16:58:20+00:00"
+      },
+      "source_cetvel_log": {
+        "path": "/ari/users/nunal/nanochat-turk/cetvel-tdl128-496905.out",
+        "exists": true,
+        "size_bytes": 128768,
+        "mtime_utc": "2026-06-22T11:11:45+00:00"
+      },
+      "checkpoint_inventory": [
+        {
+          "name": "meta_017100.json",
+          "bytes": 2536
+        }
+      ]
+    }
+  ]
+}

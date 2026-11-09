@@ -1,0 +1,107 @@
+{
+  "kind": "recovered_full_corpus_tokenizer_metrics",
+  "recovered_at_utc": "2026-11-09T12:36:54.052731+00:00",
+  "host": "altay.uhem.itu.edu.tr",
+  "job_id": "496882",
+  "job_state": "COMPLETED",
+  "exit_code": "0:0",
+  "files": [
+    {
+      "file": "bpe_131072_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk/docs/tokenizer_tests/tokenizer_metrics_full/bpe_131072_metrics.json",
+      "size_bytes": 4668,
+      "sha256": "3ea3c6afc4ec64a0327830b7df2d17794e640ccf067b206de68075f9cdd3e5ba"
+    },
+    {
+      "file": "bpe_32768_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk/docs/tokenizer_tests/tokenizer_metrics_full/bpe_32768_metrics.json",
+      "size_bytes": 4172,
+      "sha256": "e3ed78e67f4a59b1cc3570a41f88743f0ecaa5384fe26de21a525dbb37e9997a"
+    },
+    {
+      "file": "bpe_65536_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk/docs/tokenizer_tests/tokenizer_metrics_full/bpe_65536_metrics.json",
+      "size_bytes": 4655,
+      "sha256": "784ed6a3f1cfafef5c821348b7d07ae611977a39ebaf9a51788673b73ff8c2b5"
+    },
+    {
+      "file": "morphbpe_tdelight_131072_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk/docs/tokenizer_tests/tokenizer_metrics_full/morphbpe_tdelight_131072_metrics.json",
+      "size_bytes": 4980,
+      "sha256": "c6443a025537962dd148777dcd78821cef18cdedcfc18904dbf467d5ec648aa7"
+    },
+    {
+      "file": "morphbpe_tdelight_32768_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk/docs/tokenizer_tests/tokenizer_metrics_full/morphbpe_tdelight_32768_metrics.json",
+      "size_bytes": 4978,
+      "sha256": "2d54effce00e1f971ba37b7e263b8ca7faf1256ccc61093c6ad974320a0cc335"
+    },
+    {
+      "file": "morphbpe_tdelight_65536_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk/docs/tokenizer_tests/tokenizer_metrics_full/morphbpe_tdelight_65536_metrics.json",
+      "size_bytes": 4983,
+      "sha256": "6ab58ad502d38f32b339e991f24c2a084712113d5f59a8b6c448f864ab985c01"
+    },
+    {
+      "file": "morphbpe_trmorph_131072_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk/docs/tokenizer_tests/tokenizer_metrics_full/morphbpe_trmorph_131072_metrics.json",
+      "size_bytes": 4976,
+      "sha256": "fee54943b830d232c289a3460d82333d2758872e66a23dfd8db094586e087ccd"
+    },
+    {
+      "file": "morphbpe_trmorph_32768_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk/docs/tokenizer_tests/tokenizer_metrics_full/morphbpe_trmorph_32768_metrics.json",
+      "size_bytes": 4962,
+      "sha256": "579a9a3ab8c0890313117ae1b33f49078f9b615a2741a8777bd4138bcb194844"
+    },
+    {
+      "file": "morphbpe_trmorph_65536_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk/docs/tokenizer_tests/tokenizer_metrics_full/morphbpe_trmorph_65536_metrics.json",
+      "size_bytes": 4966,
+      "sha256": "ae7f4825a83200bbe98a0b2e0c17a045a66d1d82dd06e787b91541a772bbbd66"
+    },
+    {
+      "file": "morphbpe_zemberek_131072_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk/docs/tokenizer_tests/tokenizer_metrics_full/morphbpe_zemberek_131072_metrics.json",
+      "size_bytes": 4986,
+      "sha256": "ebec29da8ee14a506e53fc45ca890989abfe74cedd1c05565da15feca50803d7"
+    },
+    {
+      "file": "morphbpe_zemberek_32768_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk/docs/tokenizer_tests/tokenizer_metrics_full/morphbpe_zemberek_32768_metrics.json",
+      "size_bytes": 4974,
+      "sha256": "4efb2d5ae48cd007e117559c54574848da82edf5651dcf7f237007ea4671b903"
+    },
+    {
+      "file": "morphbpe_zemberek_65536_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk/docs/tokenizer_tests/tokenizer_metrics_full/morphbpe_zemberek_65536_metrics.json",
+      "size_bytes": 4972,
+      "sha256": "0e073fb0b00cf79b870619a6323700549a2c4eb48f176c778c1c7d4396d730e0"
+    },
+    {
+      "file": "tokenizer_metrics_comparison.json",
+      "source_path": "/ari/users/nunal/nanochat-turk/docs/tokenizer_tests/tokenizer_metrics_full/tokenizer_metrics_comparison.json",
+      "size_bytes": 16597,
+      "sha256": "045d800a0754f8de3384eda615b2b949377cfc1c10fab3ba3122ce7bcaa47334"
+    },
+    {
+      "file": "tokenizer_metrics_comparison.md",
+      "source_path": "/ari/users/nunal/nanochat-turk/docs/tokenizer_tests/tokenizer_metrics_full/tokenizer_metrics_comparison.md",
+      "size_bytes": 6808,
+      "sha256": "28c952e6ab45f0069bb3f9b4807fa88da69d2d19c676c66c31132405e86e9a03"
+    },
+    {
+      "file": "slurm_accounting.txt",
+      "source_command": "sacct -j 496882 -S 2026-06-01 --format=JobID,JobName,State,ExitCode,Elapsed,Start,End,AllocCPUS,MaxRSS -P",
+      "size_bytes": 256,
+      "sha256": "096ed393bf8314b2195e6da60c28b5aae397b67be642d311910a22832dad6d1e"
+    },
+    {
+      "file": "slurm_log_summary.txt",
+      "source_path": "/ari/users/nunal/nanochat-turk/tok-metrics-full-496882.out",
+      "extraction": "final Slurm job statistics section",
+      "size_bytes": 436,
+      "sha256": "f0e4adf4ae3666e30fdcc373eb2aed987bb418257b593bfed1f7f4d5b3c55716"
+    }
+  ]
+}

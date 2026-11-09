@@ -1,0 +1,1030 @@
+{
+  "retrieved_at_utc": "2026-11-09T12:44:19.653616+00:00",
+  "host": "altay.uhem.itu.edu.tr",
+  "records": [
+    {
+      "run_id": "raw_bpe_d20",
+      "tokenizer": "bpe_32768",
+      "path": "/ari/users/nunal/nanochat-turk/nanochat-tr-d20-bpe32k-492421.out",
+      "sha256": "9f31300d487860a0c7bfac30d13cf0c0cf6a4e4bb10d1bca40844f01842ed502",
+      "size_bytes": 2931064,
+      "excerpts": [
+        {
+          "line": 55,
+          "text": "GPU: NVIDIA A100-SXM4-80GB | Peak FLOPS (BF16): 3.12e+14"
+        },
+        {
+          "line": 72,
+          "text": "Parameter counts:"
+        },
+        {
+          "line": 78,
+          "text": "total                   : 896,533,746"
+        },
+        {
+          "line": 79,
+          "text": "Estimated FLOPs per token: 3.240107e+09"
+        },
+        {
+          "line": 80,
+          "text": "Target parameter count convention: total (896,533,746 params)"
+        },
+        {
+          "line": 86,
+          "text": "Total number of training tokens: 17,930,649,600"
+        },
+        {
+          "line": 93,
+          "text": "Total batch size 1,048,576 => gradient accumulation steps: 32"
+        },
+        {
+          "line": 17359,
+          "text": "step 17097/17100 (99.98%) | loss: 2.545565 | lrm: 0.05 | dt: 4447.35ms | tok/sec: 235,775 | bf16_mfu: 61.21 | epoch: 1 pq: 10 rg: 1948 | total time: 1267.51m | eta: 0.2m"
+        },
+        {
+          "line": 17360,
+          "text": "step 17098/17100 (99.99%) | loss: 2.504714 | lrm: 0.05 | dt: 4447.13ms | tok/sec: 235,786 | bf16_mfu: 61.22 | epoch: 1 pq: 10 rg: 1952 | total time: 1267.58m | eta: 0.1m"
+        },
+        {
+          "line": 17361,
+          "text": "step 17099/17100 (99.99%) | loss: 2.489946 | lrm: 0.05 | dt: 4450.06ms | tok/sec: 235,632 | bf16_mfu: 61.18 | epoch: 1 pq: 10 rg: 1956 | total time: 1267.66m | eta: 0.1m"
+        },
+        {
+          "line": 17362,
+          "text": "Step 17100 | Validation bpb: 0.623213"
+        },
+        {
+          "line": 17370,
+          "text": "Peak memory usage: 18499.62MiB"
+        },
+        {
+          "line": 17371,
+          "text": "Total training time: 1267.66m"
+        },
+        {
+          "line": 17374,
+          "text": "Evaluating model: base_model (step 17100)"
+        },
+        {
+          "line": 17440,
+          "text": "train bpb: 0.749119"
+        },
+        {
+          "line": 17441,
+          "text": "val bpb: 0.623278"
+        },
+        {
+          "line": 17453,
+          "text": "Job ID: 492421"
+        },
+        {
+          "line": 17456,
+          "text": "State: COMPLETED (exit code 0)"
+        },
+        {
+          "line": 17461,
+          "text": "Job Wall-clock time: 21:31:38"
+        }
+      ],
+      "last_100_printed_steps": {
+        "count": 100,
+        "start_step": 17000,
+        "end_step": 17099,
+        "median_tokens_per_second": 235775.0,
+        "median_dt_ms": 4447.345,
+        "median_bf16_mfu_pct": 61.21
+      }
+    },
+    {
+      "run_id": "morphbpe_trmorph_d20",
+      "tokenizer": "morphbpe_trmorph_32768",
+      "path": "/ari/users/nunal/nanochat-turk/nanochat-tr-mbpe-trm32k-493660.out",
+      "sha256": "0dacc5551c13f4a479523da88fb1d136733adc02d6c7fa65abd6ae16df2bc29c",
+      "size_bytes": 2944125,
+      "excerpts": [
+        {
+          "line": 28,
+          "text": "GPU: NVIDIA A100-SXM4-80GB | Peak FLOPS (BF16): 3.12e+14"
+        },
+        {
+          "line": 47,
+          "text": "Parameter counts:"
+        },
+        {
+          "line": 53,
+          "text": "total                   : 896,533,746"
+        },
+        {
+          "line": 54,
+          "text": "Estimated FLOPs per token: 3.240107e+09"
+        },
+        {
+          "line": 55,
+          "text": "Target parameter count convention: total (896,533,746 params)"
+        },
+        {
+          "line": 60,
+          "text": "Total number of training tokens: 17,930,649,600"
+        },
+        {
+          "line": 67,
+          "text": "Total batch size 1,048,576 => gradient accumulation steps: 32"
+        },
+        {
+          "line": 17340,
+          "text": "step 17097/17100 (99.98%) | loss: 2.071019 | lrm: 0.05 | dt: 4447.12ms | tok/sec: 235,787 | bf16_mfu: 61.22 | epoch: 1 pq: 9 rg: 1552 | total time: 1265.62m | eta: 0.2m"
+        },
+        {
+          "line": 17341,
+          "text": "step 17098/17100 (99.99%) | loss: 2.036694 | lrm: 0.05 | dt: 4443.28ms | tok/sec: 235,991 | bf16_mfu: 61.27 | epoch: 1 pq: 9 rg: 1552 | total time: 1265.69m | eta: 0.1m"
+        },
+        {
+          "line": 17342,
+          "text": "step 17099/17100 (99.99%) | loss: 2.010633 | lrm: 0.05 | dt: 4442.08ms | tok/sec: 236,055 | bf16_mfu: 61.29 | epoch: 1 pq: 9 rg: 1556 | total time: 1265.77m | eta: 0.1m"
+        },
+        {
+          "line": 17343,
+          "text": "Step 17100 | Validation bpb: 0.626573"
+        },
+        {
+          "line": 17354,
+          "text": "Peak memory usage: 18499.74MiB"
+        },
+        {
+          "line": 17355,
+          "text": "Total training time: 1265.77m"
+        },
+        {
+          "line": 17358,
+          "text": "Evaluating model: base_model (step 17100)"
+        },
+        {
+          "line": 17418,
+          "text": "train bpb: 0.750972"
+        },
+        {
+          "line": 17419,
+          "text": "val bpb: 0.626622"
+        },
+        {
+          "line": 17431,
+          "text": "Job ID: 493660"
+        },
+        {
+          "line": 17434,
+          "text": "State: COMPLETED (exit code 0)"
+        },
+        {
+          "line": 17439,
+          "text": "Job Wall-clock time: 21:30:53"
+        }
+      ],
+      "last_100_printed_steps": {
+        "count": 100,
+        "start_step": 17000,
+        "end_step": 17099,
+        "median_tokens_per_second": 236079.5,
+        "median_dt_ms": 4441.610000000001,
+        "median_bf16_mfu_pct": 61.29
+      }
+    },
+    {
+      "run_id": "morphbpe_zemberek_d20",
+      "tokenizer": "morphbpe_zemberek_32768",
+      "path": "/ari/users/nunal/nanochat-turk/nanochat-tr-mbpe-zemb32k-493760.out",
+      "sha256": "cb911d312bcebc6cbb1cf92c333a7666462dc11f65c3e6426cf643d022b7ce4d",
+      "size_bytes": 2944610,
+      "excerpts": [
+        {
+          "line": 29,
+          "text": "GPU: NVIDIA A100-SXM4-80GB | Peak FLOPS (BF16): 3.12e+14"
+        },
+        {
+          "line": 48,
+          "text": "Parameter counts:"
+        },
+        {
+          "line": 54,
+          "text": "total                   : 896,533,746"
+        },
+        {
+          "line": 55,
+          "text": "Estimated FLOPs per token: 3.240107e+09"
+        },
+        {
+          "line": 56,
+          "text": "Target parameter count convention: total (896,533,746 params)"
+        },
+        {
+          "line": 61,
+          "text": "Total number of training tokens: 17,930,649,600"
+        },
+        {
+          "line": 68,
+          "text": "Total batch size 1,048,576 => gradient accumulation steps: 32"
+        },
+        {
+          "line": 17346,
+          "text": "step 17097/17100 (99.98%) | loss: 2.318191 | lrm: 0.05 | dt: 4456.33ms | tok/sec: 235,300 | bf16_mfu: 61.09 | epoch: 1 pq: 9 rg: 1816 | total time: 1270.28m | eta: 0.2m"
+        },
+        {
+          "line": 17347,
+          "text": "step 17098/17100 (99.99%) | loss: 2.293397 | lrm: 0.05 | dt: 4454.46ms | tok/sec: 235,399 | bf16_mfu: 61.12 | epoch: 1 pq: 9 rg: 1816 | total time: 1270.35m | eta: 0.1m"
+        },
+        {
+          "line": 17348,
+          "text": "step 17099/17100 (99.99%) | loss: 2.322696 | lrm: 0.05 | dt: 4454.86ms | tok/sec: 235,377 | bf16_mfu: 61.11 | epoch: 1 pq: 9 rg: 1820 | total time: 1270.43m | eta: 0.1m"
+        },
+        {
+          "line": 17349,
+          "text": "Step 17100 | Validation bpb: 0.624979"
+        },
+        {
+          "line": 17357,
+          "text": "Peak memory usage: 18499.62MiB"
+        },
+        {
+          "line": 17358,
+          "text": "Total training time: 1270.43m"
+        },
+        {
+          "line": 17361,
+          "text": "Evaluating model: base_model (step 17100)"
+        },
+        {
+          "line": 17421,
+          "text": "train bpb: 0.750180"
+        },
+        {
+          "line": 17422,
+          "text": "val bpb: 0.625030"
+        },
+        {
+          "line": 17434,
+          "text": "Job ID: 493760"
+        },
+        {
+          "line": 17437,
+          "text": "State: COMPLETED (exit code 0)"
+        },
+        {
+          "line": 17442,
+          "text": "Job Wall-clock time: 21:35:34"
+        }
+      ],
+      "last_100_printed_steps": {
+        "count": 100,
+        "start_step": 17000,
+        "end_step": 17099,
+        "median_tokens_per_second": 235298.0,
+        "median_dt_ms": 4456.365,
+        "median_bf16_mfu_pct": 61.09
+      }
+    },
+    {
+      "run_id": "raw_bpe_d16_64k",
+      "tokenizer": "bpe_65536",
+      "path": "/ari/users/nunal/nanochat-turk/tr-d16-bpe-64k-494189.out",
+      "sha256": "e8eaa6433d758d6d505427e1bd53212d4d36a23e692b5ade65a1ab81370d17a4",
+      "size_bytes": 2942376,
+      "excerpts": [
+        {
+          "line": 73,
+          "text": "GPU: NVIDIA A100-SXM4-80GB | Peak FLOPS (BF16): 3.12e+14"
+        },
+        {
+          "line": 92,
+          "text": "Parameter counts:"
+        },
+        {
+          "line": 98,
+          "text": "total                   : 872,416,058"
+        },
+        {
+          "line": 99,
+          "text": "Estimated FLOPs per token: 2.013271e+09"
+        },
+        {
+          "line": 100,
+          "text": "Target parameter count convention: total (872,416,058 params)"
+        },
+        {
+          "line": 105,
+          "text": "Total number of training tokens: 17,930,649,600"
+        },
+        {
+          "line": 112,
+          "text": "Total batch size 1,048,576 => gradient accumulation steps: 32"
+        },
+        {
+          "line": 17369,
+          "text": "step 17097/17100 (99.98%) | loss: 2.628397 | lrm: 0.05 | dt: 3185.11ms | tok/sec: 329,212 | bf16_mfu: 53.11 | epoch: 1 pq: 11 rg: 1016 | total time: 907.28m | eta: 0.2m"
+        },
+        {
+          "line": 17370,
+          "text": "step 17098/17100 (99.99%) | loss: 2.570308 | lrm: 0.05 | dt: 3183.78ms | tok/sec: 329,348 | bf16_mfu: 53.13 | epoch: 1 pq: 11 rg: 1016 | total time: 907.33m | eta: 0.1m"
+        },
+        {
+          "line": 17371,
+          "text": "step 17099/17100 (99.99%) | loss: 2.581207 | lrm: 0.05 | dt: 3183.38ms | tok/sec: 329,390 | bf16_mfu: 53.14 | epoch: 1 pq: 11 rg: 1020 | total time: 907.39m | eta: 0.1m"
+        },
+        {
+          "line": 17372,
+          "text": "Step 17100 | Validation bpb: 0.640876"
+        },
+        {
+          "line": 17380,
+          "text": "Peak memory usage: 14645.31MiB"
+        },
+        {
+          "line": 17381,
+          "text": "Total training time: 907.39m"
+        },
+        {
+          "line": 17384,
+          "text": "Evaluating model: base_model (step 17100)"
+        },
+        {
+          "line": 17444,
+          "text": "train bpb: 0.779835"
+        },
+        {
+          "line": 17445,
+          "text": "val bpb: 0.640925"
+        },
+        {
+          "line": 17457,
+          "text": "Job ID: 494189"
+        },
+        {
+          "line": 17460,
+          "text": "State: COMPLETED (exit code 0)"
+        },
+        {
+          "line": 17465,
+          "text": "Job Wall-clock time: 15:30:31"
+        }
+      ],
+      "last_100_printed_steps": {
+        "count": 100,
+        "start_step": 17000,
+        "end_step": 17099,
+        "median_tokens_per_second": 329363.5,
+        "median_dt_ms": 3183.6400000000003,
+        "median_bf16_mfu_pct": 53.13
+      }
+    },
+    {
+      "run_id": "morphbpe_trmorph_d16_64k",
+      "tokenizer": "morphbpe_trmorph_65536",
+      "path": "/ari/users/nunal/nanochat-turk/tr-d16-mbpe-trmorph-64k-494190.out",
+      "sha256": "9396dc48722d80b4a4c3f075577a247b8196d3a6405155d35862f7c1709db962",
+      "size_bytes": 2939952,
+      "excerpts": [
+        {
+          "line": 73,
+          "text": "GPU: NVIDIA A100-SXM4-80GB | Peak FLOPS (BF16): 3.12e+14"
+        },
+        {
+          "line": 92,
+          "text": "Parameter counts:"
+        },
+        {
+          "line": 98,
+          "text": "total                   : 872,416,058"
+        },
+        {
+          "line": 99,
+          "text": "Estimated FLOPs per token: 2.013271e+09"
+        },
+        {
+          "line": 100,
+          "text": "Target parameter count convention: total (872,416,058 params)"
+        },
+        {
+          "line": 105,
+          "text": "Total number of training tokens: 17,930,649,600"
+        },
+        {
+          "line": 112,
+          "text": "Total batch size 1,048,576 => gradient accumulation steps: 32"
+        },
+        {
+          "line": 17392,
+          "text": "step 17097/17100 (99.98%) | loss: 2.256381 | lrm: 0.05 | dt: 3177.29ms | tok/sec: 330,022 | bf16_mfu: 53.24 | epoch: 1 pq: 9 rg: 3052 | total time: 905.87m | eta: 0.2m"
+        },
+        {
+          "line": 17393,
+          "text": "step 17098/17100 (99.99%) | loss: 2.267852 | lrm: 0.05 | dt: 3179.41ms | tok/sec: 329,801 | bf16_mfu: 53.20 | epoch: 1 pq: 9 rg: 3052 | total time: 905.92m | eta: 0.1m"
+        },
+        {
+          "line": 17394,
+          "text": "step 17099/17100 (99.99%) | loss: 2.275432 | lrm: 0.05 | dt: 3179.65ms | tok/sec: 329,776 | bf16_mfu: 53.20 | epoch: 1 pq: 9 rg: 3056 | total time: 905.97m | eta: 0.1m"
+        },
+        {
+          "line": 17395,
+          "text": "Step 17100 | Validation bpb: 0.652118"
+        },
+        {
+          "line": 17404,
+          "text": "Peak memory usage: 14645.31MiB"
+        },
+        {
+          "line": 17405,
+          "text": "Total training time: 905.97m"
+        },
+        {
+          "line": 17408,
+          "text": "Evaluating model: base_model (step 17100)"
+        },
+        {
+          "line": 17475,
+          "text": "train bpb: 0.778736"
+        },
+        {
+          "line": 17476,
+          "text": "val bpb: 0.652161"
+        },
+        {
+          "line": 17488,
+          "text": "Job ID: 494190"
+        },
+        {
+          "line": 17491,
+          "text": "State: COMPLETED (exit code 0)"
+        },
+        {
+          "line": 17496,
+          "text": "Job Wall-clock time: 15:28:04"
+        }
+      ],
+      "last_100_printed_steps": {
+        "count": 100,
+        "start_step": 17000,
+        "end_step": 17099,
+        "median_tokens_per_second": 329908.5,
+        "median_dt_ms": 3178.38,
+        "median_bf16_mfu_pct": 53.22
+      }
+    },
+    {
+      "run_id": "morphbpe_zemberek_d16_64k",
+      "tokenizer": "morphbpe_zemberek_65536",
+      "path": "/ari/users/nunal/nanochat-turk/tr-d16-mbpe-zemberek-64k-494191.out",
+      "sha256": "d5eb73b4b2ca81766602f071d15a58eec9c7c0ca14af2df74f858cb458310f7c",
+      "size_bytes": 2939723,
+      "excerpts": [
+        {
+          "line": 73,
+          "text": "GPU: NVIDIA A100-SXM4-80GB | Peak FLOPS (BF16): 3.12e+14"
+        },
+        {
+          "line": 92,
+          "text": "Parameter counts:"
+        },
+        {
+          "line": 98,
+          "text": "total                   : 872,416,058"
+        },
+        {
+          "line": 99,
+          "text": "Estimated FLOPs per token: 2.013271e+09"
+        },
+        {
+          "line": 100,
+          "text": "Target parameter count convention: total (872,416,058 params)"
+        },
+        {
+          "line": 105,
+          "text": "Total number of training tokens: 17,930,649,600"
+        },
+        {
+          "line": 112,
+          "text": "Total batch size 1,048,576 => gradient accumulation steps: 32"
+        },
+        {
+          "line": 17361,
+          "text": "step 17097/17100 (99.98%) | loss: 2.367517 | lrm: 0.05 | dt: 3177.24ms | tok/sec: 330,027 | bf16_mfu: 53.24 | epoch: 1 pq: 9 rg: 3204 | total time: 905.71m | eta: 0.2m"
+        },
+        {
+          "line": 17362,
+          "text": "step 17098/17100 (99.99%) | loss: 2.300718 | lrm: 0.05 | dt: 3178.75ms | tok/sec: 329,870 | bf16_mfu: 53.21 | epoch: 1 pq: 9 rg: 3208 | total time: 905.77m | eta: 0.1m"
+        },
+        {
+          "line": 17363,
+          "text": "step 17099/17100 (99.99%) | loss: 2.301323 | lrm: 0.05 | dt: 3178.18ms | tok/sec: 329,930 | bf16_mfu: 53.22 | epoch: 1 pq: 9 rg: 3208 | total time: 905.82m | eta: 0.1m"
+        },
+        {
+          "line": 17364,
+          "text": "Step 17100 | Validation bpb: 0.651403"
+        },
+        {
+          "line": 17374,
+          "text": "Peak memory usage: 14645.31MiB"
+        },
+        {
+          "line": 17375,
+          "text": "Total training time: 905.82m"
+        },
+        {
+          "line": 17378,
+          "text": "Evaluating model: base_model (step 17100)"
+        },
+        {
+          "line": 17432,
+          "text": "train bpb: 0.778257"
+        },
+        {
+          "line": 17433,
+          "text": "val bpb: 0.651429"
+        },
+        {
+          "line": 17445,
+          "text": "Job ID: 494191"
+        },
+        {
+          "line": 17448,
+          "text": "State: COMPLETED (exit code 0)"
+        },
+        {
+          "line": 17453,
+          "text": "Job Wall-clock time: 15:27:54"
+        }
+      ],
+      "last_100_printed_steps": {
+        "count": 100,
+        "start_step": 17000,
+        "end_step": 17099,
+        "median_tokens_per_second": 329899.0,
+        "median_dt_ms": 3178.47,
+        "median_bf16_mfu_pct": 53.22
+      }
+    },
+    {
+      "run_id": "morphbpe_tdelight_d16_64k",
+      "tokenizer": "morphbpe_tdelight_65536",
+      "path": "/ari/users/nunal/nanochat-turk/tr-d16-mbpe-tdelight-64k-494192.out",
+      "sha256": "02e7fd630f073fd821dd0b6c278b8ab1df88609250555563c47fb8f1999cab6f",
+      "size_bytes": 2940651,
+      "excerpts": [
+        {
+          "line": 73,
+          "text": "GPU: NVIDIA A100-SXM4-80GB | Peak FLOPS (BF16): 3.12e+14"
+        },
+        {
+          "line": 92,
+          "text": "Parameter counts:"
+        },
+        {
+          "line": 98,
+          "text": "total                   : 872,416,058"
+        },
+        {
+          "line": 99,
+          "text": "Estimated FLOPs per token: 2.013271e+09"
+        },
+        {
+          "line": 100,
+          "text": "Target parameter count convention: total (872,416,058 params)"
+        },
+        {
+          "line": 105,
+          "text": "Total number of training tokens: 17,930,649,600"
+        },
+        {
+          "line": 112,
+          "text": "Total batch size 1,048,576 => gradient accumulation steps: 32"
+        },
+        {
+          "line": 17376,
+          "text": "step 17097/17100 (99.98%) | loss: 2.482905 | lrm: 0.05 | dt: 3166.95ms | tok/sec: 331,099 | bf16_mfu: 53.41 | epoch: 1 pq: 10 rg: 1564 | total time: 903.40m | eta: 0.2m"
+        },
+        {
+          "line": 17377,
+          "text": "step 17098/17100 (99.99%) | loss: 2.498056 | lrm: 0.05 | dt: 3166.25ms | tok/sec: 331,173 | bf16_mfu: 53.42 | epoch: 1 pq: 10 rg: 1568 | total time: 903.45m | eta: 0.1m"
+        },
+        {
+          "line": 17378,
+          "text": "step 17099/17100 (99.99%) | loss: 2.486881 | lrm: 0.05 | dt: 3167.04ms | tok/sec: 331,090 | bf16_mfu: 53.41 | epoch: 1 pq: 10 rg: 1568 | total time: 903.50m | eta: 0.1m"
+        },
+        {
+          "line": 17379,
+          "text": "Step 17100 | Validation bpb: 0.651020"
+        },
+        {
+          "line": 17388,
+          "text": "Peak memory usage: 14645.31MiB"
+        },
+        {
+          "line": 17389,
+          "text": "Total training time: 903.50m"
+        },
+        {
+          "line": 17392,
+          "text": "Evaluating model: base_model (step 17100)"
+        },
+        {
+          "line": 17456,
+          "text": "train bpb: 0.776459"
+        },
+        {
+          "line": 17457,
+          "text": "val bpb: 0.651062"
+        },
+        {
+          "line": 17469,
+          "text": "Job ID: 494192"
+        },
+        {
+          "line": 17472,
+          "text": "State: COMPLETED (exit code 0)"
+        },
+        {
+          "line": 17477,
+          "text": "Job Wall-clock time: 15:25:56"
+        }
+      ],
+      "last_100_printed_steps": {
+        "count": 100,
+        "start_step": 17000,
+        "end_step": 17099,
+        "median_tokens_per_second": 331144.5,
+        "median_dt_ms": 3166.5150000000003,
+        "median_bf16_mfu_pct": 53.42
+      }
+    },
+    {
+      "run_id": "raw_bpe_d12_128k",
+      "tokenizer": "bpe_131072",
+      "path": "/ari/users/nunal/nanochat-turk/tr-d12-bpe-128k-494193.out",
+      "sha256": "af037f769dca1efbd73dfe090aa52fabb7a8901fc4b23c7de1f4d535fa608884",
+      "size_bytes": 2942818,
+      "excerpts": [
+        {
+          "line": 73,
+          "text": "GPU: NVIDIA A100-SXM4-80GB | Peak FLOPS (BF16): 3.12e+14"
+        },
+        {
+          "line": 92,
+          "text": "Parameter counts:"
+        },
+        {
+          "line": 98,
+          "text": "total                   : 890,241,506"
+        },
+        {
+          "line": 99,
+          "text": "Estimated FLOPs per token: 1.340083e+09"
+        },
+        {
+          "line": 100,
+          "text": "Target parameter count convention: total (890,241,506 params)"
+        },
+        {
+          "line": 105,
+          "text": "Total number of training tokens: 17,930,649,600"
+        },
+        {
+          "line": 112,
+          "text": "Total batch size 1,048,576 => gradient accumulation steps: 32"
+        },
+        {
+          "line": 17406,
+          "text": "step 17097/17100 (99.98%) | loss: 3.075826 | lrm: 0.05 | dt: 2309.66ms | tok/sec: 453,996 | bf16_mfu: 48.75 | epoch: 1 pq: 11 rg: 3048 | total time: 663.61m | eta: 0.1m"
+        },
+        {
+          "line": 17407,
+          "text": "step 17098/17100 (99.99%) | loss: 3.071442 | lrm: 0.05 | dt: 2311.65ms | tok/sec: 453,604 | bf16_mfu: 48.71 | epoch: 1 pq: 11 rg: 3048 | total time: 663.64m | eta: 0.1m"
+        },
+        {
+          "line": 17408,
+          "text": "step 17099/17100 (99.99%) | loss: 3.097609 | lrm: 0.05 | dt: 2328.70ms | tok/sec: 450,283 | bf16_mfu: 48.35 | epoch: 1 pq: 11 rg: 3052 | total time: 663.68m | eta: 0.0m"
+        },
+        {
+          "line": 17409,
+          "text": "Step 17100 | Validation bpb: 0.674874"
+        },
+        {
+          "line": 17420,
+          "text": "Peak memory usage: 13066.91MiB"
+        },
+        {
+          "line": 17421,
+          "text": "Total training time: 663.68m"
+        },
+        {
+          "line": 17424,
+          "text": "Evaluating model: base_model (step 17100)"
+        },
+        {
+          "line": 17497,
+          "text": "train bpb: 0.817503"
+        },
+        {
+          "line": 17498,
+          "text": "val bpb: 0.674923"
+        },
+        {
+          "line": 17510,
+          "text": "Job ID: 494193"
+        },
+        {
+          "line": 17513,
+          "text": "State: COMPLETED (exit code 0)"
+        },
+        {
+          "line": 17518,
+          "text": "Job Wall-clock time: 11:26:01"
+        }
+      ],
+      "last_100_printed_steps": {
+        "count": 100,
+        "start_step": 17000,
+        "end_step": 17099,
+        "median_tokens_per_second": 451859.5,
+        "median_dt_ms": 2320.575,
+        "median_bf16_mfu_pct": 48.52
+      }
+    },
+    {
+      "run_id": "morphbpe_trmorph_d12_128k",
+      "tokenizer": "morphbpe_trmorph_131072",
+      "path": "/ari/users/nunal/nanochat-turk/tr-d12-mbpe-trmorph-128k-494194.out",
+      "sha256": "7b0a24e2c01da07401af77fc5d1257722f8f3e84f6a720c373b3d43f297706b5",
+      "size_bytes": 2939285,
+      "excerpts": [
+        {
+          "line": 73,
+          "text": "GPU: NVIDIA A100-SXM4-80GB | Peak FLOPS (BF16): 3.12e+14"
+        },
+        {
+          "line": 92,
+          "text": "Parameter counts:"
+        },
+        {
+          "line": 98,
+          "text": "total                   : 890,241,506"
+        },
+        {
+          "line": 99,
+          "text": "Estimated FLOPs per token: 1.340083e+09"
+        },
+        {
+          "line": 100,
+          "text": "Target parameter count convention: total (890,241,506 params)"
+        },
+        {
+          "line": 105,
+          "text": "Total number of training tokens: 17,930,649,600"
+        },
+        {
+          "line": 112,
+          "text": "Total batch size 1,048,576 => gradient accumulation steps: 32"
+        },
+        {
+          "line": 17392,
+          "text": "step 17097/17100 (99.98%) | loss: 2.551351 | lrm: 0.05 | dt: 2307.28ms | tok/sec: 454,463 | bf16_mfu: 48.80 | epoch: 1 pq: 10 rg: 864 | total time: 658.23m | eta: 0.1m"
+        },
+        {
+          "line": 17393,
+          "text": "step 17098/17100 (99.99%) | loss: 2.565745 | lrm: 0.05 | dt: 2307.52ms | tok/sec: 454,416 | bf16_mfu: 48.79 | epoch: 1 pq: 10 rg: 868 | total time: 658.27m | eta: 0.1m"
+        },
+        {
+          "line": 17394,
+          "text": "step 17099/17100 (99.99%) | loss: 2.594728 | lrm: 0.05 | dt: 2306.58ms | tok/sec: 454,602 | bf16_mfu: 48.81 | epoch: 1 pq: 10 rg: 868 | total time: 658.31m | eta: 0.0m"
+        },
+        {
+          "line": 17395,
+          "text": "Step 17100 | Validation bpb: 0.691714"
+        },
+        {
+          "line": 17407,
+          "text": "Peak memory usage: 13065.79MiB"
+        },
+        {
+          "line": 17408,
+          "text": "Total training time: 658.31m"
+        },
+        {
+          "line": 17411,
+          "text": "Evaluating model: base_model (step 17100)"
+        },
+        {
+          "line": 17482,
+          "text": "train bpb: 0.820881"
+        },
+        {
+          "line": 17483,
+          "text": "val bpb: 0.691756"
+        },
+        {
+          "line": 17495,
+          "text": "Job ID: 494194"
+        },
+        {
+          "line": 17498,
+          "text": "State: COMPLETED (exit code 0)"
+        },
+        {
+          "line": 17503,
+          "text": "Job Wall-clock time: 11:19:34"
+        }
+      ],
+      "last_100_printed_steps": {
+        "count": 100,
+        "start_step": 17000,
+        "end_step": 17099,
+        "median_tokens_per_second": 454632.5,
+        "median_dt_ms": 2306.42,
+        "median_bf16_mfu_pct": 48.82
+      }
+    },
+    {
+      "run_id": "morphbpe_zemberek_d12_128k",
+      "tokenizer": "morphbpe_zemberek_131072",
+      "path": "/ari/users/nunal/nanochat-turk/tr-d12-mbpe-zemberek-128k-494195.out",
+      "sha256": "6c1cdcaa0dbb228f99d7a25b6b2bef91f9b3afd80e7b7c46f4d502351d10cf6c",
+      "size_bytes": 2938744,
+      "excerpts": [
+        {
+          "line": 73,
+          "text": "GPU: NVIDIA A100-SXM4-80GB | Peak FLOPS (BF16): 3.12e+14"
+        },
+        {
+          "line": 92,
+          "text": "Parameter counts:"
+        },
+        {
+          "line": 98,
+          "text": "total                   : 890,241,506"
+        },
+        {
+          "line": 99,
+          "text": "Estimated FLOPs per token: 1.340083e+09"
+        },
+        {
+          "line": 100,
+          "text": "Target parameter count convention: total (890,241,506 params)"
+        },
+        {
+          "line": 105,
+          "text": "Total number of training tokens: 17,930,649,600"
+        },
+        {
+          "line": 112,
+          "text": "Total batch size 1,048,576 => gradient accumulation steps: 32"
+        },
+        {
+          "line": 17403,
+          "text": "step 17097/17100 (99.98%) | loss: 2.576111 | lrm: 0.05 | dt: 2304.02ms | tok/sec: 455,106 | bf16_mfu: 48.87 | epoch: 1 pq: 10 rg: 960 | total time: 658.15m | eta: 0.1m"
+        },
+        {
+          "line": 17404,
+          "text": "step 17098/17100 (99.99%) | loss: 2.613507 | lrm: 0.05 | dt: 2303.68ms | tok/sec: 455,173 | bf16_mfu: 48.88 | epoch: 1 pq: 10 rg: 960 | total time: 658.19m | eta: 0.1m"
+        },
+        {
+          "line": 17405,
+          "text": "step 17099/17100 (99.99%) | loss: 2.600005 | lrm: 0.05 | dt: 2304.72ms | tok/sec: 454,968 | bf16_mfu: 48.85 | epoch: 1 pq: 10 rg: 964 | total time: 658.23m | eta: 0.0m"
+        },
+        {
+          "line": 17406,
+          "text": "Step 17100 | Validation bpb: 0.694037"
+        },
+        {
+          "line": 17415,
+          "text": "Peak memory usage: 13068.04MiB"
+        },
+        {
+          "line": 17416,
+          "text": "Total training time: 658.23m"
+        },
+        {
+          "line": 17419,
+          "text": "Evaluating model: base_model (step 17100)"
+        },
+        {
+          "line": 17491,
+          "text": "train bpb: 0.820229"
+        },
+        {
+          "line": 17492,
+          "text": "val bpb: 0.694084"
+        },
+        {
+          "line": 17504,
+          "text": "Job ID: 494195"
+        },
+        {
+          "line": 17507,
+          "text": "State: COMPLETED (exit code 0)"
+        },
+        {
+          "line": 17512,
+          "text": "Job Wall-clock time: 11:19:37"
+        }
+      ],
+      "last_100_printed_steps": {
+        "count": 100,
+        "start_step": 17000,
+        "end_step": 17099,
+        "median_tokens_per_second": 455047.0,
+        "median_dt_ms": 2304.32,
+        "median_bf16_mfu_pct": 48.86
+      }
+    },
+    {
+      "run_id": "morphbpe_tdelight_d12_128k",
+      "tokenizer": "morphbpe_tdelight_131072",
+      "path": "/ari/users/nunal/nanochat-turk/tr-d12-mbpe-tdelight-128k-494196.out",
+      "sha256": "41d7b5f65b705877e6188cc7c342d3f408a72cbf0d4ec4898cacc85c39405719",
+      "size_bytes": 2941082,
+      "excerpts": [
+        {
+          "line": 73,
+          "text": "GPU: NVIDIA A100-SXM4-80GB | Peak FLOPS (BF16): 3.12e+14"
+        },
+        {
+          "line": 92,
+          "text": "Parameter counts:"
+        },
+        {
+          "line": 98,
+          "text": "total                   : 890,241,506"
+        },
+        {
+          "line": 99,
+          "text": "Estimated FLOPs per token: 1.340083e+09"
+        },
+        {
+          "line": 100,
+          "text": "Target parameter count convention: total (890,241,506 params)"
+        },
+        {
+          "line": 105,
+          "text": "Total number of training tokens: 17,930,649,600"
+        },
+        {
+          "line": 112,
+          "text": "Total batch size 1,048,576 => gradient accumulation steps: 32"
+        },
+        {
+          "line": 17385,
+          "text": "step 17097/17100 (99.98%) | loss: 2.714944 | lrm: 0.05 | dt: 2311.79ms | tok/sec: 453,577 | bf16_mfu: 48.70 | epoch: 1 pq: 10 rg: 3424 | total time: 659.81m | eta: 0.1m"
+        },
+        {
+          "line": 17386,
+          "text": "step 17098/17100 (99.99%) | loss: 2.727414 | lrm: 0.05 | dt: 2311.01ms | tok/sec: 453,731 | bf16_mfu: 48.72 | epoch: 1 pq: 10 rg: 3428 | total time: 659.84m | eta: 0.1m"
+        },
+        {
+          "line": 17387,
+          "text": "step 17099/17100 (99.99%) | loss: 2.647748 | lrm: 0.05 | dt: 2312.34ms | tok/sec: 453,468 | bf16_mfu: 48.69 | epoch: 1 pq: 10 rg: 3428 | total time: 659.88m | eta: 0.0m"
+        },
+        {
+          "line": 17388,
+          "text": "Step 17100 | Validation bpb: 0.682018"
+        },
+        {
+          "line": 17399,
+          "text": "Peak memory usage: 13066.91MiB"
+        },
+        {
+          "line": 17400,
+          "text": "Total training time: 659.88m"
+        },
+        {
+          "line": 17403,
+          "text": "Evaluating model: base_model (step 17100)"
+        },
+        {
+          "line": 17463,
+          "text": "train bpb: 0.818073"
+        },
+        {
+          "line": 17464,
+          "text": "val bpb: 0.682060"
+        },
+        {
+          "line": 17476,
+          "text": "Job ID: 494196"
+        },
+        {
+          "line": 17479,
+          "text": "State: COMPLETED (exit code 0)"
+        },
+        {
+          "line": 17484,
+          "text": "Job Wall-clock time: 11:21:12"
+        }
+      ],
+      "last_100_printed_steps": {
+        "count": 100,
+        "start_step": 17000,
+        "end_step": 17099,
+        "median_tokens_per_second": 453685.0,
+        "median_dt_ms": 2311.24,
+        "median_bf16_mfu_pct": 48.72
+      }
+    }
+  ],
+  "extraction_note": "Source log SHA-256, exact selected lines, and last 100 printed training-step statistics; steps count measures printed records and excludes no warmup from last-100 slice."
+}

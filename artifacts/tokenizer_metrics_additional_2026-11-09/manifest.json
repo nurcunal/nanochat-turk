@@ -1,0 +1,194 @@
+{
+  "kind": "recovered_additional_tokenizer_metrics",
+  "host": "altay.uhem.itu.edu.tr",
+  "retrieved_at_utc": "2026-11-09T12:46:20.263234+00:00",
+  "groups": {
+    "sample_100k": {
+      "job_id": 496924,
+      "job_state": "COMPLETED",
+      "exit_code": "0:0",
+      "elapsed": "00:06:46"
+    },
+    "sample_1m": {
+      "job_id": 496925,
+      "job_state": "COMPLETED",
+      "exit_code": "0:0",
+      "elapsed": "00:24:03"
+    },
+    "d32_preflight": {
+      "scope": "raw BPE32k train/validation baseline diagnostics; no morphology reference"
+    }
+  },
+  "files": [
+    {
+      "file": "d32_preflight/bpe_32768_train_raw_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/preflight/bpe_32768_train_raw_metrics.json",
+      "size_bytes": 2806,
+      "sha256": "cb3bbe17b41792f6aac8822d56dbb63b66fe2bc71b7b27cbed5104285f3f9c4d"
+    },
+    {
+      "file": "d32_preflight/bpe_32768_val_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/preflight/bpe_32768_val_metrics.json",
+      "size_bytes": 2799,
+      "sha256": "31cd4ccc8d5ec45b4150b00fc600b059fe62fb1d8b79fcbfb7ac84ff1aa32e76"
+    },
+    {
+      "file": "sample_100k/bpe_131072_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_100k_all/bpe_131072_metrics.json",
+      "size_bytes": 4612,
+      "sha256": "b9b6d9e6448a2a65c462d86987418e51a7d9160aa2ddac6f60ef7a5e26f1d70f"
+    },
+    {
+      "file": "sample_100k/bpe_32768_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_100k_all/bpe_32768_metrics.json",
+      "size_bytes": 4136,
+      "sha256": "9ea86116613f906bc2fa43c31de45dc5f0c5cba053bea8c65d0dcec0d8114840"
+    },
+    {
+      "file": "sample_100k/bpe_65536_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_100k_all/bpe_65536_metrics.json",
+      "size_bytes": 4612,
+      "sha256": "2aa4744be31d1798e45a092de79303dcf3997511ede851d578cd1abe00aae1ab"
+    },
+    {
+      "file": "sample_100k/morphbpe_tdelight_131072_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_100k_all/morphbpe_tdelight_131072_metrics.json",
+      "size_bytes": 4939,
+      "sha256": "3616c4397c3288cedeb4356a1676df1dc42b6da6145bb8e4b86290a2bf041f1b"
+    },
+    {
+      "file": "sample_100k/morphbpe_tdelight_32768_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_100k_all/morphbpe_tdelight_32768_metrics.json",
+      "size_bytes": 4941,
+      "sha256": "6c9b346fdb70af43769e93a8f5363672b78804716c75c6f7a91e92715c122378"
+    },
+    {
+      "file": "sample_100k/morphbpe_tdelight_65536_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_100k_all/morphbpe_tdelight_65536_metrics.json",
+      "size_bytes": 4936,
+      "sha256": "1b902f85dd956eea2c37d77f780c70654c0b8931f75c430cda9f481acca0d350"
+    },
+    {
+      "file": "sample_100k/morphbpe_trmorph_131072_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_100k_all/morphbpe_trmorph_131072_metrics.json",
+      "size_bytes": 4953,
+      "sha256": "5bce2be009e23bb57f2918609c386717fdcd49a3d3bbf45b7b45494faaf633c9"
+    },
+    {
+      "file": "sample_100k/morphbpe_trmorph_32768_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_100k_all/morphbpe_trmorph_32768_metrics.json",
+      "size_bytes": 4931,
+      "sha256": "3cdcfce5ed359d06bd1513150e7046f814d1de8dd25cca4956ee8ef9fe5ea3d7"
+    },
+    {
+      "file": "sample_100k/morphbpe_trmorph_65536_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_100k_all/morphbpe_trmorph_65536_metrics.json",
+      "size_bytes": 4949,
+      "sha256": "de5a9c5e6cb3344546001c2618b580df36dab7e6f993ecd4e0a1c835ad580c30"
+    },
+    {
+      "file": "sample_100k/morphbpe_zemberek_131072_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_100k_all/morphbpe_zemberek_131072_metrics.json",
+      "size_bytes": 4960,
+      "sha256": "097fea0975f427e4cdc49f5db75016bb24cc4b839e2230d41dd5f484752dadfc"
+    },
+    {
+      "file": "sample_100k/morphbpe_zemberek_32768_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_100k_all/morphbpe_zemberek_32768_metrics.json",
+      "size_bytes": 4940,
+      "sha256": "8169582309f38b81527320a1aa398400a1a4dfffd4fd23361376c7e0fb013653"
+    },
+    {
+      "file": "sample_100k/morphbpe_zemberek_65536_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_100k_all/morphbpe_zemberek_65536_metrics.json",
+      "size_bytes": 4943,
+      "sha256": "0eb9d014dbcad14b16bef0887d008b9297e594a61412c030a7f04262063a381b"
+    },
+    {
+      "file": "sample_100k/tokenizer_metrics_comparison.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_100k_all/tokenizer_metrics_comparison.json",
+      "size_bytes": 16653,
+      "sha256": "d471457123d87b99910214ef2f9db90971ff2982db5d1f551975e07a7e5a3cf8"
+    },
+    {
+      "file": "sample_1m/bpe_131072_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_1m_all/bpe_131072_metrics.json",
+      "size_bytes": 4625,
+      "sha256": "6e936129ecfab8e948ba21b2af48e301fc9278de34419631d18ca42cffa9c320"
+    },
+    {
+      "file": "sample_1m/bpe_32768_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_1m_all/bpe_32768_metrics.json",
+      "size_bytes": 4124,
+      "sha256": "ed09c8b4941ac65c7e0daef25f35c629c61f4e34add8a270890297a9d8993c49"
+    },
+    {
+      "file": "sample_1m/bpe_65536_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_1m_all/bpe_65536_metrics.json",
+      "size_bytes": 4611,
+      "sha256": "2a1eeab74b66d8f6f0b9898edf78fd5734976b84021e59182e5fba3d84fcff67"
+    },
+    {
+      "file": "sample_1m/morphbpe_tdelight_131072_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_1m_all/morphbpe_tdelight_131072_metrics.json",
+      "size_bytes": 4951,
+      "sha256": "23b189d9f9daf22b8258b5917f188dd5939eab574cf53fac7435a3a89906ff02"
+    },
+    {
+      "file": "sample_1m/morphbpe_tdelight_32768_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_1m_all/morphbpe_tdelight_32768_metrics.json",
+      "size_bytes": 4943,
+      "sha256": "f5f2cec9c3901f79ce52ca367d3e55cbe7a49c0beb00abb3dc09c8c559265c50"
+    },
+    {
+      "file": "sample_1m/morphbpe_tdelight_65536_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_1m_all/morphbpe_tdelight_65536_metrics.json",
+      "size_bytes": 4938,
+      "sha256": "5dbbd712ba8e48176d7880dc69f1cba3d2c693e110fa3b84450fbdc148f98258"
+    },
+    {
+      "file": "sample_1m/morphbpe_trmorph_131072_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_1m_all/morphbpe_trmorph_131072_metrics.json",
+      "size_bytes": 4945,
+      "sha256": "777394857eae3d9875ff7314807c437dce3265246457586148ba7fc503fb0e0d"
+    },
+    {
+      "file": "sample_1m/morphbpe_trmorph_32768_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_1m_all/morphbpe_trmorph_32768_metrics.json",
+      "size_bytes": 4939,
+      "sha256": "d95e521dc121dbeaa80ec445c20f7dcf7aef0a6f52f5040420ec45d45c3f6df4"
+    },
+    {
+      "file": "sample_1m/morphbpe_trmorph_65536_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_1m_all/morphbpe_trmorph_65536_metrics.json",
+      "size_bytes": 4929,
+      "sha256": "4b0b591c01ac3f521d70f5eb9b32e6057cea687998a75f9dd103977963f6510d"
+    },
+    {
+      "file": "sample_1m/morphbpe_zemberek_131072_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_1m_all/morphbpe_zemberek_131072_metrics.json",
+      "size_bytes": 4960,
+      "sha256": "414e41159cb331bd2a391b8d015fc62a82e52196bb265238b1239fc74c2bb83c"
+    },
+    {
+      "file": "sample_1m/morphbpe_zemberek_32768_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_1m_all/morphbpe_zemberek_32768_metrics.json",
+      "size_bytes": 4940,
+      "sha256": "5968a165026b340d8acdb503218a587a62a1a89474799ba6475f5ca9f1f638d7"
+    },
+    {
+      "file": "sample_1m/morphbpe_zemberek_65536_metrics.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_1m_all/morphbpe_zemberek_65536_metrics.json",
+      "size_bytes": 4944,
+      "sha256": "6adcdf8f827e8dacb6b13135a214424074fcf195d203f18dcdbd040b683b12ae"
+    },
+    {
+      "file": "sample_1m/tokenizer_metrics_comparison.json",
+      "source_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_1m_all/tokenizer_metrics_comparison.json",
+      "size_bytes": 16657,
+      "sha256": "ccbd99db9571e6f3177ac58f9c2cf0845edc9121f550086a200e804ef5dbbde4"
+    }
+  ],
+  "scheduler_file": "slurm_accounting.txt",
+  "scheduler_sha256": "9cd705bf9ab9ea573febb2dbcad8871e315d0391a78796e5c4c1cda3e7e39877"
+}

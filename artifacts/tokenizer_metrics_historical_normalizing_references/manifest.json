@@ -1,0 +1,32 @@
+{
+  "kind": "historical_normalizing_tokenizer_diagnostics",
+  "recovered_date": "2026-11-09",
+  "source_revision": "2ff53058540b5d2d00a9e832e7f02a19582faed4",
+  "removed_in_revision": "2e6a714a18e0ed9b53f4c82c6d09696da2122307",
+  "files": [
+    {
+      "file": "berturk_cased_metrics.json",
+      "git_revision": "2ff53058540b5d2d00a9e832e7f02a19582faed4",
+      "original_path": "docs/tokenizer_tests/tokenizer_metrics/berturk_cased_metrics.json",
+      "source_url": "https://github.com/nurcunal/nanochat-turk/blob/2ff53058540b5d2d00a9e832e7f02a19582faed4/docs/tokenizer_tests/tokenizer_metrics/berturk_cased_metrics.json",
+      "size_bytes": 2530,
+      "sha256": "a9d73c20da7157b6d1915956765c8aaa289fd425fbf8719481e3b81480df38b2"
+    },
+    {
+      "file": "turna_metrics.json",
+      "git_revision": "2ff53058540b5d2d00a9e832e7f02a19582faed4",
+      "original_path": "docs/tokenizer_tests/tokenizer_metrics/turna_metrics.json",
+      "source_url": "https://github.com/nurcunal/nanochat-turk/blob/2ff53058540b5d2d00a9e832e7f02a19582faed4/docs/tokenizer_tests/tokenizer_metrics/turna_metrics.json",
+      "size_bytes": 2520,
+      "sha256": "d1b7c7417036906a5f22eb0ec655b791ebe0100d2d3bf44f6dba6f506cca0f9b"
+    },
+    {
+      "file": "vbart_large_base_metrics.json",
+      "git_revision": "2ff53058540b5d2d00a9e832e7f02a19582faed4",
+      "original_path": "docs/tokenizer_tests/tokenizer_metrics/vbart_large_base_metrics.json",
+      "source_url": "https://github.com/nurcunal/nanochat-turk/blob/2ff53058540b5d2d00a9e832e7f02a19582faed4/docs/tokenizer_tests/tokenizer_metrics/vbart_large_base_metrics.json",
+      "size_bytes": 2543,
+      "sha256": "df7578dacca1e548bf3769bec7571931d2f2109029e2836f430f87dae07e3b1d"
+    }
+  ]
+}

@@ -3,7 +3,28 @@
 This folder contains compact, curated artifacts that make the project easier to
 audit from GitHub. It is not intended to mirror every generated file from UHeM.
 
+See the [study result tables](../docs/study_results/README.md) for the complete
+measurement inventory and downloadable CSV/JSON reports.
+
 ## Current Artifacts
+
+- [tokenizer_metrics_historical_normalizing_references](tokenizer_metrics_historical_normalizing_references/):
+  BERTurk, TURNA and VBART diagnostics recovered from immutable Git history,
+  with normalization/roundtrip failures separated from lossless tokenizer comparisons.
+
+- [uhem_sft_screens_2026-11-09](uhem_sft_screens_2026-11-09/):
+  compact SFT checkpoint/selection receipts for d32/raw-BPE32k configuration screens.
+
+- [tokenizer_metrics_additional_2026-11-09](tokenizer_metrics_additional_2026-11-09/):
+  completed 100k/1M-document evaluations and separate raw-BPE train/validation diagnostics.
+
+- [model_evidence_2026-11-09](model_evidence_2026-11-09/):
+  recovered checkpoint configurations and full-precision benchmark scores for
+  the original tokenizer ablation, d20 continuation and completed d32 model.
+
+- [tokenizer_metrics_full_2026-06-23](tokenizer_metrics_full_2026-06-23/):
+  recovered full-corpus metrics for all 12 tokenizers, with original JSON,
+  checksums and completed Slurm accounting for job 496882.
 
 - [cetvel_base_subset_2026-06-09_job493293](cetvel_base_subset_2026-06-09_job493293/):
   CETVEL base-model subset results for the raw `tr_d20_bpe_32k`

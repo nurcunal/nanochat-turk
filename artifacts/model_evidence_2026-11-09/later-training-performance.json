@@ -1,0 +1,136 @@
+{
+  "retrieved_at_utc": "2026-11-09T12:49:41.988209+00:00",
+  "host": "altay.uhem.itu.edu.tr",
+  "records": [
+    {
+      "run_id": "d20_cont40x",
+      "path": "/ari/users/nunal/nanochat-turk/cont40x-code-20260819-v2/tr-d20-cont40x-8g-512018.out",
+      "sha256": "b17ee352b6d35c0755f2244bde9555398b26abb75607edbc4cda64d18af66927",
+      "size_bytes": 2969357,
+      "throughput_units": "token positions/s",
+      "last_100_printed_steps": {
+        "count": 100,
+        "start_step": 34100,
+        "end_step": 34199,
+        "median_tokens_per_second": 416325.5,
+        "median_dt_ms": 2518.6400000000003,
+        "median_bf16_mfu_pct": 54.045
+      },
+      "excerpts": [
+        {
+          "line": 24,
+          "text": "GPU: NVIDIA A100-SXM4-80GB | Peak FLOPS (BF16): 3.12e+14"
+        },
+        {
+          "line": 50,
+          "text": "total                   : 896,533,746"
+        },
+        {
+          "line": 57,
+          "text": "Total number of training tokens: 35,861,299,200"
+        },
+        {
+          "line": 65,
+          "text": "Total batch size 1,048,576 => gradient accumulation steps: 16"
+        },
+        {
+          "line": 17344,
+          "text": "Peak memory usage: 17847.49MiB"
+        },
+        {
+          "line": 17345,
+          "text": "Total training time: 1992.19m"
+        },
+        {
+          "line": 17349,
+          "text": "Job ID: 512018"
+        },
+        {
+          "line": 17352,
+          "text": "State: FAILED (exit code 1)"
+        },
+        {
+          "line": 17357,
+          "text": "Job Wall-clock time: 12:11:58"
+        },
+        {
+          "line": 17332,
+          "text": "step 34197/34200 (99.99%) | loss: 2.059279 | lrm: 0.05 | dt: 2522.09ms | tok/sec: 415,756 | bf16_mfu: 53.97 | epoch: 1 pq: 20 rg: 3016 | total time: 1992.11m | eta: 0.2m"
+        },
+        {
+          "line": 17333,
+          "text": "step 34198/34200 (99.99%) | loss: 2.021317 | lrm: 0.05 | dt: 2516.39ms | tok/sec: 416,698 | bf16_mfu: 54.09 | epoch: 1 pq: 20 rg: 3016 | total time: 1992.15m | eta: 0.1m"
+        },
+        {
+          "line": 17334,
+          "text": "step 34199/34200 (100.00%) | loss: 1.945919 | lrm: 0.05 | dt: 2529.50ms | tok/sec: 414,538 | bf16_mfu: 53.81 | epoch: 1 pq: 20 rg: 3016 | total time: 1992.19m | eta: 0.1m"
+        }
+      ]
+    },
+    {
+      "run_id": "d32_fineweb2",
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/launch/tr-d32-fw2-full-512605.out",
+      "sha256": "912c81e762ce131d9fabe4f5ff59c277805a1e4ccf7bdccf95bb744aa9cdad09",
+      "size_bytes": 5267168,
+      "throughput_units": "valid targets/s",
+      "last_100_printed_steps": {
+        "count": 100,
+        "start_step": 27901,
+        "end_step": 28000,
+        "median_tokens_per_second": 135456.5,
+        "median_dt_ms": 15482.08,
+        "median_bf16_mfu_pct": 63.37
+      },
+      "excerpts": [
+        {
+          "line": 28,
+          "text": "GPU: NVIDIA A100-SXM4-80GB | Peak FLOPS (BF16): 3.12e+14"
+        },
+        {
+          "line": 54,
+          "text": "total                   : 2,818,575,450"
+        },
+        {
+          "line": 61,
+          "text": "Total number of training tokens: 58,720,256,000"
+        },
+        {
+          "line": 68,
+          "text": "Total batch size 2,097,152 => gradient accumulation steps: 32"
+        },
+        {
+          "line": 28126,
+          "text": "Peak memory usage: 51900.56MiB"
+        },
+        {
+          "line": 28127,
+          "text": "Total training time: 7245.00m"
+        },
+        {
+          "line": 28132,
+          "text": "Job ID: 512605"
+        },
+        {
+          "line": 28135,
+          "text": "State: COMPLETED (exit code 0)"
+        },
+        {
+          "line": 28140,
+          "text": "Job Wall-clock time: 5-01:19:15"
+        },
+        {
+          "line": 28122,
+          "text": "update 27998/28000 (99.99%) | loss: 2.123608 | lrm: 0.0502 | dt: 15482.80ms | valid targets/sec: 135,450 | bf16_mfu: 63.37 | epoch: 2 pq: 18 rg: 1939 | total time: 7244.49m | eta: 0.5m"
+        },
+        {
+          "line": 28123,
+          "text": "update 27999/28000 (100.00%) | loss: 2.146912 | lrm: 0.0501 | dt: 15480.49ms | valid targets/sec: 135,470 | bf16_mfu: 63.38 | epoch: 2 pq: 9 rg: 2085 | total time: 7244.75m | eta: 0.3m"
+        },
+        {
+          "line": 28124,
+          "text": "update 28000/28000 (100.00%) | loss: 2.086608 | lrm: 0.0501 | dt: 15489.28ms | valid targets/sec: 135,393 | bf16_mfu: 63.34 | epoch: 2 pq: 9 rg: 2085 | total time: 7245.00m | eta: 0.0m"
+        }
+      ]
+    }
+  ]
+}

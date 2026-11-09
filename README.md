@@ -9,6 +9,8 @@ token positions, optimizer settings, and evaluation are held fixed within each
 vocabulary tier. The final tokenizers accept ordinary Turkish text and do not
 need a morphological analyzer at inference.
 
+For the complete result tables, start with the **[study results index](docs/study_results/README.md)**: historical intrinsic results, recovered full-corpus metrics, model benchmarks, training performance, and later LLM configurations.
+
 Start with the canonical
 [`MorphBPE-alignment.md`](MorphBPE-alignment.md) for the paper comparison,
 completed work, publication audit, limitations, and prioritized TODO list.
@@ -17,9 +19,9 @@ completed work, publication audit, limitations, and prioritized TODO list.
 
 Across the currently checked outputs, all nine MorphBPE variants improve
 Morphological Edit Distance and Morphological Consistency over same-size raw
-BPE on the automatic TRmorph reference, while using more tokens per word. The
-32k outputs mix 200k- and 500k-occurrence metric caps, so this is a directional
-pattern rather than a fully matched intrinsic estimate. Model results are mixed
+BPE on the automatic TRmorph reference, while using more tokens per word. The historical
+50k-document results mix 200k- and 500k-occurrence caps at 32k; the recovered
+full-corpus pass uses a common 500k cap for all twelve tokenizers. Model results are mixed
 rather than a universal MorphBPE win:
 
 | Tier | Raw BPE BPB | Best MorphBPE BPB | Raw core-11 | Best MorphBPE core-11 | Main observation |
@@ -31,13 +33,16 @@ rather than a universal MorphBPE win:
 Lower BPB is better. Core-11 is the mean of the common CETVEL
 classification/log-likelihood tasks; XQuAD is reported separately because its
 F1 scale is different. See the
-[full CETVEL table](docs/cetvel_model_comparison.md) and the
-[12-tokenizer intrinsic table](docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md).
+[model, task and performance tables](docs/study_results/model_results.md),
+[historical intrinsic tables](docs/study_results/tokenizer_results.md), and
+[recovered full-corpus intrinsic tables](docs/study_results/tokenizer_full_corpus.md).
 
 The appropriate claim is narrow: Turkish MorphBPE reliably improves
 morphology-sensitive tokenizer diagnostics, but model benefits depend on
 segmenter, vocabulary tier, and task. Raw BPE remains the best validation-BPB
-choice in every completed tier.
+choice in every completed controlled tier. Later d20 continuation and d32
+configuration studies are reported separately; the d32 BPB includes training
+text, and corrected QA protocols are not mixed into the legacy comparison.
 
 ## What Is Complete
 
@@ -49,25 +54,28 @@ choice in every completed tier.
 - Paper-style raw-text MorphBPE training: boundaries constrain merge learning
   but never enter the language-model stream.
 - All 12 tokenizers at 32k, 64k, and 128k.
-- Eleven completed base models and a common CETVEL core-12 comparison. The only
-  missing model cell is 32k/d20 TurkishDelightNLP.
+- Eleven completed models in the controlled tokenizer ablation and a common
+  CETVEL core-12 comparison. Its only missing cell is 32k/d20 TurkishDelightNLP.
 - Fertility, Morphological Edit Distance, Morphological Consistency,
   boundary-crossing, compression, reversibility, and throughput metrics on a
   matched 50,000-document sample.
+- Recovered full-corpus intrinsic metrics for all 12 tokenizers over 93.21M
+  documents, plus longer d20 training and larger d32 model/evaluation records.
 - Compact tokenizers, manifests, metrics, and benchmark summaries checked into
-  GitHub.
+  GitHub, with reproducible Markdown/CSV/JSON result tables.
 
-## Public Artifacts
+## Artifacts and dated publication audit
 
-| Artifact | GitHub | Hugging Face |
+| Artifact | GitHub | Hugging Face at the 2026-07-15 audit |
 | --- | --- | --- |
-| Source and compact documentation/results | This repository | Not applicable |
+| Source and compact documentation/results | [Study results and downloads](docs/study_results/README.md) | Not applicable |
 | 12 tokenizer bundles | [`artifacts/tokenizers`](artifacts/tokenizers/) | None is published standalone; raw BPE 32k is embedded in the public model and the other 11 are absent |
 | Raw BPE 32k raw checkpoint | Summary and provenance here | [`nurcunal/nanochat-turk-d20-bpe32k`](https://huggingface.co/nurcunal/nanochat-turk-d20-bpe32k) |
 | Other 10 completed models | Compact metrics and UHeM provenance here | Not uploaded |
 | Eleven-model CETVEL comparison | [June 22 artifact](artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/) | Not uploaded |
 
-The authenticated publication audit was performed on 2026-07-15. Empty Hub
+The authenticated Hub publication audit was performed on 2026-07-15; the
+Hugging Face column is historical and was not re-audited for this results update. Empty Hub
 IDs in tokenizer manifests are real release gaps, not evidence of private
 repositories. Details and the exact missing-model inventory are in
 [`MorphBPE-alignment.md`](MorphBPE-alignment.md#publication-audit).
@@ -130,6 +138,7 @@ MorphBPE training requires a boundary-marked parquet corpus first. See the
 
 | Path | Purpose |
 | --- | --- |
+| [`docs/study_results`](docs/study_results/README.md) | Complete intrinsic/extrinsic tables, LLM configuration studies, performance, exports and provenance. |
 | [`MorphBPE-alignment.md`](MorphBPE-alignment.md) | Canonical paper alignment, evidence, release audit, and TODOs. |
 | [`nanochat`](nanochat/) | Model, data, tokenizer, checkpoint, and evaluation code. |
 | [`nanochat/morphology`](nanochat/morphology/) | Boundary logic, MorphBPE transform, and segmenter adapters. |

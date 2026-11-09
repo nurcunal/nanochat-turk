@@ -1,0 +1,33 @@
+{
+  "report_date": "2026-11-09",
+  "script": "scripts/plot_study_results.py",
+  "sources": [
+    {
+      "path": "docs/study_results/model_results.json",
+      "sha256": "3e3fa6612e3e07815354836a9125c1677c86cb18c3f9809113d0ad9c6c209942"
+    },
+    {
+      "path": "docs/study_results/tokenizer_results.json",
+      "sha256": "7d239db76a3391801d6daea8693611047475142fef42fe30ca9e9703c3349637"
+    }
+  ],
+  "charts": [
+    {
+      "png": "model_outcomes_by_tier.png",
+      "svg": "model_outcomes_by_tier.svg"
+    },
+    {
+      "png": "tokenizer_efficiency_boundary_tradeoff.png",
+      "svg": "tokenizer_efficiency_boundary_tradeoff.svg"
+    },
+    {
+      "png": "cetvel_task_deltas.png",
+      "svg": "cetvel_task_deltas.svg"
+    }
+  ],
+  "notes": [
+    "Archived measurements only; no new evaluation.",
+    "SVG preserves editable text.",
+    "Error bars omitted because model seed replication is unavailable; these charts do not represent statistical significance."
+  ]
+}

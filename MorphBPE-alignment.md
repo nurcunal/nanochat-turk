@@ -1,6 +1,11 @@
 # MorphBPE Alignment, Evidence, Publication Audit, and TODOs
 
-Last verified: **2026-07-15**
+Research results reconciled: **2026-11-09**. The publication audit below remains
+a dated **2026-07-15** audit.
+
+See the **[complete study results](docs/study_results/README.md)** for historical
+and recovered intrinsic measurements, all model/task scores, training performance,
+and later d20/d32 configurations.
 
 This is the canonical status document for the Turkish MorphBPE work in
 `nanochat-turk`. It compares the repository with the peer-reviewed MorphBPE
@@ -172,6 +177,13 @@ is higher for all four languages.
 
 ## Current Evidence
 
+The following tables retain the original June 50k-document and 17,100-step
+ablation snapshots. The [expanded results](docs/study_results/README.md) add
+full-corpus tokenizer measurements, full-precision recovered model metrics,
+longer d20 training and the larger d32 model. The d32 BPB is a train-overlap
+diagnostic; corrected-generation QA uses a separate protocol. Neither is
+inserted into the original controlled tokenizer ranking.
+
 ### Tokenizer-Level Result
 
 The table summarizes the matched-vocabulary pattern from
@@ -260,8 +272,10 @@ accounting, and repeated seeds.
    fallback instead of MiniBatchKMeans.
 8. **Generated artifacts can drift.** Existing publish manifests have blank
    Hub IDs and stale README hashes, and several omit Git commit/branch data.
-9. **Full-corpus metrics are unverified.** Job `496882` was submitted, but no
-   completed result is present in the checkout.
+9. **Full-corpus metrics are recovered.** Job `496882` completed with exit
+   `0:0`; [all 12 outputs and scheduler evidence](artifacts/tokenizer_metrics_full_2026-06-23/)
+   are now imported. They cover 93,211,827 train documents with common 500k
+   word caps, but remain automatic-reference training-corpus diagnostics.
 10. **The 32k TurkishDelight model cell is missing.** Its tokenizer exists, but
     no completed d20 checkpoint is documented.
 11. **The base alphabet differs from the paper.** Byte-level merge training has
@@ -404,8 +418,9 @@ manifests before uploading.
 
 ### P2 - Repository and Research Maintenance
 
-- [ ] Verify UHeM job `496882`; import completed full-corpus outputs or record
-  the terminal failure and stop referring to it as active.
+- [x] Verify UHeM job `496882` and import all completed full-corpus outputs.
+- [x] Consolidate historical and recovered intrinsic/extrinsic results and
+  LLM-configuration/performance tables with source hashes and CSV/JSON exports.
 - [ ] Make metric-table generation deterministic, including compact display
   labels, and add a CI drift check for JSON/Markdown pairs.
 - [ ] Add lightweight CI for unit tests, Python compilation, JSON/TOML parsing,

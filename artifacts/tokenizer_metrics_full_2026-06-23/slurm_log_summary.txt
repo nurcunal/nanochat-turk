@@ -1,0 +1,14 @@
+===== SLURM IS ISTATISTIKLERI (JOB STATISTICS) ========================
+Job ID: 496882
+Cluster: altay
+User/Group: nunal/tl0002
+State: COMPLETED (exit code 0)
+Nodes: 1
+Cores per node: 128
+CPU Utilized: 37-05:25:01
+CPU Efficiency: 23.79% of 156-10:50:40 core-walltime
+Job Wall-clock time: 1-05:20:05
+Memory Utilized: 30.85 GB
+Memory Efficiency: 12.85% of 240.00 GB
+
+=======================================================================
