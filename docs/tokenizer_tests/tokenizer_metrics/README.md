@@ -5,6 +5,7 @@ The reorganized result tables are in
 [earlier sample and external diagnostics](../../study_results/tokenizer_results.md),
 [recovered full-corpus results](../../study_results/tokenizer_full_corpus.md),
 [additional 100k/1m and baseline validation diagnostics](../../study_results/tokenizer_additional.md),
+[new matched train/validation measurements](../../study_results/tokenizer_matched.md),
 and [model/extrinsic results](../../study_results/model_results.md).
 The files in this directory remain the original historical measurements.
 

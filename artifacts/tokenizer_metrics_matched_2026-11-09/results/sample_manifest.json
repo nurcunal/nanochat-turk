@@ -1,0 +1,72 @@
+{
+  "source_data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph",
+  "source_manifest_sha256": "850925d297bad83265bf6f81f311cc9ee502033f7886c00714029ddc0c20b417",
+  "source_manifest": {
+    "source": "morph_segment_corpus",
+    "segmentation_manifest": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph/manifest.json",
+    "backend": "trmorph",
+    "text_column": "segmented_text",
+    "filenames": [
+      "000_00000.segmented.parquet",
+      "000_00001.segmented.parquet",
+      "000_00002.segmented.parquet",
+      "000_00003.segmented.parquet",
+      "000_00004.segmented.parquet",
+      "000_00005.segmented.parquet",
+      "001_00000.segmented.parquet",
+      "001_00001.segmented.parquet",
+      "001_00002.segmented.parquet",
+      "001_00003.segmented.parquet",
+      "001_00004.segmented.parquet",
+      "001_00005.segmented.parquet",
+      "002_00000.segmented.parquet",
+      "002_00001.segmented.parquet",
+      "002_00002.segmented.parquet",
+      "002_00003.segmented.parquet",
+      "002_00004.segmented.parquet",
+      "002_00005.segmented.parquet",
+      "003_00000.segmented.parquet",
+      "003_00001.segmented.parquet",
+      "003_00002.segmented.parquet",
+      "003_00003.segmented.parquet",
+      "003_00004.segmented.parquet",
+      "003_00005.segmented.parquet",
+      "004_00000.segmented.parquet",
+      "004_00001.segmented.parquet",
+      "004_00002.segmented.parquet",
+      "004_00003.segmented.parquet",
+      "004_00004.segmented.parquet",
+      "004_00005.segmented.parquet"
+    ],
+    "complete": true
+  },
+  "sample_limit_per_split": 50000,
+  "selection": "first documents in manifest order; train excludes the final source shard; val uses only that final shard",
+  "document_hash_encoding": "concatenate 8-byte big-endian UTF-8 length followed by UTF-8 bytes for each document",
+  "splits": {
+    "train": {
+      "documents": 50000,
+      "raw_bytes": 186328421,
+      "raw_chars": 170359307,
+      "regex_words": 23042031,
+      "source_parquet_files_read": [
+        "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph/000_00000.segmented.parquet"
+      ],
+      "annotated_document_sequence_sha256": "e03f6bb77e4d70be8c314041dbd9841a8ffc20260b0dd1a7ddf541b0466de534",
+      "raw_document_sequence_sha256": "d885b32efdb4bb1eb73867f80818730f5b230e45755247381ce18d6dd9422553",
+      "sample_parquet_sha256": "30f17fbb29bb87da9bdccf3df3a38f41c472b10db98cf39a0358995cbce4ea48"
+    },
+    "val": {
+      "documents": 50000,
+      "raw_bytes": 161056183,
+      "raw_chars": 147460235,
+      "regex_words": 19832065,
+      "source_parquet_files_read": [
+        "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph/004_00005.segmented.parquet"
+      ],
+      "annotated_document_sequence_sha256": "777d849e54192bebf732f3a8fe32a5f20f8f42862b9621d66af336ae16dde41b",
+      "raw_document_sequence_sha256": "8806463132a0ae6e254a75cbc658c08a612b2e1f96c646817cdc9bf18149801c",
+      "sample_parquet_sha256": "ecc5e6e2d19d2a2062adb0bed904dae3c41531efa9df83cd1bc1bfbb3482ffb1"
+    }
+  }
+}

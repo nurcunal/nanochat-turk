@@ -1,0 +1,183 @@
+{
+  "schema_version": 1,
+  "completed_utc": "2026-11-09T12:57:09Z",
+  "source": {
+    "created_utc": "2026-11-09T12:42:20Z",
+    "git_base_revision": "955c3809c94c04731bf35a9695cc0a04c28e35e9",
+    "source_state": "isolated source snapshot of in-progress consolidation; per-file hashes authoritative",
+    "files": {
+      "artifacts/tokenizers/bpe_131072/tokenizer.pkl": "2b0d19810bc77085150e19f6656ba44aa18e24e96b8f14a4c5f23941ee68cd36",
+      "artifacts/tokenizers/bpe_131072/tokenizer_config.json": "ef9f70db3083edb19eec346775319a865004278282b46fa908af5fd343124bc0",
+      "artifacts/tokenizers/bpe_32768/tokenizer.pkl": "3b7f00d8697a303bb0ac7379b497fec6b76a61bd5bb694825264eecd4cb62a20",
+      "artifacts/tokenizers/bpe_32768/tokenizer_config.json": "b381631bad8ca489b85dbab686d63f0691b6455300f2ae43f8af43ad3b80a916",
+      "artifacts/tokenizers/bpe_65536/tokenizer.pkl": "e2bffe8b066f042bd56820843c870a825843d7addb7b7cfe19adeb4c5f16059d",
+      "artifacts/tokenizers/bpe_65536/tokenizer_config.json": "55757eb0c92b876ed1712320ec9997a434ceca6ece3684457940c0373d7750b1",
+      "artifacts/tokenizers/morphbpe_tdelight_131072/tokenizer.pkl": "c1522fb948262f71fc237e357005e675b57e46b0e1f8e20156af71ff36756dc0",
+      "artifacts/tokenizers/morphbpe_tdelight_131072/tokenizer_config.json": "dc99a5ba85bc53c0a23abac43572955469d78ad6d4ae5d2a172323bc2907b1bb",
+      "artifacts/tokenizers/morphbpe_tdelight_32768/tokenizer.pkl": "9478a52b605a7e867dd50812188a7b0a45ca283ec1208025878b7a61e4e66c49",
+      "artifacts/tokenizers/morphbpe_tdelight_32768/tokenizer_config.json": "f0ef4241d8faa38730d454e73a7dd05b9e5913a324a936e8cc624762ad5c4614",
+      "artifacts/tokenizers/morphbpe_tdelight_65536/tokenizer.pkl": "f64c7e0d45b794528bbca4b4f543e846c2ffd0b979aa97d2865f27dd9b74ceec",
+      "artifacts/tokenizers/morphbpe_tdelight_65536/tokenizer_config.json": "ac049b0ef08627ab69569bb7edbefe6c48ee70f394952fa7424d3a876f7d2904",
+      "artifacts/tokenizers/morphbpe_trmorph_131072/tokenizer.pkl": "cd25830512f23612af1b9454ae121cce53e75945b31ae572a54da511c65b5dca",
+      "artifacts/tokenizers/morphbpe_trmorph_131072/tokenizer_config.json": "f695c0c83b786d4dfd27d6bc5daf704aa2942f8b343c93b4ae1e947933c46f7e",
+      "artifacts/tokenizers/morphbpe_trmorph_32768/tokenizer.pkl": "955174a2e69a0f1e08bb53d8f1ad124e0aa8409604bb6c63614ec1c11e1504bc",
+      "artifacts/tokenizers/morphbpe_trmorph_32768/tokenizer_config.json": "fb927b30fd498744553f2191e2815bd294199f720f8135cb24d84b52e1e32915",
+      "artifacts/tokenizers/morphbpe_trmorph_65536/tokenizer.pkl": "9d94aa2b2c6fa81e8a9c2e6cd68547076d756044f1bc3728c98847032b736af1",
+      "artifacts/tokenizers/morphbpe_trmorph_65536/tokenizer_config.json": "39413226bfc147b623125b072fd90f2f961c67d6dc688f59f3f95aabe4853873",
+      "artifacts/tokenizers/morphbpe_zemberek_131072/tokenizer.pkl": "267a9e1387a2db13c5d4ff40754092632495ba3d8f44d27ec3bb4d1c0c16b02c",
+      "artifacts/tokenizers/morphbpe_zemberek_131072/tokenizer_config.json": "69e5e7545cc2797519aaefc0f840397be98cc0f8ceddeea6981e0ba64a65e3c7",
+      "artifacts/tokenizers/morphbpe_zemberek_32768/tokenizer.pkl": "1c4a7ee96f8e31614ffee399a3988e54eb8b8ad7cd224af877de2312c9fd9652",
+      "artifacts/tokenizers/morphbpe_zemberek_32768/tokenizer_config.json": "367f3c75f9bb7ec773ad97a7878ed7e9fd243b33ce71c7f6dad1e777f5d64760",
+      "artifacts/tokenizers/morphbpe_zemberek_65536/tokenizer.pkl": "8316086ec767c181553753a8f2fe45d0aa6136f5354c626225ea379be2524d1e",
+      "artifacts/tokenizers/morphbpe_zemberek_65536/tokenizer_config.json": "86f481a38fef95d876edb4daa3ec81bdcb2925772cf3e67dc008024c2f32716a",
+      "nanochat/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "nanochat/common.py": "b843db6e769db18d3364e42cb3742a9537a3d4cf43e5f098293babc7ddeb44bf",
+      "nanochat/dataset.py": "db4bc65e6db5fc4bbc2e937e330efdd6b8a85bbf1fcc3499fd48feab8e2e7ca8",
+      "nanochat/morphology/__init__.py": "22848a47543cb23d0409063a8bd0f46820844155e6775643ee8c8f56de24c066",
+      "nanochat/morphology/boundary.py": "16e17189a127daa7996d9b776b527a017fd18f7811d826cfe33518c75cecd76d",
+      "nanochat/morphology/morphbpe.py": "3523634eab3fb8ec4d0820931838e25a536ae312d1e94dff5fed6873ce77b22a",
+      "nanochat/morphology/segmenters.py": "720922ae3f0932a730e0a87b922e533a569590f739c2208954b9af0c18839c8e",
+      "nanochat/tokenizer.py": "42c5092914f548af52bb122448187973d44ff0b31005806cf8c419548bfbdf31",
+      "runs/uhem_tokenizer_metrics_study.sbatch": "649dd1caee485ba15d08b4df2e7a70715512e4e2f31ae45dac67e0a86fc27441",
+      "scripts/finalize_tokenizer_metric_study.py": "f6300728e8b2988322d5ece5529fd197beddfe3fa27b1498565c13a4755c96b3",
+      "scripts/prepare_tokenizer_metric_sample.py": "f8ea2f816f78810bb5773081aac73444348c52f299bf0ecea49f22947ca6241f",
+      "scripts/tokenizer_metrics.py": "a584accb78e701d5893b88a5dc4a3415c24a5b00a0a4b8ddbc9bce1cb78d37f1"
+    }
+  },
+  "environment": {
+    "started_utc": "2026-11-09T12:44:09Z",
+    "python": "3.12.4",
+    "host": "a241.uhem.itu.edu.tr",
+    "slurm_job_id": "558060",
+    "slurm_account": "tl0002",
+    "packages": {
+      "torch": "2.9.1+cu128",
+      "tiktoken": "0.11.0",
+      "tokenizers": "0.22.2",
+      "pyarrow": "21.0.0",
+      "scikit-learn": "1.9.0",
+      "rustbpe": "0.1.0"
+    }
+  },
+  "sample": {
+    "source_data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph",
+    "source_manifest_sha256": "850925d297bad83265bf6f81f311cc9ee502033f7886c00714029ddc0c20b417",
+    "source_manifest": {
+      "source": "morph_segment_corpus",
+      "segmentation_manifest": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph/manifest.json",
+      "backend": "trmorph",
+      "text_column": "segmented_text",
+      "filenames": [
+        "000_00000.segmented.parquet",
+        "000_00001.segmented.parquet",
+        "000_00002.segmented.parquet",
+        "000_00003.segmented.parquet",
+        "000_00004.segmented.parquet",
+        "000_00005.segmented.parquet",
+        "001_00000.segmented.parquet",
+        "001_00001.segmented.parquet",
+        "001_00002.segmented.parquet",
+        "001_00003.segmented.parquet",
+        "001_00004.segmented.parquet",
+        "001_00005.segmented.parquet",
+        "002_00000.segmented.parquet",
+        "002_00001.segmented.parquet",
+        "002_00002.segmented.parquet",
+        "002_00003.segmented.parquet",
+        "002_00004.segmented.parquet",
+        "002_00005.segmented.parquet",
+        "003_00000.segmented.parquet",
+        "003_00001.segmented.parquet",
+        "003_00002.segmented.parquet",
+        "003_00003.segmented.parquet",
+        "003_00004.segmented.parquet",
+        "003_00005.segmented.parquet",
+        "004_00000.segmented.parquet",
+        "004_00001.segmented.parquet",
+        "004_00002.segmented.parquet",
+        "004_00003.segmented.parquet",
+        "004_00004.segmented.parquet",
+        "004_00005.segmented.parquet"
+      ],
+      "complete": true
+    },
+    "sample_limit_per_split": 50000,
+    "selection": "first documents in manifest order; train excludes the final source shard; val uses only that final shard",
+    "document_hash_encoding": "concatenate 8-byte big-endian UTF-8 length followed by UTF-8 bytes for each document",
+    "splits": {
+      "train": {
+        "documents": 50000,
+        "raw_bytes": 186328421,
+        "raw_chars": 170359307,
+        "regex_words": 23042031,
+        "source_parquet_files_read": [
+          "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph/000_00000.segmented.parquet"
+        ],
+        "annotated_document_sequence_sha256": "e03f6bb77e4d70be8c314041dbd9841a8ffc20260b0dd1a7ddf541b0466de534",
+        "raw_document_sequence_sha256": "d885b32efdb4bb1eb73867f80818730f5b230e45755247381ce18d6dd9422553",
+        "sample_parquet_sha256": "30f17fbb29bb87da9bdccf3df3a38f41c472b10db98cf39a0358995cbce4ea48"
+      },
+      "val": {
+        "documents": 50000,
+        "raw_bytes": 161056183,
+        "raw_chars": 147460235,
+        "regex_words": 19832065,
+        "source_parquet_files_read": [
+          "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph/004_00005.segmented.parquet"
+        ],
+        "annotated_document_sequence_sha256": "777d849e54192bebf732f3a8fe32a5f20f8f42862b9621d66af336ae16dde41b",
+        "raw_document_sequence_sha256": "8806463132a0ae6e254a75cbc658c08a612b2e1f96c646817cdc9bf18149801c",
+        "sample_parquet_sha256": "ecc5e6e2d19d2a2062adb0bed904dae3c41531efa9df83cd1bc1bfbb3482ffb1"
+      }
+    }
+  },
+  "reference": "automatic TRmorph segmentation; validation is a reserved source shard, not independent human morphology annotation",
+  "word_cap_per_tokenizer_per_split": 500000,
+  "morphology_cap_per_tokenizer_per_split": 500000,
+  "splits": {
+    "train": {
+      "measurements": 12,
+      "word_sequence_sha256": "1db93ed0b762a8b45fbe5da162d9b92b04a94e67ee7fffd4cc705d9e1813f9bd",
+      "reference_sequence_sha256": "1075d52ce748a88e67eda92a41ac34239f020e05092054502394e4b578aaafd0",
+      "requested_metrics_sha256": "9780789289586acd13dfb88a029e27ce0c8719a938b878ac19c31873d45b0afd",
+      "files": {
+        "bpe_131072_metrics.json": "4bb63893c71a3e5eb9d6b18a4ee9716060e218039a508a2a998db3c1e2d8fdc7",
+        "bpe_32768_metrics.json": "86e0071d98010434c3be167e30dfd84391f5f19d386150a161a2e0ea79c735c1",
+        "bpe_65536_metrics.json": "cc8db25c5ae7644417b2a496876ac3440eef9374a7b5540e61f2a10f37300971",
+        "morphbpe_tdelight_131072_metrics.json": "d7c467e90f372e3ba72a540b2379d4f84b89012592065846a7d6f6f31093faaa",
+        "morphbpe_tdelight_32768_metrics.json": "d67d6d6150db57a233d619def4cbd795c079f954eeb6e77d2b5cb5d4e154f95d",
+        "morphbpe_tdelight_65536_metrics.json": "17bea3a8b3f8164ec37c92d63a1dd1c975d31e7bf475964b3cad405462664636",
+        "morphbpe_trmorph_131072_metrics.json": "5979d91c4776089771b8096c4f698d4f29b858c4af98a62cf7db087ef7fac2e8",
+        "morphbpe_trmorph_32768_metrics.json": "cf7d848d04cf79950b81e72ca6c6c6b4d4b38fc391c9ba2f1c06d5ec6989c4ca",
+        "morphbpe_trmorph_65536_metrics.json": "c871904d44532490ed876f318edd111e84834eefd8f9a9bd0f6f53396996e990",
+        "morphbpe_zemberek_131072_metrics.json": "fc88a6da784b1eb70820013d5d34856c6bab63a3d4986bd7da620565aebf0b2d",
+        "morphbpe_zemberek_32768_metrics.json": "7bbc64d5059ac5e9c0fd4dfc0e1faa69acb6ac67ae23608ad51f1f81505db7f5",
+        "morphbpe_zemberek_65536_metrics.json": "083bcfa047144b8ff016703dce4cc859884d27372333ae601f522b40fc94c319"
+      }
+    },
+    "val": {
+      "measurements": 12,
+      "word_sequence_sha256": "96f2e072c1a0b72fe385699c44c775db9a583c33a1a863e673c526850ee7bc9b",
+      "reference_sequence_sha256": "83f67061735c40edbc22f0ee5e0669348aac9ceef64e479ec6b403fb68fd6ea4",
+      "requested_metrics_sha256": "52ee4d5bb766c620b6c6faaf57d0fb673e787a832d6e204d5f7a36edca795c95",
+      "files": {
+        "bpe_131072_metrics.json": "84d1077150380cf833bce85b26953ce4436fa285f92556dd621b8455ea53b117",
+        "bpe_32768_metrics.json": "6ee15450989a04ccb3cff2faa1fd91424f6f1c00d3888382c49e216ab1d360b0",
+        "bpe_65536_metrics.json": "33f6454784689672803ca419b6283305da5d07136a9d164eedf5e5ced70a5783",
+        "morphbpe_tdelight_131072_metrics.json": "e8bae94dd081bd9fc2ab35b959a0a46c9741b003df8e1308ac41604bf1819721",
+        "morphbpe_tdelight_32768_metrics.json": "3590ee9848b1b5fa7264efa077cb81282999715c1bd18fe356e85303a3bfadeb",
+        "morphbpe_tdelight_65536_metrics.json": "64f582cbe480e9d6229c6691c5097e5ce298377d507e7b65c4ee0bdee4ddc02f",
+        "morphbpe_trmorph_131072_metrics.json": "503f47b870535db03d14a0c33bf44113b2726702b15d52ee5b40470ce43f7d78",
+        "morphbpe_trmorph_32768_metrics.json": "8fe55d9b6fa24a74408b83a08880a7c2d6c56380a7b1abdd3943edd95a2603cd",
+        "morphbpe_trmorph_65536_metrics.json": "f4b503558e476a624c706376313c729b1bb087f9d157c9be679765610e48d327",
+        "morphbpe_zemberek_131072_metrics.json": "aff4bc0b4e015d4763c5c31bfa9fb47ed702b543678efb36a975b51388f9d781",
+        "morphbpe_zemberek_32768_metrics.json": "5111626574419bddccc3b2fc6d96819736ede65641b0a657464e38c36ff83e92",
+        "morphbpe_zemberek_65536_metrics.json": "e7d16546377022d9db78b81600e4c20bb1f3ddb92c6825ac6174c75a0f006cb1"
+      }
+    }
+  }
+}
+
+===== SLURM IS ISTATISTIKLERI (JOB STATISTICS) ========================
+
+=======================================================================

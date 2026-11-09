@@ -15,6 +15,7 @@ configuration comparisons, and training/evaluation performance tables.
 | Document | Role |
 | --- | --- |
 | [`study_results/README.md`](study_results/README.md) | Complete result index, downloadable data and rebuilding commands. |
+| [`study_results/tokenizer_matched.md`](study_results/tokenizer_matched.md) | New matched train/validation intrinsic metrics for all 12 tokenizers, with equal word caps. |
 | [`study_results/tokenizer_results.md`](study_results/tokenizer_results.md) | Historical intrinsic metrics for 12 local and 2 lossless external references, plus 3 normalizing references and archived diagnostics. |
 | [`study_results/tokenizer_full_corpus.md`](study_results/tokenizer_full_corpus.md) | Recovered 93.21M-document intrinsic evaluation for all 12 tokenizers. |
 | [`study_results/tokenizer_additional.md`](study_results/tokenizer_additional.md) | Additional 100k/1M intrinsic runs and raw-BPE train/validation diagnostics. |

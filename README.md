@@ -34,8 +34,9 @@ Lower BPB is better. Core-11 is the mean of the common CETVEL
 classification/log-likelihood tasks; XQuAD is reported separately because its
 F1 scale is different. See the
 [model, task and performance tables](docs/study_results/model_results.md),
-[historical intrinsic tables](docs/study_results/tokenizer_results.md), and
-[recovered full-corpus intrinsic tables](docs/study_results/tokenizer_full_corpus.md).
+[historical intrinsic tables](docs/study_results/tokenizer_results.md),
+[recovered full-corpus intrinsic tables](docs/study_results/tokenizer_full_corpus.md), and
+[new matched train/validation intrinsic tables](docs/study_results/tokenizer_matched.md).
 
 The appropriate claim is narrow: Turkish MorphBPE reliably improves
 morphology-sensitive tokenizer diagnostics, but model benefits depend on
@@ -61,6 +62,8 @@ text, and corrected QA protocols are not mixed into the legacy comparison.
   matched 50,000-document sample.
 - Recovered full-corpus intrinsic metrics for all 12 tokenizers over 93.21M
   documents, plus longer d20 training and larger d32 model/evaluation records.
+- A completed matched train/validation evaluation for all 12 tokenizers, adding
+  intact-morpheme coverage, character-only coverage and explicit boundary P/R/F1.
 - Compact tokenizers, manifests, metrics, and benchmark summaries checked into
   GitHub, with reproducible Markdown/CSV/JSON result tables.
 

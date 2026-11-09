@@ -1,6 +1,6 @@
 # Tokenizer and language-model study results
 
-Consolidated **9 November 2026** from checked-in GitHub artifacts, recovered UHeM outputs, checkpoint metadata, and evaluation logs. These tables report existing measurements; the recovery date is not a new experiment date. Source paths, source hashes, original scores, and missing-result states accompany the machine-readable exports.
+Consolidated **9 November 2026** from checked-in GitHub artifacts, recovered UHeM outputs, checkpoint metadata, and evaluation logs. Historical measurements are reported first, followed by recovered results and the newly completed matched intrinsic evaluation. Recovery dates are not new experiment dates for the historical runs. Source paths, source hashes, original scores, and missing-result states accompany the machine-readable exports.
 
 ## 1. Previously reported results
 
@@ -15,7 +15,7 @@ The historical evidence is retained before adding the recovered measurements. Th
 | Controlled tokenizer-to-model ablation | 11 completed models, 3 vocabulary/depth tiers, 17,100 steps each; 132 common task scores | [BPB, CETVEL, per-task scores, deltas and performance](model_results.md); [June 22 artifact](../../artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/) |
 | Earlier model evidence | Raw-BPE-only tasks/submetrics, three-model June 12 comparison, d2 pipeline smoke | [Historical model results](model_results.md); [June 9](../../artifacts/cetvel_base_subset_2026-06-09_job493293/), [June 12](../../artifacts/cetvel_core12_model_comparison_2026-06-12/), [June 7 smoke](../../artifacts/uhem_smoke_2026-06-07_job492393/) |
 
-## 2. Recovered results added to GitHub
+## 2. Recovered and newly completed results added to GitHub
 
 | Recovered evidence | What the new tables add | Report |
 | --- | --- | --- |
@@ -26,6 +26,7 @@ The historical evidence is retained before adding the recovered measurements. Th
 | Larger d32 raw-BPE model | Step 28,000 checkpoint, model size/configuration, training performance, broader CETVEL task/category scores | [Additional LLM configurations and benchmarks](model_configuration_results.md) |
 | d32/raw-BPE32k SFT configuration screens | 27 diagnostic rows across learning rates, checkpoints and curricula; retained/rejected candidates and missing scores explicit | [SFT configuration screens](sft_configuration_screens.md) |
 | Corrected generation evaluations | Separate d20/d32 XQuAD results plus other protocol-specific d32 diagnostics | [Protocol-specific results](model_configuration_results.md#generation-protocol-corrected-xquad) |
+| New matched intrinsic job `558060`, completed 9 November | 24 measurements: all 12 tokenizers × train/validation; 50k documents per split, matching 500k word caps; intact-morpheme coverage, character-only coverage and boundary P/R/F1 | [Matched train/validation intrinsic results](tokenizer_matched.md) |
 
 The d32 checkpoint's BPB evaluation includes text used in training. It is a **train-overlap diagnostic**, not a held-out score comparable with the original model matrix. Corrected-generation QA results are also kept separate from the legacy tokenizer ablation. A continuation or architecture change is a configuration study, not a controlled tokenizer effect.
 
@@ -64,6 +65,7 @@ MorphBPE improves the recorded automatic-reference morphology metrics while usin
 
 | Dataset | Markdown | CSV | JSON with provenance |
 | --- | --- | --- | --- |
+| New matched train/validation intrinsic measurements | [Tables](tokenizer_matched.md) | [CSV](tokenizer_matched.csv) | [JSON](tokenizer_matched.json) |
 | Historical intrinsic measurements | [Tables](tokenizer_results.md) | [CSV](tokenizer_results.csv) | [JSON](tokenizer_results.json) |
 | Full-corpus intrinsic measurements | [Tables](tokenizer_full_corpus.md) | [CSV](tokenizer_full_corpus.csv) | [JSON](tokenizer_full_corpus.json) |
 | Additional 100k/1M and raw-BPE train/validation diagnostics | [Tables](tokenizer_additional.md) | [CSV](tokenizer_additional.csv) | [JSON](tokenizer_additional.json) |
@@ -79,6 +81,7 @@ From the repository root:
 
 ```bash
 python3 -m scripts.build_tokenizer_study_results
+python3 -m scripts.build_fresh_tokenizer_results
 python3 -m scripts.build_model_study_results
 python3 -m scripts.build_sft_configuration_results
 python3 -m scripts.build_study_overview
@@ -90,9 +93,9 @@ The table builders use Python's standard library and saved measurements; charts 
 ## 5. Coverage and remaining gaps
 
 - The 32k/d20 TurkishDelight tokenizer exists, but a completed matched language model is absent from the verified inventory.
-- Intrinsic morphology uses an automatic TRmorph reference on training-corpus text. No independent gold morphology test result is available.
+- Intrinsic morphology uses an automatic TRmorph reference. The historical corpora are training data; the new matched report additionally samples the reserved validation shard. That shard was also included in the later all-shard d32 training. No independent gold morphology test result is available.
 - Historical word-level caps differ in the 50k-document evaluation; the recovered full-corpus pass uses equal 500k caps. Full-corpus does not mean every word received the capped morphology analysis.
-- Per-morpheme intact-token coverage, character-only coverage and explicit boundary precision/recall/F1 were not stored in the June results. Pending evaluations do not supply completed scores.
+- Per-morpheme intact-token coverage, character-only coverage and explicit boundary precision/recall/F1 were absent from the June outputs. They are now reported separately for all 24 tokenizer/split measurements in the completed matched evaluation; historical nulls remain null.
 - Fixed token budgets do not establish equal raw-text training exposure. Timing tables state the recorded runtime definition and concurrency; they are not hardware-controlled speed rankings.
 - Available benchmark standard errors are preserved where supplied. They are not repeated-training-seed uncertainty or paired significance tests.
 - SFT custom-screen results use one tokenizer (raw BPE 32k), with their own dataset and probe definitions; they do not add a multi-tokenizer SFT ablation. Pending jobs and unscored checkpoints are not assigned benchmark values.

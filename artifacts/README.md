@@ -8,6 +8,10 @@ measurement inventory and downloadable CSV/JSON reports.
 
 ## Current Artifacts
 
+- [tokenizer_metrics_matched_2026-11-09](tokenizer_metrics_matched_2026-11-09/):
+  all 24 completed train/validation intrinsic measurements from job 558060,
+  matching-sample receipts, tokenizer hashes and the frozen evaluator source.
+
 - [tokenizer_metrics_historical_normalizing_references](tokenizer_metrics_historical_normalizing_references/):
   BERTurk, TURNA and VBART diagnostics recovered from immutable Git history,
   with normalization/roundtrip failures separated from lossless tokenizer comparisons.

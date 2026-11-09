@@ -5,7 +5,9 @@ a dated **2026-07-15** audit.
 
 See the **[complete study results](docs/study_results/README.md)** for historical
 and recovered intrinsic measurements, all model/task scores, training performance,
-and later d20/d32 configurations.
+and later d20/d32 configurations. The separate [matched train/validation report](docs/study_results/tokenizer_matched.md)
+adds intact-morpheme coverage and literal boundary P/R/F1 for all 12 tokenizers
+with equal 500k word caps; its reference is still automatic TRmorph.
 
 This is the canonical status document for the Turkish MorphBPE work in
 `nanochat-turk`. It compares the repository with the peer-reviewed MorphBPE
