@@ -1,0 +1,578 @@
+{
+  "schema_version": "1.0",
+  "family_id": "tr_d32_general_bpe32k_v1",
+  "status": "preflight_only_until_artifact_hashes_and_weight_decay_proxy_are_accepted",
+  "code_provenance": {
+    "upstream_repository": "https://github.com/karpathy/nanochat.git",
+    "upstream_base_revision": "92d63d4e8bb4df75c3b71618f31ddde2378b2bcd",
+    "require_clean_git": true,
+    "require_upstream_base_ancestor": true,
+    "exact_file_sha256": {
+      "nanochat/gpt.py": "8cdedc2e418b9d4dc45884e07f59904fcdec066bb3d76664b2adf2d415f704e3",
+      "nanochat/optim.py": "7c9b714c6f76e3a9d50fc530044b2767d0cd89391237e609548f1cd730afed8f",
+      "nanochat/flash_attention.py": "a10b0b10ad91893fcf9c9b19c96bd3468a2721cf156dcdbeeeecf05f97f22c2f",
+      "nanochat/engine.py": "76636fc24228e72afdafe4747ff8e52a6cc60a5ec61c97205061f3bfed0a86fd",
+      "nanochat/common.py": "b843db6e769db18d3364e42cb3742a9537a3d4cf43e5f098293babc7ddeb44bf",
+      "nanochat/checkpoint_manager.py": "aa63399ddaf2a0412dc099287bf0dc879f9cb0cce00f861db50eeec58746f3ba",
+      "nanochat/dataloader.py": "5cc72d7207931f112d685ba8e04c112e1a4ab7756dbbb29b95bdb4908a21864d",
+      "nanochat/dataset.py": "3ec2ad5987875e3d7f3ec72f08d78089fe8a3b20090448b798c21c4efb93d18a",
+      "nanochat/loss_eval.py": "00faad1e0ae8912022f79ee4bf583c4f9b4c058e4523c5674144648c49229fd6",
+      "nanochat/tokenizer.py": "e6f12cb88fead3e6d0d45a7dd2af4192280712d92bfde83e2399cc4b3a0860fb",
+      "scripts/base_train.py": "87395b8078491d5088e7e8100866162b494638097215759b46d8ceb5d2f0fdcc"
+    },
+    "training_environment": {
+      "manager": "uv",
+      "uv_version": "0.11.29",
+      "python_version": "3.12.4",
+      "uhem_python_module": "Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0",
+      "sync_mode": "uv_sync_frozen_extra_gpu",
+      "sync_command": "uv sync --frozen --extra gpu --python $(command -v python3)",
+      "pyproject_sha256": "c91fdd03ae9705565572eee31924d4c0bca24bf5431a8eabff4c061882f94929",
+      "uv_lock_sha256": "de7891b832854162111208644ddb72685069ce8128e2bed9dbb7993aa6af5861",
+      "relative_exclude_newer_lock_requires_frozen": true
+    },
+    "core_scope": [
+      "nanochat/checkpoint_manager.py",
+      "nanochat/common.py",
+      "nanochat/dataloader.py",
+      "nanochat/dataset.py",
+      "nanochat/engine.py",
+      "nanochat/flash_attention.py",
+      "nanochat/gpt.py",
+      "nanochat/loss_eval.py",
+      "nanochat/optim.py",
+      "nanochat/tokenizer.py",
+      "scripts/base_train.py"
+    ]
+  },
+  "language_policy": {
+    "allowed_languages": [
+      "tr"
+    ],
+    "allow_code_corpora": false,
+    "allow_synthetic_instruction_data": false,
+    "allow_translated_filler": false,
+    "purpose": "broad Turkish general knowledge and natural everyday conversation before post-training"
+  },
+  "artifacts": {
+    "mixture_config": "configs/pretrain/tr_d32_turkish_general_v1.json",
+    "corpus_id": "tr_general_clean_v1",
+    "corpus_root": "pretrain_data/tr_general_clean_v1",
+    "corpus_manifest": "corpus_manifest.json",
+    "nanochat_dataset_manifest": "fineweb2_manifest.json",
+    "source_receipt": "source_receipt.json",
+    "packing_capacity_receipt": "packing_capacity_receipt.json",
+    "validation_exposure_manifest": "validation_exposure_manifest.json",
+    "exposure_plan_index": "exposure_plan_index.json",
+    "training_exposure_manifests": {
+      "proxy_d12_seed42_ws1": "training_exposure_proxy_d12_seed42_ws1.json",
+      "proxy_d12_seed314159_ws1": "training_exposure_proxy_d12_seed314159_ws1.json",
+      "proxy_d20_seed42_ws1": "training_exposure_proxy_d20_seed42_ws1.json",
+      "signal_smoke_ws4_seed42": "training_exposure_signal_smoke_ws4_seed42.json",
+      "smoke_ws8": "training_exposure_smoke_ws8.json",
+      "smoke_ws16": "training_exposure_smoke_ws16.json",
+      "trunk_ws8_seed42": "training_exposure_trunk_ws8_seed42.json",
+      "s12_ws8_seed42": "training_exposure_s12_ws8_seed42.json",
+      "s20_ws8_seed42": "training_exposure_s20_ws8_seed42.json",
+      "s40_ws8_seed42": "training_exposure_s40_ws8_seed42.json",
+      "trunk_ws16_seed42": "training_exposure_trunk_ws16_seed42.json",
+      "s12_ws16_seed42": "training_exposure_s12_ws16_seed42.json",
+      "s20_ws16_seed42": "training_exposure_s20_ws16_seed42.json",
+      "s40_ws16_seed42": "training_exposure_s40_ws16_seed42.json"
+    },
+    "tokenizer_name": "tr_general_raw_bpe_32k_v1",
+    "tokenizer_root": "tokenizers/tr_general_raw_bpe_32k_v1",
+    "tokenizer_package_manifest": "package_manifest.json"
+  },
+  "model": {
+    "depth": 32,
+    "aspect_ratio": 64,
+    "model_dim": 2048,
+    "head_dim": 128,
+    "num_heads": 16,
+    "num_kv_heads": 16,
+    "max_seq_len": 2048,
+    "window_pattern": "selected_by_a100_probe",
+    "attention_backend": "selected_by_a100_probe",
+    "vocab_size": 32768,
+    "total_parameters": 2818575450,
+    "scaling_parameters": 1677724672,
+    "parameter_ratio_convention": "nanochat_scaling"
+  },
+  "training": {
+    "optimizer": "muon_adamw",
+    "precision": "bfloat16",
+    "fp8_enabled": false,
+    "global_batch_tokens": 2097152,
+    "device_batch_sequences": 4,
+    "warmup_steps": 40,
+    "gradient_clip_norm": 0.0,
+    "lr_schedule": "wsd",
+    "cooldown_fraction": 0.1,
+    "cooldown_final_lr_fraction": 0.0,
+    "optimizer_hyperparameters": {
+      "embedding_lr": 0.3,
+      "unembedding_lr": 0.008,
+      "matrix_lr": 0.02,
+      "scalar_lr": 0.5,
+      "global_batch_lr_multiplier": 2.0,
+      "adam_model_width_multiplier": 0.6123724356957945,
+      "derived_initial_group_lrs": {
+        "lm_head": 0.009797959,
+        "token_embedding": 0.367423461,
+        "value_embeddings": 0.1837117305,
+        "residual_scalars": 0.01,
+        "x0_scalars": 1.0,
+        "smear": 0.2,
+        "muon_matrices": 0.04
+      },
+      "stable_weight_decay": 0.03675007690415606,
+      "weight_decay_derivation": "legacy_d12_update_normalized_proxy_for_d32_scaling_params_and_2097152_token_batch",
+      "weight_decay_status": "proxy_ablation_required_before_production",
+      "momentum_warmup_start": 0.85,
+      "momentum_warmup_end": 0.97,
+      "momentum_warmup_steps": 400,
+      "stable_muon_momentum": 0.97,
+      "cooldown_final_muon_momentum": 0.9,
+      "weight_decay_cooldown_policy": "selected_by_proxy_acceptance"
+    },
+    "seed": 42,
+    "data_order": "bestfit",
+    "target_param_count": "scaling",
+    "target_param_data_ratio": -1.0,
+    "evaluation": {
+      "eval_every_updates": 250,
+      "eval_tokens_cli_unused": -1,
+      "fixed_validation_full_manifest": true,
+      "core_metric_every_updates": -1,
+      "core_metric_max_per_task": 500,
+      "sample_every_updates": -1
+    },
+    "strict_transactional_checkpoints": true,
+    "fixed_validation": true,
+    "save_every_steps": -1
+  },
+  "checkpoints": {
+    "trunk_model_tag": "tr_d32_general_bpe32k_v1_trunk",
+    "stable_forks": [
+      {
+        "scale": 10.8,
+        "step": 8640,
+        "scheduled_tokens": 18119393280,
+        "retention": "full_resumable"
+      },
+      {
+        "scale": 18.0,
+        "step": 14400,
+        "scheduled_tokens": 30198988800,
+        "retention": "full_resumable"
+      },
+      {
+        "scale": 36.0,
+        "step": 28800,
+        "scheduled_tokens": 60397977600,
+        "retention": "full_resumable"
+      }
+    ],
+    "finals": [
+      {
+        "label": "s12",
+        "model_tag": "tr_d32_general_bpe32k_v1_s12",
+        "parent_step": 8640,
+        "cooldown_start_step": 8640,
+        "final_step": 9600,
+        "cooldown_steps": 960,
+        "scheduled_tokens": 20132659200,
+        "retention": "model_metadata_provenance_required_optimizer_explicit"
+      },
+      {
+        "label": "s20",
+        "model_tag": "tr_d32_general_bpe32k_v1_s20",
+        "parent_step": 14400,
+        "cooldown_start_step": 14400,
+        "final_step": 16000,
+        "cooldown_steps": 1600,
+        "scheduled_tokens": 33554432000,
+        "retention": "model_metadata_provenance_required_optimizer_explicit"
+      },
+      {
+        "label": "s40",
+        "model_tag": "tr_d32_general_bpe32k_v1_s40",
+        "parent_step": 28800,
+        "cooldown_start_step": 28800,
+        "final_step": 32000,
+        "cooldown_steps": 3200,
+        "scheduled_tokens": 67108864000,
+        "retention": "model_metadata_provenance_required_optimizer_explicit"
+      }
+    ]
+  },
+  "stages": [
+    {
+      "id": "trunk_to_s12_fork",
+      "kind": "trunk",
+      "model_tag": "tr_d32_general_bpe32k_v1_trunk",
+      "exposure_plan_family": "trunk",
+      "source_step": null,
+      "target_step": 8640,
+      "num_iterations": 28800,
+      "cooldown_start_step": -1
+    },
+    {
+      "id": "s12_cooldown",
+      "kind": "cooldown_fork",
+      "model_tag": "tr_d32_general_bpe32k_v1_s12",
+      "exposure_plan_family": "s12",
+      "source_model_tag": "tr_d32_general_bpe32k_v1_trunk",
+      "source_step": 8640,
+      "target_step": 9600,
+      "num_iterations": 9600,
+      "cooldown_start_step": 8640
+    },
+    {
+      "id": "trunk_to_s20_fork",
+      "kind": "trunk",
+      "model_tag": "tr_d32_general_bpe32k_v1_trunk",
+      "exposure_plan_family": "trunk",
+      "source_step": 8640,
+      "target_step": 14400,
+      "num_iterations": 28800,
+      "cooldown_start_step": -1
+    },
+    {
+      "id": "s20_cooldown",
+      "kind": "cooldown_fork",
+      "model_tag": "tr_d32_general_bpe32k_v1_s20",
+      "exposure_plan_family": "s20",
+      "source_model_tag": "tr_d32_general_bpe32k_v1_trunk",
+      "source_step": 14400,
+      "target_step": 16000,
+      "num_iterations": 16000,
+      "cooldown_start_step": 14400
+    },
+    {
+      "id": "trunk_to_s40_fork",
+      "kind": "trunk",
+      "model_tag": "tr_d32_general_bpe32k_v1_trunk",
+      "exposure_plan_family": "trunk",
+      "source_step": 14400,
+      "target_step": 28800,
+      "num_iterations": 28800,
+      "cooldown_start_step": -1
+    },
+    {
+      "id": "s40_cooldown",
+      "kind": "cooldown_fork",
+      "model_tag": "tr_d32_general_bpe32k_v1_s40",
+      "exposure_plan_family": "s40",
+      "source_model_tag": "tr_d32_general_bpe32k_v1_trunk",
+      "source_step": 28800,
+      "target_step": 32000,
+      "num_iterations": 32000,
+      "cooldown_start_step": 28800
+    }
+  ],
+  "distributed_gate": {
+    "partition": "a100x4q",
+    "gpus_per_node": 4,
+    "static_launcher": "slurm_srun_direct_python_env_v1",
+    "static_launcher_probe_nodes": 1,
+    "static_launcher_probe_world_size": 4,
+    "require_clean_static_launcher_probe_before_distributed_smokes": true,
+    "signal_resume_probe_world_size": 4,
+    "signal_resume_probe_updates": 6,
+    "signal_resume_probe_after_completed_update": 1,
+    "require_signal_resume_gate_before_distributed_smokes": true,
+    "smoke_node_order": [
+      2,
+      4
+    ],
+    "smoke_updates": 100,
+    "forced_resume_step": 50,
+    "benchmark_first_update": 21,
+    "benchmark_last_update": 100,
+    "maximum_aggregate_loader_fraction": 0.35,
+    "maximum_p95_loader_fraction": 0.6,
+    "minimum_8_to_16_gpu_speedup": 1.7,
+    "minimum_parallel_efficiency": 0.85,
+    "preferred_production_nodes": 4,
+    "preferred_production_world_size": 16,
+    "fallback_production_nodes": 2,
+    "fallback_production_world_size": 8,
+    "selection_policy": "use_16_only_when_clean_8_and_16_gpu_smokes_exist_and_speedup_is_at_least_1.7_otherwise_use_8",
+    "require_single_world_size_for_entire_lineage": true
+  },
+  "attention_backend_gate": {
+    "required_before_proxy_and_production": true,
+    "probe_world_size": 1,
+    "required_gpu_family": "A100",
+    "selection_policy": "use_pinned_upstream_auto_fa3_with_SSSL_after_actual_d32_bf16_finite_smoke_else_sdpa_with_L",
+    "preferred_backend": "fa3",
+    "preferred_window_pattern": "SSSL",
+    "fallback_backend": "sdpa",
+    "fallback_window_pattern": "L",
+    "require_forward_backward_finite": true,
+    "require_upstream_auto_detection_for_fa3": true,
+    "require_actual_d32_model_forward_backward": true,
+    "diagnostic_fa3_sdpa_comparison_is_non_decisional": true,
+    "fallback_reason_required": true,
+    "benchmark_both_window_patterns": true,
+    "record_kernel_cache_inventory": true
+  },
+  "weight_decay_proxy_ablation": {
+    "required_before_production": true,
+    "recipe_version": "tr_d32_wsd_wd_proxy_v1",
+    "weight_decay_transfer_rule": "nanochat_width_batch_v1",
+    "production_scaling_parameters": 1677724672,
+    "production_global_batch_tokens": 2097152,
+    "two_stage_transfer_gate": true,
+    "screen_stage": {
+      "model_depth": 12,
+      "model_dim": 768,
+      "world_size": 1,
+      "device_batch_sequences": 16,
+      "global_batch_tokens": 524288,
+      "target_scaling_ratio": 20,
+      "scaling_parameters": 110100912,
+      "scheduled_tokens": 2202009600,
+      "updates": 4200,
+      "validation_every_updates": 100,
+      "eval_tokens_cli_unused": -1,
+      "fixed_validation_full_manifest": true,
+      "final_validation_points": 5,
+      "seeds": [
+        42,
+        314159
+      ],
+      "advance_top_wsd_recipes": 2
+    },
+    "confirmation_stage": {
+      "model_depth": 20,
+      "model_dim": 1280,
+      "world_size": 1,
+      "device_batch_sequences": 4,
+      "global_batch_tokens": 1048576,
+      "target_scaling_ratio": 12,
+      "scaling_parameters": 435160240,
+      "scheduled_tokens": 5221908480,
+      "updates": 4980,
+      "validation_every_updates": 100,
+      "eval_tokens_cli_unused": -1,
+      "fixed_validation_full_manifest": true,
+      "final_validation_points": 5,
+      "seeds": [
+        42
+      ],
+      "arms": "pinned_upstream_control_plus_two_wsd_screen_winners"
+    },
+    "candidates": [
+      {
+        "id": "upstream_92d63d4e_control",
+        "schedule": "nanochat_linear",
+        "input_weight_decay": 0.28,
+        "production_base_weight_decay": 0.03675007690415606,
+        "proxy_ratio_to_upstream_effective_weight_decay": 1.0,
+        "proxy_scale_rule": "nanochat_width_batch_v1",
+        "stage_effective_weight_decay": {
+          "d12": 0.28,
+          "d20": 0.1001877764255601
+        },
+        "cooldown_weight_decay": "cosine_full_horizon",
+        "eligible_for_production": false
+      },
+      {
+        "id": "legacy_transferred",
+        "schedule": "wsd",
+        "production_base_weight_decay": 0.03675007690415606,
+        "proxy_ratio_to_upstream_effective_weight_decay": 1.0,
+        "proxy_scale_rule": "nanochat_width_batch_v1",
+        "stage_effective_weight_decay": {
+          "d12": 0.28,
+          "d20": 0.1001877764255601
+        },
+        "cooldown_weight_decay": "linear_to_zero",
+        "eligible_for_production": true
+      },
+      {
+        "id": "half_transferred_constant_cooldown_wd",
+        "schedule": "wsd",
+        "production_base_weight_decay": 0.01837503845207803,
+        "proxy_ratio_to_upstream_effective_weight_decay": 0.5,
+        "proxy_scale_rule": "nanochat_width_batch_v1",
+        "stage_effective_weight_decay": {
+          "d12": 0.14,
+          "d20": 0.05009388821278005
+        },
+        "cooldown_weight_decay": "constant",
+        "eligible_for_production": true
+      },
+      {
+        "id": "half_transferred_linear_cooldown_wd",
+        "schedule": "wsd",
+        "production_base_weight_decay": 0.01837503845207803,
+        "proxy_ratio_to_upstream_effective_weight_decay": 0.5,
+        "proxy_scale_rule": "nanochat_width_batch_v1",
+        "stage_effective_weight_decay": {
+          "d12": 0.14,
+          "d20": 0.05009388821278005
+        },
+        "cooldown_weight_decay": "linear_to_zero",
+        "eligible_for_production": true
+      },
+      {
+        "id": "no_weight_decay",
+        "schedule": "wsd",
+        "production_base_weight_decay": 0.0,
+        "proxy_ratio_to_upstream_effective_weight_decay": 0.0,
+        "proxy_scale_rule": "nanochat_width_batch_v1",
+        "stage_effective_weight_decay": {
+          "d12": 0.0,
+          "d20": 0.0
+        },
+        "cooldown_weight_decay": "linear_to_zero",
+        "eligible_for_production": true
+      }
+    ],
+    "control_invariants": [
+      "same_tokenizer_package",
+      "same_training_and_validation_manifests",
+      "same_data_order_within_seed",
+      "same_model_initialization_within_seed",
+      "same_global_batch_and_optimizer_except_base_weight_decay",
+      "gradient_clip_norm_is_exactly_zero",
+      "upstream_control_is_exactly_pinned_to_92d63d4e",
+      "constant_and_linear_to_zero_cooldown_policies_are_compared",
+      "same_code_revision_and_hardware_profile"
+    ],
+    "acceptance_rule": {
+      "reject_nonfinite_or_incomplete_runs": true,
+      "screen_primary_metric": "d12_mean_fixed_validation_bpb_over_last_5_points_and_2_seeds",
+      "confirmation_primary_metric": "d20_mean_fixed_validation_bpb_over_last_5_points",
+      "maximum_last5_bpb_range": 0.1,
+      "maximum_final_minus_best_bpb": 0.05,
+      "selection": "lowest_primary_metric",
+      "tie_tolerance_bpb": 0.002,
+      "maximum_wsd_vs_upstream_control_bpb": 0.002,
+      "tie_break": "lower_base_weight_decay"
+    }
+  },
+  "storage": {
+    "never_auto_delete_existing_artifacts": true,
+    "uhem_live_quota": {
+      "uid": 4500,
+      "storage_pool_id": 1,
+      "query": "beegfs-ctl_--getquota_--uid_4500_--storagepoolid=1_--csv",
+      "allow_unlimited_hard_quota": true,
+      "effective_free_policy": "minimum_of_physical_free_and_finite_user_quota_remaining"
+    },
+    "data_preparation_peak_gate": {
+      "required": true,
+      "minimum_sample_documents": 100000,
+      "extrapolation_safety_factor": 1.35,
+      "required_measured_components": [
+        "source_downloads",
+        "filtered_text",
+        "minhash_signatures",
+        "minhash_buckets",
+        "cluster_assignments",
+        "tokenized_output",
+        "temporary_merge_space"
+      ],
+      "allow_verified_uhem_scratch": true,
+      "never_assume_intermediate_bytes_are_negligible": true,
+      "require_billed_cpu_sample_extrapolation": true,
+      "never_auto_delete_existing_artifacts": true
+    },
+    "stream_one_remote_shard_at_a_time": true,
+    "estimated_corpus_bytes": 236223201280,
+    "estimated_tokenizer_and_receipts_bytes": 12884901888,
+    "estimated_full_resumable_transaction_bytes": 34359738368,
+    "full_resumable_stable_forks_retained": 3,
+    "estimated_cooled_final_model_bundle_bytes": 12884901888,
+    "cooled_final_model_bundles_retained": 3,
+    "full_cooled_final_transactions_at_peak": 1,
+    "atomic_write_transient_transactions": 1,
+    "maximum_retained_preemption_transactions": 6,
+    "estimated_logs_and_evaluations_bytes": 17179869184,
+    "estimated_proxy_and_smoke_retained_bytes": 68719476736,
+    "minimum_free_headroom_bytes": 68719476736,
+    "smoke_measurement_safety_factor": 1.25,
+    "required_free_bytes_at_training_preflight": 571230650368,
+    "estimated_end_to_end_peak_project_bytes": 820338753536,
+    "policy": "measure actual corpus/tokenizer bytes; seed estimates at 32 GiB/full and 12 GiB/model bundle, then raise them to measured d32 smoke bytes times 1.25; retain proxy/smoke transactions, three full-resumable stable forks, up to six immutable preemption transactions, and three model-only cooled-final bundles; allow one full final plus one atomic-write transient; retain logs/evals and 64 GiB headroom; optimizer removal from a cooled final is a separate explicit verified operation and never automatic"
+  },
+  "uhem_budget": {
+    "account": "nakane",
+    "user": "nunal",
+    "cpu_saat_per_4gpu_node_hour": 64,
+    "cpu_saat_per_fully_utilized_a100_gpu_hour": 16,
+    "cpu_saat_per_4node_wall_hour": 256,
+    "shared_lineage_scaling_work": 43.19992089858234,
+    "shared_lineage_scheduled_token_work": 72477573120,
+    "calibration": {
+      "source_job_id": "512018",
+      "source_model": "d20",
+      "source_world_size": 8,
+      "source_sustained_tokens_per_second": 414000,
+      "d20_flops_per_token": 3240107184,
+      "d32_flops_per_token": 11676960912,
+      "d32_to_d20_scaling_compute_ratio": 3.6038810598,
+      "projected_d32_8gpu_tokens_per_second": 114876,
+      "projected_d32_8gpu_tokens_per_second_range": [
+        97300,
+        131600
+      ],
+      "must_recalibrate_from_d32_smokes": true
+    },
+    "raw_estimated_aggregate_a100_hours_range": [
+      1224,
+      1948
+    ],
+    "raw_estimated_cpu_saat_range": [
+      19584,
+      31168
+    ],
+    "estimated_cpu_saat_range_with_15_percent_reserve": [
+      22522,
+      35844
+    ],
+    "proxy_cost_model": {
+      "allocation": "one_4xa100_node_with_up_to_four_concurrent_single_gpu_arms",
+      "partition": "a100x4q",
+      "allocated_a100_gpus": 4,
+      "screen_packed_waves": 3,
+      "confirmation_packed_waves": 1,
+      "forbid_single_gpu_partition_fallback": true,
+      "d12_flops_per_token": 887098032,
+      "screen_runs": 10,
+      "screen_aggregate_tokens": 22020096000,
+      "screen_projected_raw_cpu_saat": 621,
+      "confirmation_runs": 3,
+      "confirmation_aggregate_tokens": 15665725440,
+      "confirmation_projected_raw_cpu_saat": 1794,
+      "full_manifest_evaluation_overhead_allowance_cpu_saat": 1000,
+      "kernel_and_distributed_smokes_projected_raw_cpu_saat": 200,
+      "estimated_total_cpu_saat_range_with_queue_runtime_overhead": [
+        3000,
+        4000
+      ],
+      "single_gpu_partition_fallback_estimate_cpu_saat": 7456,
+      "require_four_way_packing": true
+    },
+    "proxy_and_smoke_reserve_cpu_saat": 4000,
+    "operational_ceiling_cpu_saat": 40000,
+    "operational_ceiling_scope": "training_plus_weight_decay_proxy_plus_kernel_and_distributed_smokes_only; data_preparation_is_separately_sample_extrapolated_and_added",
+    "quota_query": "sshare_-n_-P_-A_nakane_-u_nunal_-o_Account,User,GrpTRESMins,GrpTRESRaw,TRESRunMins,RawUsage",
+    "fail_if_live_remaining_cpu_saat_below_operational_ceiling": true
+  },
+  "publication": {
+    "upload_initial_visibility": "private",
+    "require_all_three_finals": true,
+    "require_tokenizer_package": true,
+    "require_corpus_and_validation_provenance": true,
+    "require_lineage_receipts": true,
+    "require_code_revision": true,
+    "final_optimizer_policy": "explicit_include_or_explicit_omit_with_retention_class"
+  },
+  "canonical_sha256": "0fa87f41d6264807957564dbd898640792321ccd0412cb29a6dc4b675fa384f7"
+}

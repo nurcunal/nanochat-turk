@@ -1,0 +1,2934 @@
+{
+  "retrieved_at_utc": "2026-11-09T12:38:55.156308+00:00",
+  "host": "altay.uhem.itu.edu.tr",
+  "records": [
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_checkpoints/tr_d20_bpe_32768_cont40x/meta_034200.json",
+      "size_bytes": 1973,
+      "mtime_utc": "2026-08-20T08:47:39+00:00",
+      "sha256": "b6ff4c1bf128ecd7e4029657140f99e1cc25cc357c843f91e5164555844b6d5b",
+      "top_level_keys": [
+        "step",
+        "val_bpb",
+        "model_config",
+        "tokenizer_name",
+        "tokenizer_dir",
+        "tokenizer_config",
+        "user_config",
+        "device_batch_size",
+        "max_seq_len",
+        "total_batch_size",
+        "dataloader_state_dict",
+        "loop_state"
+      ],
+      "data": {
+        "step": 34200,
+        "val_bpb": 0.5914508179363445,
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 32768,
+          "n_layer": 20,
+          "n_head": 10,
+          "n_kv_head": 10,
+          "n_embd": 1280,
+          "window_pattern": "L"
+        },
+        "tokenizer_name": "bpe_32768",
+        "tokenizer_dir": "/ari/users/nunal/nanochat-turk-d20-bpe32k/tokenizers/bpe_32768",
+        "tokenizer_config": {
+          "name": "bpe_32768",
+          "implementation": "bpe",
+          "vocab_size": 32768,
+          "max_chars": 2000000000,
+          "doc_cap": 10000
+        },
+        "user_config": {
+          "run": "tr-d20-bpe32k-cont40x-8gpu",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 20,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 34200,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 40.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": 17105,
+          "stop_at_step": -1,
+          "continuation_start_step": 17100,
+          "continuation_lr_start_frac": 0.05,
+          "continuation_lr_peak_frac": 0.25,
+          "continuation_warmup_steps": 1000,
+          "continuation_momentum_start": 0.9,
+          "continuation_momentum_peak": 0.95,
+          "eval_every": 500,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 5700,
+          "model_tag": "tr_d20_bpe_32768_cont40x"
+        },
+        "device_batch_size": 4,
+        "max_seq_len": 2048,
+        "total_batch_size": 1048576,
+        "dataloader_state_dict": {
+          "pq_idx": 20,
+          "rg_idx": 3016,
+          "epoch": 1
+        },
+        "loop_state": {
+          "min_val_bpb": 0.5914508179363445,
+          "smooth_train_loss": 1.945918523820987,
+          "total_training_time": 119531.62990617752
+        }
+      }
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d20-bpe32k/cetvel_out/full/cetvel_full_results.json",
+      "error": "Expecting value: line 2521780 column 11 (char 260154250)"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d20-bpe32k/cetvel_out/full_kvcache_20260609_185114/cetvel_full_partial_results.json",
+      "size_bytes": 121867820,
+      "mtime_utc": "2026-06-09T17:06:07+00:00",
+      "sha256": "20b1aec4215acb535f986e6d9d505e1e858441ecac22441786285a006e6bb681",
+      "top_level_keys": [
+        "results",
+        "group_subtasks",
+        "configs",
+        "versions",
+        "n-shot",
+        "higher_is_better",
+        "n-samples",
+        "samples",
+        "config",
+        "git_hash",
+        "date",
+        "pretty_env_info",
+        "transformers_version",
+        "upper_git_hash",
+        "tokenizer_pad_token",
+        "tokenizer_eos_token",
+        "tokenizer_bos_token",
+        "eot_token_id",
+        "max_length",
+        "groups"
+      ],
+      "data": {
+        "results": {
+          "exams_tr": {
+            "acc,none": 0.27989821882951654,
+            "acc_stderr,none": 0.02267534881071746,
+            "acc_norm,none": 0.3104325699745547,
+            "acc_norm_stderr,none": 0.023368399945309665,
+            "alias": "exams_tr"
+          },
+          "belebele_tr": {
+            "acc,none": 0.25222222222222224,
+            "acc_stderr,none": 0.014484319811433867,
+            "acc_norm,none": 0.25222222222222224,
+            "acc_norm_stderr,none": 0.014484319811433867,
+            "alias": "belebele_tr"
+          },
+          "turkish_plu": {
+            "acc_norm,none": 0.50272,
+            "acc_norm_stderr,none": 0.008893344438781701,
+            "acc,none": 0.46048,
+            "acc_stderr,none": 0.00881446403283729,
+            "alias": "turkish_plu"
+          },
+          "turkish_plu_goal_inference": {
+            "acc,none": 0.4253285543608124,
+            "acc_stderr,none": 0.017098930239005182,
+            "acc_norm,none": 0.4241338112305854,
+            "acc_norm_stderr,none": 0.01709263815765492,
+            "alias": " - turkish_plu_goal_inference"
+          },
+          "turkish_plu_next_event_prediction": {
+            "acc,none": 0.44580152671755724,
+            "acc_stderr,none": 0.01943634342434951,
+            "acc_norm,none": 0.5343511450381679,
+            "acc_norm_stderr,none": 0.019505350902106894,
+            "alias": " - turkish_plu_next_event_prediction"
+          },
+          "turkish_plu_step_inference": {
+            "acc,none": 0.3545751633986928,
+            "acc_stderr,none": 0.01935336054755364,
+            "acc_norm,none": 0.477124183006536,
+            "acc_norm_stderr,none": 0.020206653187884744,
+            "alias": " - turkish_plu_step_inference"
+          },
+          "turkish_plu_step_ordering": {
+            "acc,none": 0.5621939275220372,
+            "acc_stderr,none": 0.015534020709125906,
+            "acc_norm,none": 0.5621939275220372,
+            "acc_norm_stderr,none": 0.015534020709125906,
+            "alias": " - turkish_plu_step_ordering"
+          },
+          "cetvel_xcopa_tr": {
+            "acc,none": 0.618,
+            "acc_stderr,none": 0.02175082059125093,
+            "alias": "cetvel_xcopa_tr"
+          },
+          "cetvel_xnli_tr": {
+            "acc,none": 0.3327345309381238,
+            "acc_stderr,none": 0.006657677385484938,
+            "acc_norm,none": 0.3335329341317365,
+            "acc_norm_stderr,none": 0.0066616711899316425,
+            "alias": "cetvel_xnli_tr"
+          },
+          "mnli_tr": {
+            "acc,none": 0.3216,
+            "acc_stderr,none": 0.004671137543746198,
+            "acc_norm,none": 0.321,
+            "acc_norm_stderr,none": 0.0046688413774705175,
+            "alias": "mnli_tr"
+          },
+          "snli_tr": {
+            "acc,none": 0.3235,
+            "acc_stderr,none": 0.004678350531583716,
+            "acc_norm,none": 0.3234,
+            "acc_norm_stderr,none": 0.004677973102021251,
+            "alias": "snli_tr"
+          },
+          "news_cat": {
+            "acc,none": 0.816,
+            "acc_stderr,none": 0.02455581299422255,
+            "f1,none": 0.8131421521642601,
+            "f1_stderr,none": "N/A",
+            "acc_norm,none": 0.676,
+            "acc_norm_stderr,none": 0.029658294924545567,
+            "alias": "news_cat"
+          },
+          "offenseval_tr": {
+            "acc,none": 0.4631519274376417,
+            "acc_stderr,none": 0.008396237352918483,
+            "f1,none": 0.28850488354620585,
+            "f1_stderr,none": 0.011512938590091396,
+            "acc_norm,none": 0.7970521541950113,
+            "acc_norm_stderr,none": 0.006772248146961342,
+            "alias": "offenseval_tr"
+          },
+          "trclaim19": {
+            "acc_norm,none": 0.4938299817184644,
+            "acc_norm_stderr,none": 0.0074951634809359655,
+            "acc,none": 0.39876599634369286,
+            "acc_stderr,none": 0.007395667521812318,
+            "alias": "trclaim19"
+          },
+          "check_worthiness": {
+            "acc,none": 0.37614259597806216,
+            "acc_stderr,none": 0.010358444277077068,
+            "acc_norm,none": 0.4287020109689214,
+            "acc_norm_stderr,none": 0.0105824132380386,
+            "alias": " - check_worthiness"
+          },
+          "relevance_judgment": {
+            "acc,none": 0.42138939670932357,
+            "acc_stderr,none": 0.01055870373348204,
+            "acc_norm,none": 0.5589579524680073,
+            "acc_norm_stderr,none": 0.01061708210777377,
+            "alias": " - relevance_judgment"
+          },
+          "xfact_tr": {
+            "acc,none": 0.33727810650887574,
+            "acc_stderr,none": 0.036475822502775014,
+            "acc_norm,none": 0.33727810650887574,
+            "acc_norm_stderr,none": 0.036475822502775014,
+            "alias": "xfact_tr"
+          },
+          "xquad_tr": {
+            "exact,none": 0.0,
+            "exact_stderr,none": "N/A",
+            "f1,none": 3.098479567420523,
+            "f1_stderr,none": "N/A",
+            "HasAns_exact,none": 0.0,
+            "HasAns_exact_stderr,none": "N/A",
+            "HasAns_f1,none": 3.098479567420523,
+            "HasAns_f1_stderr,none": "N/A",
+            "NoAns_exact,none": 0,
+            "NoAns_exact_stderr,none": "N/A",
+            "NoAns_f1,none": 0,
+            "NoAns_f1_stderr,none": "N/A",
+            "best_exact,none": 0.0,
+            "best_exact_stderr,none": "N/A",
+            "best_f1,none": 3.0984795674205254,
+            "best_f1_stderr,none": "N/A",
+            "alias": "xquad_tr"
+          },
+          "tquad": {
+            "exact,none": 0.0,
+            "exact_stderr,none": "N/A",
+            "f1,none": 5.260303248073273,
+            "f1_stderr,none": "N/A",
+            "HasAns_exact,none": 0.0,
+            "HasAns_exact_stderr,none": "N/A",
+            "HasAns_f1,none": 5.260303248073273,
+            "HasAns_f1_stderr,none": "N/A",
+            "NoAns_exact,none": 0,
+            "NoAns_exact_stderr,none": "N/A",
+            "NoAns_f1,none": 0,
+            "NoAns_f1_stderr,none": "N/A",
+            "best_exact,none": 0.0,
+            "best_exact_stderr,none": "N/A",
+            "best_f1,none": 5.260303248073279,
+            "best_f1_stderr,none": "N/A",
+            "alias": "tquad"
+          }
+        },
+        "versions": {
+          "exams_tr": 0.0,
+          "belebele_tr": 0.0,
+          "turkish_plu_goal_inference": 0.0,
+          "turkish_plu_next_event_prediction": 0.0,
+          "turkish_plu_step_inference": 0.0,
+          "turkish_plu_step_ordering": 0.0,
+          "cetvel_xcopa_tr": 1.0,
+          "cetvel_xnli_tr": 0.0,
+          "mnli_tr": 0.0,
+          "snli_tr": 0.0,
+          "news_cat": 0.0,
+          "offenseval_tr": 0.0,
+          "check_worthiness": 0.0,
+          "relevance_judgment": 0.0,
+          "xfact_tr": 0.0,
+          "xquad_tr": 1,
+          "tquad": 1
+        },
+        "higher_is_better": {
+          "exams_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "belebele_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "turkish_plu": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "turkish_plu_goal_inference": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "turkish_plu_next_event_prediction": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "turkish_plu_step_inference": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "turkish_plu_step_ordering": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "cetvel_xcopa_tr": {
+            "acc": true
+          },
+          "cetvel_xnli_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "mnli_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "snli_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "news_cat": {
+            "acc": true,
+            "acc_norm": true,
+            "f1": true
+          },
+          "offenseval_tr": {
+            "acc": true,
+            "acc_norm": true,
+            "f1": true
+          },
+          "check_worthiness": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "relevance_judgment": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "trclaim19": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "xfact_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "xquad_tr": {
+            "exact": true,
+            "f1": true,
+            "HasAns_exact": true,
+            "HasAns_f1": true,
+            "NoAns_exact": true,
+            "NoAns_f1": true,
+            "best_exact": true,
+            "best_f1": true
+          },
+          "tquad": {
+            "exact": true,
+            "f1": true,
+            "HasAns_exact": true,
+            "HasAns_f1": true,
+            "NoAns_exact": true,
+            "NoAns_f1": true,
+            "best_exact": true,
+            "best_f1": true
+          }
+        },
+        "n-samples": {
+          "exams_tr": {
+            "original": 393,
+            "effective": 393
+          },
+          "belebele_tr": {
+            "original": 900,
+            "effective": 900
+          },
+          "turkish_plu_goal_inference": {
+            "original": 837,
+            "effective": 837
+          },
+          "turkish_plu_step_inference": {
+            "original": 612,
+            "effective": 612
+          },
+          "turkish_plu_step_ordering": {
+            "original": 1021,
+            "effective": 1021
+          },
+          "turkish_plu_next_event_prediction": {
+            "original": 655,
+            "effective": 655
+          },
+          "cetvel_xcopa_tr": {
+            "original": 500,
+            "effective": 500
+          },
+          "cetvel_xnli_tr": {
+            "original": 5010,
+            "effective": 5010
+          },
+          "mnli_tr": {
+            "original": 10000,
+            "effective": 10000
+          },
+          "snli_tr": {
+            "original": 10000,
+            "effective": 10000
+          },
+          "news_cat": {
+            "original": 250,
+            "effective": 250
+          },
+          "offenseval_tr": {
+            "original": 3528,
+            "effective": 3528
+          },
+          "check_worthiness": {
+            "original": 2188,
+            "effective": 2188
+          },
+          "relevance_judgment": {
+            "original": 2188,
+            "effective": 2188
+          },
+          "xfact_tr": {
+            "original": 169,
+            "effective": 169
+          },
+          "xquad_tr": {
+            "original": 1190,
+            "effective": 1190
+          },
+          "tquad": {
+            "original": 892,
+            "effective": 892
+          }
+        },
+        "config": {
+          "model": "nanochat",
+          "model_args": "base_dir=/ari/users/nunal/nanochat-turk-d20-bpe32k,max_gen_tokens=128,model_tag=tr_d20_bpe_32768_chinchilla20,model_step=17100",
+          "batch_size": "1",
+          "batch_sizes": [],
+          "device": "cuda:0",
+          "use_cache": null,
+          "limit": null,
+          "bootstrap_iters": 100000,
+          "gen_kwargs": null,
+          "random_seed": 0,
+          "numpy_seed": 1234,
+          "torch_seed": 1234,
+          "fewshot_seed": 1234
+        },
+        "git_hash": null,
+        "date": 1781023465.099249
+      }
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/base_checkpoints/tr_d32_bpe_32768_fineweb2_all_v1/meta_028000.json",
+      "size_bytes": 3038,
+      "mtime_utc": "2026-08-26T15:58:41+00:00",
+      "sha256": "8c497e78eff5c4b4b47493c26645b17869c12d8890a243161c11fa46ee538632",
+      "top_level_keys": [
+        "step",
+        "updates_completed",
+        "val_bpb",
+        "model_config",
+        "tokenizer_name",
+        "tokenizer_dir",
+        "tokenizer_config",
+        "user_config",
+        "device_batch_size",
+        "max_seq_len",
+        "total_batch_size",
+        "loop_state",
+        "dataloader_state_dict"
+      ],
+      "data": {
+        "step": 28000,
+        "updates_completed": 28000,
+        "val_bpb": 0.5190396722173233,
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 32768,
+          "n_layer": 32,
+          "n_head": 16,
+          "n_kv_head": 16,
+          "n_embd": 2048,
+          "window_pattern": "L"
+        },
+        "tokenizer_name": "bpe_32768",
+        "tokenizer_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/tokenizers/bpe_32768",
+        "tokenizer_config": {
+          "name": "bpe_32768",
+          "implementation": "bpe",
+          "vocab_size": 32768,
+          "max_chars": 2000000000,
+          "doc_cap": 10000
+        },
+        "user_config": {
+          "run": "tr-d32-bpe32k-fineweb2-all-ws8-v1",
+          "study_id": "",
+          "run_id": "",
+          "study_manifest": "",
+          "metrics_dir": "",
+          "wandb_every": 100,
+          "seed": 42,
+          "paper_mode": false,
+          "strict_mode": false,
+          "strict_run_kind": "production",
+          "tokenizer_manifest": "",
+          "code_revision": "",
+          "device_type": "",
+          "attention_backend": "sdpa",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 32,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 28000,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.68559199648177,
+          "target_param_count": "total",
+          "horizon_unit": "",
+          "horizon_value": -1,
+          "exposure_plan": "",
+          "data_order": "bestfit",
+          "document_manifest": "",
+          "validation_manifest": "",
+          "data_dir": "",
+          "data_shuffle_seed": 42,
+          "fineweb2_rehydrate": false,
+          "preserve_document_tails": true,
+          "device_batch_size": 4,
+          "total_batch_size": 2097152,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "stop_at_step": -1,
+          "continuation_start_step": -1,
+          "continuation_lr_start_frac": 0.05,
+          "continuation_lr_peak_frac": 0.25,
+          "continuation_warmup_steps": 1000,
+          "continuation_momentum_start": 0.9,
+          "continuation_momentum_peak": 0.95,
+          "optimizer": "muon_adamw",
+          "lr_schedule": "nanochat_linear",
+          "wsd_recipe_version": "",
+          "wsd_base_weight_decay": -1.0,
+          "wsd_weight_decay_cooldown": "",
+          "wsd_proxy_approval": "",
+          "wsd_cooldown_start_step": -1,
+          "wsd_cooldown_fraction": 0.1,
+          "adamw_peak_lr": -1.0,
+          "grad_clip": 0.0,
+          "eval_every": 500,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": -1,
+          "save_every": 2500,
+          "model_tag": "tr_d32_bpe_32768_fineweb2_all_v1",
+          "parent_checkpoint_dir": "",
+          "parent_checkpoint_step": -1,
+          "parent_checkpoint_sha256": ""
+        },
+        "device_batch_size": 4,
+        "max_seq_len": 2048,
+        "total_batch_size": 2097152,
+        "loop_state": {
+          "min_val_bpb": 0.5190396722173233,
+          "smooth_train_loss": 2.0866082403956683,
+          "total_training_time": 434700.2464530468
+        },
+        "dataloader_state_dict": {
+          "pq_idx": 9,
+          "rg_idx": 2085,
+          "epoch": 2
+        }
+      }
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/core11_legacy_step028000_v1/cetvel_core_results.json",
+      "size_bytes": 91328174,
+      "mtime_utc": "2026-08-26T20:40:46+00:00",
+      "sha256": "5b7057575597e236d2e68196f9d4c6ab7be2225c3bb4808ea4e7df3b66da0051",
+      "top_level_keys": [
+        "results",
+        "group_subtasks",
+        "configs",
+        "versions",
+        "n-shot",
+        "higher_is_better",
+        "n-samples",
+        "samples",
+        "config",
+        "git_hash",
+        "date",
+        "pretty_env_info",
+        "transformers_version",
+        "upper_git_hash",
+        "tokenizer_pad_token",
+        "tokenizer_eos_token",
+        "tokenizer_bos_token",
+        "eot_token_id",
+        "max_length",
+        "groups"
+      ],
+      "data": {
+        "results": {
+          "exams_tr": {
+            "acc,none": 0.31297709923664124,
+            "acc_stderr,none": 0.023420645141673423,
+            "acc_norm,none": 0.34096692111959287,
+            "acc_norm_stderr,none": 0.02394234570615004,
+            "alias": "exams_tr"
+          },
+          "belebele_tr": {
+            "acc,none": 0.2388888888888889,
+            "acc_stderr,none": 0.014221393731276089,
+            "acc_norm,none": 0.2388888888888889,
+            "acc_norm_stderr,none": 0.014221393731276089,
+            "alias": "belebele_tr"
+          },
+          "turkish_plu": {
+            "acc_norm,none": 0.5504,
+            "acc_norm_stderr,none": 0.008759941620953934,
+            "acc,none": 0.512,
+            "acc_stderr,none": 0.008757566617736917,
+            "alias": "turkish_plu"
+          },
+          "turkish_plu_goal_inference": {
+            "acc,none": 0.4444444444444444,
+            "acc_stderr,none": 0.017185784024715167,
+            "acc_norm,none": 0.42054958183990443,
+            "acc_norm_stderr,none": 0.017073147971120122,
+            "alias": " - turkish_plu_goal_inference"
+          },
+          "turkish_plu_next_event_prediction": {
+            "acc,none": 0.4900763358778626,
+            "acc_stderr,none": 0.019547695957928008,
+            "acc_norm,none": 0.5648854961832062,
+            "acc_norm_stderr,none": 0.019386219150301476,
+            "alias": " - turkish_plu_next_event_prediction"
+          },
+          "turkish_plu_step_inference": {
+            "acc,none": 0.3937908496732026,
+            "acc_stderr,none": 0.019766211991073025,
+            "acc_norm,none": 0.5424836601307189,
+            "acc_norm_stderr,none": 0.020154685712590967,
+            "alias": " - turkish_plu_step_inference"
+          },
+          "turkish_plu_step_ordering": {
+            "acc,none": 0.6523016650342801,
+            "acc_stderr,none": 0.014911641814229194,
+            "acc_norm,none": 0.6523016650342801,
+            "acc_norm_stderr,none": 0.014911641814229194,
+            "alias": " - turkish_plu_step_ordering"
+          },
+          "cetvel_xcopa_tr": {
+            "acc,none": 0.69,
+            "acc_stderr,none": 0.020704041021724684,
+            "alias": "cetvel_xcopa_tr"
+          },
+          "cetvel_xnli_tr": {
+            "acc,none": 0.34271457085828344,
+            "acc_stderr,none": 0.006706065194823729,
+            "acc_norm,none": 0.332934131736527,
+            "acc_norm_stderr,none": 0.006658677852916923,
+            "alias": "cetvel_xnli_tr"
+          },
+          "mnli_tr": {
+            "acc,none": 0.3287,
+            "acc_stderr,none": 0.004697641725778838,
+            "acc_norm,none": 0.3235,
+            "acc_norm_stderr,none": 0.004678350531583716,
+            "alias": "mnli_tr"
+          },
+          "snli_tr": {
+            "acc,none": 0.3166,
+            "acc_stderr,none": 0.004651731705589444,
+            "acc_norm,none": 0.3186,
+            "acc_norm_stderr,none": 0.004659568129936052,
+            "alias": "snli_tr"
+          },
+          "news_cat": {
+            "acc,none": 0.7,
+            "acc_stderr,none": 0.029040893477575786,
+            "f1,none": 0.7084759213062882,
+            "f1_stderr,none": "N/A",
+            "acc_norm,none": 0.704,
+            "acc_norm_stderr,none": 0.028928939388379697,
+            "alias": "news_cat"
+          },
+          "offenseval_tr": {
+            "acc,none": 0.20521541950113378,
+            "acc_stderr,none": 0.006800282918698524,
+            "f1,none": 0.3380547686496695,
+            "f1_stderr,none": 0.009399736704899856,
+            "acc_norm,none": 0.33701814058956914,
+            "acc_norm_stderr,none": 0.007959297390018867,
+            "alias": "offenseval_tr"
+          },
+          "trclaim19": {
+            "acc_norm,none": 0.4835466179159049,
+            "acc_norm_stderr,none": 0.007418080657779809,
+            "acc,none": 0.48560329067641683,
+            "acc_stderr,none": 0.0073735505744694195,
+            "alias": "trclaim19"
+          },
+          "check_worthiness": {
+            "acc,none": 0.37614259597806216,
+            "acc_stderr,none": 0.010358444277077068,
+            "acc_norm,none": 0.38848263254113347,
+            "acc_norm_stderr,none": 0.010422353767257189,
+            "alias": " - check_worthiness"
+          },
+          "relevance_judgment": {
+            "acc,none": 0.5950639853747715,
+            "acc_stderr,none": 0.010496648248642161,
+            "acc_norm,none": 0.5786106032906764,
+            "acc_norm_stderr,none": 0.01055870373348204,
+            "alias": " - relevance_judgment"
+          },
+          "xfact_tr": {
+            "acc,none": 0.3254437869822485,
+            "acc_stderr,none": 0.036148678472922066,
+            "acc_norm,none": 0.2781065088757396,
+            "acc_norm_stderr,none": 0.03456905430376242,
+            "alias": "xfact_tr"
+          }
+        },
+        "versions": {
+          "exams_tr": 0.0,
+          "belebele_tr": 0.0,
+          "turkish_plu_goal_inference": 0.0,
+          "turkish_plu_next_event_prediction": 0.0,
+          "turkish_plu_step_inference": 0.0,
+          "turkish_plu_step_ordering": 0.0,
+          "cetvel_xcopa_tr": 1.0,
+          "cetvel_xnli_tr": 0.0,
+          "mnli_tr": 0.0,
+          "snli_tr": 0.0,
+          "news_cat": 0.0,
+          "offenseval_tr": 0.0,
+          "check_worthiness": 0.0,
+          "relevance_judgment": 0.0,
+          "xfact_tr": 0.0
+        },
+        "higher_is_better": {
+          "exams_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "belebele_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "turkish_plu": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "turkish_plu_goal_inference": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "turkish_plu_next_event_prediction": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "turkish_plu_step_inference": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "turkish_plu_step_ordering": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "cetvel_xcopa_tr": {
+            "acc": true
+          },
+          "cetvel_xnli_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "mnli_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "snli_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "news_cat": {
+            "acc": true,
+            "acc_norm": true,
+            "f1": true
+          },
+          "offenseval_tr": {
+            "acc": true,
+            "acc_norm": true,
+            "f1": true
+          },
+          "check_worthiness": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "relevance_judgment": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "trclaim19": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "xfact_tr": {
+            "acc": true,
+            "acc_norm": true
+          }
+        },
+        "n-samples": {
+          "exams_tr": {
+            "original": 393,
+            "effective": 393
+          },
+          "belebele_tr": {
+            "original": 900,
+            "effective": 900
+          },
+          "turkish_plu_goal_inference": {
+            "original": 837,
+            "effective": 837
+          },
+          "turkish_plu_step_inference": {
+            "original": 612,
+            "effective": 612
+          },
+          "turkish_plu_step_ordering": {
+            "original": 1021,
+            "effective": 1021
+          },
+          "turkish_plu_next_event_prediction": {
+            "original": 655,
+            "effective": 655
+          },
+          "cetvel_xcopa_tr": {
+            "original": 500,
+            "effective": 500
+          },
+          "cetvel_xnli_tr": {
+            "original": 5010,
+            "effective": 5010
+          },
+          "mnli_tr": {
+            "original": 10000,
+            "effective": 10000
+          },
+          "snli_tr": {
+            "original": 10000,
+            "effective": 10000
+          },
+          "news_cat": {
+            "original": 250,
+            "effective": 250
+          },
+          "offenseval_tr": {
+            "original": 3528,
+            "effective": 3528
+          },
+          "check_worthiness": {
+            "original": 2188,
+            "effective": 2188
+          },
+          "relevance_judgment": {
+            "original": 2188,
+            "effective": 2188
+          },
+          "xfact_tr": {
+            "original": 169,
+            "effective": 169
+          }
+        },
+        "config": {
+          "model": "nanochat",
+          "model_args": "base_dir=/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k,max_gen_tokens=128,model_tag=tr_d32_bpe_32768_fineweb2_all_v1,model_step=28000",
+          "batch_size": "1",
+          "batch_sizes": [],
+          "device": "cuda:0",
+          "use_cache": null,
+          "limit": null,
+          "bootstrap_iters": 100000,
+          "gen_kwargs": null,
+          "random_seed": 0,
+          "numpy_seed": 1234,
+          "torch_seed": 1234,
+          "fewshot_seed": 1234
+        },
+        "git_hash": null,
+        "date": 1787776822.1509392
+      }
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/cetvel_eacl2026_official_scoring_receipt.json",
+      "size_bytes": 19270,
+      "mtime_utc": "2026-08-28T23:34:05+00:00",
+      "sha256": "f09cdb7bc5cd9c16347e16d31a972231b8cc6e28a8c676eccc02236bc256662e",
+      "top_level_keys": [
+        "canonical_sha256",
+        "category_details",
+        "category_scores",
+        "complete",
+        "created_at",
+        "kind",
+        "metric_provenance",
+        "model",
+        "overall_aggregation",
+        "overall_score",
+        "protocol",
+        "sample_counts",
+        "schema_version",
+        "source_receipts",
+        "task_details",
+        "task_scores"
+      ],
+      "data": {
+        "canonical_sha256": "7592ef0201ccfde64d0d55c1b051a2add38788b5e013f403c5a49d556a79bf1b",
+        "category_details": {
+          "GEC": {
+            "aggregation": "unweighted arithmetic mean",
+            "complete": true,
+            "included_tasks": [
+              "gecturk_generation"
+            ],
+            "missing_tasks": [],
+            "required_tasks": [
+              "gecturk_generation"
+            ],
+            "score": 0.9677885309836777
+          },
+          "MCQA": {
+            "aggregation": "unweighted arithmetic mean",
+            "complete": true,
+            "included_tasks": [
+              "xcopa_tr",
+              "turkish_plu",
+              "turkish_plu_goal_inference",
+              "turkish_plu_next_event_prediction",
+              "turkish_plu_step_inference",
+              "turkish_plu_step_ordering",
+              "exams_tr",
+              "belebele_tr",
+              "turkce_atasozleri",
+              "turkishmmlu",
+              "bilmecebench",
+              "circumflex_tr",
+              "check_worthiness",
+              "relevance_judgment"
+            ],
+            "missing_tasks": [],
+            "required_tasks": [
+              "xcopa_tr",
+              "turkish_plu",
+              "turkish_plu_goal_inference",
+              "turkish_plu_next_event_prediction",
+              "turkish_plu_step_inference",
+              "turkish_plu_step_ordering",
+              "exams_tr",
+              "belebele_tr",
+              "turkce_atasozleri",
+              "turkishmmlu",
+              "bilmecebench",
+              "circumflex_tr",
+              "check_worthiness",
+              "relevance_judgment"
+            ],
+            "score": 39.9344067327172
+          },
+          "MT": {
+            "aggregation": "unweighted arithmetic mean",
+            "complete": true,
+            "included_tasks": [
+              "wmt-en-tr-prompt",
+              "wmt-tr-en-prompt"
+            ],
+            "missing_tasks": [],
+            "required_tasks": [
+              "wmt-en-tr-prompt",
+              "wmt-tr-en-prompt"
+            ],
+            "score": 58.622266261370385
+          },
+          "NLI": {
+            "aggregation": "unweighted arithmetic mean",
+            "complete": true,
+            "included_tasks": [
+              "mnli_tr",
+              "snli_tr",
+              "xnli_tr"
+            ],
+            "missing_tasks": [],
+            "required_tasks": [
+              "mnli_tr",
+              "snli_tr",
+              "xnli_tr"
+            ],
+            "score": 32.93381902860945
+          },
+          "QA": {
+            "aggregation": "unweighted arithmetic mean",
+            "complete": true,
+            "included_tasks": [
+              "xquad_tr",
+              "tquad",
+              "mkqa_tr"
+            ],
+            "missing_tasks": [],
+            "required_tasks": [
+              "xquad_tr",
+              "tquad",
+              "mkqa_tr"
+            ],
+            "score": 8.312866693849003
+          },
+          "SUM": {
+            "aggregation": "unweighted arithmetic mean",
+            "complete": true,
+            "included_tasks": [
+              "xlsum_tr",
+              "wiki_lingua_tr",
+              "tr-wikihow-summ",
+              "mlsum_tr"
+            ],
+            "missing_tasks": [],
+            "required_tasks": [
+              "xlsum_tr",
+              "wiki_lingua_tr",
+              "tr-wikihow-summ",
+              "mlsum_tr"
+            ],
+            "score": 81.06799322840003
+          },
+          "TC": {
+            "aggregation": "unweighted arithmetic mean",
+            "complete": true,
+            "included_tasks": [
+              "sts_tr",
+              "offenseval_tr",
+              "news_cat",
+              "ironytr"
+            ],
+            "missing_tasks": [],
+            "required_tasks": [
+              "sts_tr",
+              "offenseval_tr",
+              "news_cat",
+              "ironytr"
+            ],
+            "score": 38.35736155714401
+          }
+        },
+        "category_scores": {
+          "GEC": 0.9677885309836777,
+          "MCQA": 39.9344067327172,
+          "MT": 58.622266261370385,
+          "NLI": 32.93381902860945,
+          "QA": 8.312866693849003,
+          "SUM": 81.06799322840003,
+          "TC": 38.35736155714401
+        },
+        "complete": true,
+        "created_at": "2026-08-28T23:34:05.793261+00:00",
+        "kind": "cetvel_official_scoring_receipt",
+        "metric_provenance": {
+          "gec": {
+            "auxiliary": {
+              "metric": "mean per-sentence whitespace-token overlap F1",
+              "official": false,
+              "score": 69.08737141439805,
+              "used_in_aggregate": false,
+              "warning": "Diagnostic only. The paper does not define its prose macro-F1; published Tables 4/5 are reproduced by exact match."
+            },
+            "primary_metric": "stripped exact match"
+          },
+          "nlu": {
+            "explicitly_excluded": "acc_norm",
+            "metric": "raw accuracy"
+          },
+          "qa": {
+            "metric": "SQuAD normalized exact match",
+            "normalizer": "lowercase + ASCII punctuation/articles removal + whitespace collapse"
+          },
+          "summarization": {
+            "metric": "BERTScore F1",
+            "model_id": "boun-tabilab/TabiBERT",
+            "num_layers": 22,
+            "requested_revision": "36d24bfae8d67f7b1f7d0827fc43076e4a1c3e9f",
+            "rescale_with_baseline": false,
+            "runtime": {
+              "component": "F1",
+              "implementation": "bert-score",
+              "model_id": "boun-tabilab/TabiBERT",
+              "num_layers": 22,
+              "package_version": "0.3.13",
+              "requested_revision": "36d24bfae8d67f7b1f7d0827fc43076e4a1c3e9f",
+              "rescale_with_baseline": false,
+              "resolved_revision": "36d24bfae8d67f7b1f7d0827fc43076e4a1c3e9f"
+            }
+          },
+          "translation": {
+            "metric": "COMET-22",
+            "model_id": "Unbabel/wmt22-comet-da",
+            "reference_based": true,
+            "requested_revision": "2760a223ac957f30acfb18c8aa649b01cf1d75f2",
+            "runtime": {
+              "implementation": "unbabel-comet",
+              "model_id": "Unbabel/wmt22-comet-da",
+              "package_version": "2.2.7",
+              "reference_based": true,
+              "requested_revision": "2760a223ac957f30acfb18c8aa649b01cf1d75f2",
+              "resolved_revision": "2760a223ac957f30acfb18c8aa649b01cf1d75f2"
+            }
+          }
+        },
+        "model": {
+          "checkpoint_sha256": "2123880d96b2de7d227ff31575b663ac291dcfd9fc9b9419086de032e58d0a98",
+          "checkpoint_step": 28000,
+          "name": "d32-bpe32k-fineweb2-step28000"
+        },
+        "overall_aggregation": "unweighted arithmetic mean of the seven category scores",
+        "overall_score": 37.17092886186767,
+        "protocol": {
+          "category_order": [
+            "QA",
+            "MCQA",
+            "TC",
+            "NLI",
+            "SUM",
+            "MT",
+            "GEC"
+          ],
+          "cetvel_revision": "6119c517e06cce23aaeac103ce3504c9380655e3",
+          "doi": "10.18653/v1/2026.eacl-long.46",
+          "id": "cetvel-eacl2026-table4-compatible-v1",
+          "lm_eval_revision": "6e49b1f6910931882a4b3b105794c6faf96b74e5",
+          "paper": "https://aclanthology.org/2026.eacl-long.46/",
+          "published_results_space_revision": "ec0db45e3bb343294fa7c0dfce68ec02ee310c59",
+          "score_scale": "0-100 percentage points",
+          "table": "Appendix Table 4",
+          "warnings": [
+            "GECTurk uses stripped exact match for Table 4 compatibility. Section 4.2 says macro-F1, but the released task and published Kanarya value prove the table uses exact match.",
+            "The MCQA aggregate includes check_worthiness and relevance_judgment although Table 6 does not display those columns.",
+            "The paper identifies TabiBERT BERTScore but does not publish all BERTScore settings. This implementation pins F1, final layer 22, and rescale_with_baseline=false in the metric receipt."
+          ]
+        },
+        "sample_counts": {
+          "belebele_tr": 900,
+          "bilmecebench": 442,
+          "check_worthiness": 2188,
+          "circumflex_tr": 70,
+          "exams_tr": 393,
+          "gecturk_generation": 20769,
+          "ironytr": 600,
+          "mkqa_tr": 6758,
+          "mlsum_tr": 12775,
+          "mnli_tr": 10000,
+          "news_cat": 250,
+          "offenseval_tr": 3528,
+          "relevance_judgment": 2188,
+          "snli_tr": 10000,
+          "sts_tr": 1379,
+          "tquad": 892,
+          "tr-wikihow-summ": 5984,
+          "turkce_atasozleri": 1730,
+          "turkish_plu_goal_inference": 837,
+          "turkish_plu_next_event_prediction": 655,
+          "turkish_plu_step_inference": 612,
+          "turkish_plu_step_ordering": 1021,
+          "turkishmmlu_biology": 100,
+          "turkishmmlu_chemistry": 100,
+          "turkishmmlu_geography": 100,
+          "turkishmmlu_history": 100,
+          "turkishmmlu_mathematics": 100,
+          "turkishmmlu_philosophy": 100,
+          "turkishmmlu_physics": 100,
+          "turkishmmlu_religion_and_ethics": 100,
+          "turkishmmlu_turkish_language_and_literature": 100,
+          "wiki_lingua_tr": 874,
+          "wmt-en-tr-prompt": 1001,
+          "wmt-tr-en-prompt": 1001,
+          "xcopa_tr": 500,
+          "xlsum_tr": 3397,
+          "xnli_tr": 5010,
+          "xquad_tr": 1190
+        },
+        "schema_version": "1.0.0",
+        "source_receipts": [
+          {
+            "byte_count": 107288749,
+            "format": "json",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_00/cetvel_full_results.json",
+            "sha256": "2e9fba3bbe196aa45f1b83e5f91dd8a9bf35e2f0b4c76f35cf20293319a28c69",
+            "task_hint": null
+          },
+          {
+            "byte_count": 33798682,
+            "format": "json",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_01/cetvel_full_results.json",
+            "sha256": "727e7d38be437d2b8e303d04943edce337fde9014bf7d6bc3efa3e8bbc0b5a78",
+            "task_hint": null
+          },
+          {
+            "byte_count": 40071645,
+            "format": "json",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_02/cetvel_full_results.json",
+            "sha256": "9cd66756ead6b0f9f4f0c81777b4ade346512ab3ee3c9715402ea0e81e5bac63",
+            "task_hint": null
+          },
+          {
+            "byte_count": 43398272,
+            "format": "json",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_03/cetvel_full_results.json",
+            "sha256": "6940cfe5c3c1963d2ffeaabca41936d13067c4a9c0a6b0a5a637336f6e14fb1b",
+            "task_hint": null
+          },
+          {
+            "byte_count": 4623474,
+            "format": "json",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_04/cetvel_full_results.json",
+            "sha256": "e02164092f62a058a4c64038c8721374052709f2ca92b7872fa8332de8daa737",
+            "task_hint": null
+          },
+          {
+            "byte_count": 37638514,
+            "format": "json",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_05/cetvel_full_results.json",
+            "sha256": "f8e0e1f8fdeadac6f7df0c17d508d2a7c921398ec7847c2de5d00e3901a7e31c",
+            "task_hint": null
+          },
+          {
+            "byte_count": 57118278,
+            "format": "json",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_06/cetvel_full_results.json",
+            "sha256": "de0d53159ae5c8347d395507a4d47b1b8329c44f92d89c36f9d665aaae643398",
+            "task_hint": null
+          },
+          {
+            "byte_count": 47451356,
+            "format": "json",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_07/cetvel_full_results.json",
+            "sha256": "4971617ddc09e6dfe155c4807c8795c4206875520caba762551981e74dad2897",
+            "task_hint": null
+          }
+        ],
+        "task_details": {
+          "belebele_tr": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 900,
+            "score": 23.88888888888889,
+            "source": "recomputed from logged sample acc"
+          },
+          "bilmecebench": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 442,
+            "score": 21.71945701357466,
+            "source": "recomputed from logged sample acc"
+          },
+          "check_worthiness": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 2188,
+            "score": 37.61425959780622,
+            "source": "recomputed from logged sample acc"
+          },
+          "circumflex_tr": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 70,
+            "score": 48.57142857142857,
+            "source": "recomputed from logged sample acc"
+          },
+          "exams_tr": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 393,
+            "score": 31.297709923664126,
+            "source": "recomputed from logged sample acc"
+          },
+          "gecturk_generation": {
+            "metric": "stripped exact match",
+            "paper_compatibility": "Appendix Tables 4 and 5",
+            "sample_count": 20769,
+            "scale": "percentage points",
+            "score": 0.9677885309836777,
+            "source": "recomputed stripped exact match from logged predictions"
+          },
+          "ironytr": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 600,
+            "score": 50.0,
+            "source": "recomputed from logged sample acc"
+          },
+          "mkqa_tr": {
+            "metric": "SQuAD normalized exact match",
+            "sample_count": 6758,
+            "scale": "percentage points",
+            "score": 4.483575022195916,
+            "source": "recomputed from logged predictions"
+          },
+          "mlsum_tr": {
+            "metric": "BERTScore F1",
+            "sample_count": 12775,
+            "scale": "percentage points",
+            "score": 83.40488514461629,
+            "source": "recomputed from logged predictions"
+          },
+          "mnli_tr": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 10000,
+            "score": 32.87,
+            "source": "recomputed from logged sample acc"
+          },
+          "news_cat": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 250,
+            "score": 70.0,
+            "source": "recomputed from logged sample acc"
+          },
+          "offenseval_tr": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 3528,
+            "score": 20.521541950113377,
+            "source": "recomputed from logged sample acc"
+          },
+          "relevance_judgment": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 2188,
+            "score": 59.506398537477146,
+            "source": "recomputed from logged sample acc"
+          },
+          "snli_tr": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 10000,
+            "score": 31.66,
+            "source": "recomputed from logged sample acc"
+          },
+          "sts_tr": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 1379,
+            "score": 12.907904278462654,
+            "source": "recomputed from logged sample acc"
+          },
+          "tquad": {
+            "metric": "SQuAD normalized exact match",
+            "sample_count": 892,
+            "scale": "percentage points",
+            "score": 12.219730941704036,
+            "source": "recomputed from logged predictions"
+          },
+          "tr-wikihow-summ": {
+            "metric": "BERTScore F1",
+            "sample_count": 5984,
+            "scale": "percentage points",
+            "score": 80.75325535859335,
+            "source": "recomputed from logged predictions"
+          },
+          "turkce_atasozleri": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 1730,
+            "score": 0.0,
+            "source": "recomputed from logged sample acc"
+          },
+          "turkish_plu": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": null,
+            "score": 51.2,
+            "source": "lm-eval aggregate raw acc"
+          },
+          "turkish_plu_goal_inference": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 837,
+            "score": 44.44444444444444,
+            "source": "recomputed from logged sample acc"
+          },
+          "turkish_plu_next_event_prediction": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 655,
+            "score": 49.00763358778626,
+            "source": "recomputed from logged sample acc"
+          },
+          "turkish_plu_step_inference": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 612,
+            "score": 39.37908496732026,
+            "source": "recomputed from logged sample acc"
+          },
+          "turkish_plu_step_ordering": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 1021,
+            "score": 65.23016650342801,
+            "source": "recomputed from logged sample acc"
+          },
+          "turkishmmlu": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": null,
+            "score": 18.22222222222222,
+            "source": "lm-eval aggregate raw acc"
+          },
+          "wiki_lingua_tr": {
+            "metric": "BERTScore F1",
+            "sample_count": 874,
+            "scale": "percentage points",
+            "score": 79.75091866006568,
+            "source": "recomputed from logged predictions"
+          },
+          "wmt-en-tr-prompt": {
+            "direction": {
+              "paper_label": "WMT16TR-EN",
+              "source_language": "tr",
+              "target_language": "en"
+            },
+            "metric": "COMET-22",
+            "sample_count": 1001,
+            "scale": "percentage points",
+            "score": 62.15747596322001,
+            "source": "recomputed from logged predictions"
+          },
+          "wmt-tr-en-prompt": {
+            "direction": {
+              "paper_label": "WMT16EN-TR",
+              "source_language": "en",
+              "target_language": "tr"
+            },
+            "metric": "COMET-22",
+            "sample_count": 1001,
+            "scale": "percentage points",
+            "score": 55.08705655952076,
+            "source": "recomputed from logged predictions"
+          },
+          "xcopa_tr": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 500,
+            "score": 69.0,
+            "source": "recomputed from logged sample acc"
+          },
+          "xlsum_tr": {
+            "metric": "BERTScore F1",
+            "sample_count": 3397,
+            "scale": "percentage points",
+            "score": 80.36291375032481,
+            "source": "recomputed from logged predictions"
+          },
+          "xnli_tr": {
+            "metric": "accuracy",
+            "note": "raw acc; acc_norm is intentionally not used",
+            "sample_count": 5010,
+            "score": 34.271457085828345,
+            "source": "recomputed from logged sample acc"
+          },
+          "xquad_tr": {
+            "metric": "SQuAD normalized exact match",
+            "sample_count": 1190,
+            "scale": "percentage points",
+            "score": 8.235294117647058,
+            "source": "recomputed from logged predictions"
+          }
+        },
+        "task_scores": {
+          "belebele_tr": 23.88888888888889,
+          "bilmecebench": 21.71945701357466,
+          "check_worthiness": 37.61425959780622,
+          "circumflex_tr": 48.57142857142857,
+          "exams_tr": 31.297709923664126,
+          "gecturk_generation": 0.9677885309836777,
+          "ironytr": 50.0,
+          "mkqa_tr": 4.483575022195916,
+          "mlsum_tr": 83.40488514461629,
+          "mnli_tr": 32.87,
+          "news_cat": 70.0,
+          "offenseval_tr": 20.521541950113377,
+          "relevance_judgment": 59.506398537477146,
+          "snli_tr": 31.66,
+          "sts_tr": 12.907904278462654,
+          "tquad": 12.219730941704036,
+          "tr-wikihow-summ": 80.75325535859335,
+          "turkce_atasozleri": 0.0,
+          "turkish_plu": 51.2,
+          "turkish_plu_goal_inference": 44.44444444444444,
+          "turkish_plu_next_event_prediction": 49.00763358778626,
+          "turkish_plu_step_inference": 39.37908496732026,
+          "turkish_plu_step_ordering": 65.23016650342801,
+          "turkishmmlu": 18.22222222222222,
+          "wiki_lingua_tr": 79.75091866006568,
+          "wmt-en-tr-prompt": 62.15747596322001,
+          "wmt-tr-en-prompt": 55.08705655952076,
+          "xcopa_tr": 69.0,
+          "xlsum_tr": 80.36291375032481,
+          "xnli_tr": 34.271457085828345,
+          "xquad_tr": 8.235294117647058
+        }
+      }
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/production_verification.json",
+      "size_bytes": 4084,
+      "mtime_utc": "2026-08-28T23:31:18+00:00",
+      "sha256": "714e5b8e1d8f751fc1a865b7d8da2f548869168e11a30b9233163054af8bff62",
+      "top_level_keys": [
+        "kind",
+        "limit",
+        "mode",
+        "protocol_id",
+        "protocol_sha256",
+        "schema_version",
+        "sources",
+        "total_effective_samples",
+        "verified_leaves",
+        "verified_top_level_tasks"
+      ],
+      "data": {
+        "kind": "cetvel_eacl2026_result_verification",
+        "limit": null,
+        "mode": "production",
+        "protocol_id": "cetvel-eacl2026-published-table-compat-v1",
+        "protocol_sha256": "e0116cf603ea568746ee6da6d6aea1191a0217178c8b447c311a3a6a2f452e56",
+        "schema_version": "1.0.0",
+        "sources": [
+          {
+            "byte_count": 107288749,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_00/cetvel_full_results.json",
+            "sha256": "2e9fba3bbe196aa45f1b83e5f91dd8a9bf35e2f0b4c76f35cf20293319a28c69"
+          },
+          {
+            "byte_count": 33798682,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_01/cetvel_full_results.json",
+            "sha256": "727e7d38be437d2b8e303d04943edce337fde9014bf7d6bc3efa3e8bbc0b5a78"
+          },
+          {
+            "byte_count": 40071645,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_02/cetvel_full_results.json",
+            "sha256": "9cd66756ead6b0f9f4f0c81777b4ade346512ab3ee3c9715402ea0e81e5bac63"
+          },
+          {
+            "byte_count": 43398272,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_03/cetvel_full_results.json",
+            "sha256": "6940cfe5c3c1963d2ffeaabca41936d13067c4a9c0a6b0a5a637336f6e14fb1b"
+          },
+          {
+            "byte_count": 4623474,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_04/cetvel_full_results.json",
+            "sha256": "e02164092f62a058a4c64038c8721374052709f2ca92b7872fa8332de8daa737"
+          },
+          {
+            "byte_count": 37638514,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_05/cetvel_full_results.json",
+            "sha256": "f8e0e1f8fdeadac6f7df0c17d508d2a7c921398ec7847c2de5d00e3901a7e31c"
+          },
+          {
+            "byte_count": 57118278,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_06/cetvel_full_results.json",
+            "sha256": "de0d53159ae5c8347d395507a4d47b1b8329c44f92d89c36f9d665aaae643398"
+          },
+          {
+            "byte_count": 47451356,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_07/cetvel_full_results.json",
+            "sha256": "4971617ddc09e6dfe155c4807c8795c4206875520caba762551981e74dad2897"
+          }
+        ],
+        "total_effective_samples": 97844,
+        "verified_leaves": [
+          "belebele_tr",
+          "bilmecebench",
+          "cetvel_xcopa_tr",
+          "cetvel_xnli_tr",
+          "check_worthiness",
+          "circumflex_tr",
+          "exams_tr",
+          "gecturk_generation",
+          "ironytr",
+          "mkqa_tr",
+          "mlsum_tr",
+          "mnli_tr",
+          "news_cat",
+          "offenseval_tr",
+          "relevance_judgment",
+          "snli_tr",
+          "sts_tr",
+          "tquad",
+          "tr-wikihow-summ",
+          "turkce_atasozleri",
+          "turkish_plu_goal_inference",
+          "turkish_plu_next_event_prediction",
+          "turkish_plu_step_inference",
+          "turkish_plu_step_ordering",
+          "turkishmmlu_biology",
+          "turkishmmlu_chemistry",
+          "turkishmmlu_geography",
+          "turkishmmlu_history",
+          "turkishmmlu_mathematics",
+          "turkishmmlu_philosophy",
+          "turkishmmlu_physics",
+          "turkishmmlu_religion_and_ethics",
+          "turkishmmlu_turkish_language_and_literature",
+          "wiki_lingua_tr",
+          "wmt-en-tr-prompt",
+          "wmt-tr-en-prompt",
+          "xlsum_tr",
+          "xquad_tr"
+        ],
+        "verified_top_level_tasks": [
+          "mlsum_tr",
+          "gecturk_generation",
+          "tr-wikihow-summ",
+          "xlsum_tr",
+          "wiki_lingua_tr",
+          "wmt-tr-en-prompt",
+          "wmt-en-tr-prompt",
+          "xquad_tr",
+          "tquad",
+          "mkqa_tr",
+          "nli_tr",
+          "belebele_tr",
+          "exams_tr",
+          "turkish_plu",
+          "cetvel_xcopa_tr",
+          "turkce_atasozleri",
+          "turkishmmlu",
+          "bilmecebench",
+          "circumflex_tr",
+          "trclaim19",
+          "ironytr",
+          "news_cat",
+          "offenseval_tr",
+          "sts_tr"
+        ]
+      }
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/kumru20_comparison_smoke_job515380/cetvel_full_results.json",
+      "size_bytes": 43153,
+      "mtime_utc": "2026-08-26T20:32:14+00:00",
+      "sha256": "79f451efc78e9232941a6bd1e973a466f73536b9e00ea470837570aec7610993",
+      "top_level_keys": [
+        "results",
+        "group_subtasks",
+        "configs",
+        "versions",
+        "n-shot",
+        "higher_is_better",
+        "n-samples",
+        "samples",
+        "config",
+        "git_hash",
+        "date",
+        "pretty_env_info",
+        "transformers_version",
+        "upper_git_hash",
+        "tokenizer_pad_token",
+        "tokenizer_eos_token",
+        "tokenizer_bos_token",
+        "eot_token_id",
+        "max_length"
+      ],
+      "data": {
+        "results": {
+          "belebele_tr": {
+            "acc,none": 1.0,
+            "acc_stderr,none": 0.0,
+            "acc_norm,none": 1.0,
+            "acc_norm_stderr,none": 0.0,
+            "alias": "belebele_tr"
+          },
+          "xquad_tr": {
+            "exact,none": 50.0,
+            "exact_stderr,none": "N/A",
+            "f1,none": 50.0,
+            "f1_stderr,none": "N/A",
+            "HasAns_exact,none": 50.0,
+            "HasAns_exact_stderr,none": "N/A",
+            "HasAns_f1,none": 50.0,
+            "HasAns_f1_stderr,none": "N/A",
+            "NoAns_exact,none": 0,
+            "NoAns_exact_stderr,none": "N/A",
+            "NoAns_f1,none": 0,
+            "NoAns_f1_stderr,none": "N/A",
+            "best_exact,none": 50.0,
+            "best_exact_stderr,none": "N/A",
+            "best_f1,none": 50.0,
+            "best_f1_stderr,none": "N/A",
+            "alias": "xquad_tr"
+          }
+        },
+        "versions": {
+          "belebele_tr": 0.0,
+          "xquad_tr": 1
+        },
+        "higher_is_better": {
+          "belebele_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "xquad_tr": {
+            "exact": true,
+            "f1": true,
+            "HasAns_exact": true,
+            "HasAns_f1": true,
+            "NoAns_exact": true,
+            "NoAns_f1": true,
+            "best_exact": true,
+            "best_f1": true
+          }
+        },
+        "n-samples": {
+          "belebele_tr": {
+            "original": 900,
+            "effective": 2
+          },
+          "xquad_tr": {
+            "original": 1190,
+            "effective": 2
+          }
+        },
+        "config": {
+          "model": "nanochat",
+          "model_args": "base_dir=/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k,max_gen_tokens=256,model_tag=tr_d32_bpe_32768_fineweb2_all_v1,model_step=28000",
+          "batch_size": "1",
+          "batch_sizes": [],
+          "device": "cuda:0",
+          "use_cache": null,
+          "limit": 2.0,
+          "bootstrap_iters": 100000,
+          "gen_kwargs": null,
+          "random_seed": 0,
+          "numpy_seed": 1234,
+          "torch_seed": 1234,
+          "fewshot_seed": 1234
+        },
+        "git_hash": null,
+        "date": 1787776306.6098707
+      }
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/kumru20_gec_mt_fixed_step028000_v1/cetvel_full_results.json",
+      "size_bytes": 35266223,
+      "mtime_utc": "2026-08-27T01:04:04+00:00",
+      "sha256": "b0ae44b6d19506e180cdd8a80e9a3daa7e7bd77afa5748e1794428e92f733dd6",
+      "top_level_keys": [
+        "results",
+        "group_subtasks",
+        "configs",
+        "versions",
+        "n-shot",
+        "higher_is_better",
+        "n-samples",
+        "samples",
+        "config",
+        "git_hash",
+        "date",
+        "pretty_env_info",
+        "transformers_version",
+        "upper_git_hash",
+        "tokenizer_pad_token",
+        "tokenizer_eos_token",
+        "tokenizer_bos_token",
+        "eot_token_id",
+        "max_length"
+      ],
+      "data": {
+        "results": {
+          "gecturk_generation": {
+            "exact_match,regex_filter_applies_strip_internally": 0.010640858972507102,
+            "exact_match_stderr,regex_filter_applies_strip_internally": 0.0007119803234445126,
+            "alias": "gecturk_generation"
+          },
+          "wmt-tr-en-prompt": {
+            "wer,none": 12.494499957179134,
+            "wer_stderr,none": 0.3533139345919513,
+            "bleu,none": 0.01578661453429045,
+            "bleu_stderr,none": "N/A",
+            "alias": "wmt-tr-en-prompt"
+          }
+        },
+        "versions": {
+          "gecturk_generation": 0.0,
+          "wmt-tr-en-prompt": 0.0
+        },
+        "higher_is_better": {
+          "gecturk_generation": {
+            "exact_match": true
+          },
+          "wmt-tr-en-prompt": {
+            "wer": false,
+            "bleu": true
+          }
+        },
+        "n-samples": {
+          "gecturk_generation": {
+            "original": 20769,
+            "effective": 20769
+          },
+          "wmt-tr-en-prompt": {
+            "original": 1001,
+            "effective": 1001
+          }
+        },
+        "config": {
+          "model": "nanochat",
+          "model_args": "base_dir=/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k,max_gen_tokens=256,model_tag=tr_d32_bpe_32768_fineweb2_all_v1,model_step=28000",
+          "batch_size": "1",
+          "batch_sizes": [],
+          "device": "cuda:0",
+          "use_cache": null,
+          "limit": null,
+          "bootstrap_iters": 100000,
+          "gen_kwargs": null,
+          "random_seed": 0,
+          "numpy_seed": 1234,
+          "torch_seed": 1234,
+          "fewshot_seed": 1234
+        },
+        "git_hash": null,
+        "date": 1787788090.0990286
+      }
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/kumru20_nlu_fixed_step028000_v1/cetvel_full_results.json",
+      "size_bytes": 97305286,
+      "mtime_utc": "2026-08-26T21:09:10+00:00",
+      "sha256": "78ca58d2c0de3697dd773a5c97f656ddd4be5e79f2e296ce238da53026f7de11",
+      "top_level_keys": [
+        "results",
+        "group_subtasks",
+        "configs",
+        "versions",
+        "n-shot",
+        "higher_is_better",
+        "n-samples",
+        "samples",
+        "config",
+        "git_hash",
+        "date",
+        "pretty_env_info",
+        "transformers_version",
+        "upper_git_hash",
+        "tokenizer_pad_token",
+        "tokenizer_eos_token",
+        "tokenizer_bos_token",
+        "eot_token_id",
+        "max_length",
+        "groups"
+      ],
+      "data": {
+        "results": {
+          "belebele_tr": {
+            "acc,none": 0.2388888888888889,
+            "acc_stderr,none": 0.014221393731276089,
+            "acc_norm,none": 0.2388888888888889,
+            "acc_norm_stderr,none": 0.014221393731276089,
+            "alias": "belebele_tr"
+          },
+          "exams_tr": {
+            "acc,none": 0.31297709923664124,
+            "acc_stderr,none": 0.023420645141673423,
+            "acc_norm,none": 0.34096692111959287,
+            "acc_norm_stderr,none": 0.02394234570615004,
+            "alias": "exams_tr"
+          },
+          "ironytr": {
+            "acc,none": 0.5,
+            "acc_stderr,none": 0.02042944616113592,
+            "f1,none": 0.6666666666666666,
+            "f1_stderr,none": 0.01818705571485678,
+            "acc_norm,none": 0.5283333333333333,
+            "acc_norm_stderr,none": 0.020396619176391666,
+            "alias": "ironytr"
+          },
+          "news_cat": {
+            "acc,none": 0.7,
+            "acc_stderr,none": 0.029040893477575786,
+            "f1,none": 0.7084759213062882,
+            "f1_stderr,none": "N/A",
+            "acc_norm,none": 0.704,
+            "acc_norm_stderr,none": 0.028928939388379697,
+            "alias": "news_cat"
+          },
+          "nli_tr": {
+            "acc_norm,none": 0.3234306277489004,
+            "acc_norm_stderr,none": 0.0029579356768753453,
+            "acc,none": 0.32666933226709316,
+            "acc_stderr,none": 0.002965138606254342,
+            "alias": "nli_tr"
+          },
+          "cetvel_xnli_tr": {
+            "acc,none": 0.34271457085828344,
+            "acc_stderr,none": 0.006706065194823729,
+            "acc_norm,none": 0.332934131736527,
+            "acc_norm_stderr,none": 0.006658677852916923,
+            "alias": " - cetvel_xnli_tr"
+          },
+          "mnli_tr": {
+            "acc,none": 0.3287,
+            "acc_stderr,none": 0.004697641725778838,
+            "acc_norm,none": 0.3235,
+            "acc_norm_stderr,none": 0.004678350531583716,
+            "alias": " - mnli_tr"
+          },
+          "snli_tr": {
+            "acc,none": 0.3166,
+            "acc_stderr,none": 0.004651731705589444,
+            "acc_norm,none": 0.3186,
+            "acc_norm_stderr,none": 0.004659568129936052,
+            "alias": " - snli_tr"
+          },
+          "offenseval_tr": {
+            "acc,none": 0.20521541950113378,
+            "acc_stderr,none": 0.006800282918698524,
+            "f1,none": 0.3380547686496695,
+            "f1_stderr,none": 0.009399736704899856,
+            "acc_norm,none": 0.33701814058956914,
+            "acc_norm_stderr,none": 0.007959297390018867,
+            "alias": "offenseval_tr"
+          },
+          "sts_tr": {
+            "acc,none": 0.12907904278462654,
+            "acc_stderr,none": 0.009032180955590755,
+            "acc_norm,none": 0.11602610587382162,
+            "acc_norm_stderr,none": 0.008627261640734626,
+            "alias": "sts_tr"
+          },
+          "trclaim19": {
+            "acc_norm,none": 0.4835466179159049,
+            "acc_norm_stderr,none": 0.007418080657779809,
+            "acc,none": 0.48560329067641683,
+            "acc_stderr,none": 0.0073735505744694195,
+            "alias": "trclaim19"
+          },
+          "check_worthiness": {
+            "acc,none": 0.37614259597806216,
+            "acc_stderr,none": 0.010358444277077068,
+            "acc_norm,none": 0.38848263254113347,
+            "acc_norm_stderr,none": 0.010422353767257189,
+            "alias": " - check_worthiness"
+          },
+          "relevance_judgment": {
+            "acc,none": 0.5950639853747715,
+            "acc_stderr,none": 0.010496648248642161,
+            "acc_norm,none": 0.5786106032906764,
+            "acc_norm_stderr,none": 0.01055870373348204,
+            "alias": " - relevance_judgment"
+          },
+          "turkish_plu": {
+            "acc_norm,none": 0.5504,
+            "acc_norm_stderr,none": 0.008759941620953934,
+            "acc,none": 0.512,
+            "acc_stderr,none": 0.008757566617736917,
+            "alias": "turkish_plu"
+          },
+          "turkish_plu_goal_inference": {
+            "acc,none": 0.4444444444444444,
+            "acc_stderr,none": 0.017185784024715167,
+            "acc_norm,none": 0.42054958183990443,
+            "acc_norm_stderr,none": 0.017073147971120122,
+            "alias": " - turkish_plu_goal_inference"
+          },
+          "turkish_plu_next_event_prediction": {
+            "acc,none": 0.4900763358778626,
+            "acc_stderr,none": 0.019547695957928008,
+            "acc_norm,none": 0.5648854961832062,
+            "acc_norm_stderr,none": 0.019386219150301476,
+            "alias": " - turkish_plu_next_event_prediction"
+          },
+          "turkish_plu_step_inference": {
+            "acc,none": 0.3937908496732026,
+            "acc_stderr,none": 0.019766211991073025,
+            "acc_norm,none": 0.5424836601307189,
+            "acc_norm_stderr,none": 0.020154685712590967,
+            "alias": " - turkish_plu_step_inference"
+          },
+          "turkish_plu_step_ordering": {
+            "acc,none": 0.6523016650342801,
+            "acc_stderr,none": 0.014911641814229194,
+            "acc_norm,none": 0.6523016650342801,
+            "acc_norm_stderr,none": 0.014911641814229194,
+            "alias": " - turkish_plu_step_ordering"
+          },
+          "cetvel_xcopa_tr": {
+            "acc,none": 0.69,
+            "acc_stderr,none": 0.020704041021724684,
+            "alias": "cetvel_xcopa_tr"
+          },
+          "xfact_tr": {
+            "acc,none": 0.3254437869822485,
+            "acc_stderr,none": 0.036148678472922066,
+            "acc_norm,none": 0.2781065088757396,
+            "acc_norm_stderr,none": 0.03456905430376242,
+            "alias": "xfact_tr"
+          }
+        },
+        "versions": {
+          "belebele_tr": 0.0,
+          "exams_tr": 0.0,
+          "ironytr": 0.0,
+          "news_cat": 0.0,
+          "cetvel_xnli_tr": 0.0,
+          "mnli_tr": 0.0,
+          "snli_tr": 0.0,
+          "offenseval_tr": 0.0,
+          "sts_tr": 0.0,
+          "check_worthiness": 0.0,
+          "relevance_judgment": 0.0,
+          "turkish_plu_goal_inference": 0.0,
+          "turkish_plu_next_event_prediction": 0.0,
+          "turkish_plu_step_inference": 0.0,
+          "turkish_plu_step_ordering": 0.0,
+          "cetvel_xcopa_tr": 1.0,
+          "xfact_tr": 0.0
+        },
+        "higher_is_better": {
+          "belebele_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "exams_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "ironytr": {
+            "acc": true,
+            "acc_norm": true,
+            "f1": true
+          },
+          "news_cat": {
+            "acc": true,
+            "acc_norm": true,
+            "f1": true
+          },
+          "cetvel_xnli_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "mnli_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "nli_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "snli_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "offenseval_tr": {
+            "acc": true,
+            "acc_norm": true,
+            "f1": true
+          },
+          "sts_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "check_worthiness": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "relevance_judgment": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "trclaim19": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "turkish_plu": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "turkish_plu_goal_inference": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "turkish_plu_next_event_prediction": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "turkish_plu_step_inference": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "turkish_plu_step_ordering": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "cetvel_xcopa_tr": {
+            "acc": true
+          },
+          "xfact_tr": {
+            "acc": true,
+            "acc_norm": true
+          }
+        },
+        "n-samples": {
+          "belebele_tr": {
+            "original": 900,
+            "effective": 900
+          },
+          "exams_tr": {
+            "original": 393,
+            "effective": 393
+          },
+          "ironytr": {
+            "original": 600,
+            "effective": 600
+          },
+          "news_cat": {
+            "original": 250,
+            "effective": 250
+          },
+          "cetvel_xnli_tr": {
+            "original": 5010,
+            "effective": 5010
+          },
+          "mnli_tr": {
+            "original": 10000,
+            "effective": 10000
+          },
+          "snli_tr": {
+            "original": 10000,
+            "effective": 10000
+          },
+          "offenseval_tr": {
+            "original": 3528,
+            "effective": 3528
+          },
+          "sts_tr": {
+            "original": 1379,
+            "effective": 1379
+          },
+          "check_worthiness": {
+            "original": 2188,
+            "effective": 2188
+          },
+          "relevance_judgment": {
+            "original": 2188,
+            "effective": 2188
+          },
+          "turkish_plu_goal_inference": {
+            "original": 837,
+            "effective": 837
+          },
+          "turkish_plu_step_inference": {
+            "original": 612,
+            "effective": 612
+          },
+          "turkish_plu_step_ordering": {
+            "original": 1021,
+            "effective": 1021
+          },
+          "turkish_plu_next_event_prediction": {
+            "original": 655,
+            "effective": 655
+          },
+          "cetvel_xcopa_tr": {
+            "original": 500,
+            "effective": 500
+          },
+          "xfact_tr": {
+            "original": 169,
+            "effective": 169
+          }
+        },
+        "config": {
+          "model": "nanochat",
+          "model_args": "base_dir=/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k,max_gen_tokens=256,model_tag=tr_d32_bpe_32768_fineweb2_all_v1,model_step=28000",
+          "batch_size": "1",
+          "batch_sizes": [],
+          "device": "cuda:0",
+          "use_cache": null,
+          "limit": null,
+          "bootstrap_iters": 100000,
+          "gen_kwargs": null,
+          "random_seed": 0,
+          "numpy_seed": 1234,
+          "torch_seed": 1234,
+          "fewshot_seed": 1234
+        },
+        "git_hash": null,
+        "date": 1787778526.698162
+      }
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/kumru20_qa_fixed_step028000_v1/cetvel_full_results.json",
+      "size_bytes": 37638390,
+      "mtime_utc": "2026-08-26T22:38:07+00:00",
+      "sha256": "8c9bf6b9356ca38ba8f903e7f7adf04af713ea0744a5c8431d5db51e808bafbf",
+      "top_level_keys": [
+        "results",
+        "group_subtasks",
+        "configs",
+        "versions",
+        "n-shot",
+        "higher_is_better",
+        "n-samples",
+        "samples",
+        "config",
+        "git_hash",
+        "date",
+        "pretty_env_info",
+        "transformers_version",
+        "upper_git_hash",
+        "tokenizer_pad_token",
+        "tokenizer_eos_token",
+        "tokenizer_bos_token",
+        "eot_token_id",
+        "max_length"
+      ],
+      "data": {
+        "results": {
+          "mkqa_tr": {
+            "em,none": 0.04483575022195916,
+            "em_stderr,none": 0.0025175278908227574,
+            "f1,none": 0.08123478714997262,
+            "f1_stderr,none": 0.002874688529422167,
+            "alias": "mkqa_tr"
+          },
+          "tquad": {
+            "exact,none": 12.219730941704036,
+            "exact_stderr,none": "N/A",
+            "f1,none": 30.671474741713535,
+            "f1_stderr,none": "N/A",
+            "HasAns_exact,none": 12.219730941704036,
+            "HasAns_exact_stderr,none": "N/A",
+            "HasAns_f1,none": 30.671474741713535,
+            "HasAns_f1_stderr,none": "N/A",
+            "NoAns_exact,none": 0,
+            "NoAns_exact_stderr,none": "N/A",
+            "NoAns_f1,none": 0,
+            "NoAns_f1_stderr,none": "N/A",
+            "best_exact,none": 12.219730941704036,
+            "best_exact_stderr,none": "N/A",
+            "best_f1,none": 30.67147474171358,
+            "best_f1_stderr,none": "N/A",
+            "alias": "tquad"
+          },
+          "xquad_tr": {
+            "exact,none": 8.235294117647058,
+            "exact_stderr,none": "N/A",
+            "f1,none": 15.171743596233192,
+            "f1_stderr,none": "N/A",
+            "HasAns_exact,none": 8.235294117647058,
+            "HasAns_exact_stderr,none": "N/A",
+            "HasAns_f1,none": 15.171743596233192,
+            "HasAns_f1_stderr,none": "N/A",
+            "NoAns_exact,none": 0,
+            "NoAns_exact_stderr,none": "N/A",
+            "NoAns_f1,none": 0,
+            "NoAns_f1_stderr,none": "N/A",
+            "best_exact,none": 8.235294117647058,
+            "best_exact_stderr,none": "N/A",
+            "best_f1,none": 15.1717435962332,
+            "best_f1_stderr,none": "N/A",
+            "alias": "xquad_tr"
+          }
+        },
+        "versions": {
+          "mkqa_tr": 0.0,
+          "tquad": 1,
+          "xquad_tr": 1
+        },
+        "higher_is_better": {
+          "mkqa_tr": {
+            "em": true,
+            "f1": true
+          },
+          "tquad": {
+            "exact": true,
+            "f1": true,
+            "HasAns_exact": true,
+            "HasAns_f1": true,
+            "NoAns_exact": true,
+            "NoAns_f1": true,
+            "best_exact": true,
+            "best_f1": true
+          },
+          "xquad_tr": {
+            "exact": true,
+            "f1": true,
+            "HasAns_exact": true,
+            "HasAns_f1": true,
+            "NoAns_exact": true,
+            "NoAns_f1": true,
+            "best_exact": true,
+            "best_f1": true
+          }
+        },
+        "n-samples": {
+          "mkqa_tr": {
+            "original": 6758,
+            "effective": 6758
+          },
+          "tquad": {
+            "original": 892,
+            "effective": 892
+          },
+          "xquad_tr": {
+            "original": 1190,
+            "effective": 1190
+          }
+        },
+        "config": {
+          "model": "nanochat",
+          "model_args": "base_dir=/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k,max_gen_tokens=256,model_tag=tr_d32_bpe_32768_fineweb2_all_v1,model_step=28000",
+          "batch_size": "1",
+          "batch_sizes": [],
+          "device": "cuda:0",
+          "use_cache": null,
+          "limit": null,
+          "bootstrap_iters": 100000,
+          "gen_kwargs": null,
+          "random_seed": 0,
+          "numpy_seed": 1234,
+          "torch_seed": 1234,
+          "fewshot_seed": 1234
+        },
+        "git_hash": null,
+        "date": 1787781020.9936848
+      }
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/kumru20_sum_fixed_step028000_v1/cetvel_full_partial_results.json",
+      "size_bytes": 204532874,
+      "mtime_utc": "2026-08-27T17:24:32+00:00",
+      "sha256": "e6804c7dc1d944d6691a67a290fc0d3323a4e6977f070816d33fc3bdc27a6ac8",
+      "top_level_keys": [
+        "results",
+        "group_subtasks",
+        "configs",
+        "versions",
+        "n-shot",
+        "higher_is_better",
+        "n-samples",
+        "samples",
+        "config",
+        "git_hash",
+        "date",
+        "pretty_env_info",
+        "transformers_version",
+        "upper_git_hash",
+        "tokenizer_pad_token",
+        "tokenizer_eos_token",
+        "tokenizer_bos_token",
+        "eot_token_id",
+        "max_length"
+      ],
+      "data": {
+        "results": {
+          "mlsum_tr": {
+            "rouge1,none": 0.1790074230161966,
+            "rouge1_stderr,none": "N/A",
+            "rouge2,none": 0.10818573560303704,
+            "rouge2_stderr,none": "N/A",
+            "rougeL,none": 0.15363086578797464,
+            "rougeL_stderr,none": "N/A",
+            "rougeLsum,none": 0.14735356472283112,
+            "rougeLsum_stderr,none": "N/A",
+            "alias": "mlsum_tr"
+          },
+          "tr-wikihow-summ": {
+            "rouge1,none": 0.1512966934177271,
+            "rouge1_stderr,none": 0.001351891037827356,
+            "rouge2,none": 0.04878986391736652,
+            "rouge2_stderr,none": 0.0006876552211845298,
+            "rougeL,none": 0.11242815128577194,
+            "rougeL_stderr,none": 0.000884746597240633,
+            "rougeLsum,none": 0.11242815128577194,
+            "rougeLsum_stderr,none": 0.000884746597240633,
+            "alias": "tr-wikihow-summ"
+          }
+        },
+        "versions": {
+          "mlsum_tr": 0.0,
+          "tr-wikihow-summ": 0.0
+        },
+        "higher_is_better": {
+          "mlsum_tr": {
+            "rouge1": true,
+            "rouge2": true,
+            "rougeL": true,
+            "rougeLsum": true
+          },
+          "tr-wikihow-summ": {
+            "rouge1": true,
+            "rouge2": true,
+            "rougeL": true,
+            "rougeLsum": true
+          }
+        },
+        "n-samples": {
+          "mlsum_tr": {
+            "original": 12775,
+            "effective": 12775
+          },
+          "tr-wikihow-summ": {
+            "original": 5984,
+            "effective": 5984
+          }
+        },
+        "config": {
+          "model": "nanochat",
+          "model_args": "base_dir=/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k,max_gen_tokens=256,model_tag=tr_d32_bpe_32768_fineweb2_all_v1,model_step=28000",
+          "batch_size": "1",
+          "batch_sizes": [],
+          "device": "cuda:0",
+          "use_cache": null,
+          "limit": null,
+          "bootstrap_iters": 100000,
+          "gen_kwargs": null,
+          "random_seed": 0,
+          "numpy_seed": 1234,
+          "torch_seed": 1234,
+          "fewshot_seed": 1234
+        },
+        "git_hash": null,
+        "date": 1787821786.7421691
+      }
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/reference_d20_xquad_fixed_step017100_v1/cetvel_core_results.json",
+      "size_bytes": 13707643,
+      "mtime_utc": "2026-08-26T20:24:38+00:00",
+      "sha256": "4418b88133bc1bad525b9339888ef6f8da6ab1eb40eb859dcedc0f71ab61be10",
+      "top_level_keys": [
+        "results",
+        "group_subtasks",
+        "configs",
+        "versions",
+        "n-shot",
+        "higher_is_better",
+        "n-samples",
+        "samples",
+        "config",
+        "git_hash",
+        "date",
+        "pretty_env_info",
+        "transformers_version",
+        "upper_git_hash",
+        "tokenizer_pad_token",
+        "tokenizer_eos_token",
+        "tokenizer_bos_token",
+        "eot_token_id",
+        "max_length"
+      ],
+      "data": {
+        "results": {
+          "xquad_tr": {
+            "exact,none": 4.53781512605042,
+            "exact_stderr,none": "N/A",
+            "f1,none": 11.336892327817507,
+            "f1_stderr,none": "N/A",
+            "HasAns_exact,none": 4.53781512605042,
+            "HasAns_exact_stderr,none": "N/A",
+            "HasAns_f1,none": 11.336892327817507,
+            "HasAns_f1_stderr,none": "N/A",
+            "NoAns_exact,none": 0,
+            "NoAns_exact_stderr,none": "N/A",
+            "NoAns_f1,none": 0,
+            "NoAns_f1_stderr,none": "N/A",
+            "best_exact,none": 4.53781512605042,
+            "best_exact_stderr,none": "N/A",
+            "best_f1,none": 11.336892327817518,
+            "best_f1_stderr,none": "N/A",
+            "alias": "xquad_tr"
+          }
+        },
+        "versions": {
+          "xquad_tr": 1
+        },
+        "higher_is_better": {
+          "xquad_tr": {
+            "exact": true,
+            "f1": true,
+            "HasAns_exact": true,
+            "HasAns_f1": true,
+            "NoAns_exact": true,
+            "NoAns_f1": true,
+            "best_exact": true,
+            "best_f1": true
+          }
+        },
+        "n-samples": {
+          "xquad_tr": {
+            "original": 1190,
+            "effective": 1190
+          }
+        },
+        "config": {
+          "model": "nanochat",
+          "model_args": "base_dir=/ari/users/nunal/nanochat-turk-d20-bpe32k,max_gen_tokens=128,model_tag=tr_d20_bpe_32768_chinchilla20,model_step=17100",
+          "batch_size": "1",
+          "batch_sizes": [],
+          "device": "cuda:0",
+          "use_cache": null,
+          "limit": null,
+          "bootstrap_iters": 100000,
+          "gen_kwargs": null,
+          "random_seed": 0,
+          "numpy_seed": 1234,
+          "torch_seed": 1234,
+          "fewshot_seed": 1234
+        },
+        "git_hash": null,
+        "date": 1787774835.5026844
+      }
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/smoke_job515374/cetvel_core_results.json",
+      "size_bytes": 39503,
+      "mtime_utc": "2026-08-26T20:05:27+00:00",
+      "sha256": "4eb9ed99ddec748c624fc6a529db25a4509a8868fb9f2a1441e23f57396960e1",
+      "top_level_keys": [
+        "results",
+        "group_subtasks",
+        "configs",
+        "versions",
+        "n-shot",
+        "higher_is_better",
+        "n-samples",
+        "samples",
+        "config",
+        "git_hash",
+        "date",
+        "pretty_env_info",
+        "transformers_version",
+        "upper_git_hash",
+        "tokenizer_pad_token",
+        "tokenizer_eos_token",
+        "tokenizer_bos_token",
+        "eot_token_id",
+        "max_length"
+      ],
+      "data": {
+        "results": {
+          "belebele_tr": {
+            "acc,none": 1.0,
+            "acc_stderr,none": 0.0,
+            "acc_norm,none": 1.0,
+            "acc_norm_stderr,none": 0.0,
+            "alias": "belebele_tr"
+          },
+          "xquad_tr": {
+            "exact,none": 50.0,
+            "exact_stderr,none": "N/A",
+            "f1,none": 50.0,
+            "f1_stderr,none": "N/A",
+            "HasAns_exact,none": 50.0,
+            "HasAns_exact_stderr,none": "N/A",
+            "HasAns_f1,none": 50.0,
+            "HasAns_f1_stderr,none": "N/A",
+            "NoAns_exact,none": 0,
+            "NoAns_exact_stderr,none": "N/A",
+            "NoAns_f1,none": 0,
+            "NoAns_f1_stderr,none": "N/A",
+            "best_exact,none": 50.0,
+            "best_exact_stderr,none": "N/A",
+            "best_f1,none": 50.0,
+            "best_f1_stderr,none": "N/A",
+            "alias": "xquad_tr"
+          }
+        },
+        "versions": {
+          "belebele_tr": 0.0,
+          "xquad_tr": 1
+        },
+        "higher_is_better": {
+          "belebele_tr": {
+            "acc": true,
+            "acc_norm": true
+          },
+          "xquad_tr": {
+            "exact": true,
+            "f1": true,
+            "HasAns_exact": true,
+            "HasAns_f1": true,
+            "NoAns_exact": true,
+            "NoAns_f1": true,
+            "best_exact": true,
+            "best_f1": true
+          }
+        },
+        "n-samples": {
+          "belebele_tr": {
+            "original": 900,
+            "effective": 2
+          },
+          "xquad_tr": {
+            "original": 1190,
+            "effective": 2
+          }
+        },
+        "config": {
+          "model": "nanochat",
+          "model_args": "base_dir=/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k,max_gen_tokens=128,model_tag=tr_d32_bpe_32768_fineweb2_all_v1,model_step=28000",
+          "batch_size": "1",
+          "batch_sizes": [],
+          "device": "cuda:0",
+          "use_cache": null,
+          "limit": 2.0,
+          "bootstrap_iters": 100000,
+          "gen_kwargs": null,
+          "random_seed": 0,
+          "numpy_seed": 1234,
+          "torch_seed": 1234,
+          "fewshot_seed": 1234
+        },
+        "git_hash": null,
+        "date": 1787774704.6991496
+      }
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/xquad_fixed_step028000_v1/cetvel_core_results.json",
+      "size_bytes": 14101740,
+      "mtime_utc": "2026-08-26T20:36:14+00:00",
+      "sha256": "6076739b6729272480385e327a3eae1cdbb392104ddded91b31b5a18fb62c3a5",
+      "top_level_keys": [
+        "results",
+        "group_subtasks",
+        "configs",
+        "versions",
+        "n-shot",
+        "higher_is_better",
+        "n-samples",
+        "samples",
+        "config",
+        "git_hash",
+        "date",
+        "pretty_env_info",
+        "transformers_version",
+        "upper_git_hash",
+        "tokenizer_pad_token",
+        "tokenizer_eos_token",
+        "tokenizer_bos_token",
+        "eot_token_id",
+        "max_length"
+      ],
+      "data": {
+        "results": {
+          "xquad_tr": {
+            "exact,none": 8.235294117647058,
+            "exact_stderr,none": "N/A",
+            "f1,none": 15.883322112049182,
+            "f1_stderr,none": "N/A",
+            "HasAns_exact,none": 8.235294117647058,
+            "HasAns_exact_stderr,none": "N/A",
+            "HasAns_f1,none": 15.883322112049182,
+            "HasAns_f1_stderr,none": "N/A",
+            "NoAns_exact,none": 0,
+            "NoAns_exact_stderr,none": "N/A",
+            "NoAns_f1,none": 0,
+            "NoAns_f1_stderr,none": "N/A",
+            "best_exact,none": 8.235294117647058,
+            "best_exact_stderr,none": "N/A",
+            "best_f1,none": 15.883322112049182,
+            "best_f1_stderr,none": "N/A",
+            "alias": "xquad_tr"
+          }
+        },
+        "versions": {
+          "xquad_tr": 1
+        },
+        "higher_is_better": {
+          "xquad_tr": {
+            "exact": true,
+            "f1": true,
+            "HasAns_exact": true,
+            "HasAns_f1": true,
+            "NoAns_exact": true,
+            "NoAns_f1": true,
+            "best_exact": true,
+            "best_f1": true
+          }
+        },
+        "n-samples": {
+          "xquad_tr": {
+            "original": 1190,
+            "effective": 1190
+          }
+        },
+        "config": {
+          "model": "nanochat",
+          "model_args": "base_dir=/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k,max_gen_tokens=128,model_tag=tr_d32_bpe_32768_fineweb2_all_v1,model_step=28000",
+          "batch_size": "1",
+          "batch_sizes": [],
+          "device": "cuda:0",
+          "use_cache": null,
+          "limit": null,
+          "bootstrap_iters": 100000,
+          "gen_kwargs": null,
+          "random_seed": 0,
+          "numpy_seed": 1234,
+          "torch_seed": 1234,
+          "fewshot_seed": 1234
+        },
+        "git_hash": null,
+        "date": 1787774835.5006592
+      }
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/launch/tr_d32_fineweb2_raw_bpe32k_v1.json",
+      "size_bytes": 7652,
+      "mtime_utc": "2026-08-21T14:36:46+00:00",
+      "sha256": "d400d7a171985f6572f9e33da40bff3afc701c942629637876ec4fc85821da3e",
+      "top_level_keys": [
+        "schema_version",
+        "run_id",
+        "status",
+        "scope",
+        "code",
+        "dataset",
+        "tokenizer",
+        "model",
+        "training",
+        "launch"
+      ],
+      "data": {
+        "schema_version": "1.0",
+        "run_id": "tr_d32_fineweb2_raw_bpe32k_v1",
+        "status": "launch_ready",
+        "scope": "coverage-oriented approximately one-pass raw-BPE budget over all 30 FineWeb-2 Turkish source shards",
+        "code": {
+          "remote_checkout": "/ari/users/nunal/nanochat-turk-d32-fineweb2-code-v1",
+          "source_git_base_revision": "955c3809c94c04731bf35a9695cc0a04c28e35e9",
+          "deployment": "content-addressed source snapshot",
+          "snapshot_file_count": 104,
+          "snapshot_sha256": "37503db09be2617d53d3f201d2fc776f7eb96844c7115818f02f38a3e0f83a97",
+          "require_snapshot_hash": true,
+          "environment": {
+            "manager": "uv",
+            "uv_version": "0.11.29",
+            "sync_mode": "uv sync --frozen --extra gpu",
+            "python_version": "3.10.19",
+            "torch_version": "2.9.1+cu128",
+            "pyarrow_version": "21.0.0",
+            "rustbpe_version": "0.1.0",
+            "tiktoken_version": "0.11.0",
+            "tokenizers_version": "0.22.2",
+            "wandb_version": "0.21.3",
+            "pyproject_sha256": "969d39b1fa7f86309d753849400a80556e33e2082776804c3ad69417d3ef9496",
+            "uv_lock_sha256": "91779c775fd2a62f64870574ac30453e232668cd0a3c756a4997c611f31e47f0"
+          }
+        },
+        "dataset": {
+          "repository": "HuggingFaceFW/fineweb-2",
+          "subset": "tur_Latn",
+          "resolved_hub_revision": "af9c13333eb981300149d5ca60a8e9d659b276b9",
+          "remote_path": "data/tur_Latn/train",
+          "uhem_source_data_dir": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_data_fineweb2_tur_latn",
+          "uhem_training_view_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/base_data_fineweb2_tur_latn_all30",
+          "cached_manifest_sha256": "c57a6c3ed035e3d9701a969480d39ed2c606876f7b63a9399bad006136970a2d",
+          "cached_manifest_provenance": "legacy filename inventory whose revision field is main; cached names and sizes match the resolved Hub revision",
+          "cached_parquet_files": 30,
+          "cached_compressed_bytes": 134789283815,
+          "split_policy": {
+            "unique_source_files": 30,
+            "train_entries": 30,
+            "validation_files": 1,
+            "validation_file": "004_00005.parquet",
+            "training_alias_for_validation_source": "train_004_00005.parquet",
+            "validation_documents": 1917302,
+            "note": "All 30 unique source shards are optimization-eligible. Because no independent validation corpus was requested, the last source shard is also exposed under its original name as a train-overlap diagnostic validation set; its validation BPB is not a held-out generalization estimate."
+          },
+          "measured_all_30_sources": {
+            "documents": 95129129,
+            "utf8_bytes": 305497429770,
+            "words_by_metrics_regex": 37478503474,
+            "raw_bpe_payload_tokens": 58303901770,
+            "first_29_metrics_sha256": "343d96d828bb606a8f65829b9be9e752b67f9f2a04b164f346cbafeb1e263c45",
+            "first_29_metrics_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_32k_full/bpe_32768_metrics.json",
+            "final_shard_metrics_sha256": "31cd4ccc8d5ec45b4150b00fc600b059fe62fb1d8b79fcbfb7ac84ff1aa32e76",
+            "final_shard_metrics_path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/preflight/bpe_32768_val_metrics.json",
+            "final_shard_parquet_sha256": "804adefb68d82eaa004d5ab50b6a2289ca0fa3049f99ed920a3a33a7d576ba2c"
+          }
+        },
+        "tokenizer": {
+          "name": "bpe_32768",
+          "implementation": "raw_bpe",
+          "vocab_size": 32768,
+          "uhem_source_dir": "/ari/users/nunal/nanochat-turk-d20-bpe32k/tokenizers/bpe_32768",
+          "tokenizer_pkl_sha256": "3b7f00d8697a303bb0ac7379b497fec6b76a61bd5bb694825264eecd4cb62a20",
+          "token_bytes_pt_sha256": "ba345dc7eea5f07b3200f213ccf61ea6e9990d15d81d25e2e323009f4fba502e",
+          "tokenizer_config_json_sha256": "b381631bad8ca489b85dbab686d63f0691b6455300f2ae43f8af43ad3b80a916"
+        },
+        "model": {
+          "depth": 32,
+          "aspect_ratio": 64,
+          "model_dim": 2048,
+          "head_dim": 128,
+          "num_heads": 16,
+          "num_kv_heads": 16,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "attention_backend": "sdpa",
+          "precision": "bfloat16",
+          "fp8": false,
+          "total_parameters": 2818575450,
+          "scaling_parameters": 1677724672
+        },
+        "training": {
+          "world_size": 8,
+          "nodes": 2,
+          "gpus_per_node": 4,
+          "gpu_type": "A100-SXM4-80GB",
+          "device_batch_sequences": 4,
+          "global_batch_token_positions": 2097152,
+          "gradient_accumulation_steps": 32,
+          "seed": 42,
+          "data_shuffle_seed": 42,
+          "preserve_document_tails": true,
+          "optimizer": "muon_adamw",
+          "lr_schedule": "nanochat_linear",
+          "warmup_steps": 40,
+          "target_param_count": "total",
+          "payload_tokens_per_total_parameter": 20.68559199648177,
+          "horizon": {
+            "measured_payload_tokens": 58303901770,
+            "training_documents": 95129129,
+            "unrounded_model_positions": 58399030899,
+            "derivation": "payload tokens plus one document BOS position; preserving cropped tails prevents intentional payload-tail loss",
+            "rank_balance_estimate": {
+              "slurm_job_id": 512558,
+              "world_size": 8,
+              "seed": 42,
+              "documents_max_to_mean": 1.0000722281395007,
+              "text_compressed_bytes_max_to_mean": 1.000945353029741,
+              "text_uncompressed_bytes_max_to_mean": 1.001180582321811,
+              "proxy_adjusted_positions": 58467870326,
+              "proxy_adjusted_ceiling_steps": 27880,
+              "method": "exact epoch-one row-group assignment with parquet metadata byte counts used as a token-volume proxy"
+            },
+            "optimizer_steps": 28000,
+            "scheduled_model_positions": 58720256000,
+            "headroom_positions": 321225101,
+            "headroom_fraction": 0.005500521088364508,
+            "headroom_beyond_rank_proxy_steps": 120,
+            "semantics": "28,000 updates schedule 58,720,256,000 model positions, 0.550% above measured corpus payload tokens plus one BOS per document. Under the seed-42 ws8 row-group assignment this leaves 120 updates beyond the 0.118% max-rank uncompressed-byte proxy. This is a coverage-oriented heuristic intended to make an uninterrupted run likely to consume every source payload token at least once; the online infinite best-fit loader may interleave epoch-two documents before all epoch-one buffered tails are consumed, and legacy checkpoint resume is not exact, so neither unique-token completeness nor exact-once exposure is guaranteed."
+          },
+          "evaluation_every_updates": 500,
+          "evaluation_token_positions": 4194304,
+          "checkpoint_every_updates": 2500,
+          "sample_every_updates": -1,
+          "core_metric_every_updates": -1
+        },
+        "launch": {
+          "partition": "a100x4q",
+          "account": "nakane",
+          "launcher": "direct_slurm_srun_one_task_per_gpu",
+          "gpu_binding": "allocation-level gpu:a100:4 per node; srun --gres=none plus manual CUDA_VISIBLE_DEVICES=SLURM_LOCALID because Altay Slurm 20.11 uses select/linear and task/none",
+          "time_limit": "9-00:00:00",
+          "model_tag": "tr_d32_bpe_32768_fineweb2_all_v1",
+          "uhem_base_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k",
+          "smoke_required_as_afterok_dependency": true,
+          "completed_preflight": {
+            "final_shard_exact_token_count_job": 512514,
+            "source_environment_and_data_job": 512535,
+            "one_a100_d32_update_job": 512543,
+            "one_a100_peak_allocated_mib": 46104.59,
+            "one_a100_first_update_loss": 10.399146,
+            "four_a100_localid_nccl_job": 512600,
+            "four_a100_localid_nccl_result": "four ranks each saw one A100 and all-reduce sum 6.0"
+          },
+          "automatic_resume": "latest checkpoint containing model, metadata, and all eight optimizer shards",
+          "known_live_scheduler_constraint": "At audit time only one a100x4q node was idle; a two-node allocation remains pending until another node is healthy."
+        }
+      }
+    }
+  ]
+}

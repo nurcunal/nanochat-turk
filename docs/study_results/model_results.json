@@ -1,0 +1,3278 @@
+{
+  "schema_version": 1,
+  "report_date": "2026-11-09",
+  "evidence_cutoff": "2026-11-09T12:38:55.156308+00:00",
+  "original_ablation_import": "2026-06-22T11:06:06.954404+00:00",
+  "description": "Archived pretraining/CETVEL results audited against UHeM on 2026-11-09. Original eleven-model CETVEL values use a legacy evaluator with known deviations; later corrected results are separate.",
+  "sources": [
+    {
+      "path": "artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/metrics_summary.json",
+      "sha256": "23053c965cba11f0c49e38b92124a9df31b3cbcf04477fc562225b7994efde18"
+    },
+    {
+      "path": "artifacts/cetvel_core12_model_comparison_2026-06-12/metrics_summary.json",
+      "sha256": "aa240b1f980118726288c2b89c4ca798216fa8314f74ff5fc1ce04085f8c63d9"
+    },
+    {
+      "path": "artifacts/cetvel_base_subset_2026-06-09_job493293/metrics_summary.json",
+      "sha256": "63e528741483846f38851f7a5c7d15d6d7679bf1b3de3e80de36c76ee4b44122"
+    },
+    {
+      "path": "artifacts/uhem_smoke_2026-06-07_job492393/metrics.json",
+      "sha256": "03340ce768bf23aae641ebda1cd73201524219b87929c0ef7c6d2e0492000edd"
+    },
+    {
+      "path": "artifacts/uhem_model_audit_2026-11-09/model-metadata-and-benchmarks.json",
+      "sha256": "817f2984be5f7eb58010c075a63300599874ec0e660f370ef43e6132087e0083"
+    },
+    {
+      "path": "artifacts/uhem_model_audit_2026-11-09/later-model-metadata-and-benchmarks.json",
+      "sha256": "1e256f19f52597dd6aa653b60fc48fa8d3d8dad5a2efd9a3170333ecb9730d99"
+    },
+    {
+      "path": "artifacts/uhem_model_audit_2026-11-09/historical-training-reports.json",
+      "sha256": "76ce5d1f9420482da066bb9f2702cdd939e3ff4ad804a86b5d0ffd9b2232a47b"
+    },
+    {
+      "path": "artifacts/uhem_model_audit_2026-11-09/model-job-accounting.txt",
+      "sha256": "18f521bf311374660cb993dcf4f9ac5cf1d33d66669c96ff88833618f2108bd3"
+    },
+    {
+      "path": "docs/tokenizer_ablation_plan.md",
+      "sha256": "c5209f6334e74cf62e93f7381c35ccebbc689bd75fdaef8bb2244e3f017d7845"
+    },
+    {
+      "path": "docs/model_bpb_inventory.md",
+      "sha256": "6e29b8937df9d94a9787746ba4a170e9279c2ef22cf4f53f5ad34001bcba1f7b"
+    }
+  ],
+  "metric_definitions": {
+    "validation_bpb": "Sum of non-special target-token negative log probabilities in nats / (ln(2) * represented UTF-8 bytes); lower is better.",
+    "final_train_loss": "Last printed token-level training loss at step 17099/17100; vocabulary-dependent, not directly comparable across tokenizers.",
+    "macro_core11": "Unweighted mean of 11 selected classification/log-likelihood task scores, with acc_norm preferred except XCOPA acc; scale 0-1, higher is better.",
+    "xquad_tr_f1": "XQuAD token-overlap F1 on 0-100 scale; separate from the core-11 mean.",
+    "core12_examples_per_second": "39441 expanded effective examples divided by logged end-to-end core-12 elapsed seconds; hardware/harness throughput proxy, not isolated tokenization speed."
+  },
+  "controls": {
+    "design_source": "docs/tokenizer_ablation_plan.md",
+    "matched_within_tier": [
+      "vocabulary size",
+      "model shape",
+      "FineWeb-2 Turkish source/manifest/document order",
+      "token-position budget",
+      "batch schedule",
+      "training recipe and evaluation harness"
+    ],
+    "token_positions_per_step": 1048576,
+    "optimizer_steps": 17100,
+    "total_training_token_positions": 17930649600,
+    "tier_parameters": [
+      {
+        "vocab": "32k",
+        "vocab_size": 32768,
+        "depth": 20,
+        "approximate_parameters_millions": 896.5
+      },
+      {
+        "vocab": "64k",
+        "vocab_size": 65536,
+        "depth": 16,
+        "approximate_parameters_millions": 872.4
+      },
+      {
+        "vocab": "128k",
+        "vocab_size": 131072,
+        "depth": 12,
+        "approximate_parameters_millions": 890.2
+      }
+    ],
+    "hardware_recipe": "4 x A100, launcher profile; per-run full hardware logs remain on UHeM",
+    "context_recipe": "2048 token positions, launcher/default recipe; not equal characters of context",
+    "seed_evidence": "Source initialization uses torch seed 42; individual archived run summaries do not contain a complete seed/config manifest.",
+    "audit_scope": "Ten original effective model/user configurations and training reports were recovered. The original raw-BPE32k metadata is absent, but its training log survives. No complete per-run training Git/environment fingerprint is established."
+  },
+  "limitations": [
+    "June CETVEL ignored generation stop/max-length kwargs and did not validate exact context/continuation token boundaries. Original XQuAD claims are superseded by the correction audit; complete corrected tokenizer-ablation evaluation remains missing.",
+    "Cross-vocabulary comparisons change depth and approximate parameter count; tokenizer effects should be compared within a tier.",
+    "Fixed token positions do not fix raw bytes/documents consumed. Per-run raw exposure accounting is absent from the compact summaries.",
+    "Validation uses a fixed token-position budget; byte normalization does not prove identical raw-text evaluation spans across tokenizers.",
+    "Per-token training loss is vocabulary-dependent; use BPB as the loss comparison, subject to evaluation-span caveats.",
+    "Single runs without seed replications or paired significance tests; task standard errors in recovered raw files are not confidence intervals for tokenizer differences.",
+    "Base-model CETVEL results do not establish instruction-following or post-SFT assistant quality.",
+    "Archived BPB, macro and task cells are rounded to four decimals; recomputing a macro from rounded task cells may differ in the last digit.",
+    "The 128k TurkishDelight result was complete while Slurm was finishing uploads at import time; current scheduler state was not reverified."
+  ],
+  "audit": {
+    "completed_models": 11,
+    "missing_models": 1,
+    "tasks_per_completed_model": 12,
+    "baseline_high_precision_task_values_match_at_four_decimals": true,
+    "historical_32k_checks": [
+      {
+        "run_id": "raw_bpe_d20",
+        "summaries_match_at_four_decimals_and_task_values_unchanged": true
+      },
+      {
+        "run_id": "morphbpe_trmorph_d20",
+        "summaries_match_at_four_decimals_and_task_values_unchanged": true
+      },
+      {
+        "run_id": "morphbpe_zemberek_d20",
+        "summaries_match_at_four_decimals_and_task_values_unchanged": true
+      }
+    ]
+  },
+  "macro_core11_tasks": [
+    "exams_tr",
+    "belebele_tr",
+    "turkish_plu",
+    "cetvel_xcopa_tr",
+    "cetvel_xnli_tr",
+    "mnli_tr",
+    "snli_tr",
+    "news_cat",
+    "offenseval_tr",
+    "trclaim19",
+    "xfact_tr"
+  ],
+  "runs": [
+    {
+      "run_id": "raw_bpe_d20",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d20_bpe_32768_chinchilla20",
+      "model_step": 17100,
+      "segmenter": "none",
+      "cetvel_job_id": "493293",
+      "cetvel_slice": "full_kvcache partial, tasks 01-13; compared here on common core tasks 01-12",
+      "source_results_path": "/ari/users/nunal/nanochat-turk-d20-bpe32k/cetvel_out/full_kvcache_20260609_185114/cetvel_full_partial_results.json",
+      "source_cetvel_log": "/ari/users/nunal/nanochat-turk/nanochat-cetvel-full-493293.out",
+      "source_meta_path": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_checkpoints/tr_d20_bpe_32768_chinchilla20/meta_017100.json",
+      "source_training_log": "/ari/users/nunal/nanochat-turk/nanochat-tr-d20-bpe32k-492421.out",
+      "repo_artifact": "artifacts/cetvel_base_subset_2026-06-09_job493293",
+      "validation_bpb": 0.6232,
+      "lowest_validation_bpb": 0.6232,
+      "final_train_loss": 2.4899,
+      "core12_effective_examples": 39441,
+      "core12_elapsed": "50m20s",
+      "core12_elapsed_seconds": 3020,
+      "core12_examples_per_second": 13.0599,
+      "xquad_elapsed": "27m05s",
+      "xquad_elapsed_seconds": 1625,
+      "macro_core11": 0.4514,
+      "xquad_tr_f1": 3.0985,
+      "vocab": "32k",
+      "depth": "d20",
+      "family": "raw BPE",
+      "report_tokenizer": "bpe_32k",
+      "report_model_tag": "tr_d20_bpe_32k",
+      "cetvel_job_state": "COMPLETED",
+      "delta_macro_core11_vs_vocab_raw_bpe": 0.0,
+      "delta_xquad_tr_f1_vs_vocab_raw_bpe": 0.0,
+      "speed_vs_vocab_raw_bpe": 1.0,
+      "status": "completed_base_model_with_archived_core12_results",
+      "vocab_size": 32768,
+      "transformer_depth": 20,
+      "approximate_parameters_millions": 896.5,
+      "training_token_positions": 17930649600,
+      "delta_validation_bpb_vs_tier_bpe": 0.0,
+      "delta_macro_core11_percentage_points": 0.0,
+      "reported_macro_audit": {
+        "mean_of_archived_rounded_task_values": 0.4514,
+        "difference_from_archived_macro": 0.0,
+        "compatible_with_independent_four_decimal_rounding": true
+      },
+      "source_artifact": "artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/metrics_summary.json",
+      "benchmark_protocol_status": "legacy_adapter_known_generation_and_continuation_boundary_deviations",
+      "recovery_audit": {
+        "run_id": "raw_bpe_d20",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "20b1aec4215acb535f986e6d9d505e1e858441ecac22441786285a006e6bb681",
+        "original_checkpoint_metadata_found": false,
+        "checkpoint_source_status": "archived_only_original_path_absent_2026_11_09",
+        "model_config": null,
+        "user_config": null,
+        "validation_bpb_full_precision": null,
+        "core11_mean_full_precision_legacy_adapter": 0.45140617897735136,
+        "training_git_environment_fingerprint_present": false
+      },
+      "training_statistics": {
+        "parameters": 896533746,
+        "training_minutes": 1267.66,
+        "estimated_training_flops": 5.809722e+19,
+        "peak_memory_mib": 18499.62,
+        "mfu_percent": null,
+        "source_artifact": "artifacts/uhem_model_audit_2026-11-09/model-job-accounting.txt",
+        "training_job_id": "492421",
+        "scheduler_state": "COMPLETED",
+        "scheduler_elapsed": "21:31:38",
+        "gpu_count": 4
+      },
+      "training_minutes": 1267.66,
+      "total_parameters": 896533746,
+      "higher_precision_pretraining_archive": {
+        "source_artifact": "artifacts/cetvel_core12_model_comparison_2026-06-12/metrics_summary.json",
+        "validation_bpb": 0.6232126545832695,
+        "lowest_validation_bpb": 0.6232126545832695,
+        "final_train_loss": 2.489946
+      }
+    },
+    {
+      "run_id": "morphbpe_trmorph_d20",
+      "tokenizer": "morphbpe_trmorph_32768",
+      "model_tag": "tr_d20_morphbpe_trmorph_32768_chinchilla20",
+      "model_step": 17100,
+      "segmenter": "TRmorph",
+      "cetvel_job_id": "494056",
+      "cetvel_slice": "core tasks 01-12",
+      "source_results_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "source_cetvel_log": "/ari/users/nunal/nanochat-turk/cetvel-core12-trmorph-d20-494056.out",
+      "source_meta_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/base_checkpoints/tr_d20_morphbpe_trmorph_32768_chinchilla20/meta_017100.json",
+      "source_training_log": "/ari/users/nunal/nanochat-turk/nanochat-tr-mbpe-trm32k-493660.out",
+      "repo_artifact": null,
+      "validation_bpb": 0.6266,
+      "lowest_validation_bpb": 0.6266,
+      "final_train_loss": 2.0106,
+      "core12_effective_examples": 39441,
+      "core12_elapsed": "52m38s",
+      "core12_elapsed_seconds": 3158,
+      "core12_examples_per_second": 12.4892,
+      "xquad_elapsed": "29m29s",
+      "xquad_elapsed_seconds": 1769,
+      "macro_core11": 0.4541,
+      "xquad_tr_f1": 3.4786,
+      "vocab": "32k",
+      "depth": "d20",
+      "family": "MorphBPE + TRmorph",
+      "report_tokenizer": "morphbpe_trmorph_32k",
+      "report_model_tag": "tr_d20_morphbpe_trmorph_32k",
+      "cetvel_job_state": "COMPLETED",
+      "delta_macro_core11_vs_vocab_raw_bpe": 0.0027,
+      "delta_xquad_tr_f1_vs_vocab_raw_bpe": 0.3801,
+      "speed_vs_vocab_raw_bpe": 0.9563,
+      "status": "completed_base_model_with_archived_core12_results",
+      "vocab_size": 32768,
+      "transformer_depth": 20,
+      "approximate_parameters_millions": 896.5,
+      "training_token_positions": 17930649600,
+      "delta_validation_bpb_vs_tier_bpe": 0.0034,
+      "delta_macro_core11_percentage_points": 0.27,
+      "reported_macro_audit": {
+        "mean_of_archived_rounded_task_values": 0.45407272727272724,
+        "difference_from_archived_macro": -2.727272727276464e-05,
+        "compatible_with_independent_four_decimal_rounding": true
+      },
+      "source_artifact": "artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/metrics_summary.json",
+      "benchmark_protocol_status": "legacy_adapter_known_generation_and_continuation_boundary_deviations",
+      "recovery_audit": {
+        "run_id": "morphbpe_trmorph_d20",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "aee9db8133f429a1a1667f084233e976efdf49ab7fc448ec020a2e5595c842e3",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 32768,
+          "n_layer": 20,
+          "n_head": 10,
+          "n_kv_head": 10,
+          "n_embd": 1280,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d20-morphbpe-trmorph-32k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 20,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d20_morphbpe_trmorph_32768_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.6265726039416546,
+        "core11_mean_full_precision_legacy_adapter": 0.45406928306479255,
+        "training_git_environment_fingerprint_present": false
+      },
+      "training_statistics": {
+        "parameters": 896533746,
+        "training_minutes": 1265.77,
+        "estimated_training_flops": 5.809722e+19,
+        "peak_memory_mib": 18499.74,
+        "mfu_percent": 61.29,
+        "source_artifact": "artifacts/uhem_model_audit_2026-11-09/historical-training-reports.json",
+        "source_report_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/base-model-training.md",
+        "source_report_sha256": "56695d74d95984803f5f6c8fd8500b2eb7146e70b41332454a7174e69fa668d4",
+        "training_job_id": "493660",
+        "scheduler_state": "COMPLETED",
+        "scheduler_elapsed": "21:30:53",
+        "gpu_count": 4
+      },
+      "training_minutes": 1265.77,
+      "total_parameters": 896533746,
+      "higher_precision_pretraining_archive": {
+        "source_artifact": "artifacts/cetvel_core12_model_comparison_2026-06-12/metrics_summary.json",
+        "validation_bpb": 0.6265726039416546,
+        "lowest_validation_bpb": 0.6265726039416546,
+        "final_train_loss": 2.010633
+      }
+    },
+    {
+      "run_id": "morphbpe_zemberek_d20",
+      "tokenizer": "morphbpe_zemberek_32768",
+      "model_tag": "tr_d20_morphbpe_zemberek_32768_chinchilla20",
+      "model_step": 17100,
+      "segmenter": "Zemberek",
+      "cetvel_job_id": "494057",
+      "cetvel_slice": "core tasks 01-12",
+      "source_results_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "source_cetvel_log": "/ari/users/nunal/nanochat-turk/cetvel-core12-zemberek-d20-494057.out",
+      "source_meta_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/base_checkpoints/tr_d20_morphbpe_zemberek_32768_chinchilla20/meta_017100.json",
+      "source_training_log": "/ari/users/nunal/nanochat-turk/nanochat-tr-mbpe-zemb32k-493760.out",
+      "repo_artifact": null,
+      "validation_bpb": 0.625,
+      "lowest_validation_bpb": 0.625,
+      "final_train_loss": 2.3227,
+      "core12_effective_examples": 39441,
+      "core12_elapsed": "50m30s",
+      "core12_elapsed_seconds": 3030,
+      "core12_examples_per_second": 13.0168,
+      "xquad_elapsed": "27m27s",
+      "xquad_elapsed_seconds": 1647,
+      "macro_core11": 0.4618,
+      "xquad_tr_f1": 3.2633,
+      "vocab": "32k",
+      "depth": "d20",
+      "family": "MorphBPE + Zemberek",
+      "report_tokenizer": "morphbpe_zemberek_32k",
+      "report_model_tag": "tr_d20_morphbpe_zemberek_32k",
+      "cetvel_job_state": "COMPLETED",
+      "delta_macro_core11_vs_vocab_raw_bpe": 0.0104,
+      "delta_xquad_tr_f1_vs_vocab_raw_bpe": 0.1648,
+      "speed_vs_vocab_raw_bpe": 0.9967,
+      "status": "completed_base_model_with_archived_core12_results",
+      "vocab_size": 32768,
+      "transformer_depth": 20,
+      "approximate_parameters_millions": 896.5,
+      "training_token_positions": 17930649600,
+      "delta_validation_bpb_vs_tier_bpe": 0.0018,
+      "delta_macro_core11_percentage_points": 1.04,
+      "reported_macro_audit": {
+        "mean_of_archived_rounded_task_values": 0.4617545454545455,
+        "difference_from_archived_macro": -4.5454545454515216e-05,
+        "compatible_with_independent_four_decimal_rounding": true
+      },
+      "source_artifact": "artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/metrics_summary.json",
+      "benchmark_protocol_status": "legacy_adapter_known_generation_and_continuation_boundary_deviations",
+      "recovery_audit": {
+        "run_id": "morphbpe_zemberek_d20",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "e474cf48ddb662fd2b1ee05b98a425d31cf3625e642314c25955fd0b04bbe37b",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 32768,
+          "n_layer": 20,
+          "n_head": 10,
+          "n_kv_head": 10,
+          "n_embd": 1280,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d20-morphbpe-zemberek-32k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 20,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d20_morphbpe_zemberek_32768_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.6249791391940578,
+        "core11_mean_full_precision_legacy_adapter": 0.4617594293608024,
+        "training_git_environment_fingerprint_present": false
+      },
+      "training_statistics": {
+        "parameters": 896533746,
+        "training_minutes": 1270.43,
+        "estimated_training_flops": 5.809722e+19,
+        "peak_memory_mib": 18499.62,
+        "mfu_percent": 61.11,
+        "source_artifact": "artifacts/uhem_model_audit_2026-11-09/historical-training-reports.json",
+        "source_report_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-32768/report/base-model-training.md",
+        "source_report_sha256": "6fc7e184a0c60566a4a5b138ec8ef40531ae1b071043c54cae503aa9db35457f",
+        "training_job_id": "493760",
+        "scheduler_state": "COMPLETED",
+        "scheduler_elapsed": "21:35:34",
+        "gpu_count": 4
+      },
+      "training_minutes": 1270.43,
+      "total_parameters": 896533746,
+      "higher_precision_pretraining_archive": {
+        "source_artifact": "artifacts/cetvel_core12_model_comparison_2026-06-12/metrics_summary.json",
+        "validation_bpb": 0.6249791391940578,
+        "lowest_validation_bpb": 0.6249791391940578,
+        "final_train_loss": 2.322696
+      }
+    },
+    {
+      "tokenizer": "morphbpe_tdelight_32768",
+      "vocab": "32k",
+      "vocab_size": 32768,
+      "depth": "d20",
+      "transformer_depth": 20,
+      "segmenter": "TurkishDelightNLP",
+      "status": "tokenizer_only_no_full_model_checkpoint_in_archived_inventory",
+      "model_step": null,
+      "validation_bpb": null,
+      "lowest_validation_bpb": null,
+      "final_train_loss": null,
+      "macro_core11": null,
+      "xquad_tr_f1": null,
+      "source_artifact": "docs/model_bpb_inventory.md"
+    },
+    {
+      "run_id": "raw_bpe_d16_64k",
+      "vocab": "64k",
+      "depth": "d16",
+      "family": "raw BPE",
+      "report_tokenizer": "bpe_64k",
+      "tokenizer": "bpe_65536",
+      "report_model_tag": "tr_d16_bpe_64k",
+      "model_tag": "tr_d16_bpe_65536_chinchilla20",
+      "model_step": 17100,
+      "segmenter": "none",
+      "cetvel_job_id": "496898",
+      "cetvel_job_name": "cetvel-bpe64",
+      "cetvel_job_state": "COMPLETED",
+      "cetvel_slice": "core tasks 01-12",
+      "source_results_path": "/ari/users/nunal/nanochat-turk-bpe-65536/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "source_cetvel_log": "/ari/users/nunal/nanochat-turk/cetvel-bpe64-496898.out",
+      "source_meta_path": "/ari/users/nunal/nanochat-turk-bpe-65536/base_checkpoints/tr_d16_bpe_65536_chinchilla20/meta_017100.json",
+      "source_training_log": "/ari/users/nunal/nanochat-turk/tr-d16-bpe-64k-494189.out",
+      "validation_bpb": 0.6409,
+      "lowest_validation_bpb": 0.6409,
+      "final_train_loss": 2.5812,
+      "core12_effective_examples": 39441,
+      "core12_elapsed": "43m27s",
+      "core12_elapsed_seconds": 2607,
+      "core12_examples_per_second": 15.1289,
+      "xquad_elapsed": "22m18s",
+      "xquad_elapsed_seconds": 1338,
+      "macro_core11": 0.459,
+      "xquad_tr_f1": 2.8576,
+      "xquad_tr_exact": 0.0,
+      "speed_vs_vocab_raw_bpe": 1.0,
+      "delta_macro_core11_vs_vocab_raw_bpe": 0.0,
+      "delta_xquad_tr_f1_vs_vocab_raw_bpe": 0.0,
+      "status": "completed_base_model_with_archived_core12_results",
+      "vocab_size": 65536,
+      "transformer_depth": 16,
+      "approximate_parameters_millions": 872.4,
+      "training_token_positions": 17930649600,
+      "delta_validation_bpb_vs_tier_bpe": 0.0,
+      "delta_macro_core11_percentage_points": 0.0,
+      "reported_macro_audit": {
+        "mean_of_archived_rounded_task_values": 0.45899999999999996,
+        "difference_from_archived_macro": -5.551115123125783e-17,
+        "compatible_with_independent_four_decimal_rounding": true
+      },
+      "source_artifact": "artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/metrics_summary.json",
+      "benchmark_protocol_status": "legacy_adapter_known_generation_and_continuation_boundary_deviations",
+      "recovery_audit": {
+        "run_id": "raw_bpe_d16_64k",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "9f6a061623cd15048eae9301c59332fc27ab7f61904377992b418ef5ebfb98b9",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 65536,
+          "n_layer": 16,
+          "n_head": 8,
+          "n_kv_head": 8,
+          "n_embd": 1024,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d16-bpe-64k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 16,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d16_bpe_65536_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.6408762423935958,
+        "core11_mean_full_precision_legacy_adapter": 0.4589939641895779,
+        "training_git_environment_fingerprint_present": false
+      },
+      "training_statistics": {
+        "parameters": 872416058,
+        "training_minutes": 907.39,
+        "estimated_training_flops": 3.609925e+19,
+        "peak_memory_mib": 14645.31,
+        "mfu_percent": 53.14,
+        "source_artifact": "artifacts/uhem_model_audit_2026-11-09/historical-training-reports.json",
+        "source_report_path": "/ari/users/nunal/nanochat-turk-bpe-65536/report/base-model-training.md",
+        "source_report_sha256": "9b5d3a3b98a768a4af2012e75e549d34d84206595710f4fe66d9e14b12e96438",
+        "training_job_id": "494189",
+        "scheduler_state": "COMPLETED",
+        "scheduler_elapsed": "15:30:31",
+        "gpu_count": 4
+      },
+      "training_minutes": 907.39,
+      "total_parameters": 872416058
+    },
+    {
+      "run_id": "morphbpe_trmorph_d16_64k",
+      "vocab": "64k",
+      "depth": "d16",
+      "family": "MorphBPE + TRmorph",
+      "report_tokenizer": "morphbpe_trmorph_64k",
+      "tokenizer": "morphbpe_trmorph_65536",
+      "report_model_tag": "tr_d16_morphbpe_trmorph_64k",
+      "model_tag": "tr_d16_morphbpe_trmorph_65536_chinchilla20",
+      "model_step": 17100,
+      "segmenter": "TRmorph",
+      "cetvel_job_id": "496899",
+      "cetvel_job_name": "cetvel-trm64",
+      "cetvel_job_state": "COMPLETED",
+      "cetvel_slice": "core tasks 01-12",
+      "source_results_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-65536/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "source_cetvel_log": "/ari/users/nunal/nanochat-turk/cetvel-trm64-496899.out",
+      "source_meta_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-65536/base_checkpoints/tr_d16_morphbpe_trmorph_65536_chinchilla20/meta_017100.json",
+      "source_training_log": "/ari/users/nunal/nanochat-turk/tr-d16-mbpe-trmorph-64k-494190.out",
+      "validation_bpb": 0.6521,
+      "lowest_validation_bpb": 0.6521,
+      "final_train_loss": 2.2754,
+      "core12_effective_examples": 39441,
+      "core12_elapsed": "43m09s",
+      "core12_elapsed_seconds": 2589,
+      "core12_examples_per_second": 15.2341,
+      "xquad_elapsed": "22m01s",
+      "xquad_elapsed_seconds": 1321,
+      "macro_core11": 0.4532,
+      "xquad_tr_f1": 3.2778,
+      "xquad_tr_exact": 0.0,
+      "speed_vs_vocab_raw_bpe": 1.007,
+      "delta_macro_core11_vs_vocab_raw_bpe": -0.0058,
+      "delta_xquad_tr_f1_vs_vocab_raw_bpe": 0.4202,
+      "status": "completed_base_model_with_archived_core12_results",
+      "vocab_size": 65536,
+      "transformer_depth": 16,
+      "approximate_parameters_millions": 872.4,
+      "training_token_positions": 17930649600,
+      "delta_validation_bpb_vs_tier_bpe": 0.0112,
+      "delta_macro_core11_percentage_points": -0.58,
+      "reported_macro_audit": {
+        "mean_of_archived_rounded_task_values": 0.4532363636363636,
+        "difference_from_archived_macro": 3.636363636361217e-05,
+        "compatible_with_independent_four_decimal_rounding": true
+      },
+      "source_artifact": "artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/metrics_summary.json",
+      "benchmark_protocol_status": "legacy_adapter_known_generation_and_continuation_boundary_deviations",
+      "recovery_audit": {
+        "run_id": "morphbpe_trmorph_d16_64k",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "89f0e5361612a61627ae825f0ffed365e54e4113b6c462b137295ca192ded944",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 65536,
+          "n_layer": 16,
+          "n_head": 8,
+          "n_kv_head": 8,
+          "n_embd": 1024,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d16-morphbpe-trmorph-64k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 16,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d16_morphbpe_trmorph_65536_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.652117580861248,
+        "core11_mean_full_precision_legacy_adapter": 0.4532397593800796,
+        "training_git_environment_fingerprint_present": false
+      },
+      "training_statistics": {
+        "parameters": 872416058,
+        "training_minutes": 905.97,
+        "estimated_training_flops": 3.609925e+19,
+        "peak_memory_mib": 14645.31,
+        "mfu_percent": 53.2,
+        "source_artifact": "artifacts/uhem_model_audit_2026-11-09/historical-training-reports.json",
+        "source_report_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-65536/report/base-model-training.md",
+        "source_report_sha256": "7f1e66abd576c09cf04940a1659ebbca2a4635716b67e478b00c50ff7916eba2",
+        "training_job_id": "494190",
+        "scheduler_state": "COMPLETED",
+        "scheduler_elapsed": "15:28:04",
+        "gpu_count": 4
+      },
+      "training_minutes": 905.97,
+      "total_parameters": 872416058
+    },
+    {
+      "run_id": "morphbpe_zemberek_d16_64k",
+      "vocab": "64k",
+      "depth": "d16",
+      "family": "MorphBPE + Zemberek",
+      "report_tokenizer": "morphbpe_zemberek_64k",
+      "tokenizer": "morphbpe_zemberek_65536",
+      "report_model_tag": "tr_d16_morphbpe_zemberek_64k",
+      "model_tag": "tr_d16_morphbpe_zemberek_65536_chinchilla20",
+      "model_step": 17100,
+      "segmenter": "Zemberek",
+      "cetvel_job_id": "496900",
+      "cetvel_job_name": "cetvel-zem64",
+      "cetvel_job_state": "COMPLETED",
+      "cetvel_slice": "core tasks 01-12",
+      "source_results_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-65536/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "source_cetvel_log": "/ari/users/nunal/nanochat-turk/cetvel-zem64-496900.out",
+      "source_meta_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-65536/base_checkpoints/tr_d16_morphbpe_zemberek_65536_chinchilla20/meta_017100.json",
+      "source_training_log": "/ari/users/nunal/nanochat-turk/tr-d16-mbpe-zemberek-64k-494191.out",
+      "validation_bpb": 0.6514,
+      "lowest_validation_bpb": 0.6514,
+      "final_train_loss": 2.3013,
+      "core12_effective_examples": 39441,
+      "core12_elapsed": "42m45s",
+      "core12_elapsed_seconds": 2565,
+      "core12_examples_per_second": 15.3766,
+      "xquad_elapsed": "21m55s",
+      "xquad_elapsed_seconds": 1315,
+      "macro_core11": 0.4568,
+      "xquad_tr_f1": 2.8956,
+      "xquad_tr_exact": 0.0,
+      "speed_vs_vocab_raw_bpe": 1.0164,
+      "delta_macro_core11_vs_vocab_raw_bpe": -0.0022,
+      "delta_xquad_tr_f1_vs_vocab_raw_bpe": 0.038,
+      "status": "completed_base_model_with_archived_core12_results",
+      "vocab_size": 65536,
+      "transformer_depth": 16,
+      "approximate_parameters_millions": 872.4,
+      "training_token_positions": 17930649600,
+      "delta_validation_bpb_vs_tier_bpe": 0.0105,
+      "delta_macro_core11_percentage_points": -0.22,
+      "reported_macro_audit": {
+        "mean_of_archived_rounded_task_values": 0.4568,
+        "difference_from_archived_macro": 0.0,
+        "compatible_with_independent_four_decimal_rounding": true
+      },
+      "source_artifact": "artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/metrics_summary.json",
+      "benchmark_protocol_status": "legacy_adapter_known_generation_and_continuation_boundary_deviations",
+      "recovery_audit": {
+        "run_id": "morphbpe_zemberek_d16_64k",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "961e64d67cffc916bf1ee618d169fe500451c3fa60f41b74c7f4b0dd2032f0c7",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 65536,
+          "n_layer": 16,
+          "n_head": 8,
+          "n_kv_head": 8,
+          "n_embd": 1024,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d16-morphbpe-zemberek-64k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 16,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d16_morphbpe_zemberek_65536_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.651403153317041,
+        "core11_mean_full_precision_legacy_adapter": 0.4567965716047134,
+        "training_git_environment_fingerprint_present": false
+      },
+      "training_statistics": {
+        "parameters": 872416058,
+        "training_minutes": 905.82,
+        "estimated_training_flops": 3.609925e+19,
+        "peak_memory_mib": 14645.31,
+        "mfu_percent": 53.22,
+        "source_artifact": "artifacts/uhem_model_audit_2026-11-09/historical-training-reports.json",
+        "source_report_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-65536/report/base-model-training.md",
+        "source_report_sha256": "f3619ac3df8f07d03fc640256ac7a2f6da386d2dda8ccff7c8aa1ccd10720949",
+        "training_job_id": "494191",
+        "scheduler_state": "COMPLETED",
+        "scheduler_elapsed": "15:27:54",
+        "gpu_count": 4
+      },
+      "training_minutes": 905.82,
+      "total_parameters": 872416058
+    },
+    {
+      "run_id": "morphbpe_tdelight_d16_64k",
+      "vocab": "64k",
+      "depth": "d16",
+      "family": "MorphBPE + TurkishDelightNLP",
+      "report_tokenizer": "morphbpe_tdelight_64k",
+      "tokenizer": "morphbpe_tdelight_65536",
+      "report_model_tag": "tr_d16_morphbpe_tdelight_64k",
+      "model_tag": "tr_d16_morphbpe_tdelight_65536_chinchilla20",
+      "model_step": 17100,
+      "segmenter": "TurkishDelightNLP",
+      "cetvel_job_id": "496901",
+      "cetvel_job_name": "cetvel-tdl64",
+      "cetvel_job_state": "COMPLETED",
+      "cetvel_slice": "core tasks 01-12",
+      "source_results_path": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-65536/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "source_cetvel_log": "/ari/users/nunal/nanochat-turk/cetvel-tdl64-496901.out",
+      "source_meta_path": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-65536/base_checkpoints/tr_d16_morphbpe_tdelight_65536_chinchilla20/meta_017100.json",
+      "source_training_log": "/ari/users/nunal/nanochat-turk/tr-d16-mbpe-tdelight-64k-494192.out",
+      "validation_bpb": 0.651,
+      "lowest_validation_bpb": 0.651,
+      "final_train_loss": 2.4869,
+      "core12_effective_examples": 39441,
+      "core12_elapsed": "40m52s",
+      "core12_elapsed_seconds": 2452,
+      "core12_examples_per_second": 16.0852,
+      "xquad_elapsed": "21m18s",
+      "xquad_elapsed_seconds": 1278,
+      "macro_core11": 0.4567,
+      "xquad_tr_f1": 3.328,
+      "xquad_tr_exact": 0.16806722689075632,
+      "speed_vs_vocab_raw_bpe": 1.0632,
+      "delta_macro_core11_vs_vocab_raw_bpe": -0.0023,
+      "delta_xquad_tr_f1_vs_vocab_raw_bpe": 0.4704,
+      "status": "completed_base_model_with_archived_core12_results",
+      "vocab_size": 65536,
+      "transformer_depth": 16,
+      "approximate_parameters_millions": 872.4,
+      "training_token_positions": 17930649600,
+      "delta_validation_bpb_vs_tier_bpe": 0.0101,
+      "delta_macro_core11_percentage_points": -0.23,
+      "reported_macro_audit": {
+        "mean_of_archived_rounded_task_values": 0.45675454545454547,
+        "difference_from_archived_macro": 5.454545454547377e-05,
+        "compatible_with_independent_four_decimal_rounding": true
+      },
+      "source_artifact": "artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/metrics_summary.json",
+      "benchmark_protocol_status": "legacy_adapter_known_generation_and_continuation_boundary_deviations",
+      "recovery_audit": {
+        "run_id": "morphbpe_tdelight_d16_64k",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "60cf1a3ec909925174f49ee4c41ca9cdbf6080bda3934d79fdb02ff13daf9082",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 65536,
+          "n_layer": 16,
+          "n_head": 8,
+          "n_kv_head": 8,
+          "n_embd": 1024,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d16-morphbpe-tdelight-64k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 16,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d16_morphbpe_tdelight_65536_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.6510196647741414,
+        "core11_mean_full_precision_legacy_adapter": 0.4567481934055131,
+        "training_git_environment_fingerprint_present": false
+      },
+      "training_statistics": {
+        "parameters": 872416058,
+        "training_minutes": 903.5,
+        "estimated_training_flops": 3.609925e+19,
+        "peak_memory_mib": 14645.31,
+        "mfu_percent": 53.41,
+        "source_artifact": "artifacts/uhem_model_audit_2026-11-09/historical-training-reports.json",
+        "source_report_path": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-65536/report/base-model-training.md",
+        "source_report_sha256": "9c062dbd2819b9ccee62bb2513bf644e271ab97f6a96c4369c1663509ace46c1",
+        "training_job_id": "494192",
+        "scheduler_state": "COMPLETED",
+        "scheduler_elapsed": "15:25:56",
+        "gpu_count": 4
+      },
+      "training_minutes": 903.5,
+      "total_parameters": 872416058
+    },
+    {
+      "run_id": "raw_bpe_d12_128k",
+      "vocab": "128k",
+      "depth": "d12",
+      "family": "raw BPE",
+      "report_tokenizer": "bpe_128k",
+      "tokenizer": "bpe_131072",
+      "report_model_tag": "tr_d12_bpe_128k",
+      "model_tag": "tr_d12_bpe_131072_chinchilla20",
+      "model_step": 17100,
+      "segmenter": "none",
+      "cetvel_job_id": "496902",
+      "cetvel_job_name": "cetvel-bpe128",
+      "cetvel_job_state": "COMPLETED",
+      "cetvel_slice": "core tasks 01-12",
+      "source_results_path": "/ari/users/nunal/nanochat-turk-bpe-131072/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "source_cetvel_log": "/ari/users/nunal/nanochat-turk/cetvel-bpe128-496902.out",
+      "source_meta_path": "/ari/users/nunal/nanochat-turk-bpe-131072/base_checkpoints/tr_d12_bpe_131072_chinchilla20/meta_017100.json",
+      "source_training_log": "/ari/users/nunal/nanochat-turk/tr-d12-bpe-128k-494193.out",
+      "validation_bpb": 0.6749,
+      "lowest_validation_bpb": 0.6749,
+      "final_train_loss": 3.0976,
+      "core12_effective_examples": 39441,
+      "core12_elapsed": "35m13s",
+      "core12_elapsed_seconds": 2113,
+      "core12_examples_per_second": 18.6659,
+      "xquad_elapsed": "16m55s",
+      "xquad_elapsed_seconds": 1015,
+      "macro_core11": 0.4651,
+      "xquad_tr_f1": 2.2674,
+      "xquad_tr_exact": 0.0,
+      "speed_vs_vocab_raw_bpe": 1.0,
+      "delta_macro_core11_vs_vocab_raw_bpe": 0.0,
+      "delta_xquad_tr_f1_vs_vocab_raw_bpe": 0.0,
+      "status": "completed_base_model_with_archived_core12_results",
+      "vocab_size": 131072,
+      "transformer_depth": 12,
+      "approximate_parameters_millions": 890.2,
+      "training_token_positions": 17930649600,
+      "delta_validation_bpb_vs_tier_bpe": 0.0,
+      "delta_macro_core11_percentage_points": 0.0,
+      "reported_macro_audit": {
+        "mean_of_archived_rounded_task_values": 0.4651090909090909,
+        "difference_from_archived_macro": 9.090909090903043e-06,
+        "compatible_with_independent_four_decimal_rounding": true
+      },
+      "source_artifact": "artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/metrics_summary.json",
+      "benchmark_protocol_status": "legacy_adapter_known_generation_and_continuation_boundary_deviations",
+      "recovery_audit": {
+        "run_id": "raw_bpe_d12_128k",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "e61253e5d1ce182b1d79fffa88fd61ea6c90f161a2be2fe6bf26b7f2fc8bcf68",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 131072,
+          "n_layer": 12,
+          "n_head": 6,
+          "n_kv_head": 6,
+          "n_embd": 768,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d12-bpe-128k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 12,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d12_bpe_131072_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.6748740953412145,
+        "core11_mean_full_precision_legacy_adapter": 0.4651169388889949,
+        "training_git_environment_fingerprint_present": false
+      },
+      "training_statistics": {
+        "parameters": 890241506,
+        "training_minutes": 663.68,
+        "estimated_training_flops": 2.402855e+19,
+        "peak_memory_mib": 13066.91,
+        "mfu_percent": 48.35,
+        "source_artifact": "artifacts/uhem_model_audit_2026-11-09/historical-training-reports.json",
+        "source_report_path": "/ari/users/nunal/nanochat-turk-bpe-131072/report/base-model-training.md",
+        "source_report_sha256": "c2b706091d53496a38cff6ad9868a5672a408bf8f67ff86df09860310476589b",
+        "training_job_id": "494193",
+        "scheduler_state": "COMPLETED",
+        "scheduler_elapsed": "11:26:01",
+        "gpu_count": 4
+      },
+      "training_minutes": 663.68,
+      "total_parameters": 890241506
+    },
+    {
+      "run_id": "morphbpe_trmorph_d12_128k",
+      "vocab": "128k",
+      "depth": "d12",
+      "family": "MorphBPE + TRmorph",
+      "report_tokenizer": "morphbpe_trmorph_128k",
+      "tokenizer": "morphbpe_trmorph_131072",
+      "report_model_tag": "tr_d12_morphbpe_trmorph_128k",
+      "model_tag": "tr_d12_morphbpe_trmorph_131072_chinchilla20",
+      "model_step": 17100,
+      "segmenter": "TRmorph",
+      "cetvel_job_id": "496903",
+      "cetvel_job_name": "cetvel-trm128",
+      "cetvel_job_state": "COMPLETED",
+      "cetvel_slice": "core tasks 01-12",
+      "source_results_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-131072/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "source_cetvel_log": "/ari/users/nunal/nanochat-turk/cetvel-trm128-496903.out",
+      "source_meta_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-131072/base_checkpoints/tr_d12_morphbpe_trmorph_131072_chinchilla20/meta_017100.json",
+      "source_training_log": "/ari/users/nunal/nanochat-turk/tr-d12-mbpe-trmorph-128k-494194.out",
+      "validation_bpb": 0.6917,
+      "lowest_validation_bpb": 0.6917,
+      "final_train_loss": 2.5947,
+      "core12_effective_examples": 39441,
+      "core12_elapsed": "35m09s",
+      "core12_elapsed_seconds": 2109,
+      "core12_examples_per_second": 18.7013,
+      "xquad_elapsed": "18m17s",
+      "xquad_elapsed_seconds": 1097,
+      "macro_core11": 0.4503,
+      "xquad_tr_f1": 2.3517,
+      "xquad_tr_exact": 0.0,
+      "speed_vs_vocab_raw_bpe": 1.0019,
+      "delta_macro_core11_vs_vocab_raw_bpe": -0.0148,
+      "delta_xquad_tr_f1_vs_vocab_raw_bpe": 0.0843,
+      "status": "completed_base_model_with_archived_core12_results",
+      "vocab_size": 131072,
+      "transformer_depth": 12,
+      "approximate_parameters_millions": 890.2,
+      "training_token_positions": 17930649600,
+      "delta_validation_bpb_vs_tier_bpe": 0.0168,
+      "delta_macro_core11_percentage_points": -1.48,
+      "reported_macro_audit": {
+        "mean_of_archived_rounded_task_values": 0.45033636363636365,
+        "difference_from_archived_macro": 3.6363636363667684e-05,
+        "compatible_with_independent_four_decimal_rounding": true
+      },
+      "source_artifact": "artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/metrics_summary.json",
+      "benchmark_protocol_status": "legacy_adapter_known_generation_and_continuation_boundary_deviations",
+      "recovery_audit": {
+        "run_id": "morphbpe_trmorph_d12_128k",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "0556d0bdd1cb3147d430e6b6f0ba916019497c88fdca1bf119bdce33862cad9f",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 131072,
+          "n_layer": 12,
+          "n_head": 6,
+          "n_kv_head": 6,
+          "n_embd": 768,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d12-morphbpe-trmorph-128k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 12,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d12_morphbpe_trmorph_131072_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.6917138591836433,
+        "core11_mean_full_precision_legacy_adapter": 0.4503374490587135,
+        "training_git_environment_fingerprint_present": false
+      },
+      "training_statistics": {
+        "parameters": 890241506,
+        "training_minutes": 658.31,
+        "estimated_training_flops": 2.402855e+19,
+        "peak_memory_mib": 13065.79,
+        "mfu_percent": 48.81,
+        "source_artifact": "artifacts/uhem_model_audit_2026-11-09/historical-training-reports.json",
+        "source_report_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-131072/report/base-model-training.md",
+        "source_report_sha256": "11b8294cddb16879d3ed5039411f18df178809f47f45d10a84dd70a08d1e13b1",
+        "training_job_id": "494194",
+        "scheduler_state": "COMPLETED",
+        "scheduler_elapsed": "11:19:34",
+        "gpu_count": 4
+      },
+      "training_minutes": 658.31,
+      "total_parameters": 890241506
+    },
+    {
+      "run_id": "morphbpe_zemberek_d12_128k",
+      "vocab": "128k",
+      "depth": "d12",
+      "family": "MorphBPE + Zemberek",
+      "report_tokenizer": "morphbpe_zemberek_128k",
+      "tokenizer": "morphbpe_zemberek_131072",
+      "report_model_tag": "tr_d12_morphbpe_zemberek_128k",
+      "model_tag": "tr_d12_morphbpe_zemberek_131072_chinchilla20",
+      "model_step": 17100,
+      "segmenter": "Zemberek",
+      "cetvel_job_id": "496904",
+      "cetvel_job_name": "cetvel-zem128",
+      "cetvel_job_state": "COMPLETED",
+      "cetvel_slice": "core tasks 01-12",
+      "source_results_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-131072/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "source_cetvel_log": "/ari/users/nunal/nanochat-turk/cetvel-zem128-496904.out",
+      "source_meta_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-131072/base_checkpoints/tr_d12_morphbpe_zemberek_131072_chinchilla20/meta_017100.json",
+      "source_training_log": "/ari/users/nunal/nanochat-turk/tr-d12-mbpe-zemberek-128k-494195.out",
+      "validation_bpb": 0.694,
+      "lowest_validation_bpb": 0.694,
+      "final_train_loss": 2.6,
+      "core12_effective_examples": 39441,
+      "core12_elapsed": "35m19s",
+      "core12_elapsed_seconds": 2119,
+      "core12_examples_per_second": 18.613,
+      "xquad_elapsed": "17m53s",
+      "xquad_elapsed_seconds": 1073,
+      "macro_core11": 0.4618,
+      "xquad_tr_f1": 2.9685,
+      "xquad_tr_exact": 0.08403361344537816,
+      "speed_vs_vocab_raw_bpe": 0.9972,
+      "delta_macro_core11_vs_vocab_raw_bpe": -0.0033,
+      "delta_xquad_tr_f1_vs_vocab_raw_bpe": 0.7011,
+      "status": "completed_base_model_with_archived_core12_results",
+      "vocab_size": 131072,
+      "transformer_depth": 12,
+      "approximate_parameters_millions": 890.2,
+      "training_token_positions": 17930649600,
+      "delta_validation_bpb_vs_tier_bpe": 0.0191,
+      "delta_macro_core11_percentage_points": -0.33,
+      "reported_macro_audit": {
+        "mean_of_archived_rounded_task_values": 0.4617545454545454,
+        "difference_from_archived_macro": -4.545454545457073e-05,
+        "compatible_with_independent_four_decimal_rounding": true
+      },
+      "source_artifact": "artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/metrics_summary.json",
+      "benchmark_protocol_status": "legacy_adapter_known_generation_and_continuation_boundary_deviations",
+      "recovery_audit": {
+        "run_id": "morphbpe_zemberek_d12_128k",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "e43c56bd7b1ae28e3c8b9af21c127593534b1d1c9017edbd9359c4d6634bbf1d",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 131072,
+          "n_layer": 12,
+          "n_head": 6,
+          "n_kv_head": 6,
+          "n_embd": 768,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d12-morphbpe-zemberek-128k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 12,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d12_morphbpe_zemberek_131072_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.6940374096112558,
+        "core11_mean_full_precision_legacy_adapter": 0.4617560958460744,
+        "training_git_environment_fingerprint_present": false
+      },
+      "training_statistics": {
+        "parameters": 890241506,
+        "training_minutes": 658.23,
+        "estimated_training_flops": 2.402855e+19,
+        "peak_memory_mib": 13068.04,
+        "mfu_percent": 48.85,
+        "source_artifact": "artifacts/uhem_model_audit_2026-11-09/historical-training-reports.json",
+        "source_report_path": "/ari/users/nunal/nanochat-turk-morphbpe-zemberek-131072/report/base-model-training.md",
+        "source_report_sha256": "83e0d2c09780fe0df04208dbf707561425548c7b044fa1b4bd4ee80416597812",
+        "training_job_id": "494195",
+        "scheduler_state": "COMPLETED",
+        "scheduler_elapsed": "11:19:37",
+        "gpu_count": 4
+      },
+      "training_minutes": 658.23,
+      "total_parameters": 890241506
+    },
+    {
+      "run_id": "morphbpe_tdelight_d12_128k",
+      "vocab": "128k",
+      "depth": "d12",
+      "family": "MorphBPE + TurkishDelightNLP",
+      "report_tokenizer": "morphbpe_tdelight_128k",
+      "tokenizer": "morphbpe_tdelight_131072",
+      "report_model_tag": "tr_d12_morphbpe_tdelight_128k",
+      "model_tag": "tr_d12_morphbpe_tdelight_131072_chinchilla20",
+      "model_step": 17100,
+      "segmenter": "TurkishDelightNLP",
+      "cetvel_job_id": "496905",
+      "cetvel_job_name": "cetvel-tdl128",
+      "cetvel_job_state": "RESULT_COMPLETE_SLURM_RUNNING_AT_IMPORT",
+      "cetvel_slice": "core tasks 01-12",
+      "source_results_path": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-131072/cetvel_out/core_tasks_01_12/cetvel_core_results.json",
+      "source_cetvel_log": "/ari/users/nunal/nanochat-turk/cetvel-tdl128-496905.out",
+      "source_meta_path": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-131072/base_checkpoints/tr_d12_morphbpe_tdelight_131072_chinchilla20/meta_017100.json",
+      "source_training_log": "/ari/users/nunal/nanochat-turk/tr-d12-mbpe-tdelight-128k-494196.out",
+      "validation_bpb": 0.682,
+      "lowest_validation_bpb": 0.682,
+      "final_train_loss": 2.6477,
+      "core12_effective_examples": 39441,
+      "core12_elapsed": "33m25s",
+      "core12_elapsed_seconds": 2005,
+      "core12_examples_per_second": 19.6713,
+      "xquad_elapsed": "16m41s",
+      "xquad_elapsed_seconds": 1001,
+      "macro_core11": 0.4481,
+      "xquad_tr_f1": 2.2498,
+      "xquad_tr_exact": 0.0,
+      "slurm_note": "CETVEL result file complete; Slurm still uploading wandb at import time.",
+      "speed_vs_vocab_raw_bpe": 1.0539,
+      "delta_macro_core11_vs_vocab_raw_bpe": -0.017,
+      "delta_xquad_tr_f1_vs_vocab_raw_bpe": -0.0176,
+      "status": "completed_base_model_with_archived_core12_results",
+      "vocab_size": 131072,
+      "transformer_depth": 12,
+      "approximate_parameters_millions": 890.2,
+      "training_token_positions": 17930649600,
+      "delta_validation_bpb_vs_tier_bpe": 0.0071,
+      "delta_macro_core11_percentage_points": -1.7,
+      "reported_macro_audit": {
+        "mean_of_archived_rounded_task_values": 0.4481363636363636,
+        "difference_from_archived_macro": 3.636363636361217e-05,
+        "compatible_with_independent_four_decimal_rounding": true
+      },
+      "source_artifact": "artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/metrics_summary.json",
+      "benchmark_protocol_status": "legacy_adapter_known_generation_and_continuation_boundary_deviations",
+      "recovery_audit": {
+        "run_id": "morphbpe_tdelight_d12_128k",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "26b406cd85b92f8c0fed74707ca419cfe2226c796c4891331583dfe609d0849e",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 131072,
+          "n_layer": 12,
+          "n_head": 6,
+          "n_kv_head": 6,
+          "n_embd": 768,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d12-morphbpe-tdelight-128k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 12,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d12_morphbpe_tdelight_131072_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.6820176680445071,
+        "core11_mean_full_precision_legacy_adapter": 0.44813959031407447,
+        "training_git_environment_fingerprint_present": false
+      },
+      "training_statistics": {
+        "parameters": 890241506,
+        "training_minutes": 659.88,
+        "estimated_training_flops": 2.402855e+19,
+        "peak_memory_mib": 13066.91,
+        "mfu_percent": 48.69,
+        "source_artifact": "artifacts/uhem_model_audit_2026-11-09/historical-training-reports.json",
+        "source_report_path": "/ari/users/nunal/nanochat-turk-morphbpe-tdelight-131072/report/base-model-training.md",
+        "source_report_sha256": "3830857d02da641a245d26ce7318c6ee3fa0e4de96010449d1008ed5256ae9f8",
+        "training_job_id": "494196",
+        "scheduler_state": "COMPLETED",
+        "scheduler_elapsed": "11:21:12",
+        "gpu_count": 4
+      },
+      "training_minutes": 659.88,
+      "total_parameters": 890241506
+    }
+  ],
+  "task_metrics": [
+    {
+      "task": "exams_tr",
+      "metric": "acc_norm,none",
+      "values": {
+        "raw_bpe_d20": 0.3104,
+        "morphbpe_trmorph_d20": 0.2875,
+        "morphbpe_zemberek_d20": 0.2952,
+        "raw_bpe_d16_64k": 0.3028,
+        "morphbpe_trmorph_d16_64k": 0.3079,
+        "morphbpe_zemberek_d16_64k": 0.2926,
+        "morphbpe_tdelight_d16_64k": 0.3028,
+        "raw_bpe_d12_128k": 0.3104,
+        "morphbpe_trmorph_d12_128k": 0.2926,
+        "morphbpe_zemberek_d12_128k": 0.3079,
+        "morphbpe_tdelight_d12_128k": 0.2952
+      }
+    },
+    {
+      "task": "belebele_tr",
+      "metric": "acc_norm,none",
+      "values": {
+        "raw_bpe_d20": 0.2522,
+        "morphbpe_trmorph_d20": 0.2356,
+        "morphbpe_zemberek_d20": 0.2433,
+        "raw_bpe_d16_64k": 0.2433,
+        "morphbpe_trmorph_d16_64k": 0.2233,
+        "morphbpe_zemberek_d16_64k": 0.23,
+        "morphbpe_tdelight_d16_64k": 0.2356,
+        "raw_bpe_d12_128k": 0.2389,
+        "morphbpe_trmorph_d12_128k": 0.24,
+        "morphbpe_zemberek_d12_128k": 0.2633,
+        "morphbpe_tdelight_d12_128k": 0.2233
+      }
+    },
+    {
+      "task": "turkish_plu",
+      "metric": "acc_norm,none",
+      "values": {
+        "raw_bpe_d20": 0.5027,
+        "morphbpe_trmorph_d20": 0.5146,
+        "morphbpe_zemberek_d20": 0.5011,
+        "raw_bpe_d16_64k": 0.4906,
+        "morphbpe_trmorph_d16_64k": 0.4928,
+        "morphbpe_zemberek_d16_64k": 0.4909,
+        "morphbpe_tdelight_d16_64k": 0.5046,
+        "raw_bpe_d12_128k": 0.4653,
+        "morphbpe_trmorph_d12_128k": 0.4611,
+        "morphbpe_zemberek_d12_128k": 0.4893,
+        "morphbpe_tdelight_d12_128k": 0.4678
+      }
+    },
+    {
+      "task": "cetvel_xcopa_tr",
+      "metric": "acc,none",
+      "values": {
+        "raw_bpe_d20": 0.618,
+        "morphbpe_trmorph_d20": 0.608,
+        "morphbpe_zemberek_d20": 0.622,
+        "raw_bpe_d16_64k": 0.61,
+        "morphbpe_trmorph_d16_64k": 0.616,
+        "morphbpe_zemberek_d16_64k": 0.614,
+        "morphbpe_tdelight_d16_64k": 0.61,
+        "raw_bpe_d12_128k": 0.6,
+        "morphbpe_trmorph_d12_128k": 0.596,
+        "morphbpe_zemberek_d12_128k": 0.618,
+        "morphbpe_tdelight_d12_128k": 0.602
+      }
+    },
+    {
+      "task": "cetvel_xnli_tr",
+      "metric": "acc_norm,none",
+      "values": {
+        "raw_bpe_d20": 0.3335,
+        "morphbpe_trmorph_d20": 0.3301,
+        "morphbpe_zemberek_d20": 0.3325,
+        "raw_bpe_d16_64k": 0.3333,
+        "morphbpe_trmorph_d16_64k": 0.3333,
+        "morphbpe_zemberek_d16_64k": 0.3299,
+        "morphbpe_tdelight_d16_64k": 0.3335,
+        "raw_bpe_d12_128k": 0.3325,
+        "morphbpe_trmorph_d12_128k": 0.3323,
+        "morphbpe_zemberek_d12_128k": 0.3329,
+        "morphbpe_tdelight_d12_128k": 0.3339
+      }
+    },
+    {
+      "task": "mnli_tr",
+      "metric": "acc_norm,none",
+      "values": {
+        "raw_bpe_d20": 0.321,
+        "morphbpe_trmorph_d20": 0.3215,
+        "morphbpe_zemberek_d20": 0.3216,
+        "raw_bpe_d16_64k": 0.3213,
+        "morphbpe_trmorph_d16_64k": 0.3213,
+        "morphbpe_zemberek_d16_64k": 0.3064,
+        "morphbpe_tdelight_d16_64k": 0.3211,
+        "raw_bpe_d12_128k": 0.3214,
+        "morphbpe_trmorph_d12_128k": 0.3209,
+        "morphbpe_zemberek_d12_128k": 0.3212,
+        "morphbpe_tdelight_d12_128k": 0.321
+      }
+    },
+    {
+      "task": "snli_tr",
+      "metric": "acc_norm,none",
+      "values": {
+        "raw_bpe_d20": 0.3234,
+        "morphbpe_trmorph_d20": 0.3235,
+        "morphbpe_zemberek_d20": 0.3195,
+        "raw_bpe_d16_64k": 0.3237,
+        "morphbpe_trmorph_d16_64k": 0.3237,
+        "morphbpe_zemberek_d16_64k": 0.3209,
+        "morphbpe_tdelight_d16_64k": 0.324,
+        "raw_bpe_d12_128k": 0.3241,
+        "morphbpe_trmorph_d12_128k": 0.3234,
+        "morphbpe_zemberek_d12_128k": 0.3237,
+        "morphbpe_tdelight_d12_128k": 0.3243
+      }
+    },
+    {
+      "task": "news_cat",
+      "metric": "acc_norm,none",
+      "values": {
+        "raw_bpe_d20": 0.676,
+        "morphbpe_trmorph_d20": 0.732,
+        "morphbpe_zemberek_d20": 0.724,
+        "raw_bpe_d16_64k": 0.692,
+        "morphbpe_trmorph_d16_64k": 0.64,
+        "morphbpe_zemberek_d16_64k": 0.704,
+        "morphbpe_tdelight_d16_64k": 0.7,
+        "raw_bpe_d12_128k": 0.728,
+        "morphbpe_trmorph_d12_128k": 0.652,
+        "morphbpe_zemberek_d12_128k": 0.712,
+        "morphbpe_tdelight_d12_128k": 0.628
+      }
+    },
+    {
+      "task": "offenseval_tr",
+      "metric": "acc_norm,none",
+      "values": {
+        "raw_bpe_d20": 0.7971,
+        "morphbpe_trmorph_d20": 0.7764,
+        "morphbpe_zemberek_d20": 0.7937,
+        "raw_bpe_d16_64k": 0.7971,
+        "morphbpe_trmorph_d16_64k": 0.7968,
+        "morphbpe_zemberek_d16_64k": 0.7971,
+        "morphbpe_tdelight_d16_64k": 0.7971,
+        "raw_bpe_d12_128k": 0.7971,
+        "morphbpe_trmorph_d12_128k": 0.7971,
+        "morphbpe_zemberek_d12_128k": 0.7971,
+        "morphbpe_tdelight_d12_128k": 0.7971
+      }
+    },
+    {
+      "task": "trclaim19",
+      "metric": "acc_norm,none",
+      "values": {
+        "raw_bpe_d20": 0.4938,
+        "morphbpe_trmorph_d20": 0.5283,
+        "morphbpe_zemberek_d20": 0.601,
+        "raw_bpe_d16_64k": 0.5976,
+        "morphbpe_trmorph_d16_64k": 0.5932,
+        "morphbpe_zemberek_d16_64k": 0.6017,
+        "morphbpe_tdelight_d16_64k": 0.5583,
+        "raw_bpe_d12_128k": 0.6021,
+        "morphbpe_trmorph_d12_128k": 0.601,
+        "morphbpe_zemberek_d12_128k": 0.6003,
+        "morphbpe_tdelight_d12_128k": 0.5996
+      }
+    },
+    {
+      "task": "xfact_tr",
+      "metric": "acc_norm,none",
+      "values": {
+        "raw_bpe_d20": 0.3373,
+        "morphbpe_trmorph_d20": 0.3373,
+        "morphbpe_zemberek_d20": 0.3254,
+        "raw_bpe_d16_64k": 0.3373,
+        "morphbpe_trmorph_d16_64k": 0.3373,
+        "morphbpe_zemberek_d16_64k": 0.3373,
+        "morphbpe_tdelight_d16_64k": 0.3373,
+        "raw_bpe_d12_128k": 0.3964,
+        "morphbpe_trmorph_d12_128k": 0.3373,
+        "morphbpe_zemberek_d12_128k": 0.3136,
+        "morphbpe_tdelight_d12_128k": 0.3373
+      }
+    },
+    {
+      "task": "xquad_tr",
+      "metric": "f1,none",
+      "values": {
+        "raw_bpe_d20": 3.0985,
+        "morphbpe_trmorph_d20": 3.4786,
+        "morphbpe_zemberek_d20": 3.2633,
+        "raw_bpe_d16_64k": 2.8576,
+        "morphbpe_trmorph_d16_64k": 3.2778,
+        "morphbpe_zemberek_d16_64k": 2.8956,
+        "morphbpe_tdelight_d16_64k": 3.328,
+        "raw_bpe_d12_128k": 2.2674,
+        "morphbpe_trmorph_d12_128k": 2.3517,
+        "morphbpe_zemberek_d12_128k": 2.9685,
+        "morphbpe_tdelight_d12_128k": 2.2498
+      }
+    }
+  ],
+  "baseline_only_archive": {
+    "source_artifact": "artifacts/cetvel_base_subset_2026-06-09_job493293/metrics_summary.json",
+    "results": [
+      {
+        "task": "belebele_tr",
+        "metrics": {
+          "acc,none": 0.25222222222222224,
+          "acc_norm,none": 0.25222222222222224
+        },
+        "n_samples": {
+          "original": 900,
+          "effective": 900
+        }
+      },
+      {
+        "task": "cetvel_xcopa_tr",
+        "metrics": {
+          "acc,none": 0.618
+        },
+        "n_samples": {
+          "original": 500,
+          "effective": 500
+        }
+      },
+      {
+        "task": "cetvel_xnli_tr",
+        "metrics": {
+          "acc,none": 0.3327345309381238,
+          "acc_norm,none": 0.3335329341317365
+        },
+        "n_samples": {
+          "original": 5010,
+          "effective": 5010
+        }
+      },
+      {
+        "task": "check_worthiness",
+        "metrics": {
+          "acc,none": 0.37614259597806216,
+          "acc_norm,none": 0.4287020109689214
+        },
+        "n_samples": {
+          "original": 2188,
+          "effective": 2188
+        }
+      },
+      {
+        "task": "exams_tr",
+        "metrics": {
+          "acc,none": 0.27989821882951654,
+          "acc_norm,none": 0.3104325699745547
+        },
+        "n_samples": {
+          "original": 393,
+          "effective": 393
+        }
+      },
+      {
+        "task": "mnli_tr",
+        "metrics": {
+          "acc,none": 0.3216,
+          "acc_norm,none": 0.321
+        },
+        "n_samples": {
+          "original": 10000,
+          "effective": 10000
+        }
+      },
+      {
+        "task": "news_cat",
+        "metrics": {
+          "acc,none": 0.816,
+          "acc_norm,none": 0.676,
+          "f1,none": 0.8131421521642601
+        },
+        "n_samples": {
+          "original": 250,
+          "effective": 250
+        }
+      },
+      {
+        "task": "offenseval_tr",
+        "metrics": {
+          "acc,none": 0.4631519274376417,
+          "acc_norm,none": 0.7970521541950113,
+          "f1,none": 0.28850488354620585
+        },
+        "n_samples": {
+          "original": 3528,
+          "effective": 3528
+        }
+      },
+      {
+        "task": "relevance_judgment",
+        "metrics": {
+          "acc,none": 0.42138939670932357,
+          "acc_norm,none": 0.5589579524680073
+        },
+        "n_samples": {
+          "original": 2188,
+          "effective": 2188
+        }
+      },
+      {
+        "task": "snli_tr",
+        "metrics": {
+          "acc,none": 0.3235,
+          "acc_norm,none": 0.3234
+        },
+        "n_samples": {
+          "original": 10000,
+          "effective": 10000
+        }
+      },
+      {
+        "task": "tquad",
+        "metrics": {
+          "exact,none": 0.0,
+          "f1,none": 5.260303248073273,
+          "HasAns_exact,none": 0.0,
+          "HasAns_f1,none": 5.260303248073273
+        },
+        "n_samples": {
+          "original": 892,
+          "effective": 892
+        }
+      },
+      {
+        "task": "trclaim19",
+        "metrics": {
+          "acc,none": 0.39876599634369286,
+          "acc_norm,none": 0.4938299817184644
+        },
+        "n_samples": null
+      },
+      {
+        "task": "turkish_plu",
+        "metrics": {
+          "acc,none": 0.46048,
+          "acc_norm,none": 0.50272
+        },
+        "n_samples": null
+      },
+      {
+        "task": "turkish_plu_goal_inference",
+        "metrics": {
+          "acc,none": 0.4253285543608124,
+          "acc_norm,none": 0.4241338112305854
+        },
+        "n_samples": {
+          "original": 837,
+          "effective": 837
+        }
+      },
+      {
+        "task": "turkish_plu_next_event_prediction",
+        "metrics": {
+          "acc,none": 0.44580152671755724,
+          "acc_norm,none": 0.5343511450381679
+        },
+        "n_samples": {
+          "original": 655,
+          "effective": 655
+        }
+      },
+      {
+        "task": "turkish_plu_step_inference",
+        "metrics": {
+          "acc,none": 0.3545751633986928,
+          "acc_norm,none": 0.477124183006536
+        },
+        "n_samples": {
+          "original": 612,
+          "effective": 612
+        }
+      },
+      {
+        "task": "turkish_plu_step_ordering",
+        "metrics": {
+          "acc,none": 0.5621939275220372,
+          "acc_norm,none": 0.5621939275220372
+        },
+        "n_samples": {
+          "original": 1021,
+          "effective": 1021
+        }
+      },
+      {
+        "task": "xfact_tr",
+        "metrics": {
+          "acc,none": 0.33727810650887574,
+          "acc_norm,none": 0.33727810650887574
+        },
+        "n_samples": {
+          "original": 169,
+          "effective": 169
+        }
+      },
+      {
+        "task": "xquad_tr",
+        "metrics": {
+          "exact,none": 0.0,
+          "f1,none": 3.098479567420523,
+          "HasAns_exact,none": 0.0,
+          "HasAns_f1,none": 3.098479567420523
+        },
+        "n_samples": {
+          "original": 1190,
+          "effective": 1190
+        }
+      }
+    ]
+  },
+  "pipeline_smoke_archive": {
+    "source_artifact": "artifacts/uhem_smoke_2026-06-07_job492393/metrics.json",
+    "result": {
+      "job": {
+        "cluster": "altay",
+        "account": "nakane",
+        "partition": "gpu2dq",
+        "job_id": 492393,
+        "node": "a119",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "wall_clock": "00:17:38",
+        "requested_nodes": 1,
+        "requested_cpu_cores": 64,
+        "requested_gpus": "1x NVIDIA A100 80GB PCIe",
+        "requested_memory": "64G",
+        "memory_utilized_gb": 19.79
+      },
+      "environment": {
+        "python": "3.12.4",
+        "pytorch": "2.9.1+cu128",
+        "cuda": "12.8",
+        "hardware": "NVIDIA A100 80GB PCIe"
+      },
+      "data": {
+        "dataset_repo": "HuggingFaceFW/fineweb-2",
+        "dataset_config": "tur_Latn",
+        "train_shards": 2,
+        "validation_shards": 1
+      },
+      "tokenizer": {
+        "name": "bpe_32768_uhem_smoke",
+        "vocab_size": 32768,
+        "max_chars": 50000000,
+        "train_time_seconds": 6.3158
+      },
+      "model": {
+        "tag": "tr_d2_bpe_32768_uhem_smoke_chinchilla20",
+        "checkpoint_step": 1980,
+        "depth": 2,
+        "sequence_len": 256,
+        "n_embd": 128,
+        "n_head": 2,
+        "n_kv_head": 2,
+        "window_pattern": "L",
+        "total_parameters": 12976182,
+        "target_parameters": 12976182,
+        "target_param_count_convention": "total"
+      },
+      "training": {
+        "device_batch_size": 64,
+        "total_batch_size": 131072,
+        "training_tokens": 259522560,
+        "tokens_total_params_ratio": 19.9999,
+        "tokens_scaling_params_ratio": 56.5711,
+        "ddp_world_size": 1,
+        "total_training_time_minutes": 11.6,
+        "peak_memory_mib": 1420.94,
+        "total_training_flops": 7347524000000000.0,
+        "mfu_percent": 2.51
+      },
+      "metrics": {
+        "minimum_validation_bpb": 1.239557,
+        "final_validation_bpb": 1.239557,
+        "base_eval_train_bpb": 1.295173,
+        "base_eval_val_bpb": 1.239951
+      },
+      "artifacts": {
+        "report": "report.md",
+        "stdout": "nanochat-tr-smoke-a100-492393.out",
+        "stderr": "nanochat-tr-smoke-a100-492393.err",
+        "model_checkpoint": "checkpoint/model_001980.pt",
+        "checkpoint_metadata": "checkpoint/meta_001980.json",
+        "optimizer_checkpoint": "checkpoint/optim_001980_rank0.pt"
+      }
+    },
+    "in_controlled_comparison": false
+  },
+  "uhem_recovery_audit": {
+    "retrieved_at_utc": "2026-11-09T12:36:55.467635+00:00",
+    "source_artifact": "artifacts/uhem_model_audit_2026-11-09/model-metadata-and-benchmarks.json",
+    "all_132_archived_task_cells_match_recovered_raw_results_at_four_decimals": true,
+    "original_metadata_found_count": 10,
+    "runs": [
+      {
+        "run_id": "raw_bpe_d20",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "20b1aec4215acb535f986e6d9d505e1e858441ecac22441786285a006e6bb681",
+        "original_checkpoint_metadata_found": false,
+        "checkpoint_source_status": "archived_only_original_path_absent_2026_11_09",
+        "model_config": null,
+        "user_config": null,
+        "validation_bpb_full_precision": null,
+        "core11_mean_full_precision_legacy_adapter": 0.45140617897735136,
+        "training_git_environment_fingerprint_present": false
+      },
+      {
+        "run_id": "morphbpe_trmorph_d20",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "aee9db8133f429a1a1667f084233e976efdf49ab7fc448ec020a2e5595c842e3",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 32768,
+          "n_layer": 20,
+          "n_head": 10,
+          "n_kv_head": 10,
+          "n_embd": 1280,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d20-morphbpe-trmorph-32k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 20,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d20_morphbpe_trmorph_32768_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.6265726039416546,
+        "core11_mean_full_precision_legacy_adapter": 0.45406928306479255,
+        "training_git_environment_fingerprint_present": false
+      },
+      {
+        "run_id": "morphbpe_zemberek_d20",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "e474cf48ddb662fd2b1ee05b98a425d31cf3625e642314c25955fd0b04bbe37b",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 32768,
+          "n_layer": 20,
+          "n_head": 10,
+          "n_kv_head": 10,
+          "n_embd": 1280,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d20-morphbpe-zemberek-32k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 20,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d20_morphbpe_zemberek_32768_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.6249791391940578,
+        "core11_mean_full_precision_legacy_adapter": 0.4617594293608024,
+        "training_git_environment_fingerprint_present": false
+      },
+      {
+        "run_id": "raw_bpe_d16_64k",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "9f6a061623cd15048eae9301c59332fc27ab7f61904377992b418ef5ebfb98b9",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 65536,
+          "n_layer": 16,
+          "n_head": 8,
+          "n_kv_head": 8,
+          "n_embd": 1024,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d16-bpe-64k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 16,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d16_bpe_65536_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.6408762423935958,
+        "core11_mean_full_precision_legacy_adapter": 0.4589939641895779,
+        "training_git_environment_fingerprint_present": false
+      },
+      {
+        "run_id": "morphbpe_trmorph_d16_64k",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "89f0e5361612a61627ae825f0ffed365e54e4113b6c462b137295ca192ded944",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 65536,
+          "n_layer": 16,
+          "n_head": 8,
+          "n_kv_head": 8,
+          "n_embd": 1024,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d16-morphbpe-trmorph-64k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 16,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d16_morphbpe_trmorph_65536_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.652117580861248,
+        "core11_mean_full_precision_legacy_adapter": 0.4532397593800796,
+        "training_git_environment_fingerprint_present": false
+      },
+      {
+        "run_id": "morphbpe_zemberek_d16_64k",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "961e64d67cffc916bf1ee618d169fe500451c3fa60f41b74c7f4b0dd2032f0c7",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 65536,
+          "n_layer": 16,
+          "n_head": 8,
+          "n_kv_head": 8,
+          "n_embd": 1024,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d16-morphbpe-zemberek-64k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 16,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d16_morphbpe_zemberek_65536_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.651403153317041,
+        "core11_mean_full_precision_legacy_adapter": 0.4567965716047134,
+        "training_git_environment_fingerprint_present": false
+      },
+      {
+        "run_id": "morphbpe_tdelight_d16_64k",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "60cf1a3ec909925174f49ee4c41ca9cdbf6080bda3934d79fdb02ff13daf9082",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 65536,
+          "n_layer": 16,
+          "n_head": 8,
+          "n_kv_head": 8,
+          "n_embd": 1024,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d16-morphbpe-tdelight-64k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 16,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d16_morphbpe_tdelight_65536_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.6510196647741414,
+        "core11_mean_full_precision_legacy_adapter": 0.4567481934055131,
+        "training_git_environment_fingerprint_present": false
+      },
+      {
+        "run_id": "raw_bpe_d12_128k",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "e61253e5d1ce182b1d79fffa88fd61ea6c90f161a2be2fe6bf26b7f2fc8bcf68",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 131072,
+          "n_layer": 12,
+          "n_head": 6,
+          "n_kv_head": 6,
+          "n_embd": 768,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d12-bpe-128k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 12,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d12_bpe_131072_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.6748740953412145,
+        "core11_mean_full_precision_legacy_adapter": 0.4651169388889949,
+        "training_git_environment_fingerprint_present": false
+      },
+      {
+        "run_id": "morphbpe_trmorph_d12_128k",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "0556d0bdd1cb3147d430e6b6f0ba916019497c88fdca1bf119bdce33862cad9f",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 131072,
+          "n_layer": 12,
+          "n_head": 6,
+          "n_kv_head": 6,
+          "n_embd": 768,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d12-morphbpe-trmorph-128k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 12,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d12_morphbpe_trmorph_131072_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.6917138591836433,
+        "core11_mean_full_precision_legacy_adapter": 0.4503374490587135,
+        "training_git_environment_fingerprint_present": false
+      },
+      {
+        "run_id": "morphbpe_zemberek_d12_128k",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "e43c56bd7b1ae28e3c8b9af21c127593534b1d1c9017edbd9359c4d6634bbf1d",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 131072,
+          "n_layer": 12,
+          "n_head": 6,
+          "n_kv_head": 6,
+          "n_embd": 768,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d12-morphbpe-zemberek-128k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 12,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d12_morphbpe_zemberek_131072_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.6940374096112558,
+        "core11_mean_full_precision_legacy_adapter": 0.4617560958460744,
+        "training_git_environment_fingerprint_present": false
+      },
+      {
+        "run_id": "morphbpe_tdelight_d12_128k",
+        "raw_cetvel_source_found": true,
+        "source_results_sha256": "26b406cd85b92f8c0fed74707ca419cfe2226c796c4891331583dfe609d0849e",
+        "original_checkpoint_metadata_found": true,
+        "checkpoint_source_status": "recovered_2026_11_09",
+        "model_config": {
+          "sequence_len": 2048,
+          "vocab_size": 131072,
+          "n_layer": 12,
+          "n_head": 6,
+          "n_kv_head": 6,
+          "n_embd": 768,
+          "window_pattern": "L"
+        },
+        "user_config": {
+          "run": "tr-d12-morphbpe-tdelight-128k",
+          "device_type": "",
+          "fp8": false,
+          "fp8_recipe": "tensorwise",
+          "depth": 12,
+          "aspect_ratio": 64,
+          "head_dim": 128,
+          "max_seq_len": 2048,
+          "window_pattern": "L",
+          "num_iterations": 17100,
+          "target_flops": -1.0,
+          "target_param_data_ratio": 20.0,
+          "target_param_count": "total",
+          "device_batch_size": 4,
+          "total_batch_size": 1048576,
+          "embedding_lr": 0.3,
+          "unembedding_lr": 0.008,
+          "weight_decay": 0.28,
+          "matrix_lr": 0.02,
+          "scalar_lr": 0.5,
+          "warmup_steps": 40,
+          "warmdown_ratio": 0.65,
+          "final_lr_frac": 0.05,
+          "resume_from_step": -1,
+          "eval_every": 1000,
+          "eval_tokens": 4194304,
+          "core_metric_every": -1,
+          "core_metric_max_per_task": 500,
+          "sample_every": 1000,
+          "save_every": 2500,
+          "model_tag": "tr_d12_morphbpe_tdelight_131072_chinchilla20"
+        },
+        "validation_bpb_full_precision": 0.6820176680445071,
+        "core11_mean_full_precision_legacy_adapter": 0.44813959031407447,
+        "training_git_environment_fingerprint_present": false
+      }
+    ]
+  },
+  "later_results": {
+    "schema_version": 1,
+    "report_date": "2026-11-09",
+    "source_artifact": "artifacts/uhem_model_audit_2026-11-09/later-model-metadata-and-benchmarks.json",
+    "retrieved_at_utc": "2026-11-09T12:38:55.156308+00:00",
+    "in_controlled_tokenizer_ablation": false,
+    "pretraining": [
+      {
+        "model_tag": "tr_d20_bpe_32768_cont40x",
+        "step": 34200,
+        "validation_bpb": 0.5914508179363445,
+        "lowest_validation_bpb": 0.5914508179363445,
+        "validation_status": "continuation_diagnostic_separate_budget",
+        "depth": 20,
+        "vocab_size": 32768,
+        "total_batch_size": 1048576,
+        "scheduled_token_positions": 35861299200,
+        "in_controlled_tokenizer_ablation": false,
+        "source_path": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_checkpoints/tr_d20_bpe_32768_cont40x/meta_034200.json",
+        "source_sha256": "b6ff4c1bf128ecd7e4029657140f99e1cc25cc357c843f91e5164555844b6d5b"
+      },
+      {
+        "model_tag": "tr_d32_bpe_32768_fineweb2_all_v1",
+        "step": 28000,
+        "validation_bpb": 0.5190396722173233,
+        "lowest_validation_bpb": 0.5190396722173233,
+        "validation_status": "train_overlap_not_held_out",
+        "depth": 32,
+        "vocab_size": 32768,
+        "total_batch_size": 2097152,
+        "scheduled_token_positions": 58720256000,
+        "in_controlled_tokenizer_ablation": false,
+        "source_path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/base_checkpoints/tr_d32_bpe_32768_fineweb2_all_v1/meta_028000.json",
+        "source_sha256": "8c497e78eff5c4b4b47493c26645b17869c12d8890a243161c11fa46ee538632"
+      }
+    ],
+    "fixed_xquad": [
+      {
+        "model": "d20 BPE32k, step 17100",
+        "protocol": "generation-fixed, CLI cap 128",
+        "f1": 11.336892327817507,
+        "exact_match": 4.53781512605042,
+        "source_path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/reference_d20_xquad_fixed_step017100_v1/cetvel_core_results.json",
+        "source_sha256": "4418b88133bc1bad525b9339888ef6f8da6ab1eb40eb859dcedc0f71ab61be10"
+      },
+      {
+        "model": "d32 BPE32k, step 28000",
+        "protocol": "generation-fixed, CLI cap 128",
+        "f1": 15.883322112049182,
+        "exact_match": 8.235294117647058,
+        "source_path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/xquad_fixed_step028000_v1/cetvel_core_results.json",
+        "source_sha256": "6076739b6729272480385e327a3eae1cdbb392104ddded91b31b5a18fb62c3a5"
+      },
+      {
+        "model": "d32 BPE32k, step 28000",
+        "protocol": "comparison runner, CLI cap 256",
+        "f1": 15.171743596233192,
+        "exact_match": 8.235294117647058,
+        "source_path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/kumru20_qa_fixed_step028000_v1/cetvel_full_results.json",
+        "source_sha256": "8c9bf6b9356ca38ba8f903e7f7adf04af713ea0744a5c8431d5db51e808bafbf"
+      }
+    ],
+    "d32_legacy_core11_mean": 0.4179964735569293,
+    "d32_launch": {
+      "schema_version": "1.0",
+      "run_id": "tr_d32_fineweb2_raw_bpe32k_v1",
+      "status": "launch_ready",
+      "scope": "coverage-oriented approximately one-pass raw-BPE budget over all 30 FineWeb-2 Turkish source shards",
+      "code": {
+        "remote_checkout": "/ari/users/nunal/nanochat-turk-d32-fineweb2-code-v1",
+        "source_git_base_revision": "955c3809c94c04731bf35a9695cc0a04c28e35e9",
+        "deployment": "content-addressed source snapshot",
+        "snapshot_file_count": 104,
+        "snapshot_sha256": "37503db09be2617d53d3f201d2fc776f7eb96844c7115818f02f38a3e0f83a97",
+        "require_snapshot_hash": true,
+        "environment": {
+          "manager": "uv",
+          "uv_version": "0.11.29",
+          "sync_mode": "uv sync --frozen --extra gpu",
+          "python_version": "3.10.19",
+          "torch_version": "2.9.1+cu128",
+          "pyarrow_version": "21.0.0",
+          "rustbpe_version": "0.1.0",
+          "tiktoken_version": "0.11.0",
+          "tokenizers_version": "0.22.2",
+          "wandb_version": "0.21.3",
+          "pyproject_sha256": "969d39b1fa7f86309d753849400a80556e33e2082776804c3ad69417d3ef9496",
+          "uv_lock_sha256": "91779c775fd2a62f64870574ac30453e232668cd0a3c756a4997c611f31e47f0"
+        }
+      },
+      "dataset": {
+        "repository": "HuggingFaceFW/fineweb-2",
+        "subset": "tur_Latn",
+        "resolved_hub_revision": "af9c13333eb981300149d5ca60a8e9d659b276b9",
+        "remote_path": "data/tur_Latn/train",
+        "uhem_source_data_dir": "/ari/users/nunal/nanochat-turk-d20-bpe32k/base_data_fineweb2_tur_latn",
+        "uhem_training_view_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/base_data_fineweb2_tur_latn_all30",
+        "cached_manifest_sha256": "c57a6c3ed035e3d9701a969480d39ed2c606876f7b63a9399bad006136970a2d",
+        "cached_manifest_provenance": "legacy filename inventory whose revision field is main; cached names and sizes match the resolved Hub revision",
+        "cached_parquet_files": 30,
+        "cached_compressed_bytes": 134789283815,
+        "split_policy": {
+          "unique_source_files": 30,
+          "train_entries": 30,
+          "validation_files": 1,
+          "validation_file": "004_00005.parquet",
+          "training_alias_for_validation_source": "train_004_00005.parquet",
+          "validation_documents": 1917302,
+          "note": "All 30 unique source shards are optimization-eligible. Because no independent validation corpus was requested, the last source shard is also exposed under its original name as a train-overlap diagnostic validation set; its validation BPB is not a held-out generalization estimate."
+        },
+        "measured_all_30_sources": {
+          "documents": 95129129,
+          "utf8_bytes": 305497429770,
+          "words_by_metrics_regex": 37478503474,
+          "raw_bpe_payload_tokens": 58303901770,
+          "first_29_metrics_sha256": "343d96d828bb606a8f65829b9be9e752b67f9f2a04b164f346cbafeb1e263c45",
+          "first_29_metrics_path": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/report/tokenizer_metrics_32k_full/bpe_32768_metrics.json",
+          "final_shard_metrics_sha256": "31cd4ccc8d5ec45b4150b00fc600b059fe62fb1d8b79fcbfb7ac84ff1aa32e76",
+          "final_shard_metrics_path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/preflight/bpe_32768_val_metrics.json",
+          "final_shard_parquet_sha256": "804adefb68d82eaa004d5ab50b6a2289ca0fa3049f99ed920a3a33a7d576ba2c"
+        }
+      },
+      "tokenizer": {
+        "name": "bpe_32768",
+        "implementation": "raw_bpe",
+        "vocab_size": 32768,
+        "uhem_source_dir": "/ari/users/nunal/nanochat-turk-d20-bpe32k/tokenizers/bpe_32768",
+        "tokenizer_pkl_sha256": "3b7f00d8697a303bb0ac7379b497fec6b76a61bd5bb694825264eecd4cb62a20",
+        "token_bytes_pt_sha256": "ba345dc7eea5f07b3200f213ccf61ea6e9990d15d81d25e2e323009f4fba502e",
+        "tokenizer_config_json_sha256": "b381631bad8ca489b85dbab686d63f0691b6455300f2ae43f8af43ad3b80a916"
+      },
+      "model": {
+        "depth": 32,
+        "aspect_ratio": 64,
+        "model_dim": 2048,
+        "head_dim": 128,
+        "num_heads": 16,
+        "num_kv_heads": 16,
+        "max_seq_len": 2048,
+        "window_pattern": "L",
+        "attention_backend": "sdpa",
+        "precision": "bfloat16",
+        "fp8": false,
+        "total_parameters": 2818575450,
+        "scaling_parameters": 1677724672
+      },
+      "training": {
+        "world_size": 8,
+        "nodes": 2,
+        "gpus_per_node": 4,
+        "gpu_type": "A100-SXM4-80GB",
+        "device_batch_sequences": 4,
+        "global_batch_token_positions": 2097152,
+        "gradient_accumulation_steps": 32,
+        "seed": 42,
+        "data_shuffle_seed": 42,
+        "preserve_document_tails": true,
+        "optimizer": "muon_adamw",
+        "lr_schedule": "nanochat_linear",
+        "warmup_steps": 40,
+        "target_param_count": "total",
+        "payload_tokens_per_total_parameter": 20.68559199648177,
+        "horizon": {
+          "measured_payload_tokens": 58303901770,
+          "training_documents": 95129129,
+          "unrounded_model_positions": 58399030899,
+          "derivation": "payload tokens plus one document BOS position; preserving cropped tails prevents intentional payload-tail loss",
+          "rank_balance_estimate": {
+            "slurm_job_id": 512558,
+            "world_size": 8,
+            "seed": 42,
+            "documents_max_to_mean": 1.0000722281395007,
+            "text_compressed_bytes_max_to_mean": 1.000945353029741,
+            "text_uncompressed_bytes_max_to_mean": 1.001180582321811,
+            "proxy_adjusted_positions": 58467870326,
+            "proxy_adjusted_ceiling_steps": 27880,
+            "method": "exact epoch-one row-group assignment with parquet metadata byte counts used as a token-volume proxy"
+          },
+          "optimizer_steps": 28000,
+          "scheduled_model_positions": 58720256000,
+          "headroom_positions": 321225101,
+          "headroom_fraction": 0.005500521088364508,
+          "headroom_beyond_rank_proxy_steps": 120,
+          "semantics": "28,000 updates schedule 58,720,256,000 model positions, 0.550% above measured corpus payload tokens plus one BOS per document. Under the seed-42 ws8 row-group assignment this leaves 120 updates beyond the 0.118% max-rank uncompressed-byte proxy. This is a coverage-oriented heuristic intended to make an uninterrupted run likely to consume every source payload token at least once; the online infinite best-fit loader may interleave epoch-two documents before all epoch-one buffered tails are consumed, and legacy checkpoint resume is not exact, so neither unique-token completeness nor exact-once exposure is guaranteed."
+        },
+        "evaluation_every_updates": 500,
+        "evaluation_token_positions": 4194304,
+        "checkpoint_every_updates": 2500,
+        "sample_every_updates": -1,
+        "core_metric_every_updates": -1
+      },
+      "launch": {
+        "partition": "a100x4q",
+        "account": "nakane",
+        "launcher": "direct_slurm_srun_one_task_per_gpu",
+        "gpu_binding": "allocation-level gpu:a100:4 per node; srun --gres=none plus manual CUDA_VISIBLE_DEVICES=SLURM_LOCALID because Altay Slurm 20.11 uses select/linear and task/none",
+        "time_limit": "9-00:00:00",
+        "model_tag": "tr_d32_bpe_32768_fineweb2_all_v1",
+        "uhem_base_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k",
+        "smoke_required_as_afterok_dependency": true,
+        "completed_preflight": {
+          "final_shard_exact_token_count_job": 512514,
+          "source_environment_and_data_job": 512535,
+          "one_a100_d32_update_job": 512543,
+          "one_a100_peak_allocated_mib": 46104.59,
+          "one_a100_first_update_loss": 10.399146,
+          "four_a100_localid_nccl_job": 512600,
+          "four_a100_localid_nccl_result": "four ranks each saw one A100 and all-reduce sum 6.0"
+        },
+        "automatic_resume": "latest checkpoint containing model, metadata, and all eight optimizer shards",
+        "known_live_scheduler_constraint": "At audit time only one a100x4q node was idle; a two-node allocation remains pending until another node is healthy."
+      }
+    },
+    "eacl_table_compatible_receipt": {
+      "source_path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/cetvel_eacl2026_official_scoring_receipt.json",
+      "source_sha256": "f09cdb7bc5cd9c16347e16d31a972231b8cc6e28a8c676eccc02236bc256662e",
+      "canonical_sha256": "7592ef0201ccfde64d0d55c1b051a2add38788b5e013f403c5a49d556a79bf1b",
+      "category_details": {
+        "GEC": {
+          "aggregation": "unweighted arithmetic mean",
+          "complete": true,
+          "included_tasks": [
+            "gecturk_generation"
+          ],
+          "missing_tasks": [],
+          "required_tasks": [
+            "gecturk_generation"
+          ],
+          "score": 0.9677885309836777
+        },
+        "MCQA": {
+          "aggregation": "unweighted arithmetic mean",
+          "complete": true,
+          "included_tasks": [
+            "xcopa_tr",
+            "turkish_plu",
+            "turkish_plu_goal_inference",
+            "turkish_plu_next_event_prediction",
+            "turkish_plu_step_inference",
+            "turkish_plu_step_ordering",
+            "exams_tr",
+            "belebele_tr",
+            "turkce_atasozleri",
+            "turkishmmlu",
+            "bilmecebench",
+            "circumflex_tr",
+            "check_worthiness",
+            "relevance_judgment"
+          ],
+          "missing_tasks": [],
+          "required_tasks": [
+            "xcopa_tr",
+            "turkish_plu",
+            "turkish_plu_goal_inference",
+            "turkish_plu_next_event_prediction",
+            "turkish_plu_step_inference",
+            "turkish_plu_step_ordering",
+            "exams_tr",
+            "belebele_tr",
+            "turkce_atasozleri",
+            "turkishmmlu",
+            "bilmecebench",
+            "circumflex_tr",
+            "check_worthiness",
+            "relevance_judgment"
+          ],
+          "score": 39.9344067327172
+        },
+        "MT": {
+          "aggregation": "unweighted arithmetic mean",
+          "complete": true,
+          "included_tasks": [
+            "wmt-en-tr-prompt",
+            "wmt-tr-en-prompt"
+          ],
+          "missing_tasks": [],
+          "required_tasks": [
+            "wmt-en-tr-prompt",
+            "wmt-tr-en-prompt"
+          ],
+          "score": 58.622266261370385
+        },
+        "NLI": {
+          "aggregation": "unweighted arithmetic mean",
+          "complete": true,
+          "included_tasks": [
+            "mnli_tr",
+            "snli_tr",
+            "xnli_tr"
+          ],
+          "missing_tasks": [],
+          "required_tasks": [
+            "mnli_tr",
+            "snli_tr",
+            "xnli_tr"
+          ],
+          "score": 32.93381902860945
+        },
+        "QA": {
+          "aggregation": "unweighted arithmetic mean",
+          "complete": true,
+          "included_tasks": [
+            "xquad_tr",
+            "tquad",
+            "mkqa_tr"
+          ],
+          "missing_tasks": [],
+          "required_tasks": [
+            "xquad_tr",
+            "tquad",
+            "mkqa_tr"
+          ],
+          "score": 8.312866693849003
+        },
+        "SUM": {
+          "aggregation": "unweighted arithmetic mean",
+          "complete": true,
+          "included_tasks": [
+            "xlsum_tr",
+            "wiki_lingua_tr",
+            "tr-wikihow-summ",
+            "mlsum_tr"
+          ],
+          "missing_tasks": [],
+          "required_tasks": [
+            "xlsum_tr",
+            "wiki_lingua_tr",
+            "tr-wikihow-summ",
+            "mlsum_tr"
+          ],
+          "score": 81.06799322840003
+        },
+        "TC": {
+          "aggregation": "unweighted arithmetic mean",
+          "complete": true,
+          "included_tasks": [
+            "sts_tr",
+            "offenseval_tr",
+            "news_cat",
+            "ironytr"
+          ],
+          "missing_tasks": [],
+          "required_tasks": [
+            "sts_tr",
+            "offenseval_tr",
+            "news_cat",
+            "ironytr"
+          ],
+          "score": 38.35736155714401
+        }
+      },
+      "category_scores": {
+        "GEC": 0.9677885309836777,
+        "MCQA": 39.9344067327172,
+        "MT": 58.622266261370385,
+        "NLI": 32.93381902860945,
+        "QA": 8.312866693849003,
+        "SUM": 81.06799322840003,
+        "TC": 38.35736155714401
+      },
+      "complete": true,
+      "created_at": "2026-08-28T23:34:05.793261+00:00",
+      "kind": "cetvel_official_scoring_receipt",
+      "metric_provenance": {
+        "gec": {
+          "auxiliary": {
+            "metric": "mean per-sentence whitespace-token overlap F1",
+            "official": false,
+            "score": 69.08737141439805,
+            "used_in_aggregate": false,
+            "warning": "Diagnostic only. The paper does not define its prose macro-F1; published Tables 4/5 are reproduced by exact match."
+          },
+          "primary_metric": "stripped exact match"
+        },
+        "nlu": {
+          "explicitly_excluded": "acc_norm",
+          "metric": "raw accuracy"
+        },
+        "qa": {
+          "metric": "SQuAD normalized exact match",
+          "normalizer": "lowercase + ASCII punctuation/articles removal + whitespace collapse"
+        },
+        "summarization": {
+          "metric": "BERTScore F1",
+          "model_id": "boun-tabilab/TabiBERT",
+          "num_layers": 22,
+          "requested_revision": "36d24bfae8d67f7b1f7d0827fc43076e4a1c3e9f",
+          "rescale_with_baseline": false,
+          "runtime": {
+            "component": "F1",
+            "implementation": "bert-score",
+            "model_id": "boun-tabilab/TabiBERT",
+            "num_layers": 22,
+            "package_version": "0.3.13",
+            "requested_revision": "36d24bfae8d67f7b1f7d0827fc43076e4a1c3e9f",
+            "rescale_with_baseline": false,
+            "resolved_revision": "36d24bfae8d67f7b1f7d0827fc43076e4a1c3e9f"
+          }
+        },
+        "translation": {
+          "metric": "COMET-22",
+          "model_id": "Unbabel/wmt22-comet-da",
+          "reference_based": true,
+          "requested_revision": "2760a223ac957f30acfb18c8aa649b01cf1d75f2",
+          "runtime": {
+            "implementation": "unbabel-comet",
+            "model_id": "Unbabel/wmt22-comet-da",
+            "package_version": "2.2.7",
+            "reference_based": true,
+            "requested_revision": "2760a223ac957f30acfb18c8aa649b01cf1d75f2",
+            "resolved_revision": "2760a223ac957f30acfb18c8aa649b01cf1d75f2"
+          }
+        }
+      },
+      "model": {
+        "checkpoint_sha256": "2123880d96b2de7d227ff31575b663ac291dcfd9fc9b9419086de032e58d0a98",
+        "checkpoint_step": 28000,
+        "name": "d32-bpe32k-fineweb2-step28000"
+      },
+      "overall_aggregation": "unweighted arithmetic mean of the seven category scores",
+      "overall_score": 37.17092886186767,
+      "protocol": {
+        "category_order": [
+          "QA",
+          "MCQA",
+          "TC",
+          "NLI",
+          "SUM",
+          "MT",
+          "GEC"
+        ],
+        "cetvel_revision": "6119c517e06cce23aaeac103ce3504c9380655e3",
+        "doi": "10.18653/v1/2026.eacl-long.46",
+        "id": "cetvel-eacl2026-table4-compatible-v1",
+        "lm_eval_revision": "6e49b1f6910931882a4b3b105794c6faf96b74e5",
+        "paper": "https://aclanthology.org/2026.eacl-long.46/",
+        "published_results_space_revision": "ec0db45e3bb343294fa7c0dfce68ec02ee310c59",
+        "score_scale": "0-100 percentage points",
+        "table": "Appendix Table 4",
+        "warnings": [
+          "GECTurk uses stripped exact match for Table 4 compatibility. Section 4.2 says macro-F1, but the released task and published Kanarya value prove the table uses exact match.",
+          "The MCQA aggregate includes check_worthiness and relevance_judgment although Table 6 does not display those columns.",
+          "The paper identifies TabiBERT BERTScore but does not publish all BERTScore settings. This implementation pins F1, final layer 22, and rescale_with_baseline=false in the metric receipt."
+        ]
+      },
+      "sample_counts": {
+        "belebele_tr": 900,
+        "bilmecebench": 442,
+        "check_worthiness": 2188,
+        "circumflex_tr": 70,
+        "exams_tr": 393,
+        "gecturk_generation": 20769,
+        "ironytr": 600,
+        "mkqa_tr": 6758,
+        "mlsum_tr": 12775,
+        "mnli_tr": 10000,
+        "news_cat": 250,
+        "offenseval_tr": 3528,
+        "relevance_judgment": 2188,
+        "snli_tr": 10000,
+        "sts_tr": 1379,
+        "tquad": 892,
+        "tr-wikihow-summ": 5984,
+        "turkce_atasozleri": 1730,
+        "turkish_plu_goal_inference": 837,
+        "turkish_plu_next_event_prediction": 655,
+        "turkish_plu_step_inference": 612,
+        "turkish_plu_step_ordering": 1021,
+        "turkishmmlu_biology": 100,
+        "turkishmmlu_chemistry": 100,
+        "turkishmmlu_geography": 100,
+        "turkishmmlu_history": 100,
+        "turkishmmlu_mathematics": 100,
+        "turkishmmlu_philosophy": 100,
+        "turkishmmlu_physics": 100,
+        "turkishmmlu_religion_and_ethics": 100,
+        "turkishmmlu_turkish_language_and_literature": 100,
+        "wiki_lingua_tr": 874,
+        "wmt-en-tr-prompt": 1001,
+        "wmt-tr-en-prompt": 1001,
+        "xcopa_tr": 500,
+        "xlsum_tr": 3397,
+        "xnli_tr": 5010,
+        "xquad_tr": 1190
+      },
+      "schema_version": "1.0.0",
+      "source_receipts": [
+        {
+          "byte_count": 107288749,
+          "format": "json",
+          "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_00/cetvel_full_results.json",
+          "sha256": "2e9fba3bbe196aa45f1b83e5f91dd8a9bf35e2f0b4c76f35cf20293319a28c69",
+          "task_hint": null
+        },
+        {
+          "byte_count": 33798682,
+          "format": "json",
+          "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_01/cetvel_full_results.json",
+          "sha256": "727e7d38be437d2b8e303d04943edce337fde9014bf7d6bc3efa3e8bbc0b5a78",
+          "task_hint": null
+        },
+        {
+          "byte_count": 40071645,
+          "format": "json",
+          "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_02/cetvel_full_results.json",
+          "sha256": "9cd66756ead6b0f9f4f0c81777b4ade346512ab3ee3c9715402ea0e81e5bac63",
+          "task_hint": null
+        },
+        {
+          "byte_count": 43398272,
+          "format": "json",
+          "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_03/cetvel_full_results.json",
+          "sha256": "6940cfe5c3c1963d2ffeaabca41936d13067c4a9c0a6b0a5a637336f6e14fb1b",
+          "task_hint": null
+        },
+        {
+          "byte_count": 4623474,
+          "format": "json",
+          "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_04/cetvel_full_results.json",
+          "sha256": "e02164092f62a058a4c64038c8721374052709f2ca92b7872fa8332de8daa737",
+          "task_hint": null
+        },
+        {
+          "byte_count": 37638514,
+          "format": "json",
+          "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_05/cetvel_full_results.json",
+          "sha256": "f8e0e1f8fdeadac6f7df0c17d508d2a7c921398ec7847c2de5d00e3901a7e31c",
+          "task_hint": null
+        },
+        {
+          "byte_count": 57118278,
+          "format": "json",
+          "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_06/cetvel_full_results.json",
+          "sha256": "de0d53159ae5c8347d395507a4d47b1b8329c44f92d89c36f9d665aaae643398",
+          "task_hint": null
+        },
+        {
+          "byte_count": 47451356,
+          "format": "json",
+          "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_07/cetvel_full_results.json",
+          "sha256": "4971617ddc09e6dfe155c4807c8795c4206875520caba762551981e74dad2897",
+          "task_hint": null
+        }
+      ],
+      "task_details": {
+        "belebele_tr": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 900,
+          "score": 23.88888888888889,
+          "source": "recomputed from logged sample acc"
+        },
+        "bilmecebench": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 442,
+          "score": 21.71945701357466,
+          "source": "recomputed from logged sample acc"
+        },
+        "check_worthiness": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 2188,
+          "score": 37.61425959780622,
+          "source": "recomputed from logged sample acc"
+        },
+        "circumflex_tr": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 70,
+          "score": 48.57142857142857,
+          "source": "recomputed from logged sample acc"
+        },
+        "exams_tr": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 393,
+          "score": 31.297709923664126,
+          "source": "recomputed from logged sample acc"
+        },
+        "gecturk_generation": {
+          "metric": "stripped exact match",
+          "paper_compatibility": "Appendix Tables 4 and 5",
+          "sample_count": 20769,
+          "scale": "percentage points",
+          "score": 0.9677885309836777,
+          "source": "recomputed stripped exact match from logged predictions"
+        },
+        "ironytr": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 600,
+          "score": 50.0,
+          "source": "recomputed from logged sample acc"
+        },
+        "mkqa_tr": {
+          "metric": "SQuAD normalized exact match",
+          "sample_count": 6758,
+          "scale": "percentage points",
+          "score": 4.483575022195916,
+          "source": "recomputed from logged predictions"
+        },
+        "mlsum_tr": {
+          "metric": "BERTScore F1",
+          "sample_count": 12775,
+          "scale": "percentage points",
+          "score": 83.40488514461629,
+          "source": "recomputed from logged predictions"
+        },
+        "mnli_tr": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 10000,
+          "score": 32.87,
+          "source": "recomputed from logged sample acc"
+        },
+        "news_cat": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 250,
+          "score": 70.0,
+          "source": "recomputed from logged sample acc"
+        },
+        "offenseval_tr": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 3528,
+          "score": 20.521541950113377,
+          "source": "recomputed from logged sample acc"
+        },
+        "relevance_judgment": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 2188,
+          "score": 59.506398537477146,
+          "source": "recomputed from logged sample acc"
+        },
+        "snli_tr": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 10000,
+          "score": 31.66,
+          "source": "recomputed from logged sample acc"
+        },
+        "sts_tr": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 1379,
+          "score": 12.907904278462654,
+          "source": "recomputed from logged sample acc"
+        },
+        "tquad": {
+          "metric": "SQuAD normalized exact match",
+          "sample_count": 892,
+          "scale": "percentage points",
+          "score": 12.219730941704036,
+          "source": "recomputed from logged predictions"
+        },
+        "tr-wikihow-summ": {
+          "metric": "BERTScore F1",
+          "sample_count": 5984,
+          "scale": "percentage points",
+          "score": 80.75325535859335,
+          "source": "recomputed from logged predictions"
+        },
+        "turkce_atasozleri": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 1730,
+          "score": 0.0,
+          "source": "recomputed from logged sample acc"
+        },
+        "turkish_plu": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": null,
+          "score": 51.2,
+          "source": "lm-eval aggregate raw acc"
+        },
+        "turkish_plu_goal_inference": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 837,
+          "score": 44.44444444444444,
+          "source": "recomputed from logged sample acc"
+        },
+        "turkish_plu_next_event_prediction": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 655,
+          "score": 49.00763358778626,
+          "source": "recomputed from logged sample acc"
+        },
+        "turkish_plu_step_inference": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 612,
+          "score": 39.37908496732026,
+          "source": "recomputed from logged sample acc"
+        },
+        "turkish_plu_step_ordering": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 1021,
+          "score": 65.23016650342801,
+          "source": "recomputed from logged sample acc"
+        },
+        "turkishmmlu": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": null,
+          "score": 18.22222222222222,
+          "source": "lm-eval aggregate raw acc"
+        },
+        "wiki_lingua_tr": {
+          "metric": "BERTScore F1",
+          "sample_count": 874,
+          "scale": "percentage points",
+          "score": 79.75091866006568,
+          "source": "recomputed from logged predictions"
+        },
+        "wmt-en-tr-prompt": {
+          "direction": {
+            "paper_label": "WMT16TR-EN",
+            "source_language": "tr",
+            "target_language": "en"
+          },
+          "metric": "COMET-22",
+          "sample_count": 1001,
+          "scale": "percentage points",
+          "score": 62.15747596322001,
+          "source": "recomputed from logged predictions"
+        },
+        "wmt-tr-en-prompt": {
+          "direction": {
+            "paper_label": "WMT16EN-TR",
+            "source_language": "en",
+            "target_language": "tr"
+          },
+          "metric": "COMET-22",
+          "sample_count": 1001,
+          "scale": "percentage points",
+          "score": 55.08705655952076,
+          "source": "recomputed from logged predictions"
+        },
+        "xcopa_tr": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 500,
+          "score": 69.0,
+          "source": "recomputed from logged sample acc"
+        },
+        "xlsum_tr": {
+          "metric": "BERTScore F1",
+          "sample_count": 3397,
+          "scale": "percentage points",
+          "score": 80.36291375032481,
+          "source": "recomputed from logged predictions"
+        },
+        "xnli_tr": {
+          "metric": "accuracy",
+          "note": "raw acc; acc_norm is intentionally not used",
+          "sample_count": 5010,
+          "score": 34.271457085828345,
+          "source": "recomputed from logged sample acc"
+        },
+        "xquad_tr": {
+          "metric": "SQuAD normalized exact match",
+          "sample_count": 1190,
+          "scale": "percentage points",
+          "score": 8.235294117647058,
+          "source": "recomputed from logged predictions"
+        }
+      },
+      "task_scores": {
+        "belebele_tr": 23.88888888888889,
+        "bilmecebench": 21.71945701357466,
+        "check_worthiness": 37.61425959780622,
+        "circumflex_tr": 48.57142857142857,
+        "exams_tr": 31.297709923664126,
+        "gecturk_generation": 0.9677885309836777,
+        "ironytr": 50.0,
+        "mkqa_tr": 4.483575022195916,
+        "mlsum_tr": 83.40488514461629,
+        "mnli_tr": 32.87,
+        "news_cat": 70.0,
+        "offenseval_tr": 20.521541950113377,
+        "relevance_judgment": 59.506398537477146,
+        "snli_tr": 31.66,
+        "sts_tr": 12.907904278462654,
+        "tquad": 12.219730941704036,
+        "tr-wikihow-summ": 80.75325535859335,
+        "turkce_atasozleri": 0.0,
+        "turkish_plu": 51.2,
+        "turkish_plu_goal_inference": 44.44444444444444,
+        "turkish_plu_next_event_prediction": 49.00763358778626,
+        "turkish_plu_step_inference": 39.37908496732026,
+        "turkish_plu_step_ordering": 65.23016650342801,
+        "turkishmmlu": 18.22222222222222,
+        "wiki_lingua_tr": 79.75091866006568,
+        "wmt-en-tr-prompt": 62.15747596322001,
+        "wmt-tr-en-prompt": 55.08705655952076,
+        "xcopa_tr": 69.0,
+        "xlsum_tr": 80.36291375032481,
+        "xnli_tr": 34.271457085828345,
+        "xquad_tr": 8.235294117647058
+      }
+    },
+    "excluded_records": [
+      {
+        "path": "/ari/users/nunal/nanochat-turk-d20-bpe32k/cetvel_out/full/cetvel_full_results.json",
+        "reason": "Expecting value: line 2521780 column 11 (char 260154250)"
+      },
+      {
+        "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/kumru20_comparison_smoke_job515380/cetvel_full_results.json",
+        "reason": "two-example smoke run, not a benchmark result"
+      },
+      {
+        "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/smoke_job515374/cetvel_core_results.json",
+        "reason": "two-example smoke run, not a benchmark result"
+      }
+    ],
+    "protocol_warning": "June adapter ignored generation kwargs and did not validate exact continuation token boundaries. Fixed results do not exist for the complete eleven-model ablation; legacy model ranking remains provisional."
+  }
+}

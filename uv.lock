@@ -1490,6 +1490,10 @@ name = "nanochat"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "filelock" },
+    { name = "huggingface-hub" },
+    { name = "numpy" },
+    { name = "pyarrow" },
     { name = "datasets" },
     { name = "fastapi" },
     { name = "kernels" },
@@ -1527,6 +1531,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "filelock", specifier = ">=3.19.0" },
+    { name = "huggingface-hub", specifier = ">=0.34.0" },
+    { name = "numpy", specifier = ">=1.26.0" },
+    { name = "pyarrow", specifier = ">=21.0.0" },
     { name = "datasets", specifier = ">=4.0.0" },
     { name = "fastapi", specifier = ">=0.117.1" },
     { name = "kernels", specifier = ">=0.11.7" },

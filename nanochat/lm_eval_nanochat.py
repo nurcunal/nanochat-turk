@@ -19,6 +19,12 @@ from lm_eval.api.registry import register_model
 from nanochat.checkpoint_manager import load_model
 from nanochat.common import get_base_dir, print0
 from nanochat.engine import Engine
+from nanochat.lm_eval_protocol import (
+    EVALUATION_PROTOCOL_VERSION,
+    encode_loglikelihood_pair,
+    generation_controls,
+    trim_at_first_stop,
+)
 
 
 @register_model("nanochat")
@@ -65,6 +71,7 @@ class NanochatLM(LM):
         self.engine = Engine(self.model, self.tokenizer)
         self.model_max_len = int(meta["model_config"]["sequence_len"])
         self.bos_id = int(tokenizer.get_bos_token_id())
+        print0(f"CETVEL adapter protocol: {EVALUATION_PROTOCOL_VERSION}")
 
         # lm-eval loggers expect a few HuggingFace-like tokenizer attributes.
         for name, value in {
@@ -89,11 +96,16 @@ class NanochatLM(LM):
         out: List[Tuple[float, bool]] = []
         for req in requests:
             context, continuation = req.args
-            full_ids = self._encode(context + continuation)
-            ctx_ids = self._encode(context)
-            cont_start = min(len(ctx_ids), len(full_ids))
+            full_ids, cont_start = encode_loglikelihood_pair(self._encode, context, continuation)
+            continuation_tokens = len(full_ids) - cont_start
+            if continuation_tokens > self.model_max_len:
+                raise ValueError(
+                    "continuation exceeds the model scoring window: "
+                    f"continuation_tokens={continuation_tokens}, model_max_len={self.model_max_len}"
+                )
 
-            drop = max(0, len(full_ids) - self.model_max_len)
+            # Inputs are shifted by one token: keep max_length + 1 joint tokens.
+            drop = max(0, len(full_ids) - (self.model_max_len + 1))
             if drop > 0:
                 full_ids = full_ids[drop:]
                 cont_start = max(1, cont_start - drop)
@@ -151,27 +163,36 @@ class NanochatLM(LM):
             print0(f"[CETVEL generation] START task={task_name} total={total}", flush=True)
 
         for index, req in enumerate(requests, start=1):
-            context, until = req.args
-            until = until or []
+            context, generation_kwargs = req.args
+            until, max_tokens = generation_controls(generation_kwargs, cli_max_tokens=self.max_gen_tokens)
+            if max_tokens >= self.model_max_len:
+                raise ValueError("generation budget must leave at least one prompt token in the model context")
             ids = self._encode(context)
+            ids = ids[-(self.model_max_len - max_tokens):]
             generated: List[int] = []
             stopped = False
+            text = ""
+            terminal_ids = {self.bos_id}
+            try:
+                terminal_ids.add(int(self.tokenizer.encode_special("<|assistant_end|>")))
+            except (AttributeError, KeyError, TypeError, ValueError):
+                pass
             for token_column, _token_masks in self.engine.generate(
                 ids,
                 num_samples=1,
-                max_tokens=self.max_gen_tokens,
+                max_tokens=max_tokens,
                 temperature=0.0,
             ):
                 tok = int(token_column[0])
-                if tok == self.bos_id:
+                if tok in terminal_ids:
                     stopped = True
                     break
                 generated.append(tok)
                 text = self.tokenizer.decode(generated)
-                if any(stop in text for stop in until):
-                    stopped = True
+                text, stopped = trim_at_first_stop(text, until)
+                if stopped:
                     break
-            outs.append(self.tokenizer.decode(generated))
+            outs.append(text)
             if progress_enabled and (index % progress_every == 0 or index == total):
                 elapsed = max(1e-9, time.monotonic() - started)
                 rate = index / elapsed

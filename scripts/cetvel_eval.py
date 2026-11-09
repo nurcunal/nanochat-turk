@@ -290,7 +290,7 @@ def _run_lm_eval(
     tracker,
     task_manager,
 ):
-    return evaluator.simple_evaluate(
+    results = evaluator.simple_evaluate(
         model="nanochat",
         model_args=model_args_str,
         tasks=tasks,
@@ -302,6 +302,10 @@ def _run_lm_eval(
         evaluation_tracker=tracker,
         task_manager=task_manager,
     )
+    if isinstance(results, dict):
+        from nanochat.lm_eval_protocol import EVALUATION_PROTOCOL_VERSION
+        results["nanochat_adapter_protocol"] = EVALUATION_PROTOCOL_VERSION
+    return results
 
 
 def _evaluate_with_task_progress(

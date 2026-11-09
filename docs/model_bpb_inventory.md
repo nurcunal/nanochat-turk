@@ -1,12 +1,21 @@
 # LLM Model BPB Inventory
 
-This page records the current Turkish nanochat base-model checkpoints and their
+> **Provenance update — 2026-11-09.** This is the original step-17,100 ablation
+> inventory. Ten original metadata files were recovered; the raw-BPE 32k
+> metadata is absent at its old UHeM path and retains archived provenance.
+> CETVEL links use a legacy evaluator with known generation/continuation
+> deviations; see the [evaluator audit](study_results/later_model_results.md).
+> The separately recovered d20 continuation (step 34,200, BPB 0.591451) and d32
+> FineWeb2 model (step 28,000, BPB 0.519040) do not replace these cells. The d32
+> BPB uses train-overlap validation and is not a held-out comparison.
+
+This page records the archived Turkish nanochat base-model checkpoints and their
 byte-normalized validation losses. BPB values come from each completed run's
 `meta_017100.json` checkpoint metadata on UHeM. For the completed rows below,
-the final validation BPB equals `loop_state.min_val_bpb`, meaning validation BPB
-was still improving at the final saved checkpoint.
+the final validation BPB equals `loop_state.min_val_bpb`, so the final saved
+checkpoint matches the recorded best validation value.
 
-## Current Checkpoints
+## Archived Ablation Checkpoints
 
 Display names in this table use compact report aliases: `chinchilla20` is
 omitted from model tags, and vocabulary sizes are written as `32k`, `64k`, and

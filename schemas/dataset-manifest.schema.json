@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/nurcunal/nanochat-turk/schemas/dataset-manifest.schema.json",
+  "title": "Nanochat Turkish dataset manifest",
+  "description": "An ordered, content-addressed dataset input manifest. The strict profile is the default; historical manifests must explicitly declare legacy-partial.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "dataset",
+    "text_column",
+    "ordered_files",
+    "created_by"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "$ref": "#/$defs/nonEmptyText"
+    },
+    "schema_version": {
+      "const": "1.0"
+    },
+    "manifest_type": {
+      "const": "dataset"
+    },
+    "profile": {
+      "enum": [
+        "strict",
+        "legacy-partial"
+      ]
+    },
+    "dataset": {
+      "type": "object",
+      "required": [
+        "repo_id",
+        "path",
+        "requested_revision",
+        "resolved_revision"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "repo_id": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "path": {
+          "$ref": "#/$defs/safeRelativePath"
+        },
+        "requested_revision": {},
+        "resolved_revision": {},
+        "repo_type": {
+          "const": "dataset"
+        }
+      }
+    },
+    "text_column": {
+      "$ref": "#/$defs/nonEmptyText"
+    },
+    "ordered_files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/fileRecord"
+      }
+    },
+    "validation_file": {
+      "$ref": "#/$defs/safeRelativePath"
+    },
+    "created_by": {
+      "$ref": "#/$defs/createdBy"
+    },
+    "canonical_sha256": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "profile"
+        ],
+        "properties": {
+          "profile": {
+            "const": "legacy-partial"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "dataset": {
+            "properties": {
+              "requested_revision": {
+                "$ref": "#/$defs/nonEmptyText"
+              },
+              "resolved_revision": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/nonEmptyText"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "created_by": {
+            "properties": {
+              "git_commit": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/nonEmptyText"
+                  },
+                  {
+                    "type": "string",
+                    "maxLength": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "required": [
+          "validation_file"
+        ],
+        "properties": {
+          "dataset": {
+            "properties": {
+              "requested_revision": {
+                "$ref": "#/$defs/hubCommit"
+              },
+              "resolved_revision": {
+                "$ref": "#/$defs/hubCommit"
+              }
+            }
+          },
+          "created_by": {
+            "properties": {
+              "git_commit": {
+                "$ref": "#/$defs/gitCommit"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nonEmptyText": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!\\s)(?!.*\\s$)[^\\u0000-\\u001f\\u007f]+$"
+    },
+    "immutableRevision": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?![Mm][Aa][Ii][Nn]$)(?![Mm][Aa][Ss][Tt][Ee][Rr]$)(?![Ll][Aa][Tt][Ee][Ss][Tt]$)(?![Hh][Ee][Aa][Dd]$)(?![Nn][Uu][Ll][Ll]$)(?!\\s)(?!.*\\s$)[^\\u0000-\\u001f\\u007f]+$"
+    },
+    "hubCommit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "gitCommit": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "safeRelativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*//)[^\\u0000-\\u001f\\u007f]+$"
+    },
+    "fileRecord": {
+      "type": "object",
+      "required": [
+        "path",
+        "size_bytes",
+        "sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/safeRelativePath"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "createdBy": {
+      "type": "object",
+      "required": [
+        "git_commit"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "git_commit": {},
+        "environment_lock_sha256": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tool": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "tool_version": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "created_at_utc": {
+          "$ref": "#/$defs/nonEmptyText"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,494 @@
+{
+  "schema_version": "2.0",
+  "name": "tr_general_clean_v1",
+  "language_policy": {
+    "allowed": [
+      "tur_Latn"
+    ],
+    "require_source_lid": true,
+    "require_independent_text_audit": true,
+    "independent_audit": {
+      "implementation": "GlotLID-v3-fastText",
+      "repo_id": "cis-lmu/glotlid",
+      "hub_revision": "85cd6716494360367b75f642b5bc78667605d0b4",
+      "artifact": "model_v3.bin",
+      "artifact_size_bytes": 1687094687,
+      "artifact_sha256": "a818b6bd42a628ab47d3dfc1578c7ea615c45381f3494c42535e31e8c4cafc9e",
+      "license_id": "Apache-2.0-with-model-notices",
+      "license_url": "https://huggingface.co/cis-lmu/glotlid/blob/85cd6716494360367b75f642b5bc78667605d0b4/LICENSE",
+      "required_top_label": "tur_Latn",
+      "document_min_probability": 0.8,
+      "document_min_margin": 0.2,
+      "paragraph_min_probability": 0.65,
+      "paragraph_min_margin": 0.1,
+      "paragraph_min_chars": 240,
+      "max_failed_long_paragraph_fraction": 0.1,
+      "calibration_languages": [
+        "tur_Latn",
+        "azj_Latn",
+        "tuk_Latn",
+        "crh_Latn",
+        "eng_Latn"
+      ],
+      "calibration_required_before_seal": true,
+      "secondary_heuristic": "turkish_lexical_suffix_script_v1"
+    }
+  },
+  "content_policy": {
+    "allow_code": false,
+    "min_chars": 160,
+    "max_chars": 100000,
+    "min_words": 24,
+    "min_turkish_confidence": 0.58,
+    "min_alphabetic_fraction": 0.45,
+    "max_code_line_fraction": 0.02,
+    "max_code_punctuation_fraction": 0.012,
+    "max_programming_term_hits": 1,
+    "max_duplicate_line_fraction": 0.2,
+    "max_common_word_fraction": 0.12,
+    "max_boilerplate_hits": 2,
+    "production_processing": {
+      "implementation": "datatrove_0_10_0_plus_conservative_turkish_pii_v1",
+      "language": "tur_Latn",
+      "ordered_stages": [
+        "GopherRepetitionFilter",
+        "FineWebQualityFilter",
+        "GopherQualityFilter",
+        "FTFYFormatter",
+        "PIIFormatter",
+        "TurkishPhoneRedactor",
+        "SymbolLinesFormatter",
+        "nanochat_nfc_whitespace_audit"
+      ],
+      "fineweb2_turkish_control": {
+        "repository": "https://github.com/huggingface/fineweb-2",
+        "revision": "d0defb24f193bb9a5a11b8b14524a03c4858e1b6",
+        "path": "configs/tur_Latn.yml",
+        "local_path": "configs/pretrain/fineweb2_tur_Latn.yml",
+        "sha256": "f0ccd5fef17c5978f0c8863809dc6a3ec9bededa772f6d25bfa0a4f7f20d67c1",
+        "adaptations": {
+          "independent_glotlid_document_min_probability": 0.8,
+          "source_lid_minimum_remains_source_specific": true,
+          "minimum_document_words": 24,
+          "paragraph_repetition_checks_disabled": true,
+          "short_line_check_disabled": true,
+          "character_duplicate_ratio": 0.1
+        }
+      },
+      "pii": {
+        "email_replacement": "<email>",
+        "public_ip_replacement": "<ip>",
+        "turkish_phone_replacement": "<telefon>",
+        "redaction_only": true
+      },
+      "harmful_content": {
+        "action": "measure_and_manual_qa",
+        "lexicon_version": "turkish_harmful_signal_v1",
+        "automatic_semantic_rewriting": false
+      }
+    },
+    "allow_domains": [
+      "everyday_conversation",
+      "discussion",
+      "opinion",
+      "narrative",
+      "how_to",
+      "general_information",
+      "news_and_culture",
+      "education",
+      "reference"
+    ],
+    "deny_domains": [
+      "software_development",
+      "source_code",
+      "programming_tutorials",
+      "machine_translated",
+      "lyrics"
+    ]
+  },
+  "deduplication": {
+    "exact": "sha256_nfc_whitespace_v1",
+    "near": "minhash_word5_v1",
+    "scope": "global_cross_source",
+    "winner": "source_priority_then_quality_then_stable_id",
+    "source_priority": [
+      "finewiki_tr",
+      "finepdfs_edu_tr",
+      "fineweb2_hq_tr",
+      "hplt3_tr",
+      "cosmos_tr",
+      "fineweb2_tr"
+    ],
+    "production_backend": {
+      "implementation": "huggingface_datatrove_minhash",
+      "version": "0.10.0",
+      "git_revision": "a649de79c14a550dc90f48a15c025f2dd3fd3b57",
+      "precision_bits": 64,
+      "num_buckets": 14,
+      "hashes_per_bucket": 8,
+      "ngram_words": 5,
+      "signature_language": "tur_Latn",
+      "match_rule": "any_equal_8_hash_bucket_signature",
+      "candidate_probability_formula": "1-(1-s^8)^14",
+      "similarity_at_50_percent_candidate_probability": 0.6846976524441254,
+      "candidate_probability_at_similarity_0_82": 0.9592976771685121,
+      "synthetic_similarity_calibration_required": true,
+      "cluster_representative": "minimum_source_priority_then_negative_quality_then_stable_id",
+      "required_output": "deduplicated_documents_with_backend_receipt"
+    },
+    "reference_backend": {
+      "implementation": "nanochat.turkish_corpus.SQLiteMinHashDeduper",
+      "num_hashes": 64,
+      "bands": 16,
+      "similarity_threshold": 0.82,
+      "scope": "synthetic_tests_and_bounded_smoke_only",
+      "production_allowed": false
+    }
+  },
+  "splits": {
+    "unit": "dedup_cluster",
+    "algorithm": "sha256_threshold_v1",
+    "seed": "tr-general-clean-v1-cluster-split-2026-08-20",
+    "fractions": {
+      "train": 0.997,
+      "val": 0.0015,
+      "test": 0.0015
+    },
+    "holdout_before_tokenizer_training": true,
+    "benchmark_decontamination_required_before_release": true
+  },
+  "sources": [
+    {
+      "id": "hplt3_tr",
+      "repo_id": "HPLT/HPLT3.0:tur_Latn",
+      "resolved_revision": "3619a23b7aa1a261ec1100117296801aa43feacd1e517db796830f3814a95367",
+      "revision_kind": "sha256",
+      "revision_description": "SHA-256 of https://data.hplt-project.org/three/sorted/tur_Latn.map retrieved 2026-08-20; official checksum-list SHA-256 is 1c52b5e0ac204149ece78ef76e5e00ec129182b6a90864106a6a7c9731d9d675",
+      "license_id": "CC0-1.0-packaging",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "rights_note": "HPLT does not own the underlying texts; downstream use must satisfy source rights, takedown requests, GDPR, and applicable law",
+      "source_url": "https://data.hplt-project.org/three/sorted/tur_Latn.map",
+      "adapter": {
+        "format": "jsonl.zst",
+        "text_field": "text",
+        "id_field": "id",
+        "url_field": "u",
+        "language_field": "lang",
+        "language_probability_field": "prob",
+        "register_field": "web-register",
+        "source_lid_min_probability": 0.9,
+        "turkish_values": [
+          "tur",
+          "tur_Latn"
+        ]
+      }
+    },
+    {
+      "id": "fineweb2_hq_tr",
+      "repo_id": "epfml/FineWeb2-HQ",
+      "resolved_revision": "c0c06e94fd3a44ae9e802b2b0fc533817601eb5e",
+      "revision_kind": "hub_commit",
+      "revision_description": "immutable Hugging Face dataset commit",
+      "license_id": "ODC-By-1.0",
+      "license_url": "https://opendatacommons.org/licenses/by/1-0/",
+      "rights_note": "Common Crawl source content remains subject to source rights and Common Crawl terms",
+      "source_url": "https://huggingface.co/datasets/epfml/FineWeb2-HQ/tree/c0c06e94fd3a44ae9e802b2b0fc533817601eb5e/tur_Latn",
+      "adapter": {
+        "format": "parquet",
+        "text_field": "text",
+        "id_field": "id",
+        "url_field": "url",
+        "language_field": "language",
+        "language_probability_field": "language_score",
+        "source_lid_min_probability": 0.9,
+        "turkish_values": [
+          "tur"
+        ]
+      }
+    },
+    {
+      "id": "fineweb2_tr",
+      "repo_id": "HuggingFaceFW/fineweb-2",
+      "resolved_revision": "af9c13333eb981300149d5ca60a8e9d659b276b9",
+      "revision_kind": "hub_commit",
+      "revision_description": "immutable Hugging Face dataset commit",
+      "license_id": "ODC-By-1.0",
+      "license_url": "https://opendatacommons.org/licenses/by/1-0/",
+      "rights_note": "Common Crawl source content remains subject to source rights and Common Crawl terms",
+      "source_url": "https://huggingface.co/datasets/HuggingFaceFW/fineweb-2/tree/af9c13333eb981300149d5ca60a8e9d659b276b9/data/tur_Latn/train",
+      "adapter": {
+        "format": "parquet",
+        "text_field": "text",
+        "id_field": "id",
+        "url_field": "url",
+        "language_field": "language",
+        "language_probability_field": "language_score",
+        "source_lid_min_probability": 0.92,
+        "turkish_values": [
+          "tur"
+        ]
+      }
+    },
+    {
+      "id": "cosmos_tr",
+      "repo_id": "ytu-ce-cosmos/Cosmos-Turkish-Corpus-v1.0",
+      "resolved_revision": "8c9a64084b6cc2665462971d860d599b574d82ea",
+      "revision_kind": "hub_commit",
+      "revision_description": "immutable Hugging Face dataset commit",
+      "license_id": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "rights_note": "URL-only upstream deduplication; content-level deduplication and all project safety filters are mandatory",
+      "source_url": "https://huggingface.co/datasets/ytu-ce-cosmos/Cosmos-Turkish-Corpus-v1.0/tree/8c9a64084b6cc2665462971d860d599b574d82ea/data",
+      "adapter": {
+        "format": "parquet",
+        "text_field": "text",
+        "id_field": "",
+        "url_field": "url",
+        "language_field": "$partition",
+        "partition_language": "tur_Latn",
+        "turkish_values": [
+          "tur_Latn"
+        ]
+      }
+    },
+    {
+      "id": "finepdfs_edu_tr",
+      "repo_id": "HuggingFaceFW/finepdfs-edu",
+      "resolved_revision": "9cfabe2127faca99b3d5c4dc6d1fcb397399ebde",
+      "revision_kind": "hub_commit",
+      "revision_description": "immutable Hugging Face dataset commit",
+      "license_id": "ODC-By-1.0",
+      "license_url": "https://opendatacommons.org/licenses/by/1-0/",
+      "rights_note": "Underlying PDF rights require separate release review and attribution inventory",
+      "source_url": "https://huggingface.co/datasets/HuggingFaceFW/finepdfs-edu/tree/9cfabe2127faca99b3d5c4dc6d1fcb397399ebde/data/tur_Latn/train",
+      "adapter": {
+        "format": "parquet",
+        "text_field": "text",
+        "id_field": "id",
+        "url_field": "url",
+        "language_field": "$partition",
+        "partition_language": "tur_Latn",
+        "turkish_values": [
+          "tur_Latn"
+        ]
+      }
+    },
+    {
+      "id": "finewiki_tr",
+      "repo_id": "HuggingFaceFW/finewiki",
+      "resolved_revision": "8bd13e72e6a002407649b3e898535f42ceb1aeb9",
+      "revision_kind": "hub_commit",
+      "revision_description": "immutable Hugging Face dataset commit",
+      "license_id": "CC-BY-SA-4.0-and-GFDL",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "rights_note": "Attribution and share-alike/GFDL obligations must be preserved in the release datasheet",
+      "source_url": "https://huggingface.co/datasets/HuggingFaceFW/finewiki/tree/8bd13e72e6a002407649b3e898535f42ceb1aeb9/data/trwiki",
+      "adapter": {
+        "format": "parquet",
+        "text_field": "text",
+        "id_field": "id",
+        "url_field": "url",
+        "language_field": "$partition",
+        "partition_language": "tur_Latn",
+        "turkish_values": [
+          "tur_Latn"
+        ]
+      }
+    }
+  ],
+  "mixture": [
+    {
+      "id": "hplt_conversation",
+      "source_id": "hplt3_tr",
+      "weight": 0.15,
+      "role": "everyday discussion, spoken-style text, and opinion",
+      "max_passes": 1,
+      "source_cap": 0.18,
+      "fallback": [
+        "cosmos_everyday",
+        "hplt_general",
+        "fineweb2_hq_general"
+      ],
+      "selector": {
+        "wds_bins": [
+          10,
+          9,
+          8
+        ],
+        "register_any": [
+          "ID",
+          "SP",
+          "OP"
+        ],
+        "register_min_probability": 0.35,
+        "max_machine_translated_probability": 0.15
+      }
+    },
+    {
+      "id": "hplt_general",
+      "source_id": "hplt3_tr",
+      "weight": 0.30,
+      "role": "high-scoring general information, narrative, and practical knowledge",
+      "max_passes": 1,
+      "source_cap": 0.4,
+      "fallback": [
+        "fineweb2_hq_general",
+        "fineweb2_general"
+      ],
+      "selector": {
+        "wds_bins": [
+          10,
+          9,
+          8
+        ],
+        "register_any": [
+          "IN",
+          "NA",
+          "HI",
+          "IP"
+        ],
+        "register_min_probability": 0.4,
+        "max_machine_translated_probability": 0.1
+      }
+    },
+    {
+      "id": "fineweb2_hq_general",
+      "source_id": "fineweb2_hq_tr",
+      "weight": 0.20,
+      "role": "model-selected structured and knowledge-rich Turkish web text",
+      "max_passes": 1,
+      "source_cap": 0.28,
+      "fallback": [
+        "hplt_general",
+        "fineweb2_general"
+      ],
+      "selector": {}
+    },
+    {
+      "id": "fineweb2_general",
+      "source_id": "fineweb2_tr",
+      "weight": 0.15,
+      "role": "filtered diverse Turkish web text after stricter local quality gates",
+      "max_passes": 1,
+      "source_cap": 0.22,
+      "fallback": [
+        "hplt_general",
+        "fineweb2_hq_general"
+      ],
+      "selector": {}
+    },
+    {
+      "id": "cosmos_everyday",
+      "source_id": "cosmos_tr",
+      "weight": 0.10,
+      "role": "Turkish forums and everyday web discourse after strict local filtering",
+      "max_passes": 1,
+      "source_cap": 0.12,
+      "fallback": [
+        "hplt_conversation",
+        "fineweb2_hq_general"
+      ],
+      "selector": {}
+    },
+    {
+      "id": "finepdfs_edu_general",
+      "source_id": "finepdfs_edu_tr",
+      "weight": 0.08,
+      "role": "broad educational and reference knowledge, excluding code-heavy documents",
+      "max_passes": 1,
+      "source_cap": 0.08,
+      "fallback": [
+        "hplt_general",
+        "fineweb2_hq_general"
+      ],
+      "selector": {}
+    },
+    {
+      "id": "finewiki_reference",
+      "source_id": "finewiki_tr",
+      "weight": 0.02,
+      "role": "encyclopedic factual anchor",
+      "max_passes": 1,
+      "source_cap": 0.02,
+      "fallback": [
+        "hplt_general",
+        "fineweb2_hq_general"
+      ],
+      "selector": {}
+    }
+  ],
+  "tokenizer_training": {
+    "name": "tr_general_raw_bpe_32k_v1",
+    "algorithm": "raw_byte_bpe",
+    "vocab_size": 32768,
+    "sample_scope": "post_filter_train_only",
+    "max_chars": 2000000000,
+    "max_chars_per_document": 10000,
+    "stop_rule": "yield_full_capped_document_then_stop_when_cumulative_characters_strictly_exceed_threshold",
+    "sampling": "weighted_deficit_stable_shuffle_v1",
+    "normalization": "none_after_corpus_nfc_whitespace_v1",
+    "split_pattern": "nanochat_gpt4_style_numbers_1_or_2_v1",
+    "special_token_policy": "nanochat_9_v1",
+    "nanochat_upstream_revision": "92d63d4e",
+    "required_validation": [
+      "exact_vocab_size",
+      "all_256_bytes_representable",
+      "unicode_roundtrip",
+      "turkish_roundtrip",
+      "package_content_hash"
+    ]
+  },
+  "quality_assurance": {
+    "schema_version": "1.0",
+    "examples_per_stratum_and_decision": 8,
+    "max_example_characters": 2000,
+    "quantile_sample_size": 8192,
+    "quantiles": [
+      0.0,
+      0.1,
+      0.25,
+      0.5,
+      0.75,
+      0.9,
+      0.99,
+      1.0
+    ],
+    "require_accepted_example_per_mixture": true,
+    "require_manual_approval_before_tokenizer_or_final": true,
+    "plaintext_and_jsonl_examples": true
+  },
+  "materialization": {
+    "stream_one_input_shard": true,
+    "staging_scope": "run_owned_temp_only",
+    "compression": "zstd",
+    "rows_per_fragment": 4096,
+    "rows_per_output_file": 262144,
+    "shuffle_buckets": 256,
+    "max_buffered_rows": 16384,
+    "interleave": "weighted_token_deficit_v1",
+    "target_family_tokens": 67108864000,
+    "target_family_tokens_semantics": "minimum_encoded_source_floor_not_a_model-position-capacity-claim",
+    "packing_capacity_gate": {
+      "implementation": "nanochat_upstream_bos_bestfit_crop_capacity_v2",
+      "world_sizes": [
+        8,
+        16
+      ],
+      "device_batch_sequences": 4,
+      "max_seq_len": 2048,
+      "tokenizer_batch_size": 128,
+      "buffer_size": 1000,
+      "global_batch_tokens": 2097152,
+      "required_optimizer_steps": 32000,
+      "safety_margin_fraction": 0.02,
+      "mix_absolute_tolerance": 0.03,
+      "require_all_world_sizes": true,
+      "require_upstream_fixture_parity": true
+    },
+    "token_count_includes_document_bos": true,
+    "max_peak_disk_bytes": 515396075520,
+    "require_source_checksum": "sha256",
+    "remove_generated_staging_after_verification": true,
+    "remove_user_inputs": false
+  }
+}

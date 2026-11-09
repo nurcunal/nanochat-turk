@@ -8,6 +8,10 @@ operations notes.
 
 ## Current Research Sources
 
+Start with the [9 November study results package](study_results/README.md) for
+presentation tables, fresh tokenizer measurements and the recovered evaluator
+correction. Legacy downstream rankings require a corrected common rerun.
+
 | Document | Role |
 | --- | --- |
 | [`MorphBPE-alignment.md`](../MorphBPE-alignment.md) | Canonical status, claims, release audit, and priorities. |

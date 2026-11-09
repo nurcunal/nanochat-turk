@@ -1,5 +1,12 @@
 # Turkish Tokenizer Ablation Plan
 
+> **Historical experiment, current results on main:** the completed d20/d16/d12
+> results predate the d32 runtime consolidated into `main`. That merge changes
+> the optimizer implementation; rerunning these launchers from current `main`
+> is not an exact replay of the reported experiment. See
+> [reproduction and branch provenance](study_results/reproduction.md) and the
+> [measured model results](study_results/model_results.md).
+
 This document preserves the preliminary study design for optimizing the
 `nanochat-turk` tokenizer. The current UHeM production run,
 `tr_d20_bpe_32k`, is the first baseline cell in the study.

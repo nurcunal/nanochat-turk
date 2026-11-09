@@ -6,6 +6,11 @@ model's loss. This script reports the tokenizer-side quantities we can measure
 before pretraining: bytes/token, tokens/word fertility, word fragmentation,
 round-trip safety, encode speed, vocabulary shape, and MorphBPE boundary
 crossing rates when boundary-marked text is supplied.
+
+Additional explicit study metrics include exact morpheme-token span preservation,
+internal-boundary precision/recall/F1, Unicode character-only and whole-word
+coverage, and UNK counts where the tokenizer's model supports UNK. Historical
+fields retain their definitions; undefined new rates are null, never fake zeros.
 """
 
 from __future__ import annotations
@@ -501,6 +506,172 @@ def token_piece_sequence_bytes(tokenizer, ids: list[int]) -> tuple[bytes, ...]:
     return tuple(token_piece_bytes(tokenizer, token_id) for token_id in ids)
 
 
+def unknown_token_id(tokenizer) -> int | None:
+    """Read the model's actual UNK setting, not a vocabulary spelling guess."""
+    if not isinstance(tokenizer, HuggingFaceTokenizerAdapter):
+        # The project's tiktoken byte-BPE models have no unknown-token mechanism.
+        return None
+    model = json.loads(tokenizer.backend.to_str())["model"]
+    if model.get("unk_id") is not None:  # Unigram
+        return int(model["unk_id"])
+    unk = model.get("unk_token")  # WordPiece, WordLevel, optional BPE
+    return tokenizer.backend.token_to_id(unk) if unk is not None else None
+
+
+def encode_word_spans(tokenizer, words: list[str], *, num_threads: int):
+    """Return IDs and exact, contiguous surface-byte spans for unique words.
+
+    A missing span list means a lossy or unalignable encoding. HF character
+    offsets may overlap for byte fallback; we reject those offsets rather than
+    pretending multiple bytes are distinct Unicode characters.
+    """
+    if isinstance(tokenizer, HuggingFaceTokenizerAdapter):
+        encoded, offsets = tokenizer.encode_with_offsets(words)
+    else:
+        encoded = tokenizer.encode(words, num_threads=num_threads)
+        offsets = None
+    unk_id = unknown_token_id(tokenizer)
+    result = {}
+    for index, (word, ids) in enumerate(zip(words, encoded)):
+        raw = word.encode("utf-8")
+        spans = []
+        if offsets is None:
+            pieces = token_piece_sequence_bytes(tokenizer, ids)
+            cursor = 0
+            for piece in pieces:
+                spans.append((cursor, cursor + len(piece)))
+                cursor += len(piece)
+            lossless = b"".join(pieces) == raw
+        else:
+            char_bytes = [0]
+            for char in word:
+                char_bytes.append(char_bytes[-1] + len(char.encode("utf-8")))
+            spans = [(char_bytes[start], char_bytes[end]) for start, end in offsets[index]]
+            lossless = tokenizer.decode(ids) == word
+        cursor = 0
+        for start, end in spans:
+            if start != cursor or end <= start:
+                lossless = False
+            cursor = end
+        lossless = lossless and cursor == len(raw) and unk_id not in ids
+        result[word] = (ids, spans if lossless else None)
+    return result
+
+
+def word_coverage_stats(tokenizer, words: list[str], *, num_threads: int) -> dict[str, Any]:
+    """Occurrence-weighted coverage of isolated Unicode ``\\w+`` words.
+
+    Whole-word and character-only coverage require a lossless surface partition.
+    Character-only means one Unicode code point per token, not one byte. The
+    multi-character rate excludes trivial one-character words from its denominator.
+    """
+    by_word = encode_word_spans(tokenizer, list(dict.fromkeys(words)), num_threads=num_threads)
+    unk_id = unknown_token_id(tokenizer)
+    counts = Counter()
+    for word, frequency in Counter(words).items():
+        ids, spans = by_word[word]
+        counts["tokens"] += len(ids) * frequency
+        counts["multi_character_words"] += (len(word) > 1) * frequency
+        counts["unk_tokens"] += ids.count(unk_id) * frequency
+        counts["words_with_unk"] += (unk_id in ids) * frequency
+        if spans is None:
+            counts["unalignable_words"] += frequency
+            continue
+        counts["lossless_words"] += frequency
+        counts["one_token_words"] += (len(ids) == 1) * frequency
+        raw = word.encode("utf-8")
+        counts["single_byte_only_words"] += all(end - start == 1 for start, end in spans) * frequency
+        try:
+            character_only = all(len(raw[start:end].decode("utf-8")) == 1 for start, end in spans)
+        except UnicodeDecodeError:
+            character_only = False
+        counts["character_only_words"] += character_only * frequency
+        counts["multi_character_character_only_words"] += (character_only and len(word) > 1) * frequency
+    rate = lambda count, total: count / total if total else None
+    return {
+        "unit": "isolated_unicode_word_occurrence",
+        "word_regex": WORD_RE.pattern,
+        "sample_words": len(words),
+        "unique_words": len(by_word),
+        "sample_word_tokens": counts["tokens"],
+        "word_sequence_sha256": hashlib.sha256(json.dumps(words, ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest(),
+        "one_token_word_count": counts["one_token_words"],
+        "one_token_word_rate": rate(counts["one_token_words"], len(words)),
+        "character_only_word_count": counts["character_only_words"],
+        "character_only_word_rate": rate(counts["character_only_words"], len(words)),
+        "single_byte_only_word_count": counts["single_byte_only_words"],
+        "single_byte_only_word_rate": rate(counts["single_byte_only_words"], len(words)),
+        "multi_character_word_count": counts["multi_character_words"],
+        "multi_character_character_only_word_count": counts["multi_character_character_only_words"],
+        "multi_character_character_only_word_rate": rate(counts["multi_character_character_only_words"], counts["multi_character_words"]),
+        "lossless_surface_partition_word_rate": rate(counts["lossless_words"], len(words)),
+        "unalignable_word_count": counts["unalignable_words"],
+        "unk_applicable": unk_id is not None,
+        "unk_token_id": unk_id,
+        "unk_token_count": counts["unk_tokens"] if unk_id is not None else None,
+        "unk_token_rate": rate(counts["unk_tokens"], counts["tokens"]) if unk_id is not None else None,
+        "words_with_unk_count": counts["words_with_unk"] if unk_id is not None else None,
+        "unknown_free_word_rate": rate(len(words) - counts["words_with_unk"], len(words)) if unk_id is not None else None,
+    }
+
+
+def morpheme_preservation_stats(
+    tokenizer,
+    segmented_words: list[tuple[str, tuple[str, ...]]],
+    *,
+    num_threads: int,
+) -> dict[str, Any]:
+    """Exact morpheme-token span match and micro internal-boundary agreement.
+
+    Reference morphemes are automatic annotations, not linguistic ground truth.
+    Splitting one morpheme loses its exact-span match; merging two loses both.
+    Word-edge boundaries are excluded from precision/recall. Unalignable words
+    are counted and excluded, making the scored denominator explicit.
+    """
+    surfaces = list(dict.fromkeys(surface for surface, _ in segmented_words))
+    by_word = encode_word_spans(tokenizer, surfaces, num_threads=num_threads)
+    counts = Counter()
+    for (surface, morphemes), frequency in Counter(segmented_words).items():
+        if not morphemes or any(not part for part in morphemes) or "".join(morphemes) != surface:
+            raise ValueError("Reference morphemes must concatenate to the nonempty surface word")
+        _, spans = by_word[surface]
+        if spans is None:
+            counts["unalignable_words"] += frequency
+            continue
+        counts["scored_words"] += frequency
+        gold_spans = []
+        cursor = 0
+        for part in morphemes:
+            gold_spans.append((cursor, cursor + len(part.encode("utf-8"))))
+            cursor = gold_spans[-1][1]
+        gold_boundaries = {end for _, end in gold_spans[:-1]}
+        pred_boundaries = {end for _, end in spans[:-1]}
+        counts["morphemes"] += len(gold_spans) * frequency
+        counts["preserved_morphemes"] += len(set(gold_spans) & set(spans)) * frequency
+        counts["reference_boundaries"] += len(gold_boundaries) * frequency
+        counts["token_boundaries"] += len(pred_boundaries) * frequency
+        counts["matched_boundaries"] += len(gold_boundaries & pred_boundaries) * frequency
+        counts["exact_boundary_words"] += (gold_boundaries == pred_boundaries) * frequency
+    rate = lambda count, total: count / total if total else None
+    return {
+        "reference": "supplied_surface_morpheme_segmentation",
+        "sample_word_occurrences": len(segmented_words),
+        "scored_word_occurrences": counts["scored_words"],
+        "unalignable_word_occurrences": counts["unalignable_words"],
+        "reference_sequence_sha256": hashlib.sha256(json.dumps(segmented_words, ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest(),
+        "morpheme_count": counts["morphemes"],
+        "preserved_morpheme_count": counts["preserved_morphemes"],
+        "morpheme_preservation_rate": rate(counts["preserved_morphemes"], counts["morphemes"]),
+        "reference_boundary_count": counts["reference_boundaries"],
+        "token_boundary_count": counts["token_boundaries"],
+        "matched_boundary_count": counts["matched_boundaries"],
+        "boundary_precision": rate(counts["matched_boundaries"], counts["token_boundaries"]),
+        "boundary_recall": rate(counts["matched_boundaries"], counts["reference_boundaries"]),
+        "boundary_f1": rate(2 * counts["matched_boundaries"], counts["token_boundaries"] + counts["reference_boundaries"]),
+        "exact_boundary_word_rate": rate(counts["exact_boundary_words"], counts["scored_words"]),
+    }
+
+
 def sequence_edit_distance(a: tuple[bytes, ...], b: tuple[bytes, ...]) -> int:
     """Levenshtein distance over morpheme/token byte-piece sequences."""
 
@@ -897,6 +1068,8 @@ def empty_metric_accumulator() -> dict[str, Any]:
         "total_words": 0,
         "unique_tokens": set(),
         "roundtrip_failures": 0,
+        "unk_token_count": 0,
+        "docs_with_unk": 0,
         "docs_with_decode_strip": 0,
         "encode_seconds": 0.0,
         "token_length_counts": Counter(),
@@ -921,6 +1094,8 @@ def merge_metric_accumulator(dst: dict[str, Any], src: dict[str, Any]) -> None:
         "total_chars",
         "total_words",
         "roundtrip_failures",
+        "unk_token_count",
+        "docs_with_unk",
         "docs_with_decode_strip",
         "row_group_tasks",
     ):
@@ -988,6 +1163,7 @@ def measure_docs_batch(
     encode_seconds = time.time() - t0
 
     batch_token_lengths = [len(ids) for ids in encoded]
+    unk_id = unknown_token_id(tokenizer)
     batch_words = [WORD_RE.findall(doc) for doc in visible_docs]
     boundary_totals = {
         "eligible_docs": 0,
@@ -1028,6 +1204,8 @@ def measure_docs_batch(
             1 for doc, ids in zip(visible_docs, encoded)
             if tokenizer.decode(ids) != doc
         ),
+        "unk_token_count": sum(ids.count(unk_id) for ids in encoded) if unk_id is not None else 0,
+        "docs_with_unk": sum(unk_id in ids for ids in encoded) if unk_id is not None else 0,
         "docs_with_decode_strip": docs_with_decode_strip,
         "encode_seconds": encode_seconds,
         "token_length_counts": Counter(batch_token_lengths),
@@ -1314,6 +1492,13 @@ def finalize_metrics(
     boundary_stats["crossing_tokens_per_1k_tokens"] = (
         1000.0 * safe_div(boundary_stats["crossing_tokens"], total_tokens)
     )
+    boundary_stats["preserved_boundary_count"] = (
+        boundary_stats["boundary_count"] - boundary_stats["crossed_boundaries"]
+    )
+    boundary_stats["boundary_preservation_rate"] = (
+        boundary_stats["preserved_boundary_count"] / boundary_stats["boundary_count"]
+        if boundary_stats["boundary_count"] else None
+    )
 
     word_metric_threads = args.num_threads
     if args.workers > 1:
@@ -1339,12 +1524,22 @@ def finalize_metrics(
             resamples=args.morph_consistency_resamples,
             seed=args.morph_consistency_seed,
         )
+        morphology_metrics["preservation"] = morpheme_preservation_stats(
+            tokenizer,
+            morph_metric_words,
+            num_threads=word_metric_threads,
+        )
 
     paper_metrics = build_paper_metrics_summary(
         total_tokens=total_tokens,
         total_words=total_words,
         morphology_metrics=morphology_metrics,
     )
+    coverage = word_coverage_stats(tokenizer, word_metric_words, num_threads=word_metric_threads)
+    unk_id = unknown_token_id(tokenizer)
+    coverage["corpus_unk_token_count"] = aggregate["unk_token_count"] if unk_id is not None else None
+    coverage["corpus_unk_token_rate"] = safe_div(aggregate["unk_token_count"], total_tokens) if unk_id is not None else None
+    coverage["corpus_docs_with_unk"] = aggregate["docs_with_unk"] if unk_id is not None else None
 
     return {
         "tokenizer_name": tokenizer_config.get("name") or get_tokenizer_name(),
@@ -1375,6 +1570,7 @@ def finalize_metrics(
         "tokens_per_word": safe_div(total_tokens, total_words),
         "token_fertility": safe_div(total_tokens, total_words),
         "paper_metrics": paper_metrics,
+        "coverage": coverage,
         "tokens_per_doc_distribution": distribution_stats_from_counts(aggregate["token_length_counts"]),
         "word_fertility_isolated": word_fertility_stats_from_words(
             tokenizer,

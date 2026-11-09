@@ -1,0 +1,70 @@
+{
+  "report_date": "2026-11-09",
+  "script": "scripts/plot_study_results.py",
+  "sources": [
+    {
+      "path": "docs/study_results/model_results.json",
+      "sha256": "64842f776be88c20c28cd8b57b9cd800233e3a2159cfa94ae848f05c7bfc926f"
+    },
+    {
+      "path": "docs/study_results/tokenizer_results.json",
+      "sha256": "1961c48137a218194dc2da8519f5bf299d1811ed5a2a4a66f81b4e7cd490fa2b"
+    },
+    {
+      "path": "docs/study_results/tokenizer_fresh_results.json",
+      "sha256": "ec435b89c069a418a2e942ca096b2008b08193db83c1efca848d496be76c71aa"
+    }
+  ],
+  "charts": [
+    {
+      "png": "model_outcomes_by_tier.png",
+      "svg": "model_outcomes_by_tier.svg",
+      "evidence": "archived_pretraining_and_legacy_benchmarks",
+      "source": {
+        "path": "docs/study_results/model_results.json",
+        "sha256": "64842f776be88c20c28cd8b57b9cd800233e3a2159cfa94ae848f05c7bfc926f"
+      }
+    },
+    {
+      "png": "tokenizer_efficiency_boundary_tradeoff.png",
+      "svg": "tokenizer_efficiency_boundary_tradeoff.svg",
+      "evidence": "archived_train_corpus_diagnostic",
+      "source": {
+        "path": "docs/study_results/tokenizer_results.json",
+        "sha256": "1961c48137a218194dc2da8519f5bf299d1811ed5a2a4a66f81b4e7cd490fa2b"
+      }
+    },
+    {
+      "png": "cetvel_task_deltas.png",
+      "svg": "cetvel_task_deltas.svg",
+      "evidence": "archived_legacy_benchmarks",
+      "source": {
+        "path": "docs/study_results/model_results.json",
+        "sha256": "64842f776be88c20c28cd8b57b9cd800233e3a2159cfa94ae848f05c7bfc926f"
+      }
+    },
+    {
+      "png": "evaluator_correction_same_checkpoint.png",
+      "svg": "evaluator_correction_same_checkpoint.svg",
+      "evidence": "archived_evaluator_correction",
+      "source": {
+        "path": "docs/study_results/model_results.json",
+        "sha256": "64842f776be88c20c28cd8b57b9cd800233e3a2159cfa94ae848f05c7bfc926f"
+      }
+    },
+    {
+      "png": "matched_validation_tokenizers.png",
+      "svg": "matched_validation_tokenizers.svg",
+      "evidence": "fresh_matched_validation_measurements",
+      "source": {
+        "path": "docs/study_results/tokenizer_fresh_results.json",
+        "sha256": "ec435b89c069a418a2e942ca096b2008b08193db83c1efca848d496be76c71aa"
+      }
+    }
+  ],
+  "notes": [
+    "Historical model and corpus charts retain archived measurements; the optional matched validation chart uses fresh tokenizer measurements. Each chart records its own evidence and source hash.",
+    "SVG preserves editable text.",
+    "Error bars omitted because model seed replication is unavailable; these charts do not represent statistical significance."
+  ]
+}

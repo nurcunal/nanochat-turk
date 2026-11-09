@@ -1,0 +1,252 @@
+{
+  "tr-d20-cetvel-xquad-ref-515377.out": {
+    "source_sha256": "b65aa0cdbaac025baf8d7e3b65e5ac10ae266de79170f0835d154babd7b5725e",
+    "selected_lines": [
+      {
+        "line": 5,
+        "text": "MODEL_TAG=tr_d20_bpe_32768_chinchilla20 MODEL_STEP=17100"
+      },
+      {
+        "line": 17,
+        "text": "- model_args: base_dir=/ari/users/nunal/nanochat-turk-d20-bpe32k,max_gen_tokens=128,model_tag=tr_d20_bpe_32768_chinchilla20,model_step=17100"
+      },
+      {
+        "line": 18,
+        "text": "[CETVEL generation fixed] START task=None total=1190"
+      },
+      {
+        "line": 19,
+        "text": "[CETVEL generation fixed] task=None done=1/1190 generated_tokens=4 stopped=1 elapsed=0.2s rate=4.53/s"
+      },
+      {
+        "line": 20,
+        "text": "[CETVEL generation fixed] task=None done=2/1190 generated_tokens=3 stopped=1 elapsed=0.3s rate=7.74/s"
+      },
+      {
+        "line": 21,
+        "text": "[CETVEL generation fixed] task=None done=3/1190 generated_tokens=3 stopped=1 elapsed=0.3s rate=10.30/s"
+      },
+      {
+        "line": 22,
+        "text": "[CETVEL generation fixed] task=None done=4/1190 generated_tokens=6 stopped=1 elapsed=0.4s rate=10.02/s"
+      },
+      {
+        "line": 23,
+        "text": "[CETVEL generation fixed] task=None done=5/1190 generated_tokens=11 stopped=1 elapsed=0.5s rate=9.70/s"
+      },
+      {
+        "line": 24,
+        "text": "[CETVEL generation fixed] task=None done=6/1190 generated_tokens=13 stopped=1 elapsed=0.7s rate=9.19/s"
+      },
+      {
+        "line": 25,
+        "text": "[CETVEL generation fixed] task=None done=7/1190 generated_tokens=15 stopped=1 elapsed=0.8s rate=8.59/s"
+      },
+      {
+        "line": 26,
+        "text": "[CETVEL generation fixed] task=None done=8/1190 generated_tokens=3 stopped=1 elapsed=0.8s rate=9.43/s"
+      },
+      {
+        "line": 27,
+        "text": "[CETVEL generation fixed] task=None done=9/1190 generated_tokens=3 stopped=1 elapsed=0.9s rate=10.21/s"
+      },
+      {
+        "line": 28,
+        "text": "[CETVEL generation fixed] task=None done=10/1190 generated_tokens=19 stopped=1 elapsed=1.1s rate=9.26/s"
+      },
+      {
+        "line": 29,
+        "text": "[CETVEL generation fixed] task=None done=11/1190 generated_tokens=14 stopped=1 elapsed=1.2s rate=8.96/s"
+      },
+      {
+        "line": 30,
+        "text": "[CETVEL generation fixed] task=None done=12/1190 generated_tokens=4 stopped=1 elapsed=1.3s rate=9.45/s"
+      },
+      {
+        "line": 1194,
+        "text": "[CETVEL generation fixed] task=None done=1176/1190 generated_tokens=128 stopped=0 elapsed=994.6s rate=1.18/s"
+      },
+      {
+        "line": 1195,
+        "text": "[CETVEL generation fixed] task=None done=1177/1190 generated_tokens=128 stopped=0 elapsed=996.0s rate=1.18/s"
+      },
+      {
+        "line": 1196,
+        "text": "[CETVEL generation fixed] task=None done=1178/1190 generated_tokens=128 stopped=0 elapsed=997.3s rate=1.18/s"
+      },
+      {
+        "line": 1197,
+        "text": "[CETVEL generation fixed] task=None done=1179/1190 generated_tokens=128 stopped=0 elapsed=998.6s rate=1.18/s"
+      },
+      {
+        "line": 1198,
+        "text": "[CETVEL generation fixed] task=None done=1180/1190 generated_tokens=128 stopped=0 elapsed=1000.0s rate=1.18/s"
+      },
+      {
+        "line": 1199,
+        "text": "[CETVEL generation fixed] task=None done=1181/1190 generated_tokens=19 stopped=1 elapsed=1000.2s rate=1.18/s"
+      },
+      {
+        "line": 1200,
+        "text": "[CETVEL generation fixed] task=None done=1182/1190 generated_tokens=128 stopped=0 elapsed=1001.5s rate=1.18/s"
+      },
+      {
+        "line": 1201,
+        "text": "[CETVEL generation fixed] task=None done=1183/1190 generated_tokens=128 stopped=0 elapsed=1002.8s rate=1.18/s"
+      },
+      {
+        "line": 1202,
+        "text": "[CETVEL generation fixed] task=None done=1184/1190 generated_tokens=128 stopped=0 elapsed=1004.2s rate=1.18/s"
+      },
+      {
+        "line": 1203,
+        "text": "[CETVEL generation fixed] task=None done=1185/1190 generated_tokens=128 stopped=0 elapsed=1005.5s rate=1.18/s"
+      },
+      {
+        "line": 1204,
+        "text": "[CETVEL generation fixed] task=None done=1186/1190 generated_tokens=34 stopped=1 elapsed=1005.8s rate=1.18/s"
+      },
+      {
+        "line": 1205,
+        "text": "[CETVEL generation fixed] task=None done=1187/1190 generated_tokens=7 stopped=1 elapsed=1005.9s rate=1.18/s"
+      },
+      {
+        "line": 1206,
+        "text": "[CETVEL generation fixed] task=None done=1188/1190 generated_tokens=128 stopped=0 elapsed=1007.2s rate=1.18/s"
+      },
+      {
+        "line": 1207,
+        "text": "[CETVEL generation fixed] task=None done=1189/1190 generated_tokens=124 stopped=1 elapsed=1008.5s rate=1.18/s"
+      },
+      {
+        "line": 1208,
+        "text": "[CETVEL generation fixed] task=None done=1190/1190 generated_tokens=11 stopped=1 elapsed=1008.6s rate=1.18/s"
+      }
+    ]
+  },
+  "tr-d32-cetvel-xquad-515376.out": {
+    "source_sha256": "0d1b24f415c7a3ba600e4afa4af44a20f1e3983c794aa0bb2d033a048fa447de",
+    "selected_lines": [
+      {
+        "line": 5,
+        "text": "MODEL_TAG=tr_d32_bpe_32768_fineweb2_all_v1 MODEL_STEP=28000"
+      },
+      {
+        "line": 17,
+        "text": "- model_args: base_dir=/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k,max_gen_tokens=128,model_tag=tr_d32_bpe_32768_fineweb2_all_v1,model_step=28000"
+      },
+      {
+        "line": 18,
+        "text": "[CETVEL generation fixed] START task=None total=1190"
+      },
+      {
+        "line": 19,
+        "text": "[CETVEL generation fixed] task=None done=1/1190 generated_tokens=4 stopped=1 elapsed=0.3s rate=3.09/s"
+      },
+      {
+        "line": 20,
+        "text": "[CETVEL generation fixed] task=None done=2/1190 generated_tokens=128 stopped=0 elapsed=2.6s rate=0.78/s"
+      },
+      {
+        "line": 21,
+        "text": "[CETVEL generation fixed] task=None done=3/1190 generated_tokens=4 stopped=1 elapsed=2.6s rate=1.14/s"
+      },
+      {
+        "line": 22,
+        "text": "[CETVEL generation fixed] task=None done=4/1190 generated_tokens=3 stopped=1 elapsed=2.7s rate=1.49/s"
+      },
+      {
+        "line": 23,
+        "text": "[CETVEL generation fixed] task=None done=5/1190 generated_tokens=128 stopped=0 elapsed=4.9s rate=1.03/s"
+      },
+      {
+        "line": 24,
+        "text": "[CETVEL generation fixed] task=None done=6/1190 generated_tokens=18 stopped=1 elapsed=5.2s rate=1.16/s"
+      },
+      {
+        "line": 25,
+        "text": "[CETVEL generation fixed] task=None done=7/1190 generated_tokens=15 stopped=1 elapsed=5.4s rate=1.29/s"
+      },
+      {
+        "line": 26,
+        "text": "[CETVEL generation fixed] task=None done=8/1190 generated_tokens=128 stopped=0 elapsed=7.6s rate=1.05/s"
+      },
+      {
+        "line": 27,
+        "text": "[CETVEL generation fixed] task=None done=9/1190 generated_tokens=3 stopped=1 elapsed=7.7s rate=1.18/s"
+      },
+      {
+        "line": 28,
+        "text": "[CETVEL generation fixed] task=None done=10/1190 generated_tokens=128 stopped=0 elapsed=9.8s rate=1.02/s"
+      },
+      {
+        "line": 29,
+        "text": "[CETVEL generation fixed] task=None done=11/1190 generated_tokens=128 stopped=0 elapsed=12.0s rate=0.92/s"
+      },
+      {
+        "line": 30,
+        "text": "[CETVEL generation fixed] task=None done=12/1190 generated_tokens=19 stopped=1 elapsed=12.5s rate=0.96/s"
+      },
+      {
+        "line": 1194,
+        "text": "[CETVEL generation fixed] task=None done=1176/1190 generated_tokens=6 stopped=1 elapsed=1676.2s rate=0.70/s"
+      },
+      {
+        "line": 1195,
+        "text": "[CETVEL generation fixed] task=None done=1177/1190 generated_tokens=128 stopped=0 elapsed=1678.3s rate=0.70/s"
+      },
+      {
+        "line": 1196,
+        "text": "[CETVEL generation fixed] task=None done=1178/1190 generated_tokens=48 stopped=1 elapsed=1679.1s rate=0.70/s"
+      },
+      {
+        "line": 1197,
+        "text": "[CETVEL generation fixed] task=None done=1179/1190 generated_tokens=128 stopped=0 elapsed=1681.2s rate=0.70/s"
+      },
+      {
+        "line": 1198,
+        "text": "[CETVEL generation fixed] task=None done=1180/1190 generated_tokens=59 stopped=1 elapsed=1682.2s rate=0.70/s"
+      },
+      {
+        "line": 1199,
+        "text": "[CETVEL generation fixed] task=None done=1181/1190 generated_tokens=128 stopped=0 elapsed=1684.3s rate=0.70/s"
+      },
+      {
+        "line": 1200,
+        "text": "[CETVEL generation fixed] task=None done=1182/1190 generated_tokens=128 stopped=0 elapsed=1686.4s rate=0.70/s"
+      },
+      {
+        "line": 1201,
+        "text": "[CETVEL generation fixed] task=None done=1183/1190 generated_tokens=12 stopped=1 elapsed=1686.6s rate=0.70/s"
+      },
+      {
+        "line": 1202,
+        "text": "[CETVEL generation fixed] task=None done=1184/1190 generated_tokens=128 stopped=0 elapsed=1688.7s rate=0.70/s"
+      },
+      {
+        "line": 1203,
+        "text": "[CETVEL generation fixed] task=None done=1185/1190 generated_tokens=93 stopped=1 elapsed=1690.2s rate=0.70/s"
+      },
+      {
+        "line": 1204,
+        "text": "[CETVEL generation fixed] task=None done=1186/1190 generated_tokens=16 stopped=1 elapsed=1690.5s rate=0.70/s"
+      },
+      {
+        "line": 1205,
+        "text": "[CETVEL generation fixed] task=None done=1187/1190 generated_tokens=128 stopped=0 elapsed=1692.6s rate=0.70/s"
+      },
+      {
+        "line": 1206,
+        "text": "[CETVEL generation fixed] task=None done=1188/1190 generated_tokens=128 stopped=0 elapsed=1694.7s rate=0.70/s"
+      },
+      {
+        "line": 1207,
+        "text": "[CETVEL generation fixed] task=None done=1189/1190 generated_tokens=128 stopped=0 elapsed=1696.8s rate=0.70/s"
+      },
+      {
+        "line": 1208,
+        "text": "[CETVEL generation fixed] task=None done=1190/1190 generated_tokens=105 stopped=1 elapsed=1698.5s rate=0.70/s"
+      }
+    ]
+  }
+}

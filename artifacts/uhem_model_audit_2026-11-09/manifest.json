@@ -1,0 +1,51 @@
+{
+  "retrieved_date": "2026-11-09",
+  "description": "Compact read-only UHeM recovery; sample payloads omitted, original source size/mtime/SHA-256 retained per record. Stored evaluator sources are evidence, not installed runtime patches.",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "194882a909b651f34479381fd7de6a342f33c62141297f2b0b65823e4bd5ea53",
+      "size_bytes": 2253
+    },
+    {
+      "path": "evaluator_evidence/cetvel_comparison_runner.py",
+      "sha256": "390e27dc20e3bc5ed744603ee50ed3c7b460277d9d6004811657442aaaaea0b4",
+      "size_bytes": 10012
+    },
+    {
+      "path": "evaluator_evidence/cetvel_generation_fixed_runner.py",
+      "sha256": "338ab274ccb67ba3ad4129629a70cbd629b0b8dee11386d133961281dae2aded",
+      "size_bytes": 5019
+    },
+    {
+      "path": "evaluator_evidence/fixed_xquad_log_excerpts.json",
+      "sha256": "6ecf10e2fa6802eaf7a09a8ab2873de518ea4758a8e63a5157300df8c1742cdc",
+      "size_bytes": 9965
+    },
+    {
+      "path": "evaluator_evidence/uhem_d32_fineweb2_cetvel_core12.sbatch",
+      "sha256": "3f78ab2c56efe231fec8d97aa20e682f7705c563fdca0df9851c2af887a53d9b",
+      "size_bytes": 8842
+    },
+    {
+      "path": "historical-training-reports.json",
+      "sha256": "76ce5d1f9420482da066bb9f2702cdd939e3ff4ad804a86b5d0ffd9b2232a47b",
+      "size_bytes": 30890
+    },
+    {
+      "path": "later-model-metadata-and-benchmarks.json",
+      "sha256": "1e256f19f52597dd6aa653b60fc48fa8d3d8dad5a2efd9a3170333ecb9730d99",
+      "size_bytes": 101675
+    },
+    {
+      "path": "model-job-accounting.txt",
+      "sha256": "18f521bf311374660cb993dcf4f9ac5cf1d33d66669c96ff88833618f2108bd3",
+      "size_bytes": 4211
+    },
+    {
+      "path": "model-metadata-and-benchmarks.json",
+      "sha256": "817f2984be5f7eb58010c075a63300599874ec0e660f370ef43e6132087e0083",
+      "size_bytes": 177572
+    }
+  ]
+}
