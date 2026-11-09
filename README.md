@@ -63,6 +63,11 @@ for CETVEL generation handling and continuation-boundary scoring; its
 core-11 rankings are provisional, and the old XQuAD interpretation is
 superseded. A corrected common eleven-model rerun is still needed.
 
+**Bold scores are the best displayed values within each vocabulary tier**;
+the detailed tables highlight ties at displayed precision. Legacy benchmark
+winners remain provisional. Settings such as vocabulary size and scores from
+different evaluation protocols are not treated as competing results.
+
 | Tier | Raw BPE BPB ↓ | Best MorphBPE BPB ↓ | Raw legacy core-11 ↑ | Best MorphBPE legacy core-11 ↑ | Recorded observation |
 | --- | ---: | ---: | ---: | ---: | --- |
 | 32k / d20 | **0.6232** | 0.6250 | 0.4514 | **0.4618** | Raw BPE has lower archived BPB; legacy macro ranking needs reevaluation. |

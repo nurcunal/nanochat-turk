@@ -25,6 +25,26 @@ Across tiers the model depth also changes. Equal training token counts do not
 guarantee equal raw-text exposure. The original downstream benchmark rankings
 remain provisional because of the [recovered evaluator bugs](later_model_results.md).
 
+## Best-score highlighting
+
+**Bold measured values** mark the best score in the table's comparable group:
+minimum for a selected lower-is-better metric and maximum for a selected
+higher-is-better metric. All ties at the displayed precision are highlighted;
+the full-precision JSON/CSV measurements remain unchanged. A bold value is a
+descriptive winner, not a statistical-significance claim.
+
+- Tokenizer and original model comparisons stay within one vocabulary tier,
+  split and sample scope. Historical word-level columns with different sample
+  caps are grouped by cap; a single eligible row does not win by default.
+- Per-task model tables highlight the best model for each task. They do not
+  compare a QA score against a classification score or mix evaluator protocols.
+- SFT screens compare candidates within the same curriculum and metric; the
+  source/candidate behavior table groups rows by probe suite.
+- Missing values, configuration columns, token losses across different
+  tokenizers, uncontrolled runtime comparisons and standalone single-model
+  category scores have no highlighted winner. Historical model rankings remain
+  provisional even when their recorded best value is bold.
+
 ## Tokenization size, efficiency and coverage
 
 A token is one vocabulary entry emitted by the tokenizer. A word here is a

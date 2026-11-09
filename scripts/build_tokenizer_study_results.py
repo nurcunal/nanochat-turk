@@ -11,6 +11,7 @@ import json
 import math
 from pathlib import Path
 
+from scripts.study_table_highlights import highlight_columns, map_tables
 from scripts.tokenizer_table_interpretation import interpret_tables
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,7 +22,71 @@ LABELS = {"bpe": "Raw BPE", "morphbpe_trmorph": "MorphBPE / TRmorph",
           "morphbpe_zemberek": "MorphBPE / Zemberek", "morphbpe_tdelight": "MorphBPE / TurkishDelight"}
 
 
-def explain_metric_directions(lines: list[str], *, scope: str) -> list[str]:
+def highlight_tokenizer_scores(text: str, *, archived_rows: list[dict] | None = None) -> str:
+    """Bold objective-specific extrema only within comparable table groups."""
+    samples = {(f'{r["vocab_size"]:,}', label(r)): r for r in archived_rows or []}
+    minimize = {"Tokens/word", "Corpus tokens/word", "Corpus tok/word", "Isolated tokens/word", "Isolated tok/word",
+                "Morph edit", "Morph edit distance", "Normalized edit", "Normalized morph edit", "Boundary crossed %",
+                "Crossed boundaries %", "Multi-character words split only into characters %", "Multi-char character-only %",
+                "Roundtrip failures", "UNK count", "Coverage unaligned", "Morphology unaligned"}
+    maximize = {"Bytes/token", "One-token words %", "Whole word: one token %", "Morphemes intact %", "Intact morphemes %",
+                "Isolated boundary P %", "Isolated boundary R %", "Isolated boundary F1 %", "Boundary P %", "Boundary R %",
+                "Boundary F1 %", "Exact morph sequence %", "Exact morpheme sequence %", "Boundaries preserved %",
+                "Preserved boundaries %", "Document boundaries preserved %", "Morph consistency F1", "Consistency P",
+                "Consistency R", "Consistency F1"}
+    isolated = {"Isolated tokens/word", "Isolated tok/word", "One-token words %", "Whole word: one token %"}
+    alignment = {"Exact morph sequence %", "Exact morpheme sequence %", "Morph edit", "Morph edit distance",
+                 "Normalized edit", "Normalized morph edit"}
+    consistency = {"Morph consistency F1", "Consistency P", "Consistency R", "Consistency F1"}
+
+    def transform(headers: list[str], rows: list[list[str]]) -> list[list[str]]:
+        names = [h.split(" ↑")[0].split(" ↓")[0].split(" ↔")[0] for h in headers]
+        if any(name.startswith("Recorded ") for name in names) or "Original JSON" in names:
+            return rows
+        if "Analyzer" in names:
+            if "Best count" in names:
+                return highlight_columns(rows, {i: "max" for i, name in enumerate(names)
+                                                if name in {"Best count", "Best %", "Acceptable count", "Acceptable %"}})
+            sample_index, analyzer_index = names.index("Sample"), names.index("Analyzer")
+            # Only the common hash-100k analyzer screen has matched inputs.
+            groups = ["hash-100k" if row[sample_index].startswith("hash-100k")
+                      else (row[sample_index], row[analyzer_index]) for row in rows]
+            return highlight_columns(rows, {i: "min" for i, name in enumerate(names)
+                                            if name in {"Fallback % (weighted)", "Fallback % (types)"}}, groups)
+        vocab_index = next((i for i, name in enumerate(names) if name in {"Vocab", "Vocabulary"}), None)
+        if vocab_index is None or "Tokenizer" not in names:
+            # Different train/validation workloads and single-row diagnostics
+            # must not acquire a winner merely because an arrow is present.
+            return rows
+        tokenizer_index = names.index("Tokenizer")
+        output = rows
+        for index, name in enumerate(names):
+            direction = "min" if name in minimize else "max" if name in maximize else None
+            if direction is None:
+                continue
+            groups = []
+            for row in rows:
+                key = row[vocab_index]
+                if samples and name in isolated | alignment | consistency:
+                    record = samples.get((key, row[tokenizer_index]))
+                    if record is None:
+                        key = (key, row[tokenizer_index])
+                    elif name in isolated:
+                        key = (key, record["isolated_word_occurrences"])
+                    elif name in alignment:
+                        key = (key, record["morphology_word_occurrences"])
+                    else:
+                        c = record["original_metrics"]["morphology"]["consistency"]
+                        key = (key, c["sample_unique_words"], c["clustering"], c["clusters_requested"],
+                               c["pairs_per_cluster"], c["resamples"])
+                groups.append(key)
+            output = highlight_columns(output, {index: direction}, groups)
+        return output
+
+    return map_tables(text, transform)
+
+
+def explain_metric_directions(lines: list[str], *, scope: str, archived_rows: list[dict] | None = None) -> list[str]:
     """Label display headers after interpreting their original metric names.
 
     Keep the interpretation helper's exact header keys and every measured cell
@@ -30,6 +95,7 @@ def explain_metric_directions(lines: list[str], *, scope: str) -> list[str]:
     output = interpret_tables(lines, scope=scope)
     output[2:2] = [
         "**Direction legend:** ↑ means higher is better for the stated objective; ↓ means lower is better; ↔ means descriptive or a tradeoff, with no universally better direction. See the [metric guide](metric_guide.md) for every definition, denominator and limitation.", "",
+        "**Bold scores** mark the best comparable value for that metric within the same vocabulary and table's split/sample; all ties at displayed precision are bold. They do not identify an overall winner. Descriptive fields, uncontrolled timings, normalizing references and groups with only one measured value stay unbolded. Analyzer fallback is compared only on the common hash-100k screen; judge scores only within the shared scripted rubric.", "",
         "**Objectives:** lower tokens/word and higher bytes/token mean more compact lossless encoding. Higher one-token coverage helps isolated-word compression only. Higher morphology preservation, boundary agreement and consistency, or lower morphology edit distance, mean closer agreement with the automatic reference; they do not establish better LLM performance. Lower multi-character character-only coverage means less character-level fragmentation.", "",
         "**Diagnostics:** vocabulary size, vocabulary use, sample counts, inclusive character-only/byte-only coverage and resample SD have no universal optimum. Zero roundtrip failures is ideal for exact text recovery; fewer UNKs and alignment exclusions are better when applicable. Speed ↑ and time ↓ apply only to matched workloads and hardware; recorded timings here do not establish a controlled speed ranking. Normalizing references' apparent compression and boundary figures remain descriptive.", "",
     ]
@@ -65,7 +131,9 @@ def explain_metric_directions(lines: list[str], *, scope: str) -> list[str]:
             display = "Document-pass wall s" if header == "Evaluator wall s" else header
             annotated.append(f"{display} {suffix}")
         output[index] = "| " + " | ".join(annotated) + " |"
-    return output
+    if archived_rows is not None:
+        output[6:6] = ["**Historical sample groups:** at 32k, isolated-word and morphology-edit/exact-sequence bolding compares only the three 200,000-word rows; TurkishDelight's 500,000-word row has no matched peer and stays unbolded for those metrics. Corpus metrics compare all four rows. Pairwise consistency also compares all four because each uses the same 50,000-word-type prefix and clustering settings.", ""]
+    return highlight_tokenizer_scores("\n".join(output), archived_rows=archived_rows).splitlines()
 
 
 def row_from_file(path: Path, *, external: bool = False) -> dict:
@@ -397,7 +465,7 @@ def build() -> None:
         "At every vocabulary size, MorphBPE preserves more TRmorph reference boundaries and has better recorded morphology edit distance and consistency than raw BPE, while requiring more document tokens per word. TRmorph training and evaluation share an analyzer, so these are automatic-reference results. The 32k morphology and isolated-word caps differ across treatments, preventing a fully matched word-level estimate. Corpus-level fertility and boundary counts use the common 50,000 documents.", "",
         "Isolated-word fertility often improves with MorphBPE even though document tokens/word rises; the two measures capture different contexts. Job 496882 has now been verified COMPLETED and recovered separately in the [full-corpus report](tokenizer_full_corpus.md). The [completed matched evaluation](tokenizer_fresh_results.md) adds separate training/validation results and the previously absent coverage/boundary metrics for all twelve local tokenizers; no historical null is overwritten. No significance or causal advantage is claimed from these single-run diagnostics.", "",
         "Rebuild: `python -m scripts.build_tokenizer_study_results`."]
-    (OUT / "tokenizer_results.md").write_text("\n".join(explain_metric_directions(lines, scope="archived_sample")) + "\n")
+    (OUT / "tokenizer_results.md").write_text("\n".join(explain_metric_directions(lines, scope="archived_sample", archived_rows=rows)) + "\n")
 
     full_dir = ROOT / "artifacts/tokenizer_metrics_full_2026-06-23"
     if full_dir.exists():

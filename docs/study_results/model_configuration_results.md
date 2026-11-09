@@ -2,6 +2,8 @@
 
 **Direction legend:** ↑ higher is better for the named metric; ↓ lower is better; ↔ identifies configuration, budget or diagnostic values without a universal quality direction. Scores require the same task/protocol, and speed, elapsed time and memory require matched workload/hardware. Legacy scores remain provisional. Read the [metric guide](metric_guide.md) for definitions and limits.
 
+**Bold numeric table cells** mark the best displayed score across the models on the same legacy task row, or within the corrected XQuAD group sharing protocol, generation cap and sample count. Displayed ties are all bold; legacy rankings remain provisional. Different task/category scores, unmatched runtime workloads, budgets and training-overlap BPB receive no winner highlighting.
+
 These existing checkpoints and experiment outputs were recovered from UHeM on 9 November 2026. They extend the original [eleven-model tokenizer comparison](model_results.md) with continuation, model scaling, generation-protocol corrections and broader benchmarks. No new training or evaluation is claimed. Download [configuration CSV](model_configuration_results.csv), [complete JSON](model_configuration_results.json), [all available task metrics](model_all_task_metrics.csv), and [table-compatible protocol task scores](model_official_task_metrics.csv).
 
 ## Model configuration and training results
@@ -44,18 +46,18 @@ Accuracy ↑ counts correct answers; `acc_norm` ↑ first selects answers by len
 
 | Task | Metric ↑ | d20 / step 17,100 ↑ | d32 / step 28,000 ↑ | Δ percentage points ↑ |
 | --- | --- | --- | --- | --- |
-| `exams_tr` | acc_norm | 0.3104 | 0.3410 | +3.05 |
-| `belebele_tr` | acc_norm | 0.2522 | 0.2389 | -1.33 |
-| `turkish_plu` | acc_norm | 0.5027 | 0.5504 | +4.77 |
-| `cetvel_xcopa_tr` | acc | 0.6180 | 0.6900 | +7.20 |
-| `cetvel_xnli_tr` | acc_norm | 0.3335 | 0.3329 | -0.06 |
-| `mnli_tr` | acc_norm | 0.3210 | 0.3235 | +0.25 |
-| `snli_tr` | acc_norm | 0.3234 | 0.3186 | -0.48 |
-| `news_cat` | acc_norm | 0.6760 | 0.7040 | +2.80 |
-| `offenseval_tr` | acc_norm | 0.7971 | 0.3370 | -46.00 |
-| `trclaim19` | acc_norm | 0.4938 | 0.4835 | -1.03 |
-| `xfact_tr` | acc_norm | 0.3373 | 0.2781 | -5.92 |
-| **Core-11 mean** | mean | 0.4514 | 0.4180 | -3.34 |
+| `exams_tr` | acc_norm | 0.3104 | **0.3410** | +3.05 |
+| `belebele_tr` | acc_norm | **0.2522** | 0.2389 | -1.33 |
+| `turkish_plu` | acc_norm | 0.5027 | **0.5504** | +4.77 |
+| `cetvel_xcopa_tr` | acc | 0.6180 | **0.6900** | +7.20 |
+| `cetvel_xnli_tr` | acc_norm | **0.3335** | 0.3329 | -0.06 |
+| `mnli_tr` | acc_norm | 0.3210 | **0.3235** | +0.25 |
+| `snli_tr` | acc_norm | **0.3234** | 0.3186 | -0.48 |
+| `news_cat` | acc_norm | 0.6760 | **0.7040** | +2.80 |
+| `offenseval_tr` | acc_norm | **0.7971** | 0.3370 | -46.00 |
+| `trclaim19` | acc_norm | **0.4938** | 0.4835 | -1.03 |
+| `xfact_tr` | acc_norm | **0.3373** | 0.2781 | -5.92 |
+| **Core-11 mean** | mean | **0.4514** | 0.4180 | -3.34 |
 
 **Interpretation.** The larger d32 has a lower recorded legacy core-11 mean (0.4180 versus 0.4514), so these observations do not show a universal gain from scaling. It has higher recorded scores on 5 of the eleven tasks and lower scores on 6, with Offenseval contributing the largest drop. This contrast remains provisional because the legacy likelihood scorer is flawed, and size, data eligibility and training budget all change together.
 
@@ -69,7 +71,7 @@ Exact match ↑ requires the whole normalized answer to match a reference. QA F1
 | --- | --- | --- | --- | --- |
 | d20 baseline · legacy | 128 | 1190 | 0.0000 | 3.0985 |
 | d20 baseline · corrected | 128 | 1190 | 4.5378 | 11.3369 |
-| d32 · corrected | 128 | 1190 | 8.2353 | 15.8833 |
+| d32 · corrected | 128 | 1190 | **8.2353** | **15.8833** |
 | d32 · Kumru comparison protocol | 256 | 1190 | 8.2353 | 15.1717 |
 
 **Interpretation.** Correcting the evaluator raises the unchanged d20 checkpoint from 3.0985 to 11.3369 XQuAD F1, so that increase comes from decoding/scoring behavior, not training or tokenization. With the corrected 128-token setup, d32 scores higher than d20 (15.8833 versus 11.3369), but both use raw BPE and also differ in model size and training exposure. The separate 256-token d32 result is lower (15.1717) under different recorded runner/protocol settings; this is not an isolated generation-cap experiment. None of these comparisons establishes a MorphBPE benefit.
@@ -91,7 +93,7 @@ Classification uses raw accuracy ↑, QA normalized exact match ↑, summarizati
 | SUM | 81.0680 |
 | MT | 58.6223 |
 | GEC | 0.9678 |
-| **Overall** | **37.1709** |
+| **Overall** | 37.1709 |
 
 **Interpretation.** The d32 receipt has its highest category score in summarization (81.0680) and its lowest in grammatical correction (0.9678), with QA also low at 8.3129. The categories use different metrics and task difficulties, so their numerical order is a profile of this protocol rather than a common measure of capability. The 37.1709 overall score has no same-protocol competing model here and cannot establish a tokenizer or model-size winner.
 

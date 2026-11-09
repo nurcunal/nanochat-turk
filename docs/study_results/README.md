@@ -19,6 +19,13 @@ direction. See the [metric guide](metric_guide.md) for plain-language meanings,
 formulas, units, worked examples and comparison limits. A compression advantage
 does not automatically imply better morphology or LLM performance.
 
+**Bold scores identify the best displayed value within a comparable group**;
+ties at the shown precision are all highlighted. Tokenizer/model matrices compare
+within each vocabulary tier and sample; task tables compare models on the same
+task and protocol. Descriptive settings, missing results and incomparable scores
+are not ranked. Bold legacy benchmark values remain provisional, and bold
+runtime values indicate observed speed or cost rather than statistical superiority.
+
 | Deliverable | Contents |
 | --- | --- |
 | [Metric meanings and better directions](metric_guide.md) | Definitions for tokenizer, morphology, model, benchmark and runtime columns |
@@ -103,18 +110,18 @@ missing completed model cell.
 
 | Vocabulary / depth ↔ | Tokenizer | Corpus tokens/word ↓ | Morph consistency F1 ↑ | Val BPB ↓ | Legacy core-11 ↑ | Training k tokens/s ↑ |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| 32k / d20 | Raw BPE | 1.5553 | 0.3241 | 0.6232 | 0.4514 | 235.8 |
-| 32k / d20 | MorphBPE / TRmorph | 1.7698 | 0.5129 | 0.6266 | 0.4541 | 236.1 |
-| 32k / d20 | MorphBPE / Zemberek | 1.7551 | 0.4357 | 0.6250 | 0.4618 | 235.3 |
+| 32k / d20 | Raw BPE | **1.5553** | 0.3241 | **0.6232** | 0.4514 | 235.8 |
+| 32k / d20 | MorphBPE / TRmorph | 1.7698 | **0.5129** | 0.6266 | 0.4541 | **236.1** |
+| 32k / d20 | MorphBPE / Zemberek | 1.7551 | 0.4357 | 0.6250 | **0.4618** | 235.3 |
 | 32k / d20 | MorphBPE / TurkishDelight | 1.6865 | 0.4795 | — | — | — |
-| 64k / d16 | Raw BPE | 1.4328 | 0.2863 | 0.6409 | 0.4590 | 329.4 |
-| 64k / d16 | MorphBPE / TRmorph | 1.6712 | 0.4421 | 0.6521 | 0.4532 | 329.9 |
+| 64k / d16 | Raw BPE | **1.4328** | 0.2863 | **0.6409** | **0.4590** | 329.4 |
+| 64k / d16 | MorphBPE / TRmorph | 1.6712 | **0.4421** | 0.6521 | 0.4532 | 329.9 |
 | 64k / d16 | MorphBPE / Zemberek | 1.6640 | 0.3743 | 0.6514 | 0.4568 | 329.9 |
-| 64k / d16 | MorphBPE / TurkishDelight | 1.5651 | 0.4296 | 0.6510 | 0.4567 | 331.1 |
-| 128k / d12 | Raw BPE | 1.3473 | 0.2412 | 0.6749 | 0.4651 | 451.9 |
+| 64k / d16 | MorphBPE / TurkishDelight | 1.5651 | 0.4296 | 0.6510 | 0.4567 | **331.1** |
+| 128k / d12 | Raw BPE | **1.3473** | 0.2412 | **0.6749** | **0.4651** | 451.9 |
 | 128k / d12 | MorphBPE / TRmorph | 1.5952 | 0.3786 | 0.6917 | 0.4503 | 454.6 |
-| 128k / d12 | MorphBPE / Zemberek | 1.5916 | 0.3330 | 0.6940 | 0.4618 | 455.0 |
-| 128k / d12 | MorphBPE / TurkishDelight | 1.4715 | 0.3971 | 0.6820 | 0.4481 | 453.7 |
+| 128k / d12 | MorphBPE / Zemberek | 1.5916 | 0.3330 | 0.6940 | 0.4618 | **455.0** |
+| 128k / d12 | MorphBPE / TurkishDelight | 1.4715 | **0.3971** | 0.6820 | 0.4481 | 453.7 |
 
 <!-- END GENERATED TOKENIZER MODEL OVERVIEW -->
 
