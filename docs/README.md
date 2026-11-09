@@ -19,6 +19,7 @@ correction. Legacy downstream rankings require a corrected common rerun.
 | Document | Role |
 | --- | --- |
 | [`study_results/README.md`](study_results/README.md) | Complete result index, downloadable data and rebuilding commands. |
+| [`study_results/metric_guide.md`](study_results/metric_guide.md) | Plain-language metric definitions, units, higher/lower-is-better labels and interpretation limits. |
 | [`study_results/tokenizer_matched.md`](study_results/tokenizer_matched.md) | New matched train/validation intrinsic metrics for all 12 tokenizers, with equal word caps. |
 | [`study_results/tokenizer_results.md`](study_results/tokenizer_results.md) | Historical intrinsic metrics for 12 local and 2 lossless external references, plus 3 normalizing references and archived diagnostics. |
 | [`study_results/tokenizer_full_corpus.md`](study_results/tokenizer_full_corpus.md) | Recovered 93.21M-document intrinsic evaluation for all 12 tokenizers. |

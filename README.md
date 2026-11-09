@@ -12,6 +12,19 @@ need a morphological analyzer at inference.
 Work continues on **`main`**. Historical branches are retained.
 For presentation tables, provenance, and the full comparison, start with
 [`docs/study_results/README.md`](docs/study_results/README.md).
+The [metric guide](docs/study_results/metric_guide.md) explains every reported
+metric, its units, and whether **higher is better (↑)**, **lower is better (↓)**,
+or the value describes a **trade-off (↔)**.
+
+**New intrinsic tokenizer measurements are published:** [all 12 tokenizers on
+matched training and validation samples](docs/study_results/tokenizer_fresh_results.md),
+including vocabulary size, subword units per word, morpheme preservation,
+boundary precision/recall/F1, one-token, character-only and byte-only coverage,
+and architecture-aware UNK reporting. Download the [CSV](docs/study_results/tokenizer_fresh_results.csv)
+or [JSON](docs/study_results/tokenizer_fresh_results.json). The
+[extrinsic LLM results](docs/study_results/model_results.md) report pretraining
+loss/BPB and downstream benchmarks, with legacy evaluator limitations explicit.
+
 The consolidated d32 production pipeline is documented in
 [`docs/tr_d32_turkish_wsd_uhem.md`](docs/tr_d32_turkish_wsd_uhem.md);
 its production work is separate from the completed tokenizer ablation below.
@@ -29,6 +42,13 @@ receipts and interpretation notes are published in
 [`artifacts/dsai-3b-base-benchmarks_2026-11-09`](artifacts/dsai-3b-base-benchmarks_2026-11-09/).
 This GitHub publication contains benchmark evidence, not model weights.
 
+### Try the SFT model on UHeM
+
+[**Download the Mac launcher**](https://github.com/nurcunal/nanochat-turk/releases/download/dsai-uhem-launcher-v1/DSAI-3B-Instruct-macOS.zip)
+to connect with your UHeM VPN/SSH login and open the SFT trial on one A100.
+It reuses an existing matching session or requests a one-hour job.
+See the [launcher instructions](tools/uhem_chat/README.md) for setup and shutdown.
+
 ## Current Result
 
 Across the currently checked outputs, all nine MorphBPE variants improve
@@ -43,7 +63,7 @@ for CETVEL generation handling and continuation-boundary scoring; its
 core-11 rankings are provisional, and the old XQuAD interpretation is
 superseded. A corrected common eleven-model rerun is still needed.
 
-| Tier | Raw BPE BPB | Best MorphBPE BPB | Raw legacy core-11 | Best MorphBPE legacy core-11 | Recorded observation |
+| Tier | Raw BPE BPB ↓ | Best MorphBPE BPB ↓ | Raw legacy core-11 ↑ | Best MorphBPE legacy core-11 ↑ | Recorded observation |
 | --- | ---: | ---: | ---: | ---: | --- |
 | 32k / d20 | **0.6232** | 0.6250 | 0.4514 | **0.4618** | Raw BPE has lower archived BPB; legacy macro ranking needs reevaluation. |
 | 64k / d16 | **0.6409** | 0.6510 | **0.4590** | 0.4568 | Raw BPE has lower archived BPB; legacy macro ranking needs reevaluation. |
@@ -51,7 +71,9 @@ superseded. A corrected common eleven-model rerun is still needed.
 
 **Interpretation.** Raw BPE is the validation-BPB winner in every tier. Among MorphBPE models, Zemberek has the best BPB at 32k and TurkishDelight at 64k/128k, but all remain above their raw-BPE baseline. The recorded legacy core-11 winner is Zemberek at 32k and raw BPE at 64k/128k; those downstream rankings require the corrected common rerun before they can establish a tokenizer advantage. Intrinsically, TRmorph leads matched-validation morpheme preservation and boundary F1, while raw BPE leads document compression. See the [metric-specific findings](docs/study_results/README.md#findings-that-can-be-defended).
 
-Lower BPB is better. Core-11 is the mean of the common CETVEL
+**↓ Lower BPB is better**: it means fewer bits of prediction loss per evaluated
+UTF-8 byte. **↑ Higher core-11 is better under a valid common protocol**:
+core-11 is the mean of the common CETVEL
 classification/log-likelihood tasks; XQuAD is reported separately because its
 F1 scale is different. See the
 [full CETVEL table](docs/cetvel_model_comparison.md) and the

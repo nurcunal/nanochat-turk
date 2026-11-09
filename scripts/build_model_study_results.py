@@ -306,6 +306,8 @@ def markdown(data):
     lines = [
         "# Pretraining and model benchmarks",
         "",
+        "**How to read the metrics:** ↑ means higher is better for the stated metric; ↓ means lower is better; ↔ marks configuration, budget or diagnostic values with no universal quality direction. Compare scores only under the same dataset and evaluation protocol, and efficiency only with matched workload and hardware. Legacy benchmark rankings remain provisional. See the [metric guide](metric_guide.md) for definitions and comparison limits.",
+        "",
         "**The original model benchmark table needs a protocol qualification.** Raw BPE has the lowest archived validation BPB in all three tiers, subject to unmatched raw-text evaluation spans. The saved core-11 table puts Zemberek ahead by 1.04 percentage points at 32k, but recovered evaluator code documents generation and continuation-boundary errors. Treat those benchmark rankings as legacy measurements pending a corrected eleven-model rerun; do not present them as established tokenizer effects.",
         "",
         "Report assembled and audited against UHeM on 2026-11-09. All 132 archived task cells match recovered raw results at four decimals. Ten original step-17,100 metadata files remain; the raw-BPE 32k metadata at its original path is absent, so that BPB retains archived provenance. Eleven of twelve model cells have results; 32k TurkishDelight remains tokenizer-only. No new model training or benchmark evaluation was performed for this report.",
@@ -320,7 +322,7 @@ def markdown(data):
         "",
         "Compare tokenizer families **within a vocabulary tier**. The documented design holds the raw FineWeb-2 Turkish source/manifest/order, model shape, optimizer recipe, token-position budget and evaluation harness fixed within that tier. Across tiers, depth changes to keep parameter counts near 0.9B.",
         "",
-        "| Vocab size | Transformer depth | Approx. parameters | Steps | Token positions/step | Total token positions |",
+        "| Vocab size ↔ | Transformer depth ↔ | Approx. parameters ↔ | Steps ↔ | Token positions/step ↔ | Total token positions ↔ |",
         "| ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for tier in data["controls"]["tier_parameters"]:
@@ -333,9 +335,9 @@ def markdown(data):
         "",
         "## Pretraining results",
         "",
-        "BPB is bits per UTF-8 byte after excluding special tokens; lower is better. Final BPB equals the recorded minimum in all eleven completed runs. Training loss is the last printed token-level loss; it is preserved for completeness but cannot be compared directly across different tokenizations. All completed models end at step 17,100.",
+        "BPB is bits per UTF-8 byte after excluding special tokens: a lower value means the model assigns higher probability to the observed text per byte. Final BPB equals the recorded minimum in all eleven completed runs. Training loss is the last printed next-token prediction loss; lower is better only for the same tokenizer, data and scoring protocol. It cannot be compared directly across different tokenizations. A negative Δ BPB means lower BPB than raw BPE. All completed models end at step 17,100.",
         "",
-        "| Tier | Tokenizer | Final/minimum val BPB ↓ | Δ BPB vs raw | Final token loss | Status |",
+        "| Tier | Tokenizer | Final/minimum val BPB ↓ | Δ BPB vs raw ↓ | Final token loss ↓* | Status |",
         "| --- | --- | ---: | ---: | ---: | --- |",
     ]
     names = {"none": "Raw BPE", "TRmorph": "MorphBPE · TRmorph", "Zemberek": "MorphBPE · Zemberek", "TurkishDelightNLP": "MorphBPE · TurkishDelight"}
@@ -350,7 +352,9 @@ def markdown(data):
         "",
         "Training-loop time is separate from Slurm job elapsed time and CETVEL benchmark time. All eleven original jobs were recovered as `COMPLETED`, exit `0:0`; original training used four A100 GPUs. FLOPs and MFU are implementation estimates. Cross-tier speed also changes model depth and cannot isolate tokenizer efficiency.",
         "",
-        "| Tier | Tokenizer | Parameters | Train minutes | Slurm elapsed | Estimated FLOPs | Peak MiB | MFU % |",
+        "For matched workload and hardware, lower elapsed time means less waiting, lower peak memory means less GPU-memory demand, and higher throughput means more work completed per second. Parameters count model weights; FLOPs estimate arithmetic work. These describe capacity and compute budget rather than quality. MFU estimates utilization of theoretical hardware compute; a higher percentage alone establishes neither better predictions nor faster training. The * on token loss denotes the same-tokenizer/protocol restriction.",
+        "",
+        "| Tier | Tokenizer | Parameters ↔ | Train minutes ↓ | Slurm elapsed ↓ | Estimated FLOPs ↔ | Peak MiB ↓ | MFU % ↔ |",
         "| --- | --- | ---: | ---: | --- | ---: | ---: | ---: |",
     ]
     for r in data["runs"]:
@@ -367,7 +371,9 @@ def markdown(data):
         "",
         "These original values are retained, not silently replaced with results from a different evaluator. The legacy adapter ignored generation kwargs and used a separately tokenized context length without validating the continuation boundary. Both can affect comparisons across tokenizers; the complete matrix needs a corrected rerun. Core-11 is the unweighted mean of eleven classification/log-likelihood task scores on a 0–1 scale. XQuAD F1 uses a 0–100 scale and is excluded from that mean. Core-11 deltas below are **percentage points**; XQuAD deltas are F1 points. Timing divides 39,441 expanded effective examples by the logged core-12 elapsed time.",
         "",
-        "| Tier | Tokenizer | Core-11 ↑ | Δ pp | XQuAD F1 ↑ | Δ F1 | Elapsed | ex/s ↑ | Speed/raw | Job |",
+        "Accuracy is the fraction of questions answered correctly. Normalized accuracy (`acc_norm`) chooses answers using length-normalized likelihoods before counting correct answers. QA F1 measures overlap with reference-answer words; exact match requires the whole normalized answer to match. Higher values are better within each fixed task/protocol. A positive score delta means a higher recorded score, not a proven improvement under this legacy evaluator. Examples/s and speed/raw measure evaluation throughput, not answer quality; speed/raw above one means faster than that tier's raw-BPE run. Standard errors describe uncertainty, not model quality.",
+        "",
+        "| Tier | Tokenizer | Legacy core-11 ↑ | Δ pp ↑ | Legacy XQuAD F1 ↑ | Δ F1 ↑ | Elapsed ↓ | ex/s ↑ | Speed/raw ↑ | Job |",
         "| --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |",
     ]
     for r in data["runs"]:
@@ -381,7 +387,7 @@ def markdown(data):
     ]
     for vocab in TIERS:
         rows = [r for r in data["runs"] if r["vocab"] == vocab and r["model_step"] is not None]
-        lines += ["", f"## Per-task legacy results: {vocab}", "", "Legacy adapter values. Classification metrics use 0–1; the final XQuAD row uses 0–100. `acc_norm` is the benchmark's length-normalized choice score; it is not F1. Interpretation requires the evaluator caveat above.", "", "| Task | Metric | " + " | ".join(names[r["segmenter"]] for r in rows) + " |", "| --- | --- | " + " | ".join("---:" for _ in rows) + " |"]
+        lines += ["", f"## Per-task legacy results: {vocab}", "", "Legacy adapter values; all displayed task metrics are higher-is-better (↑), with provisional rankings. Classification metrics use 0–1; the final XQuAD row uses 0–100. `acc_norm` counts correct choices selected with length-normalized likelihoods; it is not F1. Interpretation requires the evaluator caveat above.", "", "| Task | Metric ↑ | " + " | ".join(names[r["segmenter"]] for r in rows) + " |", "| --- | --- | " + " | ".join("---:" for _ in rows) + " |"]
         for task in data["task_metrics"]:
             lines.append(f'| `{task["task"]}` | `{task["metric"].split(",")[0]}` | ' + " | ".join(f'{task["values"][r["run_id"]]:.4f}' for r in rows) + " |")
     lines += [
@@ -392,7 +398,7 @@ def markdown(data):
         "",
         "The earlier [raw-BPE-only archive](../../artifacts/cetvel_base_subset_2026-06-09_job493293/metrics_summary.json) preserves additional metrics and subtasks. The following are baseline-only and must not be used as a tokenizer-family comparison:",
         "",
-        "| Baseline-only task | Metric | Value |",
+        "| Baseline-only task | Metric | Value ↑ |",
         "| --- | --- | ---: |",
     ]
     for t in data["baseline_only_archive"]["results"]:
@@ -422,6 +428,8 @@ def later_markdown(data):
     lines = [
         "# Later model results and evaluator audit",
         "",
+        "**Direction legend:** ↑ higher is better for that metric; ↓ lower is better; ↔ describes model configuration or budget without an inherent quality ranking. BPB measures prediction cost per byte; QA F1 measures answer-word overlap and exact match requires the normalized whole answer to match. Compare only matching datasets and evaluator protocols; legacy values remain provisional. Details: [metric guide](metric_guide.md).",
+        "",
         "**Recovered on 2026-11-09; measured in August 2026.** These results supplement the original tokenizer-ablation table. They change model depth, training budget and/or evaluation protocol, so they are not additional controlled tokenizer cells.",
         "",
         "Sources: [compact UHeM audit](../../artifacts/uhem_model_audit_2026-11-09/), [derived JSON](later_model_results.json), and [runtime/reproduction notes](reproduction.md). Per-source paths, byte counts, timestamps and SHA-256 hashes are preserved. No model training or benchmark inference was rerun during recovery.",
@@ -434,7 +442,7 @@ def later_markdown(data):
         "",
         "The old eleven-model benchmark values remain visible as **legacy evaluator measurements**. The generation bug invalidates the previous absolute-XQuAD interpretation; the likelihood-boundary deviation can be tokenizer-dependent, so classification rankings also need a corrected common rerun. A single corrected raw-BPE row cannot repair the complete matrix.",
         "",
-        "| Model | Protocol | XQuAD F1 /100 | Exact match /100 |",
+        "| Model | Protocol | XQuAD F1 /100 ↑ | Exact match /100 ↑ |",
         "| --- | --- | ---: | ---: |",
         "| d20 BPE32k, step 17100 | June legacy adapter, cap 128 | 3.0985 | 0.0000 |",
     ]
@@ -446,7 +454,7 @@ def later_markdown(data):
         "",
         "## Additional pretraining",
         "",
-        "| Model | Depth | Step | Scheduled token positions | Final/minimum BPB | Interpretation |",
+        "| Model | Depth ↔ | Step ↔ | Scheduled token positions ↔ | Final/minimum BPB ↓ | Interpretation |",
         "| --- | ---: | ---: | ---: | ---: | --- |",
     ]
     for row in data["pretraining"]:
@@ -469,7 +477,7 @@ def later_markdown(data):
     lines += [
         f'The recovered scoring receipt reports **{receipt["overall_score"]:.4f}/100**, the unweighted mean of seven category scores, and marks the result complete. This is the archived `cetvel-eacl2026-table4-compatible-v1` protocol result for d32 step 28,000; it is not the core-11 macro and is not an independent verification against a public leaderboard.',
         "",
-        "| Category | Score /100 |",
+        "| Category | Score /100 ↑ |",
         "| --- | ---: |",
     ]
     for key in receipt["protocol"]["category_order"]:
@@ -478,9 +486,11 @@ def later_markdown(data):
         "",
         "The receipt pins CETVEL `6119c517e06cce23aaeac103ce3504c9380655e3`, lm-eval `6e49b1f6910931882a4b3b105794c6faf96b74e5`, and the metric provenance. Its compatibility warnings are retained: GECTurk uses stripped exact match; MCQA includes check-worthiness and relevance-judgment; summarization BERTScore uses pinned TabiBERT F1/final layer 22 with no baseline rescaling. These metrics differ from the legacy table's normalized accuracy, XQuAD F1 and ROUGE; do not compare their numerical scales directly.",
         "",
+        "Every task/category score in this receipt is higher-is-better under its own definition: accuracy counts correct answers; exact match requires a matching answer; BERTScore measures similarity of contextual word representations; COMET predicts translation quality with a learned evaluator. The overall score averages category scores equally. These definitions and scales differ, so a higher score in one category does not establish stronger capability than a lower score in another.",
+        "",
         "All task scores in that receipt are preserved below. The receipt's QA values use exact match, not the F1 values in the correction table.",
         "",
-        "| Receipt task | Protocol score /100 |",
+        "| Receipt task | Protocol score /100 ↑ |",
         "| --- | ---: |",
     ]
     for task, value in sorted(receipt["task_scores"].items()):
@@ -488,6 +498,8 @@ def later_markdown(data):
     lines += [
         "",
         "Intermediate `kumru20_*` directories describe evaluation task suites, not a recovered Kumru model run: their model arguments identify the nanochat d32 checkpoint. Their full extracted metrics, including QA F1, GEC exact match, translation WER/BLEU and partial summarization ROUGE, remain in the source JSON; the table-compatible receipt uses its own documented aggregations.",
+        "",
+        "For those auxiliary metrics, BLEU ↑ measures matching word sequences in translation, ROUGE ↑ measures reference-summary overlap, and WER ↓ counts word substitutions, insertions and deletions relative to reference length. They measure different properties and retain their native scales; they cannot be pooled with F1, BERTScore or COMET without an explicitly defined protocol.",
         "",
         "## Excluded or incomplete evidence",
         "",

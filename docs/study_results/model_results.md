@@ -1,5 +1,7 @@
 # Pretraining and model benchmarks
 
+**How to read the metrics:** ↑ means higher is better for the stated metric; ↓ means lower is better; ↔ marks configuration, budget or diagnostic values with no universal quality direction. Compare scores only under the same dataset and evaluation protocol, and efficiency only with matched workload and hardware. Legacy benchmark rankings remain provisional. See the [metric guide](metric_guide.md) for definitions and comparison limits.
+
 **The original model benchmark table needs a protocol qualification.** Raw BPE has the lowest archived validation BPB in all three tiers, subject to unmatched raw-text evaluation spans. The saved core-11 table puts Zemberek ahead by 1.04 percentage points at 32k, but recovered evaluator code documents generation and continuation-boundary errors. Treat those benchmark rankings as legacy measurements pending a corrected eleven-model rerun; do not present them as established tokenizer effects.
 
 Report assembled and audited against UHeM on 2026-11-09. All 132 archived task cells match recovered raw results at four decimals. Ten original step-17,100 metadata files remain; the raw-BPE 32k metadata at its original path is absent, so that BPB retains archived provenance. Eleven of twelve model cells have results; 32k TurkishDelight remains tokenizer-only. No new model training or benchmark evaluation was performed for this report.
@@ -14,7 +16,7 @@ Additional recovery supplies [all available task metrics](model_all_task_metrics
 
 Compare tokenizer families **within a vocabulary tier**. The documented design holds the raw FineWeb-2 Turkish source/manifest/order, model shape, optimizer recipe, token-position budget and evaluation harness fixed within that tier. Across tiers, depth changes to keep parameter counts near 0.9B.
 
-| Vocab size | Transformer depth | Approx. parameters | Steps | Token positions/step | Total token positions |
+| Vocab size ↔ | Transformer depth ↔ | Approx. parameters ↔ | Steps ↔ | Token positions/step ↔ | Total token positions ↔ |
 | ---: | ---: | ---: | ---: | ---: | ---: |
 | 32,768 | 20 | 896.5M | 17,100 | 1,048,576 | 17,930,649,600 |
 | 65,536 | 16 | 872.4M | 17,100 | 1,048,576 | 17,930,649,600 |
@@ -28,9 +30,9 @@ Fixed token positions do **not** mean equal raw bytes, documents, or characters 
 
 ## Pretraining results
 
-BPB is bits per UTF-8 byte after excluding special tokens; lower is better. Final BPB equals the recorded minimum in all eleven completed runs. Training loss is the last printed token-level loss; it is preserved for completeness but cannot be compared directly across different tokenizations. All completed models end at step 17,100.
+BPB is bits per UTF-8 byte after excluding special tokens: a lower value means the model assigns higher probability to the observed text per byte. Final BPB equals the recorded minimum in all eleven completed runs. Training loss is the last printed next-token prediction loss; lower is better only for the same tokenizer, data and scoring protocol. It cannot be compared directly across different tokenizations. A negative Δ BPB means lower BPB than raw BPE. All completed models end at step 17,100.
 
-| Tier | Tokenizer | Final/minimum val BPB ↓ | Δ BPB vs raw | Final token loss | Status |
+| Tier | Tokenizer | Final/minimum val BPB ↓ | Δ BPB vs raw ↓ | Final token loss ↓* | Status |
 | --- | --- | ---: | ---: | ---: | --- |
 | 32k/d20 | Raw BPE | 0.6232 | +0.0000 | 2.4899 | Complete |
 | 32k/d20 | MorphBPE · TRmorph | 0.6266 | +0.0034 | 2.0106 | Complete |
@@ -51,7 +53,9 @@ BPB is bits per UTF-8 byte after excluding special tokens; lower is better. Fina
 
 Training-loop time is separate from Slurm job elapsed time and CETVEL benchmark time. All eleven original jobs were recovered as `COMPLETED`, exit `0:0`; original training used four A100 GPUs. FLOPs and MFU are implementation estimates. Cross-tier speed also changes model depth and cannot isolate tokenizer efficiency.
 
-| Tier | Tokenizer | Parameters | Train minutes | Slurm elapsed | Estimated FLOPs | Peak MiB | MFU % |
+For matched workload and hardware, lower elapsed time means less waiting, lower peak memory means less GPU-memory demand, and higher throughput means more work completed per second. Parameters count model weights; FLOPs estimate arithmetic work. These describe capacity and compute budget rather than quality. MFU estimates utilization of theoretical hardware compute; a higher percentage alone establishes neither better predictions nor faster training. The * on token loss denotes the same-tokenizer/protocol restriction.
+
+| Tier | Tokenizer | Parameters ↔ | Train minutes ↓ | Slurm elapsed ↓ | Estimated FLOPs ↔ | Peak MiB ↓ | MFU % ↔ |
 | --- | --- | ---: | ---: | --- | ---: | ---: | ---: |
 | 32k/d20 | Raw BPE | 896,533,746 | 1267.66 | 21:31:38 | 5.809722e+19 | 18499.62 | — |
 | 32k/d20 | MorphBPE · TRmorph | 896,533,746 | 1265.77 | 21:30:53 | 5.809722e+19 | 18499.74 | 61.29 |
@@ -73,7 +77,9 @@ The raw-BPE32k report directory was overwritten by its later continuation. Its o
 
 These original values are retained, not silently replaced with results from a different evaluator. The legacy adapter ignored generation kwargs and used a separately tokenized context length without validating the continuation boundary. Both can affect comparisons across tokenizers; the complete matrix needs a corrected rerun. Core-11 is the unweighted mean of eleven classification/log-likelihood task scores on a 0–1 scale. XQuAD F1 uses a 0–100 scale and is excluded from that mean. Core-11 deltas below are **percentage points**; XQuAD deltas are F1 points. Timing divides 39,441 expanded effective examples by the logged core-12 elapsed time.
 
-| Tier | Tokenizer | Core-11 ↑ | Δ pp | XQuAD F1 ↑ | Δ F1 | Elapsed | ex/s ↑ | Speed/raw | Job |
+Accuracy is the fraction of questions answered correctly. Normalized accuracy (`acc_norm`) chooses answers using length-normalized likelihoods before counting correct answers. QA F1 measures overlap with reference-answer words; exact match requires the whole normalized answer to match. Higher values are better within each fixed task/protocol. A positive score delta means a higher recorded score, not a proven improvement under this legacy evaluator. Examples/s and speed/raw measure evaluation throughput, not answer quality; speed/raw above one means faster than that tier's raw-BPE run. Standard errors describe uncertainty, not model quality.
+
+| Tier | Tokenizer | Legacy core-11 ↑ | Δ pp ↑ | Legacy XQuAD F1 ↑ | Δ F1 ↑ | Elapsed ↓ | ex/s ↑ | Speed/raw ↑ | Job |
 | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
 | 32k/d20 | Raw BPE | 0.4514 | +0.00 | 3.0985 | +0.0000 | 50m20s | 13.06 | 1.000× | 493293 |
 | 32k/d20 | MorphBPE · TRmorph | 0.4541 | +0.27 | 3.4786 | +0.3801 | 52m38s | 12.49 | 0.956× | 494056 |
@@ -94,9 +100,9 @@ The low legacy XQuAD scores are affected by the generation bug and should not be
 
 ## Per-task legacy results: 32k
 
-Legacy adapter values. Classification metrics use 0–1; the final XQuAD row uses 0–100. `acc_norm` is the benchmark's length-normalized choice score; it is not F1. Interpretation requires the evaluator caveat above.
+Legacy adapter values; all displayed task metrics are higher-is-better (↑), with provisional rankings. Classification metrics use 0–1; the final XQuAD row uses 0–100. `acc_norm` counts correct choices selected with length-normalized likelihoods; it is not F1. Interpretation requires the evaluator caveat above.
 
-| Task | Metric | Raw BPE | MorphBPE · TRmorph | MorphBPE · Zemberek |
+| Task | Metric ↑ | Raw BPE | MorphBPE · TRmorph | MorphBPE · Zemberek |
 | --- | --- | ---: | ---: | ---: |
 | `exams_tr` | `acc_norm` | 0.3104 | 0.2875 | 0.2952 |
 | `belebele_tr` | `acc_norm` | 0.2522 | 0.2356 | 0.2433 |
@@ -115,9 +121,9 @@ Legacy adapter values. Classification metrics use 0–1; the final XQuAD row use
 
 ## Per-task legacy results: 64k
 
-Legacy adapter values. Classification metrics use 0–1; the final XQuAD row uses 0–100. `acc_norm` is the benchmark's length-normalized choice score; it is not F1. Interpretation requires the evaluator caveat above.
+Legacy adapter values; all displayed task metrics are higher-is-better (↑), with provisional rankings. Classification metrics use 0–1; the final XQuAD row uses 0–100. `acc_norm` counts correct choices selected with length-normalized likelihoods; it is not F1. Interpretation requires the evaluator caveat above.
 
-| Task | Metric | Raw BPE | MorphBPE · TRmorph | MorphBPE · Zemberek | MorphBPE · TurkishDelight |
+| Task | Metric ↑ | Raw BPE | MorphBPE · TRmorph | MorphBPE · Zemberek | MorphBPE · TurkishDelight |
 | --- | --- | ---: | ---: | ---: | ---: |
 | `exams_tr` | `acc_norm` | 0.3028 | 0.3079 | 0.2926 | 0.3028 |
 | `belebele_tr` | `acc_norm` | 0.2433 | 0.2233 | 0.2300 | 0.2356 |
@@ -136,9 +142,9 @@ Legacy adapter values. Classification metrics use 0–1; the final XQuAD row use
 
 ## Per-task legacy results: 128k
 
-Legacy adapter values. Classification metrics use 0–1; the final XQuAD row uses 0–100. `acc_norm` is the benchmark's length-normalized choice score; it is not F1. Interpretation requires the evaluator caveat above.
+Legacy adapter values; all displayed task metrics are higher-is-better (↑), with provisional rankings. Classification metrics use 0–1; the final XQuAD row uses 0–100. `acc_norm` counts correct choices selected with length-normalized likelihoods; it is not F1. Interpretation requires the evaluator caveat above.
 
-| Task | Metric | Raw BPE | MorphBPE · TRmorph | MorphBPE · Zemberek | MorphBPE · TurkishDelight |
+| Task | Metric ↑ | Raw BPE | MorphBPE · TRmorph | MorphBPE · Zemberek | MorphBPE · TurkishDelight |
 | --- | --- | ---: | ---: | ---: | ---: |
 | `exams_tr` | `acc_norm` | 0.3104 | 0.2926 | 0.3079 | 0.2952 |
 | `belebele_tr` | `acc_norm` | 0.2389 | 0.2400 | 0.2633 | 0.2233 |
@@ -161,7 +167,7 @@ The [June 12 comparison](../../artifacts/cetvel_core12_model_comparison_2026-06-
 
 The earlier [raw-BPE-only archive](../../artifacts/cetvel_base_subset_2026-06-09_job493293/metrics_summary.json) preserves additional metrics and subtasks. The following are baseline-only and must not be used as a tokenizer-family comparison:
 
-| Baseline-only task | Metric | Value |
+| Baseline-only task | Metric | Value ↑ |
 | --- | --- | ---: |
 | `check_worthiness` | `acc` | 0.376143 |
 | `check_worthiness` | `acc_norm` | 0.428702 |
@@ -190,7 +196,7 @@ The compact [UHeM evidence bundle](../../artifacts/model_evidence_2026-11-09/) w
 
 The table reports `loop_state.total_training_time`, an accumulated training-loop counter that excludes initial compile/warmup steps, evaluation, checkpoint and setup overhead. It is not scheduler wall-clock time. Throughput below uses logged step measurements; the full position budget is not divided by this partial-time counter. [CSV](model_training_performance.csv) and [JSON](model_results.json) retain exact values, model and optimizer settings, source paths and hashes.
 
-| Tokenizer | Layers | Width | Heads | Recovered BPB ↓ | Training-loop h |
+| Tokenizer | Layers ↔ | Width ↔ | Heads ↔ | Recovered BPB ↓ | Training-loop h ↓ |
 | --- | --- | --- | --- | --- | --- |
 | bpe_32768 | 20 | — | — | — | — |
 | morphbpe_trmorph_32768 | 20 | 1280 | 10 | 0.62657260 | 21.096 |
@@ -215,7 +221,9 @@ The [additional model-configuration report](model_configuration_results.md) cont
 
 Fresh log recovery preserves all eleven completed runs. Tokens/s, step time and BF16 MFU are medians of printed steps 17,000–17,099 (100 steps per run); MFU follows the logger’s hardware/FLOP convention. Peak MiB is the logged training-process memory figure, not total cluster RAM. Scheduler wall time includes other job work and is distinct from the training-loop counter.
 
-| Tokenizer | Parameters | Training min | Slurm wall time | Median tok/s | Median step ms | BF16 MFU % | Peak MiB |
+Direction labels assume matched workload and hardware: tokens/s ↑ is throughput, step time and elapsed time ↓ are latency/cost, and peak memory ↓ is resource demand. MFU ↔ is estimated hardware-compute utilization, not a model-quality score. Parameters ↔ describe model size. See the [metric guide](metric_guide.md).
+
+| Tokenizer | Parameters ↔ | Training min ↓ | Slurm wall time ↓ | Median tok/s ↑ | Median step ms ↓ | BF16 MFU % ↔ | Peak MiB ↓ |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | bpe_32768 | 896,533,746 | 1267.66 | 21:31:38 | 235775.0 | 4447.35 | 61.21 | 18499.62 |
 | morphbpe_trmorph_32768 | 896,533,746 | 1265.77 | 21:30:53 | 236079.5 | 4441.61 | 61.29 | 18499.74 |
@@ -235,7 +243,7 @@ Fresh log recovery preserves all eleven completed runs. Tokens/s, step time and 
 
 These logged train/validation evaluations run after the final checkpoint. They are a separate evaluation call and are preserved separately from checkpoint validation BPB; they must not silently replace the earlier measurement.
 
-| Tokenizer | Checkpoint val BPB (log) | Base-eval train BPB | Base-eval val BPB |
+| Tokenizer | Checkpoint val BPB (log) ↓ | Base-eval train BPB ↓ | Base-eval val BPB ↓ |
 | --- | --- | --- | --- |
 | bpe_32768 | 0.623213 | 0.749119 | 0.623278 |
 | morphbpe_trmorph_32768 | 0.626573 | 0.750972 | 0.626622 |
@@ -255,7 +263,7 @@ These logged train/validation evaluations run after the final checkpoint. They a
 
 This separate June 7 job validates the pipeline, not the controlled tokenizer comparison. Its tokenizer was trained on a 50-million-character cap and is named `bpe_32768_uhem_smoke`.
 
-| Depth / width / heads | Context | Parameters | Steps | Training positions | Training min | Slurm wall time | MFU % | Peak MiB |
+| Depth / width / heads ↔ | Context ↔ | Parameters ↔ | Steps ↔ | Training positions ↔ | Training min ↓ | Slurm wall time ↓ | MFU % ↔ | Peak MiB ↓ |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2 / 128 / 2 | 256 | 12,976,182 | 1980 | 259,522,560 | 11.60 | 00:17:38 | 2.51 | 1,420.94 |
 

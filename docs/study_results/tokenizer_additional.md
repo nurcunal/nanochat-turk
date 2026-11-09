@@ -1,5 +1,11 @@
 # Additional archived tokenizer measurements
 
+**Direction legend:** ↑ means higher is better for the stated objective; ↓ means lower is better; ↔ means descriptive or a tradeoff, with no universally better direction. See the [metric guide](metric_guide.md) for every definition, denominator and limitation.
+
+**Objectives:** lower tokens/word and higher bytes/token mean more compact lossless encoding. Higher one-token coverage helps isolated-word compression only. Higher morphology preservation, boundary agreement and consistency, or lower morphology edit distance, mean closer agreement with the automatic reference; they do not establish better LLM performance. Lower multi-character character-only coverage means less character-level fragmentation.
+
+**Diagnostics:** vocabulary size, vocabulary use, sample counts, inclusive character-only/byte-only coverage and resample SD have no universal optimum. Zero roundtrip failures is ideal for exact text recovery; fewer UNKs and alignment exclusions are better when applicable. Speed ↑ and time ↓ apply only to matched workloads and hardware; recorded timings here do not establish a controlled speed ranking. Normalizing references' apparent compression and boundary figures remain descriptive.
+
 This supplement adds previously uncollected UHeM results: two complete twelve-tokenizer training-prefix comparisons and raw-BPE-only train/validation diagnostics used by d32 preflight. They are archived measurements recovered on 9 November 2026, not new model training or evaluation. [Original JSONs and scheduler evidence](../../artifacts/tokenizer_metrics_additional_2026-11-09/) are preserved byte-for-byte. Download [JSON](tokenizer_additional.json) or [CSV](tokenizer_additional.csv).
 
 The 100k, 1m and [full-corpus](tokenizer_full_corpus.md) passes overlap. Their isolated-word/alignment metrics remain capped at 500,000 occurrences and consistency at 50,000 word types; repeated word-level results are not independent replications. Every comparison uses the automatic TRmorph reference, with its associated analyzer bias.
@@ -8,7 +14,7 @@ The 100k, 1m and [full-corpus](tokenizer_full_corpus.md) passes overlap. Their i
 
 Job **496924**: COMPLETED, exit 0:0, elapsed 00:06:46. Every row covers 100,000 training documents, 339,412,790 UTF-8 bytes and 41,919,065 regex words. All use 32 metric workers and one tokenizer thread per worker.
 
-| Vocab | Tokenizer | Tokens/word ↓ | Isolated tokens/word ↓ | One-token words % | Bytes/token ↑ | Exact morph sequence % | Boundaries preserved % | Morph edit ↓ | Consistency F1 ↑ |
+| Vocab ↔ | Tokenizer | Tokens/word ↓ | Isolated tokens/word ↓ | One-token words % ↑ compression | Bytes/token ↑ | Exact morph sequence % ↑ | Boundaries preserved % ↑ | Morph edit ↓ | Consistency F1 ↑ |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 1.5976 | 2.0472 | 31.05 | 5.0681 | 32.46 | 15.75 | 1.7096 | 0.3241 |
 | 32,768 | MorphBPE / TRmorph | 1.8021 | 1.9890 | 34.09 | 4.4930 | 41.54 | 54.23 | 1.4319 | 0.5129 |
@@ -25,7 +31,7 @@ Job **496924**: COMPLETED, exit 0:0, elapsed 00:06:46. Every row covers 100,000 
 
 **Interpretation:** Lowest corpus fertility: Raw BPE at 32k, 64k and 128k. Lowest isolated fertility: Zemberek at 32k, 64k and 128k. The lead at 64k and 128k is at most 0.001 token/word at the displayed precision. Lowest morphology edit distance: TRmorph at 32k, 64k and 128k. Highest one-token coverage, exact-morpheme agreement and boundary preservation: TRmorph at 32k, 64k and 128k. Highest original pairwise consistency F1: TRmorph at 32k and 64k; TurkishDelight at 128k. TurkishDelight at 128k has both higher isolated fertility and lower one-token coverage than same-size raw BPE, despite its morphology improvements.
 
-| Vocab | Tokenizer | Normalized morph edit | Consistency P | Consistency R | F1 resample SD |
+| Vocab ↔ | Tokenizer | Normalized morph edit ↓ | Consistency P ↑ | Consistency R ↑ | F1 resample SD ↔ |
 |---:|---|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 1.2328 | 0.9630 | 0.1949 | 0.0079 |
 | 32,768 | MorphBPE / TRmorph | 1.0362 | 0.9865 | 0.3466 | 0.0046 |
@@ -44,9 +50,9 @@ Job **496924**: COMPLETED, exit 0:0, elapsed 00:06:46. Every row covers 100,000 
 
 ### Archived encoding and evaluator performance
 
-These are recorded timings, not a controlled tokenizer speed benchmark. `Encode M tok/s` divides token count by accumulated encoding time across workers; `Evaluator wall s` includes the rest of metric computation. The two use different time denominators. Worker/thread settings are shown so they are not mistaken for like-for-like speed measurements.
+These are recorded timings, not a controlled tokenizer speed benchmark. `Encode M tok/s` divides token count by accumulated encoding time across workers (↑ token throughput under matched conditions). `Document-pass wall s` is elapsed time for the document pass (↓ time), including document I/O, roundtrip and boundary accounting but excluding the later isolated-word, coverage and morphology computations; parallel word-sample collection also precedes this timer. The raw field remains `metric_wall_seconds`. The two time measures have different denominators. Worker/thread settings and vocabulary usage are descriptive; different work allocations prevent like-for-like speed rankings.
 
-| Vocab | Tokenizer | Encode M tok/s | Encoding s (summed) | Evaluator wall s | Workers × threads | Used vocab % | Roundtrip failures |
+| Vocab ↔ | Tokenizer | Encode M tok/s ↑ speed | Encoding s (summed) ↓ time | Document-pass wall s ↓ time | Workers × threads ↔ | Used vocab % ↔ | Roundtrip failures ↓ (0 ideal) |
 |---:|---|---:|---:|---:|---|---:|---:|
 | 32,768 | Raw BPE | 1.293 | 51.79 | 11.22 | 32 × 1 | 99.74 | 0 |
 | 32,768 | MorphBPE / TRmorph | 1.351 | 55.92 | 11.31 | 32 × 1 | 99.68 | 0 |
@@ -67,7 +73,7 @@ These are recorded timings, not a controlled tokenizer speed benchmark. `Encode 
 
 Job **496925**: COMPLETED, exit 0:0, elapsed 00:24:03. Every row covers 1,000,000 training documents, 3,309,498,345 UTF-8 bytes and 405,115,789 regex words. All use 32 metric workers and one tokenizer thread per worker.
 
-| Vocab | Tokenizer | Tokens/word ↓ | Isolated tokens/word ↓ | One-token words % | Bytes/token ↑ | Exact morph sequence % | Boundaries preserved % | Morph edit ↓ | Consistency F1 ↑ |
+| Vocab ↔ | Tokenizer | Tokens/word ↓ | Isolated tokens/word ↓ | One-token words % ↑ compression | Bytes/token ↑ | Exact morph sequence % ↑ | Boundaries preserved % ↑ | Morph edit ↓ | Consistency F1 ↑ |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 1.5519 | 2.0472 | 31.05 | 5.2641 | 32.46 | 15.04 | 1.7096 | 0.3241 |
 | 32,768 | MorphBPE / TRmorph | 1.7711 | 1.9890 | 34.09 | 4.6126 | 41.54 | 54.12 | 1.4319 | 0.5129 |
@@ -84,7 +90,7 @@ Job **496925**: COMPLETED, exit 0:0, elapsed 00:24:03. Every row covers 1,000,00
 
 **Interpretation:** Lowest corpus fertility: Raw BPE at 32k, 64k and 128k. Lowest isolated fertility: Zemberek at 32k, 64k and 128k. The lead at 64k and 128k is at most 0.001 token/word at the displayed precision. Lowest morphology edit distance: TRmorph at 32k, 64k and 128k. Highest one-token coverage, exact-morpheme agreement and boundary preservation: TRmorph at 32k, 64k and 128k. Highest original pairwise consistency F1: TRmorph at 32k and 64k; TurkishDelight at 128k. TurkishDelight at 128k has both higher isolated fertility and lower one-token coverage than same-size raw BPE, despite its morphology improvements.
 
-| Vocab | Tokenizer | Normalized morph edit | Consistency P | Consistency R | F1 resample SD |
+| Vocab ↔ | Tokenizer | Normalized morph edit ↓ | Consistency P ↑ | Consistency R ↑ | F1 resample SD ↔ |
 |---:|---|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 1.2328 | 0.9630 | 0.1949 | 0.0079 |
 | 32,768 | MorphBPE / TRmorph | 1.0362 | 0.9865 | 0.3466 | 0.0046 |
@@ -103,9 +109,9 @@ Job **496925**: COMPLETED, exit 0:0, elapsed 00:24:03. Every row covers 1,000,00
 
 ### Archived encoding and evaluator performance
 
-These are recorded timings, not a controlled tokenizer speed benchmark. `Encode M tok/s` divides token count by accumulated encoding time across workers; `Evaluator wall s` includes the rest of metric computation. The two use different time denominators. Worker/thread settings are shown so they are not mistaken for like-for-like speed measurements.
+These are recorded timings, not a controlled tokenizer speed benchmark. `Encode M tok/s` divides token count by accumulated encoding time across workers (↑ token throughput under matched conditions). `Document-pass wall s` is elapsed time for the document pass (↓ time), including document I/O, roundtrip and boundary accounting but excluding the later isolated-word, coverage and morphology computations; parallel word-sample collection also precedes this timer. The raw field remains `metric_wall_seconds`. The two time measures have different denominators. Worker/thread settings and vocabulary usage are descriptive; different work allocations prevent like-for-like speed rankings.
 
-| Vocab | Tokenizer | Encode M tok/s | Encoding s (summed) | Evaluator wall s | Workers × threads | Used vocab % | Roundtrip failures |
+| Vocab ↔ | Tokenizer | Encode M tok/s ↑ speed | Encoding s (summed) ↓ time | Document-pass wall s ↓ time | Workers × threads ↔ | Used vocab % ↔ | Roundtrip failures ↓ (0 ideal) |
 |---:|---|---:|---:|---:|---|---:|---:|
 | 32,768 | Raw BPE | 1.358 | 462.96 | 96.37 | 32 × 1 | 99.82 | 0 |
 | 32,768 | MorphBPE / TRmorph | 1.415 | 507.05 | 98.95 | 32 × 1 | 99.82 | 0 |
@@ -126,7 +132,7 @@ These are recorded timings, not a controlled tokenizer speed benchmark. `Encode 
 
 The d32 preflight records name the original `nanochat-turk-d20-bpe32k/tokenizers/bpe_32768` tokenizer path. They evaluate raw text with no morphology reference; boundary and morphology fields are not applicable. These are tokenizer-only diagnostics and do not add a new model cell or matched multi-tokenizer validation comparison. The full-train token/byte counts match the recovered full-corpus BPE32k row exactly.
 
-| Split | Documents | UTF-8 bytes | Regex words | Tokens/word | Isolated tokens/word | One-token words % | Bytes/token | Roundtrip failures |
+| Split | Documents ↔ | UTF-8 bytes ↔ | Regex words ↔ | Tokens/word ↓ | Isolated tokens/word ↓ | One-token words % ↑ compression | Bytes/token ↑ | Roundtrip failures ↓ (0 ideal) |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | train | 93,211,827 | 299,173,651,770 | 36,699,889,764 | 1.5553 | 2.0472 | 31.05 | 5.2415 | 0 |
 | val | 1,917,302 | 6,323,778,000 | 778,613,710 | 1.5741 | 2.0076 | 32.00 | 5.1596 | 0 |
@@ -135,7 +141,7 @@ The d32 preflight records name the original `nanochat-turk-d20-bpe32k/tokenizers
 
 Both use 500,000 isolated word occurrences. Training uses 112 workers × 1 thread; validation uses 56 × 1. Their timing is separate from the twelve-tokenizer prefix comparisons.
 
-| Split | Encode M tok/s | Encoding s (summed) | Evaluator wall s | Used vocab % |
+| Split | Encode M tok/s ↑ speed | Encoding s (summed) ↓ time | Document-pass wall s ↓ time | Used vocab % ↔ |
 |---|---:|---:|---:|---:|
 | train | 1.107 | 51559.81 | 1535.21 | 99.84 |
 | val | 1.386 | 884.34 | 31.70 | 99.83 |

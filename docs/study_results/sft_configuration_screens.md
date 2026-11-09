@@ -1,14 +1,18 @@
 # SFT configuration screens: d32 with raw BPE 32k
 
+**Direction legend:** ↑ higher is better for the stated check; ↓ lower is better; ↔ describes setup or a diagnostic with no universal quality direction. Compare the same dataset, probe suite and scoring rules. The [metric guide](metric_guide.md) explains the measures and their comparison limits.
+
 These recovered posttraining results hold the tokenizer at **raw BPE, 32,768 tokens** and vary the training curriculum, learning rates and checkpoint. They supplement the [base-model tokenizer ablation](model_results.md); they are not additional tokenizer-family comparisons. All are descendants of the d32 FineWeb-2 model. The 41-case probe and 512-case production behavior suite are custom selection diagnostics, not CETVEL. Because these checks inform candidate selection, their pass rates are not independent held-out estimates of general capability.
 
 Read-only UHeM recovery: `2026-11-09T12:47:17.506694+00:00`. [Source manifest](../../artifacts/uhem_sft_screens_2026-11-09/manifest.json), [flat CSV](sft_configuration_screens.csv), [full derived JSON](sft_configuration_screens.json). Original receipt bytes, source paths, SHA-256 hashes, code identities and checkpoint hashes are preserved. These summaries establish recorded results; this import does not re-execute their evaluators or verify current weight-file availability.
 
 The common retained SFT source is `tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1`, checkpoint **84**. Its custom probe score is **9/41**. Low validation BPB on these small SFT corpora does not establish better general language modeling or downstream capability. Compare BPB only within a dataset and scoring protocol; it is not comparable to pretraining BPB or across the different curricula below.
 
+Validation BPB ↓ measures prediction cost in bits per byte on the specified SFT validation text. Probe passes and pass rate ↑ count satisfied behavior checks and their fraction of the same suite; failed checks ↓ are preferred under those same criteria. A higher total does not guarantee qualification because category-specific selection gates also apply. Checkpoint/step numbers, learning rates and dataset row counts ↔ describe budget and configuration, not quality. Artifact verification confirms the saved checkpoint and recorded identities, not task performance.
+
 ## Dataset and protocol inventory
 
-| Study | Training rows | Validation rows | Evaluation | Status |
+| Study | Training rows ↔ | Validation rows ↔ | Evaluation | Status |
 | --- | ---: | ---: | --- | --- |
 | Targeted repair v3 | 7,860 | 1,557 | 41-case selection probe | Nine verified checkpoints; retain source |
 | Capability calibration v1 | 7,600 | 400 | Checkpoint validation BPB | Five verified checkpoints; incomplete screen |
@@ -23,7 +27,7 @@ Targeted repair and final polish share the exact 1,557-row validation file (SHA-
 
 The recovered selection reuses completed training and probe outputs after the initial selection step failed. The repaired decision is **retain source**: none of the nine candidates passes its selection gates. The arm names below are the recorded low/mid/high labels; exact checkpoint identities are retained in JSON.
 
-| Arm | Checkpoint | SFT validation BPB ↓ | Probe passes / 41 ↑ | Qualified |
+| Arm | Checkpoint ↔ | SFT validation BPB ↓ | Probe passes / 41 ↑ | Qualified (desired: Yes) |
 | --- | ---: | ---: | ---: | --- |
 | low | 8 | 0.454580 | 8/41 | No |
 | low | 16 | 0.450470 | 8/41 | No |
@@ -43,7 +47,7 @@ Evidence: [probe scores](../../artifacts/uhem_sft_screens_2026-11-09/sources/bou
 
 The table reports the declared matrix learning rate and the receipt’s effective initial smear learning rate. Other optimizer-group rates and the initial multiplier are preserved in the source receipts. All nine rows are diagnostic selection candidates; the recorded decision is **retain source**, with no probe-qualified candidate.
 
-| Arm | Step | Matrix LR | Initial smear LR | SFT validation BPB ↓ | Probe passes / 41 ↑ | Qualified |
+| Arm | Step ↔ | Matrix LR ↔ | Initial smear LR ↔ | SFT validation BPB ↓ | Probe passes / 41 ↑ | Qualified (desired: Yes) |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | eff005 | 4 | 0.0010 | 0.0020 | 0.460415 | 8/41 | No |
 | eff005 | 8 | 0.0010 | 0.0020 | 0.459071 | 8/41 | No |
@@ -63,7 +67,7 @@ Evidence: [probe selection](../../artifacts/uhem_sft_screens_2026-11-09/sources/
 
 This is a separate 7,600-training/400-validation-row curriculum. These rows establish checkpoint verification and its recorded validation BPB. They do not establish passing behavior probes or a selected release. The `eff040-16` summary is empty; no value is inferred for it or other unreported arms.
 
-| Arm | Step | Matrix LR | Initial smear LR | SFT validation BPB ↓ | Verification |
+| Arm | Step ↔ | Matrix LR ↔ | Initial smear LR ↔ | SFT validation BPB ↓ | Artifact verification |
 | --- | ---: | ---: | ---: | ---: | --- |
 | eff020 | 8 | 0.0040 | 0.0080 | 0.575542 | Pass |
 | eff020 | 16 | 0.0040 | 0.0080 | 0.379709 | Pass |
@@ -75,9 +79,9 @@ This is a separate 7,600-training/400-validation-row curriculum. These rows esta
 
 ## Final polish: source versus candidate
 
-The candidate is `tr_d32_bpe32k_final_instruct_polish_v1`, checkpoint **64**. Both checkpoints use raw BPE 32k. The saved selection rejects the candidate and retains source checkpoint 84. Pass counts below are custom behavior checks. Diagnostics such as echo and repetition are independent counts and need not sum to the suite size.
+The candidate is `tr_d32_bpe32k_final_instruct_polish_v1`, checkpoint **64**. Both checkpoints use raw BPE 32k. The saved selection rejects the candidate and retains source checkpoint 84. Pass counts below are custom behavior checks. Empty ↓ counts missing answers, echo ↓ counts prompt copying, and repetition ↓ counts detected repetitive output; fewer are preferred under the same suite and detector. Assistant-end termination ↔ counts outputs ending with the expected control token: correct stopping is useful, but a larger count alone does not show a correct or complete answer. These diagnostics are independent counts and need not sum to the suite size.
 
-| Model | Suite | Passes ↑ | Pass rate ↑ | Empty ↓ | Echo ↓ | Repetition ↓ | Assistant-end termination |
+| Model | Suite | Passes ↑ | Pass rate ↑ | Empty ↓ | Echo ↓ | Repetition ↓ | Assistant-end termination ↔ |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Source | probe | 9/41 | 21.95% | 2 | 2 | 2 | 40 |
 | Source | production | 68/512 | 13.28% | 0 | 179 | 15 | 490 |

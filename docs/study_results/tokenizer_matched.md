@@ -1,5 +1,11 @@
 # Matched tokenizer evaluation: archival mirror
 
+**Direction legend:** ↑ means higher is better for the stated objective; ↓ means lower is better; ↔ means descriptive or a tradeoff, with no universally better direction. See the [metric guide](metric_guide.md) for every definition, denominator and limitation.
+
+**Objectives:** lower tokens/word and higher bytes/token mean more compact lossless encoding. Higher one-token coverage helps isolated-word compression only. Higher morphology preservation, boundary agreement and consistency, or lower morphology edit distance, mean closer agreement with the automatic reference; they do not establish better LLM performance. Lower multi-character character-only coverage means less character-level fragmentation.
+
+**Diagnostics:** vocabulary size, vocabulary use, sample counts, inclusive character-only/byte-only coverage and resample SD have no universal optimum. Zero roundtrip failures is ideal for exact text recovery; fewer UNKs and alignment exclusions are better when applicable. Speed ↑ and time ↓ apply only to matched workloads and hardware; recorded timings here do not establish a controlled speed ranking. Normalizing references' apparent compression and boundary figures remain descriptive.
+
 This is an archival view of the same 24 measurements from job 558060 in the [canonical fresh tokenizer report](tokenizer_fresh_results.md). It preserves the recovered source snapshot and receipt checks; it is not an additional experiment or independent replication.
 
 Fresh UHeM job **558060** completed successfully on 9 November 2026 (exit 0:0; scheduler elapsed 00:14:37). This separate evaluation adds individual-morpheme preservation, literal boundary precision/recall/F1, character-only coverage and a reserved validation-shard sample for all twelve tokenizers. It does not create new language-model results. [Original measurements and receipts](../../artifacts/tokenizer_metrics_matched_2026-11-09/), [full JSON](tokenizer_matched.json), [flat CSV](tokenizer_matched.csv).
@@ -8,12 +14,14 @@ Each split uses 50,000 documents, the same first 500,000 isolated word occurrenc
 
 ## Metric definitions
 
-- **Corpus tokens/word:** encoded document tokens divided by regex words; punctuation/spacing tokens contribute to the numerator.
-- **One-token and character-only coverage:** occurrence-weighted isolated words. Character-only requires every token to decode to one Unicode character; UTF-8 byte fragments are counted separately.
-- **Intact morphemes:** fraction of reference morpheme spans that coincide exactly with one token span. Splitting a morpheme or merging multiple morphemes loses that exact match.
-- **Boundary P/R/F1:** micro agreement of internal token boundaries and reference boundaries on isolated words; word edges are excluded. This differs from document-context boundary preservation and the original shared-token/shared-morpheme consistency F1.
-- **Alignment exclusions:** unalignable word encodings are counted; morphology denominators use scored words. The tables report the exclusions instead of treating them as successful alignment.
-- **UNK:** local byte-complete tokenizers have no UNK mechanism, so UNK is N/A, not an observed zero.
+- **Vocabulary (↔):** number of token IDs, including nine special tokens locally. Larger vocabularies can shorten sequences but require larger model embedding/output tables.
+- **Corpus tokens/word (↓ compression):** encoded document tokens divided by regex words; punctuation/spacing tokens contribute to the numerator. **Isolated tokens/word (↓ compression)** encodes each sampled word separately. **Bytes/token (↑ compression)** is original UTF-8 bytes divided by document tokens.
+- **One-token coverage (↑ isolated-word compression only)** is the fraction of sampled word occurrences represented losslessly by one non-UNK token. **Character-only coverage (↔ diagnostic)** requires every token to decode to one Unicode character and includes one-character words. **Multi-character character-only coverage (↓ fragmentation)** restricts its denominator to words longer than one character. **Byte-only coverage (↔ diagnostic)** requires one UTF-8 byte per token; byte fragments and Unicode characters differ.
+- **Intact morphemes (↑ reference agreement):** fraction of reference morpheme spans that coincide exactly with one token span. Splitting a morpheme or merging multiple morphemes loses that exact match. **Exact morph sequence (↑ reference agreement)** requires every piece in a word to match the reference sequence.
+- **Boundary P/R/F1 (↑ reference agreement):** micro agreement of internal token boundaries and reference boundaries on isolated words; word edges are excluded. Precision is the fraction of predicted boundaries that match; recall is the fraction of reference boundaries recovered; F1 is their harmonic mean. **Document boundaries preserved (↑ reference agreement)** checks contextual reference boundaries without penalizing extra splits, so it is a different metric.
+- **Morph edit / normalized edit (↓ reference disagreement):** token-piece versus reference-piece sequence edit distance, with the normalized version divided by reference morpheme count. **Consistency P/R/F1 (↑ reference agreement)** measures shared-token/shared-morpheme word-pair agreement, separately from literal boundary F1.
+- **Alignment exclusions (↓ evaluation failures):** unalignable word encodings are counted; morphology denominators use scored words. Fewer exclusions improve evaluation coverage, not necessarily linguistic quality. **Roundtrip failures (↓; zero ideal)** count documents whose decode/encode output differs from the original.
+- **UNK (↓ when applicable):** local byte-complete tokenizers have no UNK mechanism, so UNK is N/A, not an observed zero.
 
 Automatic TRmorph annotations may favor the TRmorph-trained treatment. These are single-run diagnostic measurements; consistency resample SD is not across-training-seed uncertainty or a confidence interval.
 
@@ -21,7 +29,7 @@ Automatic TRmorph annotations may favor the TRmorph-trained treatment. These are
 
 50,000 documents; 186,328,421 UTF-8 bytes; 23,042,031 regex words. Source: `000_00000.segmented.parquet`. Percentages below use the denominators defined above.
 
-| Vocab | Tokenizer | Corpus tokens/word ↓ | Isolated tokens/word ↓ | One-token words % | Character-only words % | Intact morphemes % ↑ | Boundary P % ↑ | Boundary R % ↑ | Boundary F1 % ↑ |
+| Vocab ↔ | Tokenizer | Corpus tokens/word ↓ | Isolated tokens/word ↓ | One-token words % ↑ compression | Character-only words % ↔ | Intact morphemes % ↑ | Boundary P % ↑ | Boundary R % ↑ | Boundary F1 % ↑ |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 1.6157 | 2.0472 | 31.05 | 2.31 | 30.76 | 19.08 | 37.17 | 25.22 |
 | 32,768 | MorphBPE / TRmorph | 1.8166 | 1.9890 | 34.09 | 2.23 | 42.90 | 29.36 | 54.02 | 38.05 |
@@ -40,7 +48,7 @@ Automatic TRmorph annotations may favor the TRmorph-trained treatment. These are
 
 ### Compression and original morphology diagnostics
 
-| Vocab | Tokenizer | Bytes/token ↑ | Morph edit ↓ | Normalized edit ↓ | Exact morph sequence % | Consistency P | Consistency R | Consistency F1 | Document boundaries preserved % |
+| Vocab ↔ | Tokenizer | Bytes/token ↑ | Morph edit ↓ | Normalized edit ↓ | Exact morph sequence % ↑ | Consistency P ↑ | Consistency R ↑ | Consistency F1 ↑ | Document boundaries preserved % ↑ |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 5.0051 | 1.7096 | 1.2328 | 32.46 | 0.9630 | 0.1949 | 0.3241 | 16.05 |
 | 32,768 | MorphBPE / TRmorph | 4.4514 | 1.4319 | 1.0362 | 41.54 | 0.9865 | 0.3466 | 0.5129 | 54.31 |
@@ -59,9 +67,9 @@ Automatic TRmorph annotations may favor the TRmorph-trained treatment. These are
 
 ### Coverage exclusions and recorded runtime
 
-All use one metric worker and eight tokenizer threads per process, with four tokenizer processes scheduled concurrently. Timing is a recorded runtime diagnostic rather than an isolated serial speed benchmark. Multi-character character-only coverage excludes one-character words from its denominator.
+All use one metric worker and eight tokenizer threads per process, with four tokenizer processes scheduled concurrently. Encoding throughput is tokens divided by accumulated encoding time (↑ only for matched conditions); producing more tokens can raise this rate without processing text faster. Document-pass wall time (↓ time; raw field `metric_wall_seconds`) includes document I/O, roundtrip and boundary accounting but ends before isolated-word, coverage and morphology computation. Parallel preliminary word collection also precedes this timer. These are recorded runtime diagnostics, not a controlled serial speed benchmark. Multi-character character-only coverage excludes one-character words from its denominator.
 
-| Vocab | Tokenizer | Byte-only words % | Multi-char character-only % | Coverage unaligned | Morphology unaligned | Roundtrip failures | Encode M tok/s | Evaluator wall s |
+| Vocab ↔ | Tokenizer | Byte-only words % ↔ | Multi-char character-only % ↓ fragmentation | Coverage unaligned ↓ | Morphology unaligned ↓ | Roundtrip failures ↓ (0 ideal) | Encode M tok/s ↑ speed | Document-pass wall s ↓ time |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 2.21 | 0.39 | 0 | 0 | 0 | 4.865 | 102.03 |
 | 32,768 | MorphBPE / TRmorph | 2.14 | 0.31 | 0 | 0 | 0 | 5.224 | 102.26 |
@@ -82,7 +90,7 @@ All use one metric worker and eight tokenizer threads per process, with four tok
 
 50,000 documents; 161,056,183 UTF-8 bytes; 19,832,065 regex words. Source: `004_00005.segmented.parquet`. Percentages below use the denominators defined above.
 
-| Vocab | Tokenizer | Corpus tokens/word ↓ | Isolated tokens/word ↓ | One-token words % | Character-only words % | Intact morphemes % ↑ | Boundary P % ↑ | Boundary R % ↑ | Boundary F1 % ↑ |
+| Vocab ↔ | Tokenizer | Corpus tokens/word ↓ | Isolated tokens/word ↓ | One-token words % ↑ compression | Character-only words % ↔ | Intact morphemes % ↑ | Boundary P % ↑ | Boundary R % ↑ | Boundary F1 % ↑ |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 1.5728 | 2.0076 | 32.00 | 2.43 | 31.57 | 18.87 | 36.88 | 24.96 |
 | 32,768 | MorphBPE / TRmorph | 1.7785 | 1.9414 | 35.89 | 2.35 | 44.30 | 29.70 | 54.23 | 38.38 |
@@ -101,7 +109,7 @@ All use one metric worker and eight tokenizer threads per process, with four tok
 
 ### Compression and original morphology diagnostics
 
-| Vocab | Tokenizer | Bytes/token ↑ | Morph edit ↓ | Normalized edit ↓ | Exact morph sequence % | Consistency P | Consistency R | Consistency F1 | Document boundaries preserved % |
+| Vocab ↔ | Tokenizer | Bytes/token ↑ | Morph edit ↓ | Normalized edit ↓ | Exact morph sequence % ↑ | Consistency P ↑ | Consistency R ↑ | Consistency F1 ↑ | Document boundaries preserved % ↑ |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 5.1636 | 1.6572 | 1.2010 | 33.54 | 0.9582 | 0.2062 | 0.3393 | 14.52 |
 | 32,768 | MorphBPE / TRmorph | 4.5663 | 1.3672 | 0.9903 | 43.42 | 0.9822 | 0.3402 | 0.5054 | 54.25 |
@@ -120,9 +128,9 @@ All use one metric worker and eight tokenizer threads per process, with four tok
 
 ### Coverage exclusions and recorded runtime
 
-All use one metric worker and eight tokenizer threads per process, with four tokenizer processes scheduled concurrently. Timing is a recorded runtime diagnostic rather than an isolated serial speed benchmark. Multi-character character-only coverage excludes one-character words from its denominator.
+All use one metric worker and eight tokenizer threads per process, with four tokenizer processes scheduled concurrently. Encoding throughput is tokens divided by accumulated encoding time (↑ only for matched conditions); producing more tokens can raise this rate without processing text faster. Document-pass wall time (↓ time; raw field `metric_wall_seconds`) includes document I/O, roundtrip and boundary accounting but ends before isolated-word, coverage and morphology computation. Parallel preliminary word collection also precedes this timer. These are recorded runtime diagnostics, not a controlled serial speed benchmark. Multi-character character-only coverage excludes one-character words from its denominator.
 
-| Vocab | Tokenizer | Byte-only words % | Multi-char character-only % | Coverage unaligned | Morphology unaligned | Roundtrip failures | Encode M tok/s | Evaluator wall s |
+| Vocab ↔ | Tokenizer | Byte-only words % ↔ | Multi-char character-only % ↓ fragmentation | Coverage unaligned ↓ | Morphology unaligned ↓ | Roundtrip failures ↓ (0 ideal) | Encode M tok/s ↑ speed | Document-pass wall s ↓ time |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 2.27 | 0.29 | 0 | 0 | 0 | 5.804 | 85.43 |
 | 32,768 | MorphBPE / TRmorph | 2.20 | 0.22 | 0 | 0 | 0 | 6.118 | 87.61 |
