@@ -4,6 +4,8 @@
 
 Sources: [compact UHeM audit](../../artifacts/uhem_model_audit_2026-11-09/), [derived JSON](later_model_results.json), and [runtime/reproduction notes](reproduction.md). Per-source paths, byte counts, timestamps and SHA-256 hashes are preserved. No model training or benchmark inference was rerun during recovery.
 
+The [expanded configuration report](model_configuration_results.md) preserves additional training-log throughput, memory, scheduler outcomes and all task-level metrics. The separate [SFT configuration screens](sft_configuration_screens.md) concern post-training choices on a single raw-BPE d32 model.
+
 ## A corrected evaluator changes the interpretation
 
 The recovered [generation runner](../../artifacts/uhem_model_audit_2026-11-09/evaluator_evidence/cetvel_generation_fixed_runner.py) documents that the June adapter treated lm-eval's generation-kwargs mapping as a list of stop strings, ignoring actual `until` strings and task generation limits. The later [comparison runner](../../artifacts/uhem_model_audit_2026-11-09/evaluator_evidence/cetvel_comparison_runner.py) also moves trailing context whitespace to the continuation and checks that joint tokenization preserves an exact continuation boundary. Its code is archived as evidence; these files are not installed by the report builder.
@@ -26,7 +28,7 @@ The two d32 F1 values use distinct recorded runner/generation settings and must 
 | `tr_d20_bpe_32768_cont40x` | 20 | 34,200 | 35,861,299,200 | 0.591451 | Continued d20 run; doubled budget |
 | `tr_d32_bpe_32768_fineweb2_all_v1` | 32 | 28,000 | 58,720,256,000 | 0.519040 | Train-overlap diagnostic; not held out |
 
-The d20 continuation uses a distinct learning-rate continuation policy and step 34,200; it must not replace the step-17,100 baseline in the original matrix.
+The d20 continuation uses a distinct learning-rate continuation policy and step 34,200; it must not replace the step-17,100 baseline in the original matrix. Its final checkpoint was saved, but the later recovered Slurm record reports job 512018 FAILED (exit 1); checkpoint availability does not establish a cleanly completed job. Its training-time counter is cumulative and must not be attributed only to the continuation phase.
 
 The completed d32 model has 2,818,575,450 parameters, 2,048-token context, raw BPE32k and 58,720,256,000 scheduled positions. Its launch manifest explicitly trains on **all 30** FineWeb-2 Turkish source shards and also reuses the final source shard as validation. Consequently BPB **0.519040 is a train-overlap diagnostic**, not a held-out generalization result and not comparable as a held-out improvement over the original ablation. The launch describes the exposure schedule as a coverage-oriented heuristic, not a proof of exactly-once document/token consumption.
 

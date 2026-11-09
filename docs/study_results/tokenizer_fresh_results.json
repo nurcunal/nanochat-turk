@@ -2,6 +2,7 @@
   "schema_version": 1,
   "evidence": "fresh_matched_measurements",
   "manifest": "docs/study_results/fresh_tokenizer_metrics/manifest.json",
+  "job_id": "558060",
   "splits": {
     "val": {
       "documents": 50000,

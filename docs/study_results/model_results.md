@@ -8,6 +8,8 @@ Report assembled and audited against UHeM on 2026-11-09. All 132 archived task c
 
 Download [model summary CSV](model_results.csv), [training statistics CSV](model_training_statistics.csv), [all 132 task scores CSV](model_task_metrics.csv), or [full JSON with source paths and hashes](model_results.json). Original evidence: [June 22 benchmark artifact](../../artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/metrics_summary.json).
 
+Additional recovery supplies [all available task metrics](model_all_task_metrics.csv), [training throughput and memory](model_training_performance.csv), [expanded model configurations](model_configuration_results.md), and [SFT configuration screens](sft_configuration_screens.md). Those screens vary post-training settings on one raw-BPE model and are not additional controlled tokenizer cells.
+
 ## Experiment controls
 
 Compare tokenizer families **within a vocabulary tier**. The documented design holds the raw FineWeb-2 Turkish source/manifest/order, model shape, optimizer recipe, token-position budget and evaluation harness fixed within that tier. Across tiers, depth changes to keep parameter counts near 0.9B.
@@ -162,6 +164,76 @@ The repository has Atlas SFT preparation/launcher documentation, but no matched 
 
 Run `python -m scripts.build_model_study_results` from the repository root. The builder checks all 132 task cells, historical carry-forward consistency, final/minimum BPB equality, throughput arithmetic, and macro compatibility with four-decimal source rounding. It records SHA-256 hashes and preserves UHeM source paths in JSON.
 
-Reported macros are preserved rather than recomputed as new measurements. In particular, the 64k TurkishDelight reported macro is 0.4567; the mean of its already-rounded task cells is 0.4567545. The difference is compatible with independent rounding of the source macro and task scores. Raw higher-precision results are needed to resolve its last decimal.
+Reported macros are preserved rather than recomputed as new measurements. In particular, the 64k TurkishDelight reported macro is 0.4567; the mean of its already-rounded task cells is 0.4567545. The difference is compatible with independent rounding of the source macro and task scores. The recovered full-precision mean confirms the archived macro when rounded to four decimals.
 
 For a presentation: report the tokenizer diagnostics and archived BPB, label the CETVEL matrix as legacy, show the evaluator correction and missing 32k TurkishDelight model, and separate later model-scale/budget experiments. Tokenizer-effect claims require a corrected common evaluator, matched raw-text exposure/evaluation spans, replicated seeds, and paired statistical analysis.
+
+## Recovered checkpoint configuration and training performance
+
+The compact [UHeM evidence bundle](../../artifacts/model_evidence_2026-11-09/) was recovered on 9 November 2026. It supplies ten of the eleven final checkpoint metadata records and full-precision evaluation results for all eleven models. All **132 primary task cells** reproduce the archived four-decimal values; all recovered core-11 means reproduce their archived macros. The additional [all-metric CSV](model_all_task_metrics.csv) includes available auxiliary metrics and per-task standard errors, not just the original selected metric.
+
+The table reports `loop_state.total_training_time`, an accumulated training-loop counter that excludes initial compile/warmup steps, evaluation, checkpoint and setup overhead. It is not scheduler wall-clock time. Throughput below uses logged step measurements; the full position budget is not divided by this partial-time counter. [CSV](model_training_performance.csv) and [JSON](model_results.json) retain exact values, model and optimizer settings, source paths and hashes.
+
+| Tokenizer | Layers | Width | Heads | Recovered BPB ↓ | Training-loop h |
+| --- | --- | --- | --- | --- | --- |
+| bpe_32768 | 20 | — | — | — | — |
+| morphbpe_trmorph_32768 | 20 | 1280 | 10 | 0.62657260 | 21.096 |
+| morphbpe_zemberek_32768 | 20 | 1280 | 10 | 0.62497914 | 21.174 |
+| bpe_65536 | 16 | 1024 | 8 | 0.64087624 | 15.123 |
+| morphbpe_trmorph_65536 | 16 | 1024 | 8 | 0.65211758 | 15.100 |
+| morphbpe_zemberek_65536 | 16 | 1024 | 8 | 0.65140315 | 15.097 |
+| morphbpe_tdelight_65536 | 16 | 1024 | 8 | 0.65101966 | 15.058 |
+| bpe_131072 | 12 | 768 | 6 | 0.67487410 | 11.061 |
+| morphbpe_trmorph_131072 | 12 | 768 | 6 | 0.69171386 | 10.972 |
+| morphbpe_zemberek_131072 | 12 | 768 | 6 | 0.69403741 | 10.970 |
+| morphbpe_tdelight_131072 | 12 | 768 | 6 | 0.68201767 | 10.998 |
+
+All ten recovered configurations use context 2,048, full attention (`L`), matching query/KV heads, global batch 1,048,576 token positions, per-device batch 4, and FP8 disabled. The original raw-BPE d20 final metadata path was absent at recovery; its archived BPB and existing benchmark remain valid historical evidence. A dash means the value is unavailable from this metadata source.
+
+The [additional model-configuration report](model_configuration_results.md) contains the d20 continuation, completed d32 FineWeb-2 model, fixed-generation comparisons and full EACL table-compatible benchmark. It explicitly separates protocols and the d32 training-overlap BPB diagnostic from the controlled tokenizer ablation.
+
+
+### Training throughput, memory and scheduler time
+
+Fresh log recovery preserves all eleven completed runs. Tokens/s, step time and BF16 MFU are medians of printed steps 17,000–17,099 (100 steps per run); MFU follows the logger’s hardware/FLOP convention. Peak MiB is the logged training-process memory figure, not total cluster RAM. Scheduler wall time includes other job work and is distinct from the training-loop counter.
+
+| Tokenizer | Parameters | Training min | Slurm wall time | Median tok/s | Median step ms | BF16 MFU % | Peak MiB |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| bpe_32768 | 896,533,746 | 1267.66 | 21:31:38 | 235775.0 | 4447.35 | 61.21 | 18499.62 |
+| morphbpe_trmorph_32768 | 896,533,746 | 1265.77 | 21:30:53 | 236079.5 | 4441.61 | 61.29 | 18499.74 |
+| morphbpe_zemberek_32768 | 896,533,746 | 1270.43 | 21:35:34 | 235298.0 | 4456.36 | 61.09 | 18499.62 |
+| bpe_65536 | 872,416,058 | 907.39 | 15:30:31 | 329363.5 | 3183.64 | 53.13 | 14645.31 |
+| morphbpe_trmorph_65536 | 872,416,058 | 905.97 | 15:28:04 | 329908.5 | 3178.38 | 53.22 | 14645.31 |
+| morphbpe_zemberek_65536 | 872,416,058 | 905.82 | 15:27:54 | 329899.0 | 3178.47 | 53.22 | 14645.31 |
+| morphbpe_tdelight_65536 | 872,416,058 | 903.50 | 15:25:56 | 331144.5 | 3166.52 | 53.42 | 14645.31 |
+| bpe_131072 | 890,241,506 | 663.68 | 11:26:01 | 451859.5 | 2320.57 | 48.52 | 13066.91 |
+| morphbpe_trmorph_131072 | 890,241,506 | 658.31 | 11:19:34 | 454632.5 | 2306.42 | 48.82 | 13065.79 |
+| morphbpe_zemberek_131072 | 890,241,506 | 658.23 | 11:19:37 | 455047.0 | 2304.32 | 48.86 | 13068.04 |
+| morphbpe_tdelight_131072 | 890,241,506 | 659.88 | 11:21:12 | 453685.0 | 2311.24 | 48.72 | 13066.91 |
+
+### Standalone base-evaluation BPB from training logs
+
+These logged train/validation evaluations run after the final checkpoint. They are a separate evaluation call and are preserved separately from checkpoint validation BPB; they must not silently replace the earlier measurement.
+
+| Tokenizer | Checkpoint val BPB (log) | Base-eval train BPB | Base-eval val BPB |
+| --- | --- | --- | --- |
+| bpe_32768 | 0.623213 | 0.749119 | 0.623278 |
+| morphbpe_trmorph_32768 | 0.626573 | 0.750972 | 0.626622 |
+| morphbpe_zemberek_32768 | 0.624979 | 0.750180 | 0.625030 |
+| bpe_65536 | 0.640876 | 0.779835 | 0.640925 |
+| morphbpe_trmorph_65536 | 0.652118 | 0.778736 | 0.652161 |
+| morphbpe_zemberek_65536 | 0.651403 | 0.778257 | 0.651429 |
+| morphbpe_tdelight_65536 | 0.651020 | 0.776459 | 0.651062 |
+| bpe_131072 | 0.674874 | 0.817503 | 0.674923 |
+| morphbpe_trmorph_131072 | 0.691714 | 0.820881 | 0.691756 |
+| morphbpe_zemberek_131072 | 0.694037 | 0.820229 | 0.694084 |
+| morphbpe_tdelight_131072 | 0.682018 | 0.818073 | 0.682060 |
+
+### Archived d2 pipeline smoke performance
+
+This separate June 7 job validates the pipeline, not the controlled tokenizer comparison. Its tokenizer was trained on a 50-million-character cap and is named `bpe_32768_uhem_smoke`.
+
+| Depth / width / heads | Context | Parameters | Steps | Training positions | Training min | Slurm wall time | MFU % | Peak MiB |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2 / 128 / 2 | 256 | 12,976,182 | 1980 | 259,522,560 | 11.60 | 00:17:38 | 2.51 | 1,420.94 |
+The smoke artifact also records tokenizer-training time 6.3158 s, 7.347524e15 training FLOPs, 19.79 GB job memory utilized, and standalone train BPB 1.295173 / validation BPB 1.239951. Its checkpoint validation BPB is 1.239557.

@@ -6,6 +6,10 @@ paper comparison, completed evidence, publication state, limitations, and TODO
 list. Use this index to distinguish current result sources from historical
 operations notes.
 
+Start with the **[consolidated study results](study_results/README.md)** for all
+reported intrinsic/extrinsic metrics, recovered UHeM measurements, LLM
+configuration comparisons, and training/evaluation performance tables.
+
 ## Current Research Sources
 
 Start with the [9 November study results package](study_results/README.md) for
@@ -14,6 +18,14 @@ correction. Legacy downstream rankings require a corrected common rerun.
 
 | Document | Role |
 | --- | --- |
+| [`study_results/README.md`](study_results/README.md) | Complete result index, downloadable data and rebuilding commands. |
+| [`study_results/tokenizer_matched.md`](study_results/tokenizer_matched.md) | New matched train/validation intrinsic metrics for all 12 tokenizers, with equal word caps. |
+| [`study_results/tokenizer_results.md`](study_results/tokenizer_results.md) | Historical intrinsic metrics for 12 local and 2 lossless external references, plus 3 normalizing references and archived diagnostics. |
+| [`study_results/tokenizer_full_corpus.md`](study_results/tokenizer_full_corpus.md) | Recovered 93.21M-document intrinsic evaluation for all 12 tokenizers. |
+| [`study_results/tokenizer_additional.md`](study_results/tokenizer_additional.md) | Additional 100k/1M intrinsic runs and raw-BPE train/validation diagnostics. |
+| [`study_results/model_results.md`](study_results/model_results.md) | Controlled tokenizer ablation, task scores and performance. |
+| [`study_results/model_configuration_results.md`](study_results/model_configuration_results.md) | Longer d20 training, d32 scaling, corrected QA and broader benchmarks. |
+| [`study_results/sft_configuration_screens.md`](study_results/sft_configuration_screens.md) | d32/raw-BPE32k SFT learning-rate, curriculum and checkpoint screens. |
 | [`MorphBPE-alignment.md`](../MorphBPE-alignment.md) | Canonical status, claims, release audit, and priorities. |
 | [`tokenizer_ablation_plan.md`](tokenizer_ablation_plan.md) | Controlled study design and matched model matrix. |
 | [`model_bpb_inventory.md`](model_bpb_inventory.md) | Completed model tags, steps, and validation BPB. |

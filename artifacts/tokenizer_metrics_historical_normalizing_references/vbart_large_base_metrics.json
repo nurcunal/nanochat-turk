@@ -1,0 +1,89 @@
+{
+  "tokenizer_name": "vbart_large_base",
+  "tokenizer_dir": "vngrs-ai/VBART-Large-Base",
+  "tokenizer_config": {
+    "name": "vbart_large_base",
+    "implementation": "unigram",
+    "source": "huggingface",
+    "model_id": "vngrs-ai/VBART-Large-Base",
+    "vocab_size": 32001
+  },
+  "split": "train",
+  "data_dir": "/ari/users/nunal/nanochat-turk-morphbpe-trmorph-32768/segmented/trmorph-segmented",
+  "text_column": "segmented_text",
+  "input_has_morph_boundaries": true,
+  "morph_boundary_codepoint": "U+E000",
+  "docs": 50000,
+  "bytes": 186328421,
+  "chars": 170359307,
+  "words": 23042031,
+  "tokens": 35952025,
+  "unique_tokens_in_sample": 31958,
+  "unique_token_rate_in_sample": 0.9986562919908752,
+  "decode_strip": "",
+  "docs_with_decode_strip": 0,
+  "bytes_per_token": 5.182696134640539,
+  "chars_per_token": 4.73851770519185,
+  "tokens_per_byte": 0.19294976475971962,
+  "tokens_per_char": 0.21103645954605815,
+  "tokens_per_word": 1.5602802114101835,
+  "token_fertility": 1.5602802114101835,
+  "tokens_per_doc_distribution": {
+    "count": 50000,
+    "mean": 719.0405,
+    "p50": 313.0,
+    "p90": 1288.0,
+    "p95": 2112.0499999999956,
+    "p99": 6434.110000000022,
+    "max": 168820
+  },
+  "word_fertility_isolated": {
+    "sample_words": 500000,
+    "unique_words": 102875,
+    "tokens": 698296,
+    "tokens_per_word": 1.396592,
+    "single_token_word_rate": 0.718082,
+    "multi_token_word_rate": 0.281918,
+    "token_count_distribution": {
+      "count": 500000,
+      "mean": 1.396592,
+      "p50": 1.0,
+      "p90": 2.0,
+      "p95": 3.0,
+      "p99": 4.0,
+      "max": 35
+    },
+    "long_word_tokens_per_word": 1.795824033597908,
+    "long_word_count": 151438
+  },
+  "vocabulary": {
+    "vocab_size": 32001,
+    "special_tokens": 1,
+    "mergeable_tokens_seen": 32000,
+    "utf8_decodable_token_rate": 1.0,
+    "token_byte_length_distribution": {
+      "count": 32000,
+      "mean": 7.1468125,
+      "p50": 7.0,
+      "p90": 12.0,
+      "p95": 13.0,
+      "p99": 16.0,
+      "max": 22
+    }
+  },
+  "morph_boundary": {
+    "eligible_docs": 50000,
+    "boundary_count": 12706795,
+    "crossing_tokens": 7313375,
+    "crossed_boundaries": 10184483,
+    "docs_with_crossing": 50000,
+    "crossed_boundary_rate": 0.8014989617759631,
+    "docs_with_crossing_rate": 1.0,
+    "crossing_tokens_per_1k_tokens": 203.42039148003485
+  },
+  "roundtrip_failures": 47607,
+  "roundtrip_failure_rate": 0.95214,
+  "encode_seconds": 62.00575566291809,
+  "encode_docs_per_sec": 806.376754309955,
+  "encode_tokens_per_sec": 579817.5446074072
+}

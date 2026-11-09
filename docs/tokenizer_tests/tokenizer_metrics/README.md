@@ -1,5 +1,14 @@
 # Tokenizer Metrics
 
+The reorganized result tables are in
+[`docs/study_results/`](../../study_results/README.md):
+[earlier sample and external diagnostics](../../study_results/tokenizer_results.md),
+[recovered full-corpus results](../../study_results/tokenizer_full_corpus.md),
+[additional 100k/1m and baseline validation diagnostics](../../study_results/tokenizer_additional.md),
+[new matched train/validation measurements](../../study_results/tokenizer_fresh_results.md),
+and [model/extrinsic results](../../study_results/model_results.md).
+The files in this directory remain the original historical measurements.
+
 This folder stores tokenizer-only metrics for produced tokenizer artifacts.
 The active comparison follows the MorphBPE paper's intrinsic metrics rather than
 a custom weighted score.
@@ -55,17 +64,20 @@ completed in `00:18:41` with Slurm `CPUTime=00:59:45` on node `a071`. Display
 labels use compact `32k`/`64k`/`128k` names; exact source JSON filenames keep
 their original tokenizer IDs.
 
-Paper-facing final tokenizer metrics should use a full-corpus UHeM run. The
+The complete training-corpus UHeM pass has now been recovered. The
 first single-process full 32k job `493751` timed out after `2-00:00:26`, and the
 first all-tokenizer parallel job `494219` failed after Slurm killed it for
 memory (`245.90 GB` used against `192 GB`). The metrics scheduler now keeps a
 bounded number of row-group futures in memory via `--max-in-flight`. A repaired
-all-tokenizer job `496882` (`tok-metrics-full`) completed successfully in
-29h 20m 05s. Its original outputs and scheduler evidence were recovered on
-2026-11-09 under [the full-corpus artifact](../../../artifacts/tokenizer_metrics_full_2026-06-23/).
-All twelve cover 93,211,827 train documents. Word/alignment metrics retain a
-500,000-occurrence cap; consistency uses 50,000 unique words. See the
-[consolidated results](../../study_results/README.md) for fresh requested metrics.
+all-tokenizer job `496882` (`tok-metrics-full`) completed on 23 June 2026 with
+exit `0:0` in `1-05:20:05`. Its twelve original result files, hashes, scheduler
+accounting and final log statistics were recovered on 9 November 2026 in
+[`artifacts/tokenizer_metrics_full_2026-06-23`](../../../artifacts/tokenizer_metrics_full_2026-06-23/).
+The [full-corpus table](../../study_results/tokenizer_full_corpus.md) covers
+93,211,827 training documents. Isolated-word and morphology-alignment metrics
+still use 500,000 occurrences per tokenizer, and consistency uses 50,000 unique
+words. Full-corpus totals are not a held-out evaluation or uncapped morphology
+study. The earlier 50,000-document files here are preserved unchanged.
 
 Operational note: the original full run is intentionally conservative and
 single-process. The optimized companion

@@ -4,15 +4,15 @@
   "sources": [
     {
       "path": "docs/study_results/model_results.json",
-      "sha256": "64842f776be88c20c28cd8b57b9cd800233e3a2159cfa94ae848f05c7bfc926f"
+      "sha256": "91cde6316d40d3c60bfcea46455b7b06dfb5146af25d21b0351060a27bee9c9b"
     },
     {
       "path": "docs/study_results/tokenizer_results.json",
-      "sha256": "1961c48137a218194dc2da8519f5bf299d1811ed5a2a4a66f81b4e7cd490fa2b"
+      "sha256": "7d239db76a3391801d6daea8693611047475142fef42fe30ca9e9703c3349637"
     },
     {
       "path": "docs/study_results/tokenizer_fresh_results.json",
-      "sha256": "ec435b89c069a418a2e942ca096b2008b08193db83c1efca848d496be76c71aa"
+      "sha256": "d50397f7cf92e79dfa8e813acf57f5b4cd6150ec178127fd99cee8a9b595c9a0"
     }
   ],
   "charts": [
@@ -22,7 +22,7 @@
       "evidence": "archived_pretraining_and_legacy_benchmarks",
       "source": {
         "path": "docs/study_results/model_results.json",
-        "sha256": "64842f776be88c20c28cd8b57b9cd800233e3a2159cfa94ae848f05c7bfc926f"
+        "sha256": "91cde6316d40d3c60bfcea46455b7b06dfb5146af25d21b0351060a27bee9c9b"
       }
     },
     {
@@ -31,7 +31,7 @@
       "evidence": "archived_train_corpus_diagnostic",
       "source": {
         "path": "docs/study_results/tokenizer_results.json",
-        "sha256": "1961c48137a218194dc2da8519f5bf299d1811ed5a2a4a66f81b4e7cd490fa2b"
+        "sha256": "7d239db76a3391801d6daea8693611047475142fef42fe30ca9e9703c3349637"
       }
     },
     {
@@ -40,7 +40,7 @@
       "evidence": "archived_legacy_benchmarks",
       "source": {
         "path": "docs/study_results/model_results.json",
-        "sha256": "64842f776be88c20c28cd8b57b9cd800233e3a2159cfa94ae848f05c7bfc926f"
+        "sha256": "91cde6316d40d3c60bfcea46455b7b06dfb5146af25d21b0351060a27bee9c9b"
       }
     },
     {
@@ -49,7 +49,7 @@
       "evidence": "archived_evaluator_correction",
       "source": {
         "path": "docs/study_results/model_results.json",
-        "sha256": "64842f776be88c20c28cd8b57b9cd800233e3a2159cfa94ae848f05c7bfc926f"
+        "sha256": "91cde6316d40d3c60bfcea46455b7b06dfb5146af25d21b0351060a27bee9c9b"
       }
     },
     {
@@ -58,7 +58,7 @@
       "evidence": "fresh_matched_validation_measurements",
       "source": {
         "path": "docs/study_results/tokenizer_fresh_results.json",
-        "sha256": "ec435b89c069a418a2e942ca096b2008b08193db83c1efca848d496be76c71aa"
+        "sha256": "d50397f7cf92e79dfa8e813acf57f5b4cd6150ec178127fd99cee8a9b595c9a0"
       }
     }
   ],

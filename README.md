@@ -80,9 +80,9 @@ The latter's 0.519040 BPB is a train-overlap diagnostic, not held-out loss.
 - Compact tokenizers, manifests, metrics, and benchmark summaries checked into
   GitHub.
 
-## Public Artifacts
+## Artifacts and Dated Publication Audit
 
-| Artifact | GitHub | Hugging Face |
+| Artifact | GitHub | Hugging Face at the 2026-07-15 audit |
 | --- | --- | --- |
 | Source and compact documentation/results | This repository | Not applicable |
 | 12 tokenizer bundles | [`artifacts/tokenizers`](artifacts/tokenizers/) | None is published standalone; raw BPE 32k is embedded in the public model and the other 11 are absent |
@@ -90,7 +90,8 @@ The latter's 0.519040 BPB is a train-overlap diagnostic, not held-out loss.
 | Other 10 completed models | Compact metrics and UHeM provenance here | Not uploaded |
 | Eleven-model CETVEL comparison | [June 22 artifact](artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/) | Not uploaded |
 
-The authenticated publication audit was performed on 2026-07-15. Empty Hub
+The authenticated publication audit was performed on 2026-07-15; the Hub column
+is historical and was not re-audited for this results update. Empty Hub
 IDs in tokenizer manifests are real release gaps, not evidence of private
 repositories. Details and the exact missing-model inventory are in
 [`MorphBPE-alignment.md`](MorphBPE-alignment.md#publication-audit).

@@ -1,0 +1,361 @@
+{
+  "kind": "completed_matched_tokenizer_evaluation_recovery",
+  "recovered_date": "2026-11-09",
+  "host": "altay.uhem.itu.edu.tr",
+  "source_directory": "/ari/users/nunal/nanochat-tokenizer-study-20261109-v1",
+  "job_id": 558060,
+  "job_state": "COMPLETED",
+  "exit_code": "0:0",
+  "files": [
+    {
+      "file": "source_manifest.json",
+      "size_bytes": 4732,
+      "sha256": "80707dfbc45cab4b5cd9dbbc0d3daa8544eaaa91e2acb2c9f6d60f0da883ae68"
+    },
+    {
+      "file": "results/source_manifest.json",
+      "size_bytes": 4732,
+      "sha256": "80707dfbc45cab4b5cd9dbbc0d3daa8544eaaa91e2acb2c9f6d60f0da883ae68"
+    },
+    {
+      "file": "results/manifest.json",
+      "size_bytes": 12245,
+      "sha256": "eded1ea126688d32bd913fba0aad32d05797b6617e7eab5f589a75add8a184b0"
+    },
+    {
+      "file": "results/sample_manifest.json",
+      "size_bytes": 3110,
+      "sha256": "d1aa6a2a71643b9c0820b42688d0db63461c037279878de6d18c268ab8ec0971"
+    },
+    {
+      "file": "results/val/requested_metrics.json",
+      "size_bytes": 45945,
+      "sha256": "52ee4d5bb766c620b6c6faaf57d0fb673e787a832d6e204d5f7a36edca795c95"
+    },
+    {
+      "file": "results/val/morphbpe_tdelight_131072.log",
+      "size_bytes": 7988,
+      "sha256": "515d676783f4df7469bab0e4d62b6514c8aac6a6f5a0d5e7214d55d978b71cd4"
+    },
+    {
+      "file": "results/val/bpe_32768.log",
+      "size_bytes": 7211,
+      "sha256": "7dda8853e317b65c31d4ac6989e5f68a5266eafe0f6c85e5ab77cf3e9792d341"
+    },
+    {
+      "file": "results/val/bpe_131072_metrics.json",
+      "size_bytes": 7433,
+      "sha256": "84d1077150380cf833bce85b26953ce4436fa285f92556dd621b8455ea53b117"
+    },
+    {
+      "file": "results/val/morphbpe_tdelight_32768_metrics.json",
+      "size_bytes": 7740,
+      "sha256": "3590ee9848b1b5fa7264efa077cb81282999715c1bd18fe356e85303a3bfadeb"
+    },
+    {
+      "file": "results/val/morphbpe_zemberek_131072.log",
+      "size_bytes": 7982,
+      "sha256": "b66497def0d2b0b22c766a068f5d4faffa867cb74757a4c1b64d18a4205c1762"
+    },
+    {
+      "file": "results/val/morphbpe_zemberek_65536_metrics.json",
+      "size_bytes": 7744,
+      "sha256": "e7d16546377022d9db78b81600e4c20bb1f3ddb92c6825ac6174c75a0f006cb1"
+    },
+    {
+      "file": "results/val/morphbpe_zemberek_65536.log",
+      "size_bytes": 7984,
+      "sha256": "a17956dc7d7d23190ed35048ab41751cb1bd53db7910fca686f5a39046790c7e"
+    },
+    {
+      "file": "results/val/morphbpe_trmorph_32768_metrics.json",
+      "size_bytes": 7724,
+      "sha256": "8fe55d9b6fa24a74408b83a08880a7c2d6c56380a7b1abdd3943edd95a2603cd"
+    },
+    {
+      "file": "results/val/bpe_32768_metrics.json",
+      "size_bytes": 6971,
+      "sha256": "6ee15450989a04ccb3cff2faa1fd91424f6f1c00d3888382c49e216ab1d360b0"
+    },
+    {
+      "file": "results/val/morphbpe_tdelight_65536_metrics.json",
+      "size_bytes": 7744,
+      "sha256": "64f582cbe480e9d6229c6691c5097e5ce298377d507e7b65c4ee0bdee4ddc02f"
+    },
+    {
+      "file": "results/val/morphbpe_tdelight_131072_metrics.json",
+      "size_bytes": 7748,
+      "sha256": "e8bae94dd081bd9fc2ab35b959a0a46c9741b003df8e1308ac41604bf1819721"
+    },
+    {
+      "file": "results/val/morphbpe_zemberek_32768_metrics.json",
+      "size_bytes": 7750,
+      "sha256": "5111626574419bddccc3b2fc6d96819736ede65641b0a657464e38c36ff83e92"
+    },
+    {
+      "file": "results/val/morphbpe_tdelight_65536.log",
+      "size_bytes": 7984,
+      "sha256": "4787e5bafc4e3a6d9ec2f5d6c162351eece90ddf2a6f3dae2a63dba54d72211b"
+    },
+    {
+      "file": "results/val/morphbpe_tdelight_32768.log",
+      "size_bytes": 7980,
+      "sha256": "3bc3629930a64bf7d7c6dbb9008b5bbb94a433a1462f6e74fad692956d9e6fdb"
+    },
+    {
+      "file": "results/val/bpe_65536_metrics.json",
+      "size_bytes": 7428,
+      "sha256": "33f6454784689672803ca419b6283305da5d07136a9d164eedf5e5ced70a5783"
+    },
+    {
+      "file": "results/val/bpe_65536.log",
+      "size_bytes": 7668,
+      "sha256": "bd3930852e8519b3c0e1d308dc14dbc29a974127faefe57a40b26efdd84b3882"
+    },
+    {
+      "file": "results/val/morphbpe_trmorph_65536.log",
+      "size_bytes": 7963,
+      "sha256": "ef6d291a9b94b6ab8e9d84cd008a4f7156f13e0a14f46657905ad7342bbe85cf"
+    },
+    {
+      "file": "results/val/bpe_131072.log",
+      "size_bytes": 7673,
+      "sha256": "0292f782eeb6670208ff2fdb40aab7e38fa27cbc826e241a731e98716fbffe8d"
+    },
+    {
+      "file": "results/val/morphbpe_trmorph_131072_metrics.json",
+      "size_bytes": 7753,
+      "sha256": "503f47b870535db03d14a0c33bf44113b2726702b15d52ee5b40470ce43f7d78"
+    },
+    {
+      "file": "results/val/morphbpe_trmorph_65536_metrics.json",
+      "size_bytes": 7723,
+      "sha256": "f4b503558e476a624c706376313c729b1bb087f9d157c9be679765610e48d327"
+    },
+    {
+      "file": "results/val/morphbpe_zemberek_32768.log",
+      "size_bytes": 7990,
+      "sha256": "c64e365d01c8ead390cc9f43a60ba69d2b920d065ed9b9e13e05f2d83b0ab0d4"
+    },
+    {
+      "file": "results/val/morphbpe_trmorph_131072.log",
+      "size_bytes": 7993,
+      "sha256": "7e0421f37de7450d6ece74d6ae0e0424eec11a7447fc7909f55dd3acd67a4305"
+    },
+    {
+      "file": "results/val/morphbpe_trmorph_32768.log",
+      "size_bytes": 7964,
+      "sha256": "4c5654b3015a98ad217fad73aa1eee3ff910b95ee9accb0ce10dec53b65ca886"
+    },
+    {
+      "file": "results/val/morphbpe_zemberek_131072_metrics.json",
+      "size_bytes": 7742,
+      "sha256": "aff4bc0b4e015d4763c5c31bfa9fb47ed702b543678efb36a975b51388f9d781"
+    },
+    {
+      "file": "results/train/requested_metrics.json",
+      "size_bytes": 45995,
+      "sha256": "9780789289586acd13dfb88a029e27ce0c8719a938b878ac19c31873d45b0afd"
+    },
+    {
+      "file": "results/train/morphbpe_tdelight_131072.log",
+      "size_bytes": 8010,
+      "sha256": "ff6554335f04e9bc63158705463d6d956cf7e8e2622e9c0bc4c3305063dc364c"
+    },
+    {
+      "file": "results/train/bpe_32768.log",
+      "size_bytes": 7183,
+      "sha256": "39a688080b6a4c6c6be4e7eba3dd301e3390c65a255d42832e50d312c4e8cf93"
+    },
+    {
+      "file": "results/train/bpe_131072_metrics.json",
+      "size_bytes": 7446,
+      "sha256": "4bb63893c71a3e5eb9d6b18a4ee9716060e218039a508a2a998db3c1e2d8fdc7"
+    },
+    {
+      "file": "results/train/morphbpe_tdelight_32768_metrics.json",
+      "size_bytes": 7755,
+      "sha256": "d67d6d6150db57a233d619def4cbd795c079f954eeb6e77d2b5cb5d4e154f95d"
+    },
+    {
+      "file": "results/train/morphbpe_zemberek_131072.log",
+      "size_bytes": 8003,
+      "sha256": "22e68f3b66d37541e7deb62e8cf4c0180c9317451239863ade762b5e6d8e8d74"
+    },
+    {
+      "file": "results/train/morphbpe_zemberek_65536_metrics.json",
+      "size_bytes": 7761,
+      "sha256": "083bcfa047144b8ff016703dce4cc859884d27372333ae601f522b40fc94c319"
+    },
+    {
+      "file": "results/train/morphbpe_zemberek_65536.log",
+      "size_bytes": 8001,
+      "sha256": "c59c1dc86232e9ad1676cd354738933ff30c3a6a47d607885cfaab9fb699928c"
+    },
+    {
+      "file": "results/train/morphbpe_trmorph_32768_metrics.json",
+      "size_bytes": 7751,
+      "sha256": "cf7d848d04cf79950b81e72ca6c6c6b4d4b38fc391c9ba2f1c06d5ec6989c4ca"
+    },
+    {
+      "file": "results/train/bpe_32768_metrics.json",
+      "size_bytes": 6943,
+      "sha256": "86e0071d98010434c3be167e30dfd84391f5f19d386150a161a2e0ea79c735c1"
+    },
+    {
+      "file": "results/train/morphbpe_tdelight_65536_metrics.json",
+      "size_bytes": 7756,
+      "sha256": "17bea3a8b3f8164ec37c92d63a1dd1c975d31e7bf475964b3cad405462664636"
+    },
+    {
+      "file": "results/train/morphbpe_tdelight_131072_metrics.json",
+      "size_bytes": 7770,
+      "sha256": "d7c467e90f372e3ba72a540b2379d4f84b89012592065846a7d6f6f31093faaa"
+    },
+    {
+      "file": "results/train/morphbpe_zemberek_32768_metrics.json",
+      "size_bytes": 7762,
+      "sha256": "7bbc64d5059ac5e9c0fd4dfc0e1faa69acb6ac67ae23608ad51f1f81505db7f5"
+    },
+    {
+      "file": "results/train/morphbpe_tdelight_65536.log",
+      "size_bytes": 7996,
+      "sha256": "0b899a9fb0c5a75201338fa73b1ec8fa73d4925ec647bce0271244a594afaae5"
+    },
+    {
+      "file": "results/train/morphbpe_tdelight_32768.log",
+      "size_bytes": 7995,
+      "sha256": "50241b463cd3195e6b94f0062e0b2b79b069ac29e12f8096d4b4a672de2ab076"
+    },
+    {
+      "file": "results/train/bpe_65536_metrics.json",
+      "size_bytes": 7450,
+      "sha256": "cc8db25c5ae7644417b2a496876ac3440eef9374a7b5540e61f2a10f37300971"
+    },
+    {
+      "file": "results/train/bpe_65536.log",
+      "size_bytes": 7690,
+      "sha256": "0d7da1895903282a94ab2205113bb0dd7e3aaee83c260bc0c279095c71a1cd4c"
+    },
+    {
+      "file": "results/train/morphbpe_trmorph_65536.log",
+      "size_bytes": 8003,
+      "sha256": "c85d93bf820580e461de9e61f458545ae635f37af95b3200c2cb9479df16a03b"
+    },
+    {
+      "file": "results/train/bpe_131072.log",
+      "size_bytes": 7686,
+      "sha256": "8c18e3cb498f06f795adf49865d0d55c2c123f2fc31e42068f4289da472a0986"
+    },
+    {
+      "file": "results/train/morphbpe_trmorph_131072_metrics.json",
+      "size_bytes": 7752,
+      "sha256": "5979d91c4776089771b8096c4f698d4f29b858c4af98a62cf7db087ef7fac2e8"
+    },
+    {
+      "file": "results/train/morphbpe_trmorph_65536_metrics.json",
+      "size_bytes": 7763,
+      "sha256": "c871904d44532490ed876f318edd111e84834eefd8f9a9bd0f6f53396996e990"
+    },
+    {
+      "file": "results/train/morphbpe_zemberek_32768.log",
+      "size_bytes": 8002,
+      "sha256": "dc59f6bc79da515ab020ff4431ad33de86e8ae9cd45f061e4e4875c4ab754a20"
+    },
+    {
+      "file": "results/train/morphbpe_trmorph_131072.log",
+      "size_bytes": 7992,
+      "sha256": "707179b115d4147d500f99d86e1c61728e7de43aaeb3795da9715cbdf0e8f223"
+    },
+    {
+      "file": "results/train/morphbpe_trmorph_32768.log",
+      "size_bytes": 7991,
+      "sha256": "fb67eb24a509e47efe9c1ab81e9101b805a6d290da8a5395a21df276cd621503"
+    },
+    {
+      "file": "results/train/morphbpe_zemberek_131072_metrics.json",
+      "size_bytes": 7763,
+      "sha256": "fc88a6da784b1eb70820013d5d34856c6bab63a3d4986bd7da620565aebf0b2d"
+    },
+    {
+      "file": "results/environment.json",
+      "size_bytes": 337,
+      "sha256": "392b082d18a69f4da085ce97c11979611b07ffd32496deaf0df3311037010f93"
+    },
+    {
+      "file": "tok-study-matched-558060.out",
+      "size_bytes": 12391,
+      "sha256": "240b9eb921ab28bb6da4403ad115c98225d789d648c814c8eafc1a29130826cf"
+    },
+    {
+      "file": "tok-study-matched-558060.err",
+      "size_bytes": 239,
+      "sha256": "7e59d3ab740adc163030dedf07b1055ae274b669648c6d1ddc70f6ecc1831dae"
+    },
+    {
+      "file": "source/nanochat/__init__.py",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "source/nanochat/common.py",
+      "size_bytes": 13560,
+      "sha256": "b843db6e769db18d3364e42cb3742a9537a3d4cf43e5f098293babc7ddeb44bf"
+    },
+    {
+      "file": "source/nanochat/dataset.py",
+      "size_bytes": 11000,
+      "sha256": "db4bc65e6db5fc4bbc2e937e330efdd6b8a85bbf1fcc3499fd48feab8e2e7ca8"
+    },
+    {
+      "file": "source/nanochat/morphology/__init__.py",
+      "size_bytes": 1365,
+      "sha256": "22848a47543cb23d0409063a8bd0f46820844155e6775643ee8c8f56de24c066"
+    },
+    {
+      "file": "source/nanochat/morphology/boundary.py",
+      "size_bytes": 764,
+      "sha256": "16e17189a127daa7996d9b776b527a017fd18f7811d826cfe33518c75cecd76d"
+    },
+    {
+      "file": "source/nanochat/morphology/morphbpe.py",
+      "size_bytes": 3127,
+      "sha256": "3523634eab3fb8ec4d0820931838e25a536ae312d1e94dff5fed6873ce77b22a"
+    },
+    {
+      "file": "source/nanochat/morphology/segmenters.py",
+      "size_bytes": 40062,
+      "sha256": "720922ae3f0932a730e0a87b922e533a569590f739c2208954b9af0c18839c8e"
+    },
+    {
+      "file": "source/nanochat/tokenizer.py",
+      "size_bytes": 19813,
+      "sha256": "42c5092914f548af52bb122448187973d44ff0b31005806cf8c419548bfbdf31"
+    },
+    {
+      "file": "source/runs/uhem_tokenizer_metrics_study.sbatch",
+      "size_bytes": 3139,
+      "sha256": "649dd1caee485ba15d08b4df2e7a70715512e4e2f31ae45dac67e0a86fc27441"
+    },
+    {
+      "file": "source/scripts/finalize_tokenizer_metric_study.py",
+      "size_bytes": 3786,
+      "sha256": "f6300728e8b2988322d5ece5529fd197beddfe3fa27b1498565c13a4755c96b3"
+    },
+    {
+      "file": "source/scripts/prepare_tokenizer_metric_sample.py",
+      "size_bytes": 4085,
+      "sha256": "f8ea2f816f78810bb5773081aac73444348c52f299bf0ecea49f22947ca6241f"
+    },
+    {
+      "file": "source/scripts/tokenizer_metrics.py",
+      "size_bytes": 66698,
+      "sha256": "a584accb78e701d5893b88a5dc4a3415c24a5b00a0a4b8ddbc9bce1cb78d37f1"
+    },
+    {
+      "file": "slurm_accounting.txt",
+      "size_bytes": 191,
+      "sha256": "82a62c9179cd138cd27cc52a26d78e78500f3563a9dcc3fdc53a065051cbb479"
+    }
+  ]
+}

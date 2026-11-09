@@ -276,13 +276,26 @@ def build():
         "later_results": later,
     }
     OUT.mkdir(parents=True, exist_ok=True)
+    # The additional recovery preserves full-precision metrics, step-level
+    # performance and broader configurations while retaining this report's
+    # original schema and evaluator-audit fields used by the presentation.
+    from scripts.model_study_recovery import enrich
+    recovered_sections = enrich(ROOT, OUT, result)
+    result["supplementary_reports"] = {
+        "model_configurations": "model_configuration_results.md",
+        "all_task_metrics": "model_all_task_metrics.csv",
+        "training_performance": "model_training_performance.csv",
+        "sft_configuration_screens": "sft_configuration_screens.md",
+        "sft_scope": "Post-training settings on one raw-BPE d32 model; not a matched tokenizer ablation.",
+    }
+    later["supplementary_configuration_report"] = result["configuration_experiments"]
     (OUT / "model_results.json").write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
     (OUT / "model_results.csv").write_text(csv_text(runs, ["tokenizer", "vocab_size", "depth", "status", "model_step", "approximate_parameters_millions", "training_token_positions", "validation_bpb", "lowest_validation_bpb", "final_train_loss", "macro_core11", "delta_macro_core11_percentage_points", "xquad_tr_f1", "delta_xquad_tr_f1_vs_vocab_raw_bpe", "core12_elapsed_seconds", "core12_examples_per_second", "speed_vs_vocab_raw_bpe", "cetvel_job_id", "source_meta_path", "source_results_path"]))
     (OUT / "model_task_metrics.csv").write_text(csv_text(task_rows, list(task_rows[0])))
     training_rows = [{"run_id": row["run_id"], "tokenizer": row["tokenizer"], "depth": row["depth"], **row["training_statistics"]} for row in runs if row["model_step"] is not None]
     training_fields = ["run_id", "tokenizer", "depth", "parameters", "training_minutes", "estimated_training_flops", "peak_memory_mib", "mfu_percent", "gpu_count", "training_job_id", "scheduler_state", "scheduler_elapsed", "source_artifact", "source_report_path", "source_report_sha256"]
     (OUT / "model_training_statistics.csv").write_text(csv_text(training_rows, training_fields))
-    (OUT / "model_results.md").write_text(markdown(result))
+    (OUT / "model_results.md").write_text(markdown(result) + recovered_sections)
     (OUT / "later_model_results.json").write_text(json.dumps(later, indent=2, ensure_ascii=False) + "\n")
     (OUT / "later_model_results.md").write_text(later_markdown(later))
     print(f"Verified 11 models × 12 tasks; wrote model_results.json/.md/.csv and model_task_metrics.csv to {OUT}")
@@ -299,6 +312,8 @@ def markdown(data):
         "**Correction evidence:** the same d20/raw-BPE step-17,100 checkpoint scores XQuAD F1 **11.3369** with corrected generation handling, versus the archived **3.0985**. Corrected results for all MorphBPE models were not recovered. See [later model results and evaluator audit](later_model_results.md) for the separate d20 continuation, d32 training, and protocol-specific benchmarks.",
         "",
         "Download [model summary CSV](model_results.csv), [training statistics CSV](model_training_statistics.csv), [all 132 task scores CSV](model_task_metrics.csv), or [full JSON with source paths and hashes](model_results.json). Original evidence: [June 22 benchmark artifact](../../artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/metrics_summary.json).",
+        "",
+        "Additional recovery supplies [all available task metrics](model_all_task_metrics.csv), [training throughput and memory](model_training_performance.csv), [expanded model configurations](model_configuration_results.md), and [SFT configuration screens](sft_configuration_screens.md). Those screens vary post-training settings on one raw-BPE model and are not additional controlled tokenizer cells.",
         "",
         "## Experiment controls",
         "",
@@ -394,7 +409,7 @@ def markdown(data):
         "",
         "Run `python -m scripts.build_model_study_results` from the repository root. The builder checks all 132 task cells, historical carry-forward consistency, final/minimum BPB equality, throughput arithmetic, and macro compatibility with four-decimal source rounding. It records SHA-256 hashes and preserves UHeM source paths in JSON.",
         "",
-        "Reported macros are preserved rather than recomputed as new measurements. In particular, the 64k TurkishDelight reported macro is 0.4567; the mean of its already-rounded task cells is 0.4567545. The difference is compatible with independent rounding of the source macro and task scores. Raw higher-precision results are needed to resolve its last decimal.",
+        "Reported macros are preserved rather than recomputed as new measurements. In particular, the 64k TurkishDelight reported macro is 0.4567; the mean of its already-rounded task cells is 0.4567545. The difference is compatible with independent rounding of the source macro and task scores. The recovered full-precision mean confirms the archived macro when rounded to four decimals.",
         "",
         "For a presentation: report the tokenizer diagnostics and archived BPB, label the CETVEL matrix as legacy, show the evaluator correction and missing 32k TurkishDelight model, and separate later model-scale/budget experiments. Tokenizer-effect claims require a corrected common evaluator, matched raw-text exposure/evaluation spans, replicated seeds, and paired statistical analysis.",
         "",
@@ -409,6 +424,8 @@ def later_markdown(data):
         "**Recovered on 2026-11-09; measured in August 2026.** These results supplement the original tokenizer-ablation table. They change model depth, training budget and/or evaluation protocol, so they are not additional controlled tokenizer cells.",
         "",
         "Sources: [compact UHeM audit](../../artifacts/uhem_model_audit_2026-11-09/), [derived JSON](later_model_results.json), and [runtime/reproduction notes](reproduction.md). Per-source paths, byte counts, timestamps and SHA-256 hashes are preserved. No model training or benchmark inference was rerun during recovery.",
+        "",
+        "The [expanded configuration report](model_configuration_results.md) preserves additional training-log throughput, memory, scheduler outcomes and all task-level metrics. The separate [SFT configuration screens](sft_configuration_screens.md) concern post-training choices on a single raw-BPE d32 model.",
         "",
         "## A corrected evaluator changes the interpretation",
         "",
@@ -436,7 +453,7 @@ def later_markdown(data):
         lines.append(f'| `{row["model_tag"]}` | {row["depth"]} | {row["step"]:,} | {row["scheduled_token_positions"]:,} | {row["validation_bpb"]:.6f} | {interpretation} |')
     lines += [
         "",
-        "The d20 continuation uses a distinct learning-rate continuation policy and step 34,200; it must not replace the step-17,100 baseline in the original matrix.",
+        "The d20 continuation uses a distinct learning-rate continuation policy and step 34,200; it must not replace the step-17,100 baseline in the original matrix. Its final checkpoint was saved, but the later recovered Slurm record reports job 512018 FAILED (exit 1); checkpoint availability does not establish a cleanly completed job. Its training-time counter is cumulative and must not be attributed only to the continuation phase.",
         "",
         "The completed d32 model has 2,818,575,450 parameters, 2,048-token context, raw BPE32k and 58,720,256,000 scheduled positions. Its launch manifest explicitly trains on **all 30** FineWeb-2 Turkish source shards and also reuses the final source shard as validation. Consequently BPB **0.519040 is a train-overlap diagnostic**, not a held-out generalization result and not comparable as a held-out improvement over the original ablation. The launch describes the exposure schedule as a coverage-oriented heuristic, not a proof of exactly-once document/token consumption.",
         "",

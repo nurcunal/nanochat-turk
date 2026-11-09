@@ -39,7 +39,7 @@ measurement:
 ```bash
 python -m scripts.build_model_study_results
 python -m scripts.build_tokenizer_study_results
-MPLCONFIGDIR=/tmp/nanochat-mpl python -m scripts.plot_study_results
+python -m scripts.build_sft_configuration_results
 ```
 
 All twenty-four fresh train/validation result files and their manifest are
@@ -48,6 +48,8 @@ presentation brief:
 
 ```bash
 python -m scripts.build_fresh_tokenizer_results
+python -m scripts.build_tokenizer_matched_results
+python -m scripts.build_study_overview
 MPLCONFIGDIR=/tmp/nanochat-mpl python -m scripts.plot_study_results
 python -m scripts.build_study_brief
 ```
@@ -56,6 +58,12 @@ The fresh-results builder rejects missing or unmatched samples. The figure
 manifest identifies each chart's source and distinguishes archived evidence
 from fresh validation measurements. These commands consume saved results;
 they do not submit new UHEM jobs.
+
+The matched archive and fresh report both describe job `558060`; they are two
+presentations of the same measurements. The additional 100k/1M tokenizer runs,
+historical normalizing references, expanded model-task export and SFT screen
+receipts are retained from the concurrent main results update. SFT selection
+probes are not independent capability evaluations and use only raw BPE 32k.
 
 For a historical training replay, first recover the run's actual source
 revision, complete effective configuration, dependency lock, seed, dataset

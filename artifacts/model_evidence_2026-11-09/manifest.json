@@ -1,0 +1,31 @@
+{
+  "kind": "compact_recovered_uhem_model_evidence",
+  "recovered_at_utc": [
+    "2026-11-09T12:36:55.467635+00:00",
+    "2026-11-09T12:38:55.156308+00:00"
+  ],
+  "host": "altay.uhem.itu.edu.tr",
+  "files": [
+    {
+      "path": "model-metadata-and-benchmarks.json",
+      "sha256": "817f2984be5f7eb58010c075a63300599874ec0e660f370ef43e6132087e0083"
+    },
+    {
+      "path": "later-model-metadata-and-benchmarks.json",
+      "sha256": "1e256f19f52597dd6aa653b60fc48fa8d3d8dad5a2efd9a3170333ecb9730d99"
+    },
+    {
+      "path": "training-performance.json",
+      "sha256": "6bf3cd16265b928b27714c04bb616c2daad9bbdc2f078c934cc923cfa2051969"
+    },
+    {
+      "path": "later-training-performance.json",
+      "sha256": "99dd4c87ff07828423c681d2e794d77305c97c6933a9c7cb8575318758c96acb"
+    }
+  ],
+  "notes": [
+    "Copied unchanged from the local recovery bundles; nested records retain original UHeM source paths, timestamps and source-file hashes.",
+    "Evaluation records contain compact metrics/configuration, not sample payloads or model weights.",
+    "Source existence and parse errors are retained as observed; absence does not erase earlier archived measurements."
+  ]
+}

@@ -20,7 +20,8 @@ def percent(v):
 def build():
     manifest = json.loads((SOURCE / "manifest.json").read_text())
     result = {"schema_version": 1, "evidence": "fresh_matched_measurements",
-              "manifest": "docs/study_results/fresh_tokenizer_metrics/manifest.json", "splits": {}}
+              "manifest": "docs/study_results/fresh_tokenizer_metrics/manifest.json",
+              "job_id": str(manifest["environment"]["slurm_job_id"]), "splits": {}}
     all_rows = []
     for split in ("val", "train"):
         rows = []
@@ -81,7 +82,7 @@ def build():
         writer.writerows(all_rows)
     lines = ["# Fresh matched tokenizer measurements", "",
              "New measurements on UHEM, 9 November 2026. All twelve original tokenizer bundles receive identical raw text within each split; segmentation is reference-only. [Run/sample provenance](fresh_tokenizer_metrics/manifest.json), [full precision JSON](tokenizer_fresh_results.json), [CSV](tokenizer_fresh_results.csv), and [complete evaluator outputs](fresh_tokenizer_metrics/) are retained.", "",
-             "The validation file is withheld by the repository's configured file split; training and validation sample hashes differ. This is an automatic TRmorph-reference diagnostic, not independently annotated human morphology. No model was retrained for this evaluation."]
+             "The validation file is withheld by the repository's configured file split; training and validation sample hashes differ. This is an automatic TRmorph-reference diagnostic, not independently annotated human morphology. No model was retrained for this evaluation. Reserved validation refers to the original tokenizer-study split; the later d32 all-shard training run includes this source text, so it is not held out from every model in the repository. The [archival matched report](tokenizer_matched.md) presents the same job 558060 measurements with additional recovery receipts; it is not an independent replication."]
     for split in ("val", "train"):
         sample = result["splits"][split]
         lines += ["", "## " + ("Validation" if split == "val" else "Training sample"), "",

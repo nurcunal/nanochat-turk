@@ -1,0 +1,196 @@
+{
+  "retrieved_at_utc": "2026-11-09T12:47:17.506694+00:00",
+  "host": "altay.uhem.itu.edu.tr",
+  "scope": "Compact d32/BPE32k SFT checkpoint verification and selection receipts; not a multi-tokenizer benchmark.",
+  "records": [
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-capability-calibration-v1/manifest.json",
+      "sha256": "0012656617d6f8f9c6724b7e1563e6dead3ce24ca85a75c91554ad6f6ca0d69b",
+      "size_bytes": 14939,
+      "local_path": "sources/nanochat-turk-d32-capability-calibration-v1__manifest.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/probe-selection-summary.json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0,
+      "local_path": "sources/bounded-recovery-v1__probe-selection-summary.json",
+      "parse_status": "unavailable_empty"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1r2/probe-selection-summary.json",
+      "sha256": "d1f433fbe17827fbd3db461d72bf5fdfd8b14f4bb8549e3a30a3c1d6cfd5a63e",
+      "size_bytes": 9391,
+      "local_path": "sources/bounded-recovery-v1r2__probe-selection-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1r2/probe-selection.json",
+      "sha256": "93e0acb4ebdce717220fe5a3f08bbc4f60573268e3692be58d12efd915698f92",
+      "size_bytes": 8645,
+      "local_path": "sources/bounded-recovery-v1r2__probe-selection.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1r2/recovery-admission-summary.json",
+      "sha256": "47cd551f749db403395783bad404c6e2db28e99698a69b978d955adeef32f95c",
+      "size_bytes": 23822,
+      "local_path": "sources/bounded-recovery-v1r2__recovery-admission-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1r2/recovery-decision.json",
+      "sha256": "79cf22a73ff8c08f2a4b4b568d05fcf0d58365726a226098e7acc3c66f393fde",
+      "size_bytes": 1335,
+      "local_path": "sources/bounded-recovery-v1r2__recovery-decision.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/capability-calibration-screen-v1/eff020-16-checkpoint-verification-summary.json",
+      "sha256": "bbd12989df3c66b27840818321beacde421e008226ae7cb3d1a5ad8e6962482e",
+      "size_bytes": 2404,
+      "local_path": "sources/capability-calibration-screen-v1__eff020-16-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/capability-calibration-screen-v1/eff020-24-checkpoint-verification-summary.json",
+      "sha256": "03fe30d36cad54044a25a67a1e0e28d61501fa7341cada803ffe34725af0c771",
+      "size_bytes": 2404,
+      "local_path": "sources/capability-calibration-screen-v1__eff020-24-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/capability-calibration-screen-v1/eff020-32-checkpoint-verification-summary.json",
+      "sha256": "25103775ed47ffa4a4d6d3a75700903ec3bfea93543b319cb4677a3820045f15",
+      "size_bytes": 2404,
+      "local_path": "sources/capability-calibration-screen-v1__eff020-32-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/capability-calibration-screen-v1/eff020-8-checkpoint-verification-summary.json",
+      "sha256": "525aacd9f9fcea66e89c421ab1f1227299564bc823b7f9ed02c8fc89f9198dc1",
+      "size_bytes": 2401,
+      "local_path": "sources/capability-calibration-screen-v1__eff020-8-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/capability-calibration-screen-v1/eff040-16-checkpoint-verification-summary.json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0,
+      "local_path": "sources/capability-calibration-screen-v1__eff040-16-checkpoint-verification-summary.json",
+      "parse_status": "unavailable_empty"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/capability-calibration-screen-v1/eff040-8-checkpoint-verification-summary.json",
+      "sha256": "d7c7306bdf92f96eafa2def6a325c956b91f68a75550f0c76a84933be9022571",
+      "size_bytes": 2402,
+      "local_path": "sources/capability-calibration-screen-v1__eff040-8-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/final-combined-smoltalk2-turk-sft-v1/checkpoint-summary.json",
+      "sha256": "b39d2953e2e390f19680bc6468098898625621b1bbf807a7c9e047dd294f771d",
+      "size_bytes": 1806,
+      "local_path": "sources/final-combined-smoltalk2-turk-sft-v1__checkpoint-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/final-polish-v1/checkpoint-summary.json",
+      "sha256": "4680e8ff83d0bedde438e7c63e88ae70809551dbd2efe31fc67fb111a0cee383",
+      "size_bytes": 1870,
+      "local_path": "sources/final-polish-v1__checkpoint-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/final-polish-v1/selection-summary.json",
+      "sha256": "3d699e2ead36bef5f4d647707926ca568c028fc9e35d7c5f37df483a90ac3fcd",
+      "size_bytes": 2613,
+      "local_path": "sources/final-polish-v1__selection-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-12-checkpoint-verification-summary.json",
+      "sha256": "4215a44bdf3e378449e12d754814889fdbadfe81624055bc3a628bd8bfb24462",
+      "size_bytes": 2092,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff005-12-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-4-checkpoint-verification-summary.json",
+      "sha256": "de432f60ac761ec4108c2dcc4173ec345946671128b73838afe9e1c1d3118897",
+      "size_bytes": 2090,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff005-4-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-8-checkpoint-verification-summary.json",
+      "sha256": "52ba00acda24468eca0f2a9bc82d09f04285f020206bc5cd580507c7f1bc8696",
+      "size_bytes": 2090,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff005-8-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-12-checkpoint-verification-summary.json",
+      "sha256": "58cbadb930375f451e7b34e9c1d55d273e03532f752c105d25f9e546cc0bacba",
+      "size_bytes": 2090,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff010-12-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-4-checkpoint-verification-summary.json",
+      "sha256": "80779bf94c6280b010761b3a31d6e3a9bbd885ea6027cea26ebb5601f295490e",
+      "size_bytes": 2087,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff010-4-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-8-checkpoint-verification-summary.json",
+      "sha256": "5821ee3d63c2d958b49b10e987f08a093b02302a0faedaba92fae187f6f77476",
+      "size_bytes": 2088,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff010-8-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-12-checkpoint-verification-summary.json",
+      "sha256": "7e390a6fef51dced81216b2c88c7e62a49b2b92b1b96a5237e30c0503fd8ea76",
+      "size_bytes": 2089,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff020-12-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-4-checkpoint-verification-summary.json",
+      "sha256": "3da809f2fc235ba8d1f9f161e0426a39611d6d62e4c254b700ebb8b790218988",
+      "size_bytes": 2086,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff020-4-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-8-checkpoint-verification-summary.json",
+      "sha256": "4292e5a997fd3365feba0849aaeee49cf2dae8b16fb403b622835086531a10d8",
+      "size_bytes": 2086,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff020-8-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/probe-selection.json",
+      "sha256": "1ab0367e9853ea2bdf86efcf367cdc6e4dca05e757457b9c598d38d388094788",
+      "size_bytes": 20174,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__probe-selection.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/screen-decision-summary.json",
+      "sha256": "5f6e9a9f96621a06c43a9766773119dd56a568bca9d089475f9a2ab42fcb76d6",
+      "size_bytes": 1073,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__screen-decision-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-targeted-repair-v3/manifest.json",
+      "sha256": "bf3a1c5ff5608d988448b147b80935af7e4b64d8a87e4161d6ec653142512964",
+      "size_bytes": 9659,
+      "local_path": "sources/nanochat-turk-d32-targeted-repair-v3__manifest.json",
+      "parse_status": "valid_json"
+    }
+  ]
+}

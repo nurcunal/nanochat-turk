@@ -121,7 +121,7 @@ def build():
                      f'{r["morphological_consistency_f1"]:.4f}'])
     table(["Vocab", "Tokenizer", "Tok/word", "Bytes/token", "Morph edit", "Exact morph sequence %", "Boundaries preserved %", "Morph consistency F1"], grid, [0.8,1.25,0.85,0.85,0.85,1.2,1.2,1.1])
     para("All twelve record zero document roundtrip failures. Preserved boundaries = 1 - crossed-reference-boundary rate; it does not penalize extra splits and differs from boundary precision/F1. The original morphology-consistency statistic uses shared-token/shared-morpheme word pairs. It is distinct from the new literal boundary metric.", "StudySmall")
-    para("This is a training-corpus diagnostic. The earlier 50k-document table, external Kumru/Cosmos tokenizer references, all distributions, timing data and original source files remain available in the companion repository report.", "StudySmall")
+    para("This is a training-corpus diagnostic. The companion report retains the earlier 50k table, additional 100k/1M runs, external and normalizing tokenizer references, all distributions and timing data. It also includes extended model benchmarks and separate SFT configuration screens.", "StudySmall")
     story.append(PageBreak())
 
     heading("Pretraining and legacy CETVEL outcomes")
@@ -147,7 +147,7 @@ def build():
         grid.append([f'd{r["depth"]} BPE32k', f'{r["step"]:,}', f'{r["scheduled_token_positions"]/1e9:.3f}B',
                      f'{r["validation_bpb"]:.6f}', "Train-overlap diagnostic" if r["depth"] == 32 else "Continued training; doubled budget"])
     table(["Model", "Step", "Token positions", "Recorded BPB", "Qualification"], grid, [1,0.8,1,1,2.2])
-    para("<b>The d32 model trained on all 30 source shards, including its validation shard.</b> Its 0.519040 BPB cannot be interpreted as held-out generalization. This completed 2.819B-parameter FineWeb2 run is separate from the frozen WSD production family.", "StudySmall")
+    para("<b>The d32 model trained on all 30 source shards, including its validation shard.</b> Its 0.519040 BPB cannot be interpreted as held-out generalization. This completed 2.819B-parameter FineWeb2 run is separate from the frozen WSD production family. The d20 continuation saved its final checkpoint, but job 512018 later ended FAILED; its saved training-time counter is cumulative.", "StudySmall")
     grid = [["d20 BPE32k, step 17100", "June legacy adapter, cap 128", "3.0985", "0.0000"]]
     grid += [[r["model"], r["protocol"], f'{r["f1"]:.4f}', f'{r["exact_match"]:.4f}'] for r in later["fixed_xquad"]]
     table(["Model", "XQuAD protocol", "F1 /100", "Exact match /100"], grid, [1.8,2.4,1,1])

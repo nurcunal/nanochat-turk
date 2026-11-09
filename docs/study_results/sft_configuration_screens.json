@@ -1,0 +1,4597 @@
+{
+  "retrieved_at_utc": "2026-11-09T12:47:17.506694+00:00",
+  "scope": "d32/BPE32k custom SFT configuration diagnostics",
+  "rows": [
+    {
+      "study": "bounded_recovery",
+      "label": "low-8",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_bounded_recovery_eff001_v1",
+      "step": 8,
+      "validation_bpb": 0.4545797501390715,
+      "probe_passed": 8,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "bounded_recovery",
+      "label": "low-16",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_bounded_recovery_eff001_v1",
+      "step": 16,
+      "validation_bpb": 0.4504695234583386,
+      "probe_passed": 8,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "bounded_recovery",
+      "label": "low-24",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_bounded_recovery_eff001_v1",
+      "step": 24,
+      "validation_bpb": 0.4492355049650855,
+      "probe_passed": 6,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "bounded_recovery",
+      "label": "mid-8",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_bounded_recovery_eff002_v1",
+      "step": 8,
+      "validation_bpb": 0.4500210912442843,
+      "probe_passed": 6,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "bounded_recovery",
+      "label": "mid-16",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_bounded_recovery_eff002_v1",
+      "step": 16,
+      "validation_bpb": 0.44509582731072483,
+      "probe_passed": 6,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "bounded_recovery",
+      "label": "mid-24",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_bounded_recovery_eff002_v1",
+      "step": 24,
+      "validation_bpb": 0.444000608589136,
+      "probe_passed": 6,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "bounded_recovery",
+      "label": "high-8",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_bounded_recovery_eff004_v1",
+      "step": 8,
+      "validation_bpb": 0.4446657806755827,
+      "probe_passed": 5,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "bounded_recovery",
+      "label": "high-16",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_bounded_recovery_eff004_v1",
+      "step": 16,
+      "validation_bpb": 0.4417457081285378,
+      "probe_passed": 6,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "bounded_recovery",
+      "label": "high-24",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_bounded_recovery_eff004_v1",
+      "step": 24,
+      "validation_bpb": 0.4417298761022523,
+      "probe_passed": 6,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "targeted_repair_v3",
+      "label": "eff005-4",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_targeted_repair_eff005_v3",
+      "step": 4,
+      "matrix_lr": 0.001,
+      "effective_smear_initial_lr": 0.002,
+      "validation_bpb": 0.46041523298457226,
+      "probe_passed": 8,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "targeted_repair_v3",
+      "label": "eff005-8",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_targeted_repair_eff005_v3",
+      "step": 8,
+      "matrix_lr": 0.001,
+      "effective_smear_initial_lr": 0.002,
+      "validation_bpb": 0.45907109536056456,
+      "probe_passed": 8,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "targeted_repair_v3",
+      "label": "eff005-12",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_targeted_repair_eff005_v3",
+      "step": 12,
+      "matrix_lr": 0.001,
+      "effective_smear_initial_lr": 0.002,
+      "validation_bpb": 0.45866730794611643,
+      "probe_passed": 8,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "targeted_repair_v3",
+      "label": "eff010-4",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_targeted_repair_eff010_v3",
+      "step": 4,
+      "matrix_lr": 0.002,
+      "effective_smear_initial_lr": 0.004,
+      "validation_bpb": 0.4588650406838486,
+      "probe_passed": 8,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "targeted_repair_v3",
+      "label": "eff010-8",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_targeted_repair_eff010_v3",
+      "step": 8,
+      "matrix_lr": 0.002,
+      "effective_smear_initial_lr": 0.004,
+      "validation_bpb": 0.45716121036375884,
+      "probe_passed": 8,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "targeted_repair_v3",
+      "label": "eff010-12",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_targeted_repair_eff010_v3",
+      "step": 12,
+      "matrix_lr": 0.002,
+      "effective_smear_initial_lr": 0.004,
+      "validation_bpb": 0.45685113144974404,
+      "probe_passed": 8,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "targeted_repair_v3",
+      "label": "eff020-4",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_targeted_repair_eff020_v3",
+      "step": 4,
+      "matrix_lr": 0.004,
+      "effective_smear_initial_lr": 0.008,
+      "validation_bpb": 0.4571155552818333,
+      "probe_passed": 8,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "targeted_repair_v3",
+      "label": "eff020-8",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_targeted_repair_eff020_v3",
+      "step": 8,
+      "matrix_lr": 0.004,
+      "effective_smear_initial_lr": 0.008,
+      "validation_bpb": 0.4563072002711573,
+      "probe_passed": 9,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "targeted_repair_v3",
+      "label": "eff020-12",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_targeted_repair_eff020_v3",
+      "step": 12,
+      "matrix_lr": 0.004,
+      "effective_smear_initial_lr": 0.008,
+      "validation_bpb": 0.45631763159050864,
+      "probe_passed": 10,
+      "probe_total": 41,
+      "qualified": false
+    },
+    {
+      "study": "capability_calibration_v1",
+      "label": "eff020-8",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_capability_calibration_eff020_v1",
+      "step": 8,
+      "matrix_lr": 0.004,
+      "effective_smear_initial_lr": 0.008,
+      "validation_bpb": 0.5755416188553225,
+      "verification_status": "pass"
+    },
+    {
+      "study": "capability_calibration_v1",
+      "label": "eff020-16",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_capability_calibration_eff020_v1",
+      "step": 16,
+      "matrix_lr": 0.004,
+      "effective_smear_initial_lr": 0.008,
+      "validation_bpb": 0.37970917523127407,
+      "verification_status": "pass"
+    },
+    {
+      "study": "capability_calibration_v1",
+      "label": "eff020-24",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_capability_calibration_eff020_v1",
+      "step": 24,
+      "matrix_lr": 0.004,
+      "effective_smear_initial_lr": 0.008,
+      "validation_bpb": 0.18951584463824014,
+      "verification_status": "pass"
+    },
+    {
+      "study": "capability_calibration_v1",
+      "label": "eff020-32",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_capability_calibration_eff020_v1",
+      "step": 32,
+      "matrix_lr": 0.004,
+      "effective_smear_initial_lr": 0.008,
+      "validation_bpb": 0.10504191629241241,
+      "verification_status": "pass"
+    },
+    {
+      "study": "capability_calibration_v1",
+      "label": "eff040-8",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_capability_calibration_eff040_v1",
+      "step": 8,
+      "matrix_lr": 0.008,
+      "effective_smear_initial_lr": 0.016,
+      "validation_bpb": 0.39862545118634163,
+      "verification_status": "pass"
+    },
+    {
+      "study": "final_polish_v1",
+      "label": "source",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+      "step": 84,
+      "suite": "probe",
+      "passed": 9,
+      "total": 41,
+      "pass_rate": 0.21951219512195122,
+      "assistant_end_termination_count": 40,
+      "empty_completion_count": 2,
+      "prompt_echo_count": 2,
+      "repetition_count": 2
+    },
+    {
+      "study": "final_polish_v1",
+      "label": "source",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+      "step": 84,
+      "suite": "production",
+      "passed": 68,
+      "total": 512,
+      "pass_rate": 0.1328125,
+      "assistant_end_termination_count": 490,
+      "empty_completion_count": 0,
+      "prompt_echo_count": 179,
+      "repetition_count": 15
+    },
+    {
+      "study": "final_polish_v1",
+      "label": "candidate",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_final_instruct_polish_v1",
+      "step": 64,
+      "suite": "probe",
+      "passed": 5,
+      "total": 41,
+      "pass_rate": 0.12195121951219512,
+      "assistant_end_termination_count": 37,
+      "empty_completion_count": 0,
+      "prompt_echo_count": 3,
+      "repetition_count": 4
+    },
+    {
+      "study": "final_polish_v1",
+      "label": "candidate",
+      "tokenizer": "bpe_32768",
+      "model_tag": "tr_d32_bpe32k_final_instruct_polish_v1",
+      "step": 64,
+      "suite": "production",
+      "passed": 36,
+      "total": 512,
+      "pass_rate": 0.0703125,
+      "assistant_end_termination_count": 474,
+      "empty_completion_count": 0,
+      "prompt_echo_count": 163,
+      "repetition_count": 34
+    }
+  ],
+  "sources": [
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-capability-calibration-v1/manifest.json",
+      "sha256": "0012656617d6f8f9c6724b7e1563e6dead3ce24ca85a75c91554ad6f6ca0d69b",
+      "size_bytes": 14939,
+      "local_path": "sources/nanochat-turk-d32-capability-calibration-v1__manifest.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/probe-selection-summary.json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0,
+      "local_path": "sources/bounded-recovery-v1__probe-selection-summary.json",
+      "parse_status": "unavailable_empty"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1r2/probe-selection-summary.json",
+      "sha256": "d1f433fbe17827fbd3db461d72bf5fdfd8b14f4bb8549e3a30a3c1d6cfd5a63e",
+      "size_bytes": 9391,
+      "local_path": "sources/bounded-recovery-v1r2__probe-selection-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1r2/probe-selection.json",
+      "sha256": "93e0acb4ebdce717220fe5a3f08bbc4f60573268e3692be58d12efd915698f92",
+      "size_bytes": 8645,
+      "local_path": "sources/bounded-recovery-v1r2__probe-selection.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1r2/recovery-admission-summary.json",
+      "sha256": "47cd551f749db403395783bad404c6e2db28e99698a69b978d955adeef32f95c",
+      "size_bytes": 23822,
+      "local_path": "sources/bounded-recovery-v1r2__recovery-admission-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1r2/recovery-decision.json",
+      "sha256": "79cf22a73ff8c08f2a4b4b568d05fcf0d58365726a226098e7acc3c66f393fde",
+      "size_bytes": 1335,
+      "local_path": "sources/bounded-recovery-v1r2__recovery-decision.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/capability-calibration-screen-v1/eff020-16-checkpoint-verification-summary.json",
+      "sha256": "bbd12989df3c66b27840818321beacde421e008226ae7cb3d1a5ad8e6962482e",
+      "size_bytes": 2404,
+      "local_path": "sources/capability-calibration-screen-v1__eff020-16-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/capability-calibration-screen-v1/eff020-24-checkpoint-verification-summary.json",
+      "sha256": "03fe30d36cad54044a25a67a1e0e28d61501fa7341cada803ffe34725af0c771",
+      "size_bytes": 2404,
+      "local_path": "sources/capability-calibration-screen-v1__eff020-24-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/capability-calibration-screen-v1/eff020-32-checkpoint-verification-summary.json",
+      "sha256": "25103775ed47ffa4a4d6d3a75700903ec3bfea93543b319cb4677a3820045f15",
+      "size_bytes": 2404,
+      "local_path": "sources/capability-calibration-screen-v1__eff020-32-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/capability-calibration-screen-v1/eff020-8-checkpoint-verification-summary.json",
+      "sha256": "525aacd9f9fcea66e89c421ab1f1227299564bc823b7f9ed02c8fc89f9198dc1",
+      "size_bytes": 2401,
+      "local_path": "sources/capability-calibration-screen-v1__eff020-8-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/capability-calibration-screen-v1/eff040-16-checkpoint-verification-summary.json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0,
+      "local_path": "sources/capability-calibration-screen-v1__eff040-16-checkpoint-verification-summary.json",
+      "parse_status": "unavailable_empty"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/capability-calibration-screen-v1/eff040-8-checkpoint-verification-summary.json",
+      "sha256": "d7c7306bdf92f96eafa2def6a325c956b91f68a75550f0c76a84933be9022571",
+      "size_bytes": 2402,
+      "local_path": "sources/capability-calibration-screen-v1__eff040-8-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/final-combined-smoltalk2-turk-sft-v1/checkpoint-summary.json",
+      "sha256": "b39d2953e2e390f19680bc6468098898625621b1bbf807a7c9e047dd294f771d",
+      "size_bytes": 1806,
+      "local_path": "sources/final-combined-smoltalk2-turk-sft-v1__checkpoint-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/final-polish-v1/checkpoint-summary.json",
+      "sha256": "4680e8ff83d0bedde438e7c63e88ae70809551dbd2efe31fc67fb111a0cee383",
+      "size_bytes": 1870,
+      "local_path": "sources/final-polish-v1__checkpoint-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/final-polish-v1/selection-summary.json",
+      "sha256": "3d699e2ead36bef5f4d647707926ca568c028fc9e35d7c5f37df483a90ac3fcd",
+      "size_bytes": 2613,
+      "local_path": "sources/final-polish-v1__selection-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-12-checkpoint-verification-summary.json",
+      "sha256": "4215a44bdf3e378449e12d754814889fdbadfe81624055bc3a628bd8bfb24462",
+      "size_bytes": 2092,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff005-12-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-4-checkpoint-verification-summary.json",
+      "sha256": "de432f60ac761ec4108c2dcc4173ec345946671128b73838afe9e1c1d3118897",
+      "size_bytes": 2090,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff005-4-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-8-checkpoint-verification-summary.json",
+      "sha256": "52ba00acda24468eca0f2a9bc82d09f04285f020206bc5cd580507c7f1bc8696",
+      "size_bytes": 2090,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff005-8-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-12-checkpoint-verification-summary.json",
+      "sha256": "58cbadb930375f451e7b34e9c1d55d273e03532f752c105d25f9e546cc0bacba",
+      "size_bytes": 2090,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff010-12-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-4-checkpoint-verification-summary.json",
+      "sha256": "80779bf94c6280b010761b3a31d6e3a9bbd885ea6027cea26ebb5601f295490e",
+      "size_bytes": 2087,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff010-4-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-8-checkpoint-verification-summary.json",
+      "sha256": "5821ee3d63c2d958b49b10e987f08a093b02302a0faedaba92fae187f6f77476",
+      "size_bytes": 2088,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff010-8-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-12-checkpoint-verification-summary.json",
+      "sha256": "7e390a6fef51dced81216b2c88c7e62a49b2b92b1b96a5237e30c0503fd8ea76",
+      "size_bytes": 2089,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff020-12-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-4-checkpoint-verification-summary.json",
+      "sha256": "3da809f2fc235ba8d1f9f161e0426a39611d6d62e4c254b700ebb8b790218988",
+      "size_bytes": 2086,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff020-4-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-8-checkpoint-verification-summary.json",
+      "sha256": "4292e5a997fd3365feba0849aaeee49cf2dae8b16fb403b622835086531a10d8",
+      "size_bytes": 2086,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__eff020-8-checkpoint-verification-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/probe-selection.json",
+      "sha256": "1ab0367e9853ea2bdf86efcf367cdc6e4dca05e757457b9c598d38d388094788",
+      "size_bytes": 20174,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__probe-selection.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/screen-decision-summary.json",
+      "sha256": "5f6e9a9f96621a06c43a9766773119dd56a568bca9d089475f9a2ab42fcb76d6",
+      "size_bytes": 1073,
+      "local_path": "sources/targeted-repair-screen-v3-probe-recovery-v1__screen-decision-summary.json",
+      "parse_status": "valid_json"
+    },
+    {
+      "path": "/ari/users/nunal/nanochat-turk-d32-targeted-repair-v3/manifest.json",
+      "sha256": "bf3a1c5ff5608d988448b147b80935af7e4b64d8a87e4161d6ec653142512964",
+      "size_bytes": 9659,
+      "local_path": "sources/nanochat-turk-d32-targeted-repair-v3__manifest.json",
+      "parse_status": "valid_json"
+    }
+  ],
+  "records": {
+    "/ari/users/nunal/nanochat-turk-d32-capability-calibration-v1/manifest.json": {
+      "artifact_id": "d32-capability-calibration-v1",
+      "benchmark_quarantine": {
+        "heldout_answers_inspected": false,
+        "heldout_content_used_for_generation": false,
+        "inputs": [
+          {
+            "bytes": 12228,
+            "path": "/ari/users/nunal/nanochat-turk-d32-capability-calibration-code-956be38bd880/artifacts/eval/d32_instruct_probe_v1.jsonl",
+            "sha256": "a658c6c75f0e90fd8aa9a42b185cf6177846df86c984594dc8c4d055d8ebbd0f"
+          },
+          {
+            "bytes": 268376,
+            "path": "/ari/users/nunal/nanochat-turk-d32-capability-calibration-code-956be38bd880/artifacts/sft/d32_production_behavior_v1/heldout_benchmark.jsonl",
+            "sha256": "9014c77e147a9ab020b1da97bc2aa981de68c454f4957328ef190309bb535007"
+          }
+        ],
+        "jaccard_threshold": 0.9,
+        "leaf_strings_indexed": 2213,
+        "max_hamming": 3,
+        "passed": true,
+        "required": true,
+        "row_variants_indexed": 2212,
+        "strings_indexed": 4425,
+        "use": "post_generation_rejection_only"
+      },
+      "canonical_sha256": "e16b5163a096876163f35194ee13c45cf80e25f44ba013382b5f9529e15f9a5b",
+      "execution_policy": {
+        "automatic_follow_on": false,
+        "automatic_publication": false,
+        "automatic_release": false,
+        "promotion_requires_fresh_heldout_and_retention_gates": true,
+        "research_only": true,
+        "training_submission": false
+      },
+      "explicit_diagnostic_training_admissible": true,
+      "family_policy": {
+        "anchors": {
+          "exact_format": {
+            "quota": 400,
+            "validation_quota": 20
+          },
+          "multi_turn_memory": {
+            "quota": 800,
+            "validation_quota": 40
+          },
+          "ordinary_helpfulness": {
+            "quota": 400,
+            "validation_quota": 20
+          }
+        },
+        "grounded_uncertainty": {
+          "ambiguous_request": {
+            "quota": 250,
+            "validation_quota": 13
+          },
+          "conflicting_records": {
+            "quota": 250,
+            "validation_quota": 12
+          },
+          "false_premise_record": {
+            "quota": 250,
+            "validation_quota": 13
+          },
+          "future_or_live_status": {
+            "quota": 250,
+            "validation_quota": 12
+          },
+          "insufficient_causal_evidence": {
+            "quota": 250,
+            "validation_quota": 12
+          },
+          "missing_record_field": {
+            "quota": 250,
+            "validation_quota": 13
+          },
+          "unsupported_attribution": {
+            "quota": 250,
+            "validation_quota": 12
+          },
+          "unverifiable_entity": {
+            "quota": 250,
+            "validation_quota": 13
+          }
+        },
+        "reasoning": {
+          "addition": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "conditional_count": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "division": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "multiplication": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "ordering": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "percentage": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "ratio": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "subtraction": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "time_calculation": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "unit_conversion": {
+            "quota": 200,
+            "validation_quota": 10
+          }
+        },
+        "safety": {
+          "account_intrusion": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "credential_phishing": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "credential_theft": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "data_exfiltration": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "evasion_concealment": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "fraud_impersonation": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "lock_bypass": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "malware_delivery": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "physical_sabotage": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "privacy_doxxing": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "stalking_tracking": {
+            "quota": 200,
+            "validation_quota": 10
+          },
+          "weapon_harm": {
+            "quota": 200,
+            "validation_quota": 10
+          }
+        }
+      },
+      "format_version": 1,
+      "generation": {
+        "benchmark_rows_used": false,
+        "external_source_text_used": false,
+        "heldout_answers_inspected": false,
+        "heldout_content_used_for_generation": false,
+        "interleave": "deterministic_superfamily_family_round_robin_v1",
+        "manual_row_annotation": false,
+        "schema_revision": "independent_turkish_capability_schemas_v1",
+        "seed": 2026083007,
+        "system_messages": false
+      },
+      "kind": "nanochat_d32_capability_calibration_v1",
+      "max_seq_len": 2048,
+      "normalization": {
+        "assistant_end_supervised": true,
+        "assistant_only_targets": true,
+        "schema": "cue-free alternating user/assistant",
+        "silent_truncation": false,
+        "system_messages": false,
+        "visible_chain_of_thought": false
+      },
+      "outputs": {
+        "train": {
+          "bytes": 4617529,
+          "path": "train.jsonl",
+          "rows": 7600,
+          "sha256": "c718c7703327607c65a89b1b5acd802eb78abbe90bf6f768c9dc98f6f962ed31",
+          "tokens": {
+            "assistant_content_tokens": 407337,
+            "assistant_end_targets": 8360,
+            "formatted_tokens": 763879,
+            "maximum_formatted_tokens": 162,
+            "supervised_assistant_tokens": 415697
+          }
+        },
+        "train_provenance": {
+          "bytes": 4075561,
+          "path": "train.provenance.jsonl",
+          "rows": 7600,
+          "sha256": "7c96de0dfb21480844228c3b0460dd81508e9ed95b48d2e8f0f247cfed00e8dc"
+        },
+        "validation": {
+          "bytes": 242553,
+          "path": "validation.jsonl",
+          "rows": 400,
+          "sha256": "013b71c820b129e6cdf1e9356669374c1de3cf7685e08b36687e63c437643825",
+          "tokens": {
+            "assistant_content_tokens": 21424,
+            "assistant_end_targets": 440,
+            "formatted_tokens": 40104,
+            "maximum_formatted_tokens": 159,
+            "supervised_assistant_tokens": 21864
+          }
+        },
+        "validation_provenance": {
+          "bytes": 214039,
+          "path": "validation.provenance.jsonl",
+          "rows": 400,
+          "sha256": "454870342c22d2c2747baa42f54e66a50b440bbd82509259ba3a9740a10944d4"
+        }
+      },
+      "purpose": "Fresh, cue-free Turkish capability calibration curriculum for the retained D32 source84 checkpoint",
+      "release_qualified": false,
+      "requirements": {
+        "exact_payload_duplicates": 0,
+        "exact_total_rows": 8000,
+        "exact_train_rows": 7600,
+        "exact_validation_rows": 400,
+        "maximum_formatted_tokens_per_row": 2048,
+        "maximum_total_formatted_tokens": 1200000,
+        "maximum_train_formatted_tokens": 1140000,
+        "minimum_distinct_assistant_texts_per_family": 8,
+        "minimum_distinct_user_fraction_per_family": 1.0,
+        "minimum_total_assistant_end_targets": 8800,
+        "minimum_total_formatted_tokens": 800000,
+        "minimum_train_formatted_tokens": 750000,
+        "train_validation_near_duplicate_jaccard": 0.985,
+        "train_validation_near_duplicate_max_hamming": 0,
+        "validation_policy": "deterministic_stratified_five_percent_in_distribution_diagnostic_v1"
+      },
+      "research_only": true,
+      "selection_audit": {
+        "benchmark_rows_used": false,
+        "candidate_generation_completed_before_quarantine_load": true,
+        "candidate_pool_stable_ids_sha256": "ff70a693c5e09dcaa4c11dce7521ca7df6225b2b2658bf63dd41628e7afdec28",
+        "candidate_rows_considered": 8000,
+        "candidates_by_family": {
+          "anchors:exact_format": 400,
+          "anchors:multi_turn_memory": 800,
+          "anchors:ordinary_helpfulness": 400,
+          "grounded_uncertainty:ambiguous_request": 250,
+          "grounded_uncertainty:conflicting_records": 250,
+          "grounded_uncertainty:false_premise_record": 250,
+          "grounded_uncertainty:future_or_live_status": 250,
+          "grounded_uncertainty:insufficient_causal_evidence": 250,
+          "grounded_uncertainty:missing_record_field": 250,
+          "grounded_uncertainty:unsupported_attribution": 250,
+          "grounded_uncertainty:unverifiable_entity": 250,
+          "reasoning:addition": 200,
+          "reasoning:conditional_count": 200,
+          "reasoning:division": 200,
+          "reasoning:multiplication": 200,
+          "reasoning:ordering": 200,
+          "reasoning:percentage": 200,
+          "reasoning:ratio": 200,
+          "reasoning:subtraction": 200,
+          "reasoning:time_calculation": 200,
+          "reasoning:unit_conversion": 200,
+          "safety:account_intrusion": 200,
+          "safety:credential_phishing": 200,
+          "safety:credential_theft": 200,
+          "safety:data_exfiltration": 200,
+          "safety:evasion_concealment": 200,
+          "safety:fraud_impersonation": 200,
+          "safety:lock_bypass": 200,
+          "safety:malware_delivery": 200,
+          "safety:physical_sabotage": 200,
+          "safety:privacy_doxxing": 200,
+          "safety:stalking_tracking": 200,
+          "safety:weapon_harm": 200
+        },
+        "distinct_normalized_assistant_texts_by_family": {
+          "anchors:exact_format": 400,
+          "anchors:multi_turn_memory": 40,
+          "anchors:ordinary_helpfulness": 148,
+          "grounded_uncertainty:ambiguous_request": 50,
+          "grounded_uncertainty:conflicting_records": 250,
+          "grounded_uncertainty:false_premise_record": 250,
+          "grounded_uncertainty:future_or_live_status": 50,
+          "grounded_uncertainty:insufficient_causal_evidence": 50,
+          "grounded_uncertainty:missing_record_field": 50,
+          "grounded_uncertainty:unsupported_attribution": 50,
+          "grounded_uncertainty:unverifiable_entity": 50,
+          "reasoning:addition": 78,
+          "reasoning:conditional_count": 170,
+          "reasoning:division": 12,
+          "reasoning:multiplication": 113,
+          "reasoning:ordering": 200,
+          "reasoning:percentage": 191,
+          "reasoning:ratio": 180,
+          "reasoning:subtraction": 200,
+          "reasoning:time_calculation": 71,
+          "reasoning:unit_conversion": 200,
+          "safety:account_intrusion": 50,
+          "safety:credential_phishing": 50,
+          "safety:credential_theft": 50,
+          "safety:data_exfiltration": 50,
+          "safety:evasion_concealment": 50,
+          "safety:fraud_impersonation": 50,
+          "safety:lock_bypass": 50,
+          "safety:malware_delivery": 50,
+          "safety:physical_sabotage": 50,
+          "safety:privacy_doxxing": 50,
+          "safety:stalking_tracking": 50,
+          "safety:weapon_harm": 50
+        },
+        "distinct_normalized_user_texts_by_family": {
+          "anchors:exact_format": 400,
+          "anchors:multi_turn_memory": 800,
+          "anchors:ordinary_helpfulness": 400,
+          "grounded_uncertainty:ambiguous_request": 250,
+          "grounded_uncertainty:conflicting_records": 250,
+          "grounded_uncertainty:false_premise_record": 250,
+          "grounded_uncertainty:future_or_live_status": 250,
+          "grounded_uncertainty:insufficient_causal_evidence": 250,
+          "grounded_uncertainty:missing_record_field": 250,
+          "grounded_uncertainty:unsupported_attribution": 250,
+          "grounded_uncertainty:unverifiable_entity": 250,
+          "reasoning:addition": 200,
+          "reasoning:conditional_count": 200,
+          "reasoning:division": 200,
+          "reasoning:multiplication": 200,
+          "reasoning:ordering": 200,
+          "reasoning:percentage": 200,
+          "reasoning:ratio": 200,
+          "reasoning:subtraction": 200,
+          "reasoning:time_calculation": 200,
+          "reasoning:unit_conversion": 200,
+          "safety:account_intrusion": 200,
+          "safety:credential_phishing": 200,
+          "safety:credential_theft": 200,
+          "safety:data_exfiltration": 200,
+          "safety:evasion_concealment": 200,
+          "safety:fraud_impersonation": 200,
+          "safety:lock_bypass": 200,
+          "safety:malware_delivery": 200,
+          "safety:physical_sabotage": 200,
+          "safety:privacy_doxxing": 200,
+          "safety:stalking_tracking": 200,
+          "safety:weapon_harm": 200
+        },
+        "exact_payload_duplicates": 0,
+        "external_source_text_used": false,
+        "family_counts": {
+          "anchors:exact_format": 400,
+          "anchors:multi_turn_memory": 800,
+          "anchors:ordinary_helpfulness": 400,
+          "grounded_uncertainty:ambiguous_request": 250,
+          "grounded_uncertainty:conflicting_records": 250,
+          "grounded_uncertainty:false_premise_record": 250,
+          "grounded_uncertainty:future_or_live_status": 250,
+          "grounded_uncertainty:insufficient_causal_evidence": 250,
+          "grounded_uncertainty:missing_record_field": 250,
+          "grounded_uncertainty:unsupported_attribution": 250,
+          "grounded_uncertainty:unverifiable_entity": 250,
+          "reasoning:addition": 200,
+          "reasoning:conditional_count": 200,
+          "reasoning:division": 200,
+          "reasoning:multiplication": 200,
+          "reasoning:ordering": 200,
+          "reasoning:percentage": 200,
+          "reasoning:ratio": 200,
+          "reasoning:subtraction": 200,
+          "reasoning:time_calculation": 200,
+          "reasoning:unit_conversion": 200,
+          "safety:account_intrusion": 200,
+          "safety:credential_phishing": 200,
+          "safety:credential_theft": 200,
+          "safety:data_exfiltration": 200,
+          "safety:evasion_concealment": 200,
+          "safety:fraud_impersonation": 200,
+          "safety:lock_bypass": 200,
+          "safety:malware_delivery": 200,
+          "safety:physical_sabotage": 200,
+          "safety:privacy_doxxing": 200,
+          "safety:stalking_tracking": 200,
+          "safety:weapon_harm": 200
+        },
+        "heldout_answers_inspected": false,
+        "heldout_content_used_for_generation": false,
+        "interleave": "deterministic_superfamily_family_round_robin_v1",
+        "manual_row_annotation": false,
+        "rejected_benchmark_quarantine": {},
+        "rejected_exact_duplicates": {},
+        "schema_revision": "independent_turkish_capability_schemas_v1",
+        "seed": 2026083007,
+        "selected_total_rows": 8000,
+        "selected_train_rows": 7600,
+        "selected_unique_payloads": 8000,
+        "selected_validation_rows": 400,
+        "superfamily_counts": {
+          "anchors": 1600,
+          "grounded_uncertainty": 2000,
+          "reasoning": 2000,
+          "safety": 2400
+        },
+        "system_messages": false,
+        "train_superfamily_counts": {
+          "anchors": 1520,
+          "grounded_uncertainty": 1900,
+          "reasoning": 1900,
+          "safety": 2280
+        },
+        "train_validation_exact_payload_overlap": 0,
+        "train_validation_near_duplicate_jaccard": 0.985,
+        "train_validation_near_duplicate_matches": 0,
+        "train_validation_near_duplicate_max_hamming": 0,
+        "train_validation_normalized_assistant_surface_overlap": 283,
+        "train_validation_normalized_user_overlap": 0,
+        "validation_answer_independence_claimed": false,
+        "validation_superfamily_counts": {
+          "anchors": 80,
+          "grounded_uncertainty": 100,
+          "reasoning": 100,
+          "safety": 120
+        }
+      },
+      "source": {
+        "benchmark_rows_used": false,
+        "external_source_text_used": false,
+        "generator": {
+          "deterministic": true,
+          "external_source_text_used": false,
+          "heldout_answers_inspected": false,
+          "heldout_content_used_for_generation": false,
+          "method": "independent_turkish_capability_schemas_v1",
+          "path": "/ari/users/nunal/nanochat-turk-d32-capability-calibration-code-956be38bd880/scripts/build_d32_capability_calibration_sft.py",
+          "sha256": "42007f5d38d76836df2aaaefd523007308bf4e201b24391514bfed06854cfb51"
+        },
+        "heldout_answers_inspected": false,
+        "heldout_content_used_for_generation": false,
+        "method": "independent_turkish_capability_schemas_v1",
+        "row_level_manual_annotation": false,
+        "source_checkpoint_binding": {
+          "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+          "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+          "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+          "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+          "phase": "sft",
+          "step": 84
+        },
+        "source_checkpoint_verification": {
+          "checkpoint_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/chatsft_checkpoints/tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+          "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+          "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+          "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+          "status": "verified_physical_world_size_1",
+          "world_size": 1
+        }
+      },
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "split": {
+        "answer_surface_independent": false,
+        "near_user_surface_independent": true,
+        "normalized_user_surface_independent": true,
+        "payload_independent": true,
+        "policy": "deterministic_stratified_five_percent_in_distribution_diagnostic_v1",
+        "train_rows": 7600,
+        "validation_role": "in_distribution_loss_diagnostic_only",
+        "validation_rows": 400
+      },
+      "tokenizer": {
+        "config_sha256": "b381631bad8ca489b85dbab686d63f0691b6455300f2ae43f8af43ad3b80a916",
+        "directory": "/ari/users/nunal/nanochat-turk-d20-bpe32k/tokenizers/bpe_32768",
+        "model_file": "tokenizer.pkl",
+        "production_compatible": true,
+        "token_bytes_sha256": "ba345dc7eea5f07b3200f213ccf61ea6e9990d15d81d25e2e323009f4fba502e",
+        "tokenizer_sha256": "3b7f00d8697a303bb0ac7379b497fec6b76a61bd5bb694825264eecd4cb62a20",
+        "vocab_size": 32768
+      },
+      "training_screen": {
+        "arms": {
+          "eff020": {
+            "embedding_lr": 0.06,
+            "matrix_lr": 0.004,
+            "scalar_lr": 0.1,
+            "smear_lr": 0.04,
+            "unembedding_lr": 0.0016
+          },
+          "eff040": {
+            "embedding_lr": 0.12,
+            "matrix_lr": 0.008,
+            "scalar_lr": 0.2,
+            "smear_lr": 0.08,
+            "unembedding_lr": 0.0032
+          },
+          "eff060": {
+            "embedding_lr": 0.18,
+            "matrix_lr": 0.012,
+            "scalar_lr": 0.3,
+            "smear_lr": 0.12,
+            "unembedding_lr": 0.0048
+          }
+        },
+        "assistant_end_row_initialization": "preserve",
+        "assistant_end_supervised": true,
+        "assistant_only_loss": true,
+        "attention_backend": "sdpa",
+        "checkpoint_steps": [
+          8,
+          16,
+          24,
+          32
+        ],
+        "device_batch_size": 4,
+        "diagnostic_only": true,
+        "final_lr_fraction": 0.2,
+        "fresh_optimizer": true,
+        "init_lr_fraction": 0.2,
+        "max_seq_len": 2048,
+        "num_iterations": 32,
+        "precision": "bfloat16",
+        "schedule_horizon_updates": 32,
+        "total_batch_size": 32768,
+        "warmdown_ratio": 0.25,
+        "warmup_ratio": 0.1
+      },
+      "training_submitted": false
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1r2/probe-selection-summary.json": {
+      "automatic_release": false,
+      "candidates": {
+        "high-16": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 1,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 1,
+            "ordinary_helpfulness": 1,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 2,
+          "diagnostics": {
+            "assistant_end_termination_count": 34,
+            "empty_completion_count": 0,
+            "prompt_echo_count": 4,
+            "repetition_count": 3
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 6,
+          "probe_qualified": false,
+          "report_sha256": "920e23e3536584580498ef993554c67f0e23df6d774a3f841198cf835b0ef7e1",
+          "selection_metadata": {
+            "arm": "high",
+            "input_order": 7,
+            "lr_order": 2,
+            "parsed": true,
+            "step": 16
+          },
+          "status_pass": true,
+          "total": 41
+        },
+        "high-24": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 1,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 1,
+            "ordinary_helpfulness": 1,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 2,
+          "diagnostics": {
+            "assistant_end_termination_count": 35,
+            "empty_completion_count": 0,
+            "prompt_echo_count": 4,
+            "repetition_count": 3
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 6,
+          "probe_qualified": false,
+          "report_sha256": "fac088aa4c283adb62b4fc5cfe0ba707a60e1557e1156a5bb36129843bc7ed9b",
+          "selection_metadata": {
+            "arm": "high",
+            "input_order": 8,
+            "lr_order": 2,
+            "parsed": true,
+            "step": 24
+          },
+          "status_pass": true,
+          "total": 41
+        },
+        "high-8": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 1,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 1,
+            "ordinary_helpfulness": 1,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 0
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 2,
+          "diagnostics": {
+            "assistant_end_termination_count": 38,
+            "empty_completion_count": 0,
+            "prompt_echo_count": 5,
+            "repetition_count": 5
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 5,
+          "probe_qualified": false,
+          "report_sha256": "1dec1fc078c0cb2444a4f7b53ef602bd03f2b43b6fe362451d85c5c82968bc62",
+          "selection_metadata": {
+            "arm": "high",
+            "input_order": 6,
+            "lr_order": 2,
+            "parsed": true,
+            "step": 8
+          },
+          "status_pass": true,
+          "total": 41
+        },
+        "low-16": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 2,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 1,
+            "ordinary_helpfulness": 2,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 3,
+          "diagnostics": {
+            "assistant_end_termination_count": 39,
+            "empty_completion_count": 1,
+            "prompt_echo_count": 5,
+            "repetition_count": 4
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 8,
+          "probe_qualified": false,
+          "report_sha256": "0940bec5042d01a46679a29cafb1e37cc419aa462191cc6fd4e9c9c8f69b3036",
+          "selection_metadata": {
+            "arm": "low",
+            "input_order": 1,
+            "lr_order": 0,
+            "parsed": true,
+            "step": 16
+          },
+          "status_pass": true,
+          "total": 41
+        },
+        "low-24": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 1,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 1,
+            "ordinary_helpfulness": 1,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 2,
+          "diagnostics": {
+            "assistant_end_termination_count": 37,
+            "empty_completion_count": 1,
+            "prompt_echo_count": 5,
+            "repetition_count": 3
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 6,
+          "probe_qualified": false,
+          "report_sha256": "e293c6f2dfdd4a7a2493ac6c10c110277cd4d6fadafae23b67bde2c5825b5e73",
+          "selection_metadata": {
+            "arm": "low",
+            "input_order": 2,
+            "lr_order": 0,
+            "parsed": true,
+            "step": 24
+          },
+          "status_pass": true,
+          "total": 41
+        },
+        "low-8": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 2,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 0,
+            "ordinary_helpfulness": 3,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 2,
+          "diagnostics": {
+            "assistant_end_termination_count": 39,
+            "empty_completion_count": 2,
+            "prompt_echo_count": 2,
+            "repetition_count": 2
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 8,
+          "probe_qualified": false,
+          "report_sha256": "81d2fd572b8ba2b2d8e26437e6dec96e76e958f35fb07bab2d3bc9c733620d58",
+          "selection_metadata": {
+            "arm": "low",
+            "input_order": 0,
+            "lr_order": 0,
+            "parsed": true,
+            "step": 8
+          },
+          "status_pass": true,
+          "total": 41
+        },
+        "mid-16": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 1,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 1,
+            "ordinary_helpfulness": 1,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 2,
+          "diagnostics": {
+            "assistant_end_termination_count": 37,
+            "empty_completion_count": 0,
+            "prompt_echo_count": 5,
+            "repetition_count": 5
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 6,
+          "probe_qualified": false,
+          "report_sha256": "20568836940503be05295e6e25c8b69fa14aa20957aebd88115f3a1d822e5218",
+          "selection_metadata": {
+            "arm": "mid",
+            "input_order": 4,
+            "lr_order": 1,
+            "parsed": true,
+            "step": 16
+          },
+          "status_pass": true,
+          "total": 41
+        },
+        "mid-24": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 1,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 1,
+            "ordinary_helpfulness": 1,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 2,
+          "diagnostics": {
+            "assistant_end_termination_count": 36,
+            "empty_completion_count": 0,
+            "prompt_echo_count": 5,
+            "repetition_count": 4
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 6,
+          "probe_qualified": false,
+          "report_sha256": "a6ca2cf11693b84ebe0d29a8355e788c3cf4a2c1418be668039e79872919fab9",
+          "selection_metadata": {
+            "arm": "mid",
+            "input_order": 5,
+            "lr_order": 1,
+            "parsed": true,
+            "step": 24
+          },
+          "status_pass": true,
+          "total": 41
+        },
+        "mid-8": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 1,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 1,
+            "ordinary_helpfulness": 1,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 2,
+          "diagnostics": {
+            "assistant_end_termination_count": 38,
+            "empty_completion_count": 1,
+            "prompt_echo_count": 5,
+            "repetition_count": 3
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 6,
+          "probe_qualified": false,
+          "report_sha256": "fabdc7babc98f1a9d6b2a5beba54cb1d87a9e71cf63be53dbee1b467e8630e44",
+          "selection_metadata": {
+            "arm": "mid",
+            "input_order": 3,
+            "lr_order": 1,
+            "parsed": true,
+            "step": 8
+          },
+          "status_pass": true,
+          "total": 41
+        }
+      },
+      "canonical_sha256": "d1e44ac8a64cb5c4506a0abe0cfcae946456dbd8c3463a173e5e1ed91d6e59ee",
+      "format_version": 1,
+      "gates": {
+        "qualified_candidates_available": false
+      },
+      "kind": "nanochat_d32_probe_candidate_selection_v1",
+      "probe_qualified": false,
+      "research_only": true,
+      "selected_label": null,
+      "selected_report": null,
+      "source": {
+        "categories": {
+          "chat_surface": 1,
+          "exact_format": 2,
+          "grounded_uncertainty": 0,
+          "knowledge": 1,
+          "multi_turn": 1,
+          "ordinary_helpfulness": 3,
+          "reasoning": 0,
+          "safety": 0,
+          "turkish_language": 1
+        },
+        "critical_passes": 3,
+        "diagnostics": {
+          "assistant_end_termination_count": 40,
+          "empty_completion_count": 2,
+          "prompt_echo_count": 2,
+          "repetition_count": 2
+        },
+        "forbidden_control_zero": true,
+        "leak_free": true,
+        "passed": 9,
+        "status_pass": true,
+        "total": 41
+      },
+      "status": "retain_source"
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1r2/probe-selection.json": {
+      "automatic_release": false,
+      "candidates": {
+        "high-16": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 1,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 1,
+            "ordinary_helpfulness": 1,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 2,
+          "diagnostics": {
+            "assistant_end_termination_count": 34,
+            "empty_completion_count": 0,
+            "prompt_echo_count": 4,
+            "repetition_count": 3
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 6,
+          "probe_qualified": false,
+          "report_sha256": "920e23e3536584580498ef993554c67f0e23df6d774a3f841198cf835b0ef7e1",
+          "selection_metadata": {
+            "arm": "high",
+            "input_order": 7,
+            "lr_order": 2,
+            "parsed": true,
+            "step": 16
+          },
+          "status_pass": true,
+          "total": 41
+        },
+        "high-24": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 1,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 1,
+            "ordinary_helpfulness": 1,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 2,
+          "diagnostics": {
+            "assistant_end_termination_count": 35,
+            "empty_completion_count": 0,
+            "prompt_echo_count": 4,
+            "repetition_count": 3
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 6,
+          "probe_qualified": false,
+          "report_sha256": "fac088aa4c283adb62b4fc5cfe0ba707a60e1557e1156a5bb36129843bc7ed9b",
+          "selection_metadata": {
+            "arm": "high",
+            "input_order": 8,
+            "lr_order": 2,
+            "parsed": true,
+            "step": 24
+          },
+          "status_pass": true,
+          "total": 41
+        },
+        "high-8": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 1,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 1,
+            "ordinary_helpfulness": 1,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 0
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 2,
+          "diagnostics": {
+            "assistant_end_termination_count": 38,
+            "empty_completion_count": 0,
+            "prompt_echo_count": 5,
+            "repetition_count": 5
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 5,
+          "probe_qualified": false,
+          "report_sha256": "1dec1fc078c0cb2444a4f7b53ef602bd03f2b43b6fe362451d85c5c82968bc62",
+          "selection_metadata": {
+            "arm": "high",
+            "input_order": 6,
+            "lr_order": 2,
+            "parsed": true,
+            "step": 8
+          },
+          "status_pass": true,
+          "total": 41
+        },
+        "low-16": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 2,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 1,
+            "ordinary_helpfulness": 2,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 3,
+          "diagnostics": {
+            "assistant_end_termination_count": 39,
+            "empty_completion_count": 1,
+            "prompt_echo_count": 5,
+            "repetition_count": 4
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 8,
+          "probe_qualified": false,
+          "report_sha256": "0940bec5042d01a46679a29cafb1e37cc419aa462191cc6fd4e9c9c8f69b3036",
+          "selection_metadata": {
+            "arm": "low",
+            "input_order": 1,
+            "lr_order": 0,
+            "parsed": true,
+            "step": 16
+          },
+          "status_pass": true,
+          "total": 41
+        },
+        "low-24": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 1,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 1,
+            "ordinary_helpfulness": 1,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 2,
+          "diagnostics": {
+            "assistant_end_termination_count": 37,
+            "empty_completion_count": 1,
+            "prompt_echo_count": 5,
+            "repetition_count": 3
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 6,
+          "probe_qualified": false,
+          "report_sha256": "e293c6f2dfdd4a7a2493ac6c10c110277cd4d6fadafae23b67bde2c5825b5e73",
+          "selection_metadata": {
+            "arm": "low",
+            "input_order": 2,
+            "lr_order": 0,
+            "parsed": true,
+            "step": 24
+          },
+          "status_pass": true,
+          "total": 41
+        },
+        "low-8": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 2,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 0,
+            "ordinary_helpfulness": 3,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 2,
+          "diagnostics": {
+            "assistant_end_termination_count": 39,
+            "empty_completion_count": 2,
+            "prompt_echo_count": 2,
+            "repetition_count": 2
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 8,
+          "probe_qualified": false,
+          "report_sha256": "81d2fd572b8ba2b2d8e26437e6dec96e76e958f35fb07bab2d3bc9c733620d58",
+          "selection_metadata": {
+            "arm": "low",
+            "input_order": 0,
+            "lr_order": 0,
+            "parsed": true,
+            "step": 8
+          },
+          "status_pass": true,
+          "total": 41
+        },
+        "mid-16": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 1,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 1,
+            "ordinary_helpfulness": 1,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 2,
+          "diagnostics": {
+            "assistant_end_termination_count": 37,
+            "empty_completion_count": 0,
+            "prompt_echo_count": 5,
+            "repetition_count": 5
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 6,
+          "probe_qualified": false,
+          "report_sha256": "20568836940503be05295e6e25c8b69fa14aa20957aebd88115f3a1d822e5218",
+          "selection_metadata": {
+            "arm": "mid",
+            "input_order": 4,
+            "lr_order": 1,
+            "parsed": true,
+            "step": 16
+          },
+          "status_pass": true,
+          "total": 41
+        },
+        "mid-24": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 1,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 1,
+            "ordinary_helpfulness": 1,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 2,
+          "diagnostics": {
+            "assistant_end_termination_count": 36,
+            "empty_completion_count": 0,
+            "prompt_echo_count": 5,
+            "repetition_count": 4
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 6,
+          "probe_qualified": false,
+          "report_sha256": "a6ca2cf11693b84ebe0d29a8355e788c3cf4a2c1418be668039e79872919fab9",
+          "selection_metadata": {
+            "arm": "mid",
+            "input_order": 5,
+            "lr_order": 1,
+            "parsed": true,
+            "step": 24
+          },
+          "status_pass": true,
+          "total": 41
+        },
+        "mid-8": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 1,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 1,
+            "ordinary_helpfulness": 1,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "core_capability_gains": {
+            "grounded_uncertainty": 0,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 2,
+          "diagnostics": {
+            "assistant_end_termination_count": 38,
+            "empty_completion_count": 1,
+            "prompt_echo_count": 5,
+            "repetition_count": 3
+          },
+          "forbidden_control_zero": true,
+          "gates": {
+            "at_least_one_core_capability_improves": false,
+            "every_probe_category_not_worse": false,
+            "forbidden_control_free": true,
+            "leak_free": true,
+            "overall_not_worse": false,
+            "report_pass": true
+          },
+          "leak_free": true,
+          "passed": 6,
+          "probe_qualified": false,
+          "report_sha256": "fabdc7babc98f1a9d6b2a5beba54cb1d87a9e71cf63be53dbee1b467e8630e44",
+          "selection_metadata": {
+            "arm": "mid",
+            "input_order": 3,
+            "lr_order": 1,
+            "parsed": true,
+            "step": 8
+          },
+          "status_pass": true,
+          "total": 41
+        }
+      },
+      "canonical_sha256": "d1e44ac8a64cb5c4506a0abe0cfcae946456dbd8c3463a173e5e1ed91d6e59ee",
+      "format_version": 1,
+      "gates": {
+        "qualified_candidates_available": false
+      },
+      "kind": "nanochat_d32_probe_candidate_selection_v1",
+      "probe_qualified": false,
+      "research_only": true,
+      "selected_label": null,
+      "selected_report": null,
+      "source": {
+        "categories": {
+          "chat_surface": 1,
+          "exact_format": 2,
+          "grounded_uncertainty": 0,
+          "knowledge": 1,
+          "multi_turn": 1,
+          "ordinary_helpfulness": 3,
+          "reasoning": 0,
+          "safety": 0,
+          "turkish_language": 1
+        },
+        "critical_passes": 3,
+        "diagnostics": {
+          "assistant_end_termination_count": 40,
+          "empty_completion_count": 2,
+          "prompt_echo_count": 2,
+          "repetition_count": 2
+        },
+        "forbidden_control_zero": true,
+        "leak_free": true,
+        "passed": 9,
+        "status_pass": true,
+        "total": 41
+      },
+      "status": "retain_source"
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1r2/recovery-admission-summary.json": {
+      "canonical_sha256": "da5e7549b290311cc9f06c8ad2291832bb94d377ac2a46d4b7a4d82754ccf205",
+      "code": {
+        "archive": {
+          "bytes": 4894720,
+          "mode": "0644",
+          "path": "/ari/users/nunal/nanochat-turk-d32-bounded-recovery-code-1217d2291848.tar",
+          "sha256": "48ab9e6129f641d0b2eb326fe018efc26d89c13b29e717651f58d621b9aae668"
+        },
+        "commit": "1217d229184851c042536a49b1f9595b568f6435",
+        "cpu_controller": {
+          "bytes": 12184,
+          "mode": "0444",
+          "path": "/ari/users/nunal/nanochat-turk-d32-bounded-recovery-code-1217d2291848/runs/uhem_d32_bounded_probe_selection_recovery_cpu.sbatch",
+          "sha256": "c43716283fb8bb5c1b43cd41b209b827cc048b733bd3447449e49aa961709e4f"
+        },
+        "directory": "/ari/users/nunal/nanochat-turk-d32-bounded-recovery-code-1217d2291848",
+        "gpu_controller": {
+          "bytes": 11480,
+          "mode": "0444",
+          "path": "/ari/users/nunal/nanochat-turk-d32-bounded-recovery-code-1217d2291848/runs/uhem_d32_bounded_probe_selection_production_a100.sbatch",
+          "sha256": "2e89c4c2c17f4ff333c99dacd8cb5320a99b07b8e129b20423718791e9131a90"
+        }
+      },
+      "format_version": 1,
+      "kind": "nanochat_d32_bounded_probe_selection_recovery_admission_v1",
+      "output_root": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1r2",
+      "parent": {
+        "checkpoint_verifications": {
+          "arm-high/checkpoint-16-verification.json": {
+            "bytes": 1778,
+            "checkpoint": {
+              "complete_sha256": "63683f90926a79a2aeab468148d088e9be469cb7eee06eb64f237d4d9a0611b2",
+              "meta_sha256": "bed370d8e725699202dad7fe4cae1fa7a8a123c9f5caeb55d48059cd2ba3e43e",
+              "model_sha256": "e875918ab95dd0280a7cb7fabbf921dc177e4606a025945f9b76819eadb9abec",
+              "model_tag": "tr_d32_bpe32k_bounded_recovery_eff004_v1",
+              "step": 16,
+              "validation_bpb": 0.4417457081285378
+            },
+            "mode": "0444",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/arm-high/checkpoint-16-verification.json",
+            "sha256": "1bf165e78df343a175617aef4270411cbc810354d7a764ba8cc2874ae173d44b"
+          },
+          "arm-high/checkpoint-24-verification.json": {
+            "bytes": 1778,
+            "checkpoint": {
+              "complete_sha256": "11870da0441e96b0f31a9ea654a63b871483960e9157ce8ef8d1f6277ea25376",
+              "meta_sha256": "c07bc941b3dd2dd1a18becef152e86bbe2d0020ac51f88a060adcb89cd78dc40",
+              "model_sha256": "e0cca04410bc57d83bc1d59964ded60ebd98140e0686d9d2614f5e559cdcb85c",
+              "model_tag": "tr_d32_bpe32k_bounded_recovery_eff004_v1",
+              "step": 24,
+              "validation_bpb": 0.4417298761022523
+            },
+            "mode": "0444",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/arm-high/checkpoint-24-verification.json",
+            "sha256": "5115d0f573163a0a95845618395094c281d43c467ebf3095e1b15e157bbdc62f"
+          },
+          "arm-high/checkpoint-8-verification.json": {
+            "bytes": 1777,
+            "checkpoint": {
+              "complete_sha256": "153ee1c0eaccf645060bba145be011e4368ef71b7119dd72bd1aa8d68c098998",
+              "meta_sha256": "2e8eb34b9a408426fa7ce7a8efea6da8cac007dbf3b9f21f51eeee69777f32bb",
+              "model_sha256": "40a4053f8cd7d11112a30ddd6bb90781ec3ee37cb7f647e7a3a392c1cea55da6",
+              "model_tag": "tr_d32_bpe32k_bounded_recovery_eff004_v1",
+              "step": 8,
+              "validation_bpb": 0.4446657806755827
+            },
+            "mode": "0444",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/arm-high/checkpoint-8-verification.json",
+            "sha256": "dce614942c66f8d60c84b9f73c66f9463b05a3929c31b140c29b32850975679b"
+          },
+          "arm-low/checkpoint-16-verification.json": {
+            "bytes": 1779,
+            "checkpoint": {
+              "complete_sha256": "9b9abe6675a930364128228f30bb69727b645cc4714dfb12f85df0d29c4ba7ea",
+              "meta_sha256": "a2bbd63d0173b4eccfb5d0fce5ae5e78f1c3c5f48bf6f88d1fbe2bc9a163dd0e",
+              "model_sha256": "a77a2578b4dee96cf5fc0800c8227edd57817ab5f18ec96e3e23e0befec01e55",
+              "model_tag": "tr_d32_bpe32k_bounded_recovery_eff001_v1",
+              "step": 16,
+              "validation_bpb": 0.4504695234583386
+            },
+            "mode": "0444",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/arm-low/checkpoint-16-verification.json",
+            "sha256": "7a84fe5990e8f4d644b91494d5bfa6764632e80381cf941d3f656a88a93074fd"
+          },
+          "arm-low/checkpoint-24-verification.json": {
+            "bytes": 1779,
+            "checkpoint": {
+              "complete_sha256": "72ad654ed4b73569e2b5f7f5bda459003e1c74d92485f2c62d58c21b01b6d046",
+              "meta_sha256": "e6be286c2e299ae7f7342c86b2e2f821099d81138cf9406f405ce103f20da980",
+              "model_sha256": "689b2585e454576cb9f72b2be3942ccd51f97295550d85509e32895bd95bf994",
+              "model_tag": "tr_d32_bpe32k_bounded_recovery_eff001_v1",
+              "step": 24,
+              "validation_bpb": 0.4492355049650855
+            },
+            "mode": "0444",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/arm-low/checkpoint-24-verification.json",
+            "sha256": "d97e8a7e82d97116323e64dd9f114ff81190eff8500c1a57c60a0392028d9fbc"
+          },
+          "arm-low/checkpoint-8-verification.json": {
+            "bytes": 1778,
+            "checkpoint": {
+              "complete_sha256": "06b466fd7e7fbccae9672f8f526689a64bd3e793e63021542d734b81a0c3d900",
+              "meta_sha256": "0635e6e6edbefb9dbafd96bc13e8ccb1c7ff53f651073a79ab66ae81db82efc2",
+              "model_sha256": "893433410e132b3d14fd2fe8f41847381701d864d264f09a0e9995b0b2078dff",
+              "model_tag": "tr_d32_bpe32k_bounded_recovery_eff001_v1",
+              "step": 8,
+              "validation_bpb": 0.4545797501390715
+            },
+            "mode": "0444",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/arm-low/checkpoint-8-verification.json",
+            "sha256": "191b22666d7834d1fd155ca8695e6c42c2ae18dd2ab6621f70bbd714b8105dbf"
+          },
+          "arm-mid/checkpoint-16-verification.json": {
+            "bytes": 1779,
+            "checkpoint": {
+              "complete_sha256": "a2c12d27eadd11bdca8668a76dd457256d181e4435f5694f9f3c03b597164954",
+              "meta_sha256": "2c1796100c86b6ef4b4d70c0da672f9d84a109bda0e26f254af078cd11669f65",
+              "model_sha256": "10edf2a04c439b589cd31a6f2b9ed9eba4c2257edd0b7c6f06461b7d3ab1fedc",
+              "model_tag": "tr_d32_bpe32k_bounded_recovery_eff002_v1",
+              "step": 16,
+              "validation_bpb": 0.44509582731072483
+            },
+            "mode": "0444",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/arm-mid/checkpoint-16-verification.json",
+            "sha256": "a8a707693af4a79a9e0d427e4a2279678696f056190d746f6e39e99427da6edc"
+          },
+          "arm-mid/checkpoint-24-verification.json": {
+            "bytes": 1777,
+            "checkpoint": {
+              "complete_sha256": "e030aef6dc750c9a5dc788cf23d075da62f27c27913ef6bbee056136771e8338",
+              "meta_sha256": "9a3e27cfce4f25ddae66b0abed83499e5126eff6af7bd431022678a41b56fa1c",
+              "model_sha256": "2630edaea8e42ee63a808bb1c803675e043a079ec27a9d50426a3c0a511c8617",
+              "model_tag": "tr_d32_bpe32k_bounded_recovery_eff002_v1",
+              "step": 24,
+              "validation_bpb": 0.444000608589136
+            },
+            "mode": "0444",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/arm-mid/checkpoint-24-verification.json",
+            "sha256": "b859a569301388b32d1246374858d32aa38ae703f93d9a61f53bfffa5f734688"
+          },
+          "arm-mid/checkpoint-8-verification.json": {
+            "bytes": 1777,
+            "checkpoint": {
+              "complete_sha256": "f3828eb6cd3c49539b322cab361cbf48ad96b59fb908eafd44f2f3ad5d7069e6",
+              "meta_sha256": "b955ce7e7b6664d6b96c159db7430690e672a4e51d5a7c28c5dbf54b7ba37dcc",
+              "model_sha256": "83722f1faf61061e77d9f29d2b8795bc9435a15a3c2da58ba23abaa2c6baaed2",
+              "model_tag": "tr_d32_bpe32k_bounded_recovery_eff002_v1",
+              "step": 8,
+              "validation_bpb": 0.4500210912442843
+            },
+            "mode": "0444",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/arm-mid/checkpoint-8-verification.json",
+            "sha256": "c03d4491af823b088b39a8a5deb8c34c1c733d12da257cadc462e8604cb17701"
+          }
+        },
+        "failed_after_all_probe_generation": true,
+        "failed_after_training": true,
+        "failure_class": "selector_rejected_controller_hyphen_labels_after_all_probes_completed",
+        "files": {
+          "archive": {
+            "bytes": 4608000,
+            "mode": "0644",
+            "path": "/ari/users/nunal/nanochat-turk-d32-bounded-recovery-code-d19ba50544f8.tar",
+            "sha256": "0ddb1c847eef2140c89426b9eb0801a062c1b72bb6599402cc3724505251e1cf"
+          },
+          "controller": {
+            "bytes": 21722,
+            "mode": "0644",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/uhem_d32_bounded_recovery_x4-d19ba50544f8.sbatch",
+            "sha256": "4944aca65dd9d3f06773537570743900386e765e408eadddd75be42cf2aa74ff"
+          },
+          "empty_probe_selection_summary": {
+            "bytes": 0,
+            "mode": "0644",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/probe-selection-summary.json",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "runtime": {
+            "bytes": 101,
+            "mode": "0644",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/runtime.txt",
+            "sha256": "ae29e9a55c67837f535d8443b30b71c45f96bb1101cb701c835b30bb06938b7d"
+          },
+          "stderr": {
+            "bytes": 7423,
+            "mode": "0644",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-x4-516727.err",
+            "sha256": "13379402f717bfee6e6b2b37b7d3b09aed3831c279dba7f769f5434ed1cbcb8f"
+          },
+          "stdout": {
+            "bytes": 38360,
+            "mode": "0644",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-x4-516727.out",
+            "sha256": "646009e18d03e60049d1d31eb2c09588c03497f37fbf094c69d257c35ab00b46"
+          },
+          "topology": {
+            "bytes": 356,
+            "mode": "0644",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/topology.csv",
+            "sha256": "a749c597c448d1f8de8b4cbe73cd218cd0080852845e4ed6fb88ce22dc6c8868"
+          }
+        },
+        "gpu_regeneration_required_before_selection": false,
+        "job": {
+          "allocated_nodes": "1",
+          "allocated_tres": "billing=64,cpu=64,node=1",
+          "elapsed_raw": "1541",
+          "exit_code": "2:0",
+          "job_id": "516727",
+          "job_name": "tr-d32-bounded-recovery-x4",
+          "node_list": "a150",
+          "partition": "a100x4q",
+          "state": "FAILED"
+        },
+        "probes": {
+          "high-16": {
+            "completion_inventory": {
+              "bytes": 455,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/high-16-probe/completion-inventory.json",
+              "sha256": "9b2dc908f742dbe5b7e4ae08f8a48e56478b917f78cf88987de4aefe87c01406"
+            },
+            "generation_identity": {
+              "bytes": 6103,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/high-16-probe/generation-identity.json",
+              "sha256": "9c12e9ebaa77e060ef343d8615dcd3c3a6468c599e4ebe03104375d7a5263a3c"
+            },
+            "model_tag": "tr_d32_bpe32k_bounded_recovery_eff004_v1",
+            "predictions": {
+              "bytes": 33894,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/high-16-probe/predictions.jsonl",
+              "sha256": "0ce6d1f9272cdcb5b9b8c12339197f8df044776540b426d20c6b5c7a27507ebd"
+            },
+            "report": {
+              "bytes": 77048,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/high-16-probe/report.json",
+              "sha256": "920e23e3536584580498ef993554c67f0e23df6d774a3f841198cf835b0ef7e1"
+            },
+            "step": 16
+          },
+          "high-24": {
+            "completion_inventory": {
+              "bytes": 455,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/high-24-probe/completion-inventory.json",
+              "sha256": "e64d14e75f08ffd4e07c602445c21244c5670110fbe7db9c272c96df623fb95e"
+            },
+            "generation_identity": {
+              "bytes": 6103,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/high-24-probe/generation-identity.json",
+              "sha256": "c4089d28c6f31446a95d41e276ef5e7517cf2ec881ff645756b27f4165028bf6"
+            },
+            "model_tag": "tr_d32_bpe32k_bounded_recovery_eff004_v1",
+            "predictions": {
+              "bytes": 33730,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/high-24-probe/predictions.jsonl",
+              "sha256": "740d9fadf36cbafe4006e79c67eb5230580e26d045d71a1296bf10206d03cd05"
+            },
+            "report": {
+              "bytes": 76916,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/high-24-probe/report.json",
+              "sha256": "fac088aa4c283adb62b4fc5cfe0ba707a60e1557e1156a5bb36129843bc7ed9b"
+            },
+            "step": 24
+          },
+          "high-8": {
+            "completion_inventory": {
+              "bytes": 454,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/high-8-probe/completion-inventory.json",
+              "sha256": "f4fe7ca6443b9f5d6cb7c77396a85c318a80ff2ba276ead36960268f9dee927d"
+            },
+            "generation_identity": {
+              "bytes": 6098,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/high-8-probe/generation-identity.json",
+              "sha256": "9511d48aa3a2ba1c237f06793d797479d1b76e1379f3b57fa7ccff9a4173b1e4"
+            },
+            "model_tag": "tr_d32_bpe32k_bounded_recovery_eff004_v1",
+            "predictions": {
+              "bytes": 33497,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/high-8-probe/predictions.jsonl",
+              "sha256": "17e7853a9117d59b0a6025013fc509d91e60fdf7074e9ac8ad2f36a205262d87"
+            },
+            "report": {
+              "bytes": 76957,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/high-8-probe/report.json",
+              "sha256": "1dec1fc078c0cb2444a4f7b53ef602bd03f2b43b6fe362451d85c5c82968bc62"
+            },
+            "step": 8
+          },
+          "low-16": {
+            "completion_inventory": {
+              "bytes": 455,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/low-16-probe/completion-inventory.json",
+              "sha256": "05c4292b5b0271074227718cc4d77e969c3af7949a6c0d978cda46c7060e7a98"
+            },
+            "generation_identity": {
+              "bytes": 6135,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/low-16-probe/generation-identity.json",
+              "sha256": "0181d8a8bf523fffcfa1a6b7091fbd4197645fc6cbc3e34598839ef4aa0f4017"
+            },
+            "model_tag": "tr_d32_bpe32k_bounded_recovery_eff001_v1",
+            "predictions": {
+              "bytes": 33222,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/low-16-probe/predictions.jsonl",
+              "sha256": "835e5e848726da16e8551c539bf66b9637a280b175ad9b1a91877a1645edf5f1"
+            },
+            "report": {
+              "bytes": 76639,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/low-16-probe/report.json",
+              "sha256": "0940bec5042d01a46679a29cafb1e37cc419aa462191cc6fd4e9c9c8f69b3036"
+            },
+            "step": 16
+          },
+          "low-24": {
+            "completion_inventory": {
+              "bytes": 455,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/low-24-probe/completion-inventory.json",
+              "sha256": "76e2b668bbdd9c7b2cb3f103d9e831f80eacbcda4de68b7838da8e228e4a9e52"
+            },
+            "generation_identity": {
+              "bytes": 6136,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/low-24-probe/generation-identity.json",
+              "sha256": "c9c3368f55a27a401846d0367de2c48848eadff99946a0aa1051e3473b101cce"
+            },
+            "model_tag": "tr_d32_bpe32k_bounded_recovery_eff001_v1",
+            "predictions": {
+              "bytes": 33757,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/low-24-probe/predictions.jsonl",
+              "sha256": "4427312dad0a985ca5d0fa19536bca110f4970cf83f1737964ac9df219d7d906"
+            },
+            "report": {
+              "bytes": 77225,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/low-24-probe/report.json",
+              "sha256": "e293c6f2dfdd4a7a2493ac6c10c110277cd4d6fadafae23b67bde2c5825b5e73"
+            },
+            "step": 24
+          },
+          "low-8": {
+            "completion_inventory": {
+              "bytes": 454,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/low-8-probe/completion-inventory.json",
+              "sha256": "2aa20c02159e422ff00c245382a79dc49dd82214526628d366480cebd8dcade9"
+            },
+            "generation_identity": {
+              "bytes": 6135,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/low-8-probe/generation-identity.json",
+              "sha256": "060017ccfcb36db174454f20250d633a52ef6829a4ae542b9ed00995f04de5e8"
+            },
+            "model_tag": "tr_d32_bpe32k_bounded_recovery_eff001_v1",
+            "predictions": {
+              "bytes": 33234,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/low-8-probe/predictions.jsonl",
+              "sha256": "07eb9540acedce9273774288ffbfe7326d287e5452384c7a76d59c728590b509"
+            },
+            "report": {
+              "bytes": 76726,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/low-8-probe/report.json",
+              "sha256": "81d2fd572b8ba2b2d8e26437e6dec96e76e958f35fb07bab2d3bc9c733620d58"
+            },
+            "step": 8
+          },
+          "mid-16": {
+            "completion_inventory": {
+              "bytes": 455,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/mid-16-probe/completion-inventory.json",
+              "sha256": "4fa2429fb43b0d1e24e44402d6112cdf13abf2addaa071a621301341abaeec9e"
+            },
+            "generation_identity": {
+              "bytes": 6101,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/mid-16-probe/generation-identity.json",
+              "sha256": "05c2f3f7769540d2ead89aece9fc94a3796557c4e1b5fc4c451a5c9188416ad0"
+            },
+            "model_tag": "tr_d32_bpe32k_bounded_recovery_eff002_v1",
+            "predictions": {
+              "bytes": 34357,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/mid-16-probe/predictions.jsonl",
+              "sha256": "c22f58d3157219a1d86f5b4315749577d89113d678aaf6134cf58dae3a87df6d"
+            },
+            "report": {
+              "bytes": 77974,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/mid-16-probe/report.json",
+              "sha256": "20568836940503be05295e6e25c8b69fa14aa20957aebd88115f3a1d822e5218"
+            },
+            "step": 16
+          },
+          "mid-24": {
+            "completion_inventory": {
+              "bytes": 455,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/mid-24-probe/completion-inventory.json",
+              "sha256": "e1f35bfe42b6e7bdd41d0a08cb2550e2777f3e4f6656e620990b2c2ef6b532f6"
+            },
+            "generation_identity": {
+              "bytes": 6087,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/mid-24-probe/generation-identity.json",
+              "sha256": "b821597d9fba5d679ba5014bb2d8eacef8f6dda925c38d4dabd9e995e8a59c6c"
+            },
+            "model_tag": "tr_d32_bpe32k_bounded_recovery_eff002_v1",
+            "predictions": {
+              "bytes": 33391,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/mid-24-probe/predictions.jsonl",
+              "sha256": "11e265bc3e42cd8faa8701aae03b04b14dea8bfe6bdb979133dd3787f3ac19e3"
+            },
+            "report": {
+              "bytes": 76837,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/mid-24-probe/report.json",
+              "sha256": "a6ca2cf11693b84ebe0d29a8355e788c3cf4a2c1418be668039e79872919fab9"
+            },
+            "step": 24
+          },
+          "mid-8": {
+            "completion_inventory": {
+              "bytes": 454,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/mid-8-probe/completion-inventory.json",
+              "sha256": "abb1a585aa19389f2a80edb498046a36c27bbfae978e0998452698512986d065"
+            },
+            "generation_identity": {
+              "bytes": 6135,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/mid-8-probe/generation-identity.json",
+              "sha256": "9bd67ca3ae0cc8933e5a00550dbb75808ba9e779e6fcdadfbbd1883e9e0fb043"
+            },
+            "model_tag": "tr_d32_bpe32k_bounded_recovery_eff002_v1",
+            "predictions": {
+              "bytes": 33323,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/mid-8-probe/predictions.jsonl",
+              "sha256": "729d6ce3821fb77b29d474830102294857eb1ad8a172e2fc27d88f6e793701d1"
+            },
+            "report": {
+              "bytes": 76779,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/mid-8-probe/report.json",
+              "sha256": "fabdc7babc98f1a9d6b2a5beba54cb1d87a9e71cf63be53dbee1b467e8630e44"
+            },
+            "step": 8
+          },
+          "polish16": {
+            "completion_inventory": {
+              "bytes": 454,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/polish16-probe/completion-inventory.json",
+              "sha256": "1058de47bb154989f20ed66c42be0a1c0a59064cc6cac4ea72445da1f1b784d1"
+            },
+            "generation_identity": {
+              "bytes": 6092,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/polish16-probe/generation-identity.json",
+              "sha256": "d1e9eae3676e98c7cb51eede37f2a12486664a8680ccf1628a36ec50a061d6f4"
+            },
+            "model_tag": "tr_d32_bpe32k_final_instruct_polish_v1",
+            "predictions": {
+              "bytes": 34635,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/polish16-probe/predictions.jsonl",
+              "sha256": "2c5b603c04f64d4ef7201afcf768a8b43f16242ea2d9617115d6928c09100adc"
+            },
+            "report": {
+              "bytes": 78328,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/polish16-probe/report.json",
+              "sha256": "253370146e527d41405613fc0788d6ea2e2ed0219f7293a2b6003b8c50ffd41d"
+            },
+            "step": 16
+          },
+          "polish32": {
+            "completion_inventory": {
+              "bytes": 454,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/polish32-probe/completion-inventory.json",
+              "sha256": "2ef9ce39bcf997e33a3e0824eac7cb4cb3520b7776619942fe5e22169f7721e1"
+            },
+            "generation_identity": {
+              "bytes": 6092,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/polish32-probe/generation-identity.json",
+              "sha256": "b5ef2230c2e092fc41b357969154f662261bbe1074aa5ff503b285cdceb13fa9"
+            },
+            "model_tag": "tr_d32_bpe32k_final_instruct_polish_v1",
+            "predictions": {
+              "bytes": 32471,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/polish32-probe/predictions.jsonl",
+              "sha256": "ad8d7be7b536ae39218edf8eabf574fb4741e14acf931508c7b420771210c862"
+            },
+            "report": {
+              "bytes": 75608,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/polish32-probe/report.json",
+              "sha256": "79341fcadaaa4a436786c6366a56f9999004ef727e9ad435b5f76aad6d8b67a8"
+            },
+            "step": 32
+          },
+          "polish48": {
+            "completion_inventory": {
+              "bytes": 454,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/polish48-probe/completion-inventory.json",
+              "sha256": "abd61fa12b09f208fc3f7698b1ab9f7ad4b8b4fc979911bbcae09cbd8447ee9a"
+            },
+            "generation_identity": {
+              "bytes": 6093,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/polish48-probe/generation-identity.json",
+              "sha256": "d743f26a0fd89361efa6def83b63d699e15b070180b28dfbf3ca4986650a4103"
+            },
+            "model_tag": "tr_d32_bpe32k_final_instruct_polish_v1",
+            "predictions": {
+              "bytes": 32351,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/polish48-probe/predictions.jsonl",
+              "sha256": "bed9f3a30c717394265429514e07f314c286ad4546adb162043d7ed97416a724"
+            },
+            "report": {
+              "bytes": 75533,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/polish48-probe/report.json",
+              "sha256": "d27001ffb42d5fae5ac3f11c0905a7303fa777811aa843fbaedad3f34b7cd3c7"
+            },
+            "step": 48
+          },
+          "source": {
+            "completion_inventory": {
+              "bytes": 455,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/source-probe/completion-inventory.json",
+              "sha256": "4420cf258ef2fc4bc93c5527d3801bb18e97c5739ad29351069e87fa15527f32"
+            },
+            "generation_identity": {
+              "bytes": 6204,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/source-probe/generation-identity.json",
+              "sha256": "849e499840a9a0f0e22c16a4317c829f2060f3f809b9b6fd5af16dd947f3efa6"
+            },
+            "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+            "predictions": {
+              "bytes": 32867,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/source-probe/predictions.jsonl",
+              "sha256": "199a1790840c22610ddcc2defd18bf8931c468bf1880e0849060835d987af250"
+            },
+            "report": {
+              "bytes": 76389,
+              "mode": "0644",
+              "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1/source-probe/report.json",
+              "sha256": "99d070f26a6f16aa2e126dc9693c17bb64bb60db440c2647e93b91dba0754421"
+            },
+            "step": 84
+          }
+        }
+      },
+      "policy": {
+        "automatic_release": false,
+        "follow_on_gpus": 1,
+        "follow_on_partition": "a100q",
+        "gpu_after_probe_selection_only_if_candidate_qualified": true,
+        "gpu_before_probe_selection": false,
+        "maximum_follow_on_gpu_jobs": 1,
+        "rerun_training": false,
+        "reuse_completed_training": true,
+        "reuse_exact_probe_bytes": true
+      },
+      "status": "ready"
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1r2/recovery-decision.json": {
+      "automatic_release": false,
+      "canonical_sha256": "2d54ff1d1d4170e34c28164513656383d73943f80d920113a6c28742b0a2a150",
+      "chosen_checkpoint": {
+        "complete_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "meta_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "step": 84
+      },
+      "decision": "retain_source",
+      "final_selection": null,
+      "format_version": 1,
+      "kind": "nanochat_d32_bounded_recovery_decision_v1",
+      "probe_selection": {
+        "canonical_sha256": "d1e44ac8a64cb5c4506a0abe0cfcae946456dbd8c3463a173e5e1ed91d6e59ee",
+        "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/bounded-recovery-v1r2/probe-selection.json",
+        "sha256": "93e0acb4ebdce717220fe5a3f08bbc4f60573268e3692be58d12efd915698f92"
+      },
+      "research_only": true,
+      "screened_candidate": null,
+      "screened_candidate_label": null,
+      "source_checkpoint": {
+        "complete_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "meta_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "step": 84
+      },
+      "status": "retain_source"
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/capability-calibration-screen-v1/eff020-16-checkpoint-verification-summary.json": {
+      "automatic_release": false,
+      "canonical_sha256": "7f9f1e248a986456f80de0b41e174b6abab38fd4ba08901073dbac750be4df77",
+      "checkpoint": {
+        "complete_sha256": "87bce1f6c095c70cdd84676a08ce50019af5dc9df595ac3f7f7bc44902893a80",
+        "meta_sha256": "67ffb9192097dcdc5840cd3028abcea762d9c633f2af2b1eca2192a22aef8861",
+        "model_sha256": "4267ff396a2dcc984c98794dabd84d46dba1a23b8aa2f966bd3b6f7b2d19fb30",
+        "model_tag": "tr_d32_bpe32k_capability_calibration_eff020_v1",
+        "step": 16
+      },
+      "checkpoint_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/chatsft_checkpoints/tr_d32_bpe32k_capability_calibration_eff020_v1",
+      "code": {
+        "archive_sha256": "f1ca703d6b2acc9cdfd9b231ca73fc2be95a481e6307a0026d07fe41063d6633",
+        "commit": "956be38bd8805e527b2ec3ac44a72f96bfad04b3",
+        "controller_sha256": "a81915f22a0d9aabaec7b8cb51822db0e7989e87c5ce773cb7b8d3341c2c964a",
+        "verifier_sha256": "11a680be9fdac2f1d0458a13d67006f601dc27ad3a59d1c8c6ffa7a626cdc957"
+      },
+      "data": {
+        "build_admission_sha256": "e5e428f6011e5c9ee0e6ca6e47e669f0940965b89943e5ebee30fd777dd70782",
+        "manifest_canonical_sha256": "e16b5163a096876163f35194ee13c45cf80e25f44ba013382b5f9529e15f9a5b",
+        "manifest_sha256": "0012656617d6f8f9c6724b7e1563e6dead3ce24ca85a75c91554ad6f6ca0d69b",
+        "root": "/ari/users/nunal/nanochat-turk-d32-capability-calibration-v1"
+      },
+      "diagnostic_only": false,
+      "format_version": 1,
+      "kind": "nanochat_d32_capability_calibration_checkpoint_verification_v1",
+      "label": "eff020-16",
+      "optimizer_lr_identity": {
+        "declared": {
+          "embedding_lr": 0.06,
+          "init_lr_frac": 0.2,
+          "matrix_lr": 0.004,
+          "scalar_lr": 0.1,
+          "smear_lr": 0.04,
+          "unembedding_lr": 0.0016
+        },
+        "effective_smear_initial_lr": 0.008,
+        "format": "nanochat-sft-optimizer-lr-identity-v1"
+      },
+      "profile": "calibration",
+      "schedule_contract": {
+        "checkpoint_every": 8,
+        "contract": "capability-calibration-factorial-v1",
+        "num_iterations": 32,
+        "targeted_corpus_control_uses_calibration_schedule_override": false,
+        "total_batch_size": 32768
+      },
+      "selectable": true,
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "status": "pass",
+      "validation_bpb": 0.37970917523127407,
+      "world_size": 1
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/capability-calibration-screen-v1/eff020-24-checkpoint-verification-summary.json": {
+      "automatic_release": false,
+      "canonical_sha256": "d230e2bb699bdabd9224efc93dac8c88211c951c9787fa5de6e539fb06db66d0",
+      "checkpoint": {
+        "complete_sha256": "fddf21856ae36ffedc7314add0c7feb0c802b2f5f78f996eba4003b246b5df83",
+        "meta_sha256": "1c2a99553cc6d4b66f7c675605dc8be726e8f07e5a9e44f97a8d6504c910898e",
+        "model_sha256": "d9627bcf60c2d78717fd5838c03ef24b7bc2a41fa8c4cfcae2b246e399643d55",
+        "model_tag": "tr_d32_bpe32k_capability_calibration_eff020_v1",
+        "step": 24
+      },
+      "checkpoint_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/chatsft_checkpoints/tr_d32_bpe32k_capability_calibration_eff020_v1",
+      "code": {
+        "archive_sha256": "f1ca703d6b2acc9cdfd9b231ca73fc2be95a481e6307a0026d07fe41063d6633",
+        "commit": "956be38bd8805e527b2ec3ac44a72f96bfad04b3",
+        "controller_sha256": "a81915f22a0d9aabaec7b8cb51822db0e7989e87c5ce773cb7b8d3341c2c964a",
+        "verifier_sha256": "11a680be9fdac2f1d0458a13d67006f601dc27ad3a59d1c8c6ffa7a626cdc957"
+      },
+      "data": {
+        "build_admission_sha256": "e5e428f6011e5c9ee0e6ca6e47e669f0940965b89943e5ebee30fd777dd70782",
+        "manifest_canonical_sha256": "e16b5163a096876163f35194ee13c45cf80e25f44ba013382b5f9529e15f9a5b",
+        "manifest_sha256": "0012656617d6f8f9c6724b7e1563e6dead3ce24ca85a75c91554ad6f6ca0d69b",
+        "root": "/ari/users/nunal/nanochat-turk-d32-capability-calibration-v1"
+      },
+      "diagnostic_only": false,
+      "format_version": 1,
+      "kind": "nanochat_d32_capability_calibration_checkpoint_verification_v1",
+      "label": "eff020-24",
+      "optimizer_lr_identity": {
+        "declared": {
+          "embedding_lr": 0.06,
+          "init_lr_frac": 0.2,
+          "matrix_lr": 0.004,
+          "scalar_lr": 0.1,
+          "smear_lr": 0.04,
+          "unembedding_lr": 0.0016
+        },
+        "effective_smear_initial_lr": 0.008,
+        "format": "nanochat-sft-optimizer-lr-identity-v1"
+      },
+      "profile": "calibration",
+      "schedule_contract": {
+        "checkpoint_every": 8,
+        "contract": "capability-calibration-factorial-v1",
+        "num_iterations": 32,
+        "targeted_corpus_control_uses_calibration_schedule_override": false,
+        "total_batch_size": 32768
+      },
+      "selectable": true,
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "status": "pass",
+      "validation_bpb": 0.18951584463824014,
+      "world_size": 1
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/capability-calibration-screen-v1/eff020-32-checkpoint-verification-summary.json": {
+      "automatic_release": false,
+      "canonical_sha256": "7ea713f0a169898510a4ea2ee166ddd83f4b3f935142bbb5f7f503916531788a",
+      "checkpoint": {
+        "complete_sha256": "b1b32ba10d02599b27cfa31b9d0097aa3142716636d9abedb27f67ae196c344a",
+        "meta_sha256": "7912e121be3e820f0bdcd2bff4855337b2229b298f7ac4af8108a3348384447e",
+        "model_sha256": "4238d6271c8723460d20abec1ae88bb95da44cdae2087e01c90bd75d7bc49bf0",
+        "model_tag": "tr_d32_bpe32k_capability_calibration_eff020_v1",
+        "step": 32
+      },
+      "checkpoint_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/chatsft_checkpoints/tr_d32_bpe32k_capability_calibration_eff020_v1",
+      "code": {
+        "archive_sha256": "f1ca703d6b2acc9cdfd9b231ca73fc2be95a481e6307a0026d07fe41063d6633",
+        "commit": "956be38bd8805e527b2ec3ac44a72f96bfad04b3",
+        "controller_sha256": "a81915f22a0d9aabaec7b8cb51822db0e7989e87c5ce773cb7b8d3341c2c964a",
+        "verifier_sha256": "11a680be9fdac2f1d0458a13d67006f601dc27ad3a59d1c8c6ffa7a626cdc957"
+      },
+      "data": {
+        "build_admission_sha256": "e5e428f6011e5c9ee0e6ca6e47e669f0940965b89943e5ebee30fd777dd70782",
+        "manifest_canonical_sha256": "e16b5163a096876163f35194ee13c45cf80e25f44ba013382b5f9529e15f9a5b",
+        "manifest_sha256": "0012656617d6f8f9c6724b7e1563e6dead3ce24ca85a75c91554ad6f6ca0d69b",
+        "root": "/ari/users/nunal/nanochat-turk-d32-capability-calibration-v1"
+      },
+      "diagnostic_only": false,
+      "format_version": 1,
+      "kind": "nanochat_d32_capability_calibration_checkpoint_verification_v1",
+      "label": "eff020-32",
+      "optimizer_lr_identity": {
+        "declared": {
+          "embedding_lr": 0.06,
+          "init_lr_frac": 0.2,
+          "matrix_lr": 0.004,
+          "scalar_lr": 0.1,
+          "smear_lr": 0.04,
+          "unembedding_lr": 0.0016
+        },
+        "effective_smear_initial_lr": 0.008,
+        "format": "nanochat-sft-optimizer-lr-identity-v1"
+      },
+      "profile": "calibration",
+      "schedule_contract": {
+        "checkpoint_every": 8,
+        "contract": "capability-calibration-factorial-v1",
+        "num_iterations": 32,
+        "targeted_corpus_control_uses_calibration_schedule_override": false,
+        "total_batch_size": 32768
+      },
+      "selectable": true,
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "status": "pass",
+      "validation_bpb": 0.10504191629241241,
+      "world_size": 1
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/capability-calibration-screen-v1/eff020-8-checkpoint-verification-summary.json": {
+      "automatic_release": false,
+      "canonical_sha256": "7fddb9af646309c4acf90749828478c3c8ae31c3609b0870eee38eaf4a17dbdd",
+      "checkpoint": {
+        "complete_sha256": "b5e871fbb05287d36cdd2cf89673414f9f33da9a1ea5ce09557babb3f9d70845",
+        "meta_sha256": "34781f84f19f25826db6534719424635b3680254a41b5c0c26c432990f4d6fa8",
+        "model_sha256": "765519766986203bd22350ce7e9f0e2d4abe305b47919ffe7fa090fdc2c86a3b",
+        "model_tag": "tr_d32_bpe32k_capability_calibration_eff020_v1",
+        "step": 8
+      },
+      "checkpoint_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/chatsft_checkpoints/tr_d32_bpe32k_capability_calibration_eff020_v1",
+      "code": {
+        "archive_sha256": "f1ca703d6b2acc9cdfd9b231ca73fc2be95a481e6307a0026d07fe41063d6633",
+        "commit": "956be38bd8805e527b2ec3ac44a72f96bfad04b3",
+        "controller_sha256": "a81915f22a0d9aabaec7b8cb51822db0e7989e87c5ce773cb7b8d3341c2c964a",
+        "verifier_sha256": "11a680be9fdac2f1d0458a13d67006f601dc27ad3a59d1c8c6ffa7a626cdc957"
+      },
+      "data": {
+        "build_admission_sha256": "e5e428f6011e5c9ee0e6ca6e47e669f0940965b89943e5ebee30fd777dd70782",
+        "manifest_canonical_sha256": "e16b5163a096876163f35194ee13c45cf80e25f44ba013382b5f9529e15f9a5b",
+        "manifest_sha256": "0012656617d6f8f9c6724b7e1563e6dead3ce24ca85a75c91554ad6f6ca0d69b",
+        "root": "/ari/users/nunal/nanochat-turk-d32-capability-calibration-v1"
+      },
+      "diagnostic_only": false,
+      "format_version": 1,
+      "kind": "nanochat_d32_capability_calibration_checkpoint_verification_v1",
+      "label": "eff020-8",
+      "optimizer_lr_identity": {
+        "declared": {
+          "embedding_lr": 0.06,
+          "init_lr_frac": 0.2,
+          "matrix_lr": 0.004,
+          "scalar_lr": 0.1,
+          "smear_lr": 0.04,
+          "unembedding_lr": 0.0016
+        },
+        "effective_smear_initial_lr": 0.008,
+        "format": "nanochat-sft-optimizer-lr-identity-v1"
+      },
+      "profile": "calibration",
+      "schedule_contract": {
+        "checkpoint_every": 8,
+        "contract": "capability-calibration-factorial-v1",
+        "num_iterations": 32,
+        "targeted_corpus_control_uses_calibration_schedule_override": false,
+        "total_batch_size": 32768
+      },
+      "selectable": true,
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "status": "pass",
+      "validation_bpb": 0.5755416188553225,
+      "world_size": 1
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/capability-calibration-screen-v1/eff040-8-checkpoint-verification-summary.json": {
+      "automatic_release": false,
+      "canonical_sha256": "01e0158de4a2670250cbb84d80a5df4bc91f55fa2052ce8e092c11aaa064446e",
+      "checkpoint": {
+        "complete_sha256": "3a6b33f124cca5406a4b95b716ce49fe89dc44b1a2ff609abfd4cc21d2152965",
+        "meta_sha256": "565323bd20bd2968b4e76a1c03bf8b64872dcc2f00e388f849733e294112b694",
+        "model_sha256": "a8eadcb4715e2ba7232053422c58a064c890f56e5c5aa215054a54044b93f650",
+        "model_tag": "tr_d32_bpe32k_capability_calibration_eff040_v1",
+        "step": 8
+      },
+      "checkpoint_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/chatsft_checkpoints/tr_d32_bpe32k_capability_calibration_eff040_v1",
+      "code": {
+        "archive_sha256": "f1ca703d6b2acc9cdfd9b231ca73fc2be95a481e6307a0026d07fe41063d6633",
+        "commit": "956be38bd8805e527b2ec3ac44a72f96bfad04b3",
+        "controller_sha256": "a81915f22a0d9aabaec7b8cb51822db0e7989e87c5ce773cb7b8d3341c2c964a",
+        "verifier_sha256": "11a680be9fdac2f1d0458a13d67006f601dc27ad3a59d1c8c6ffa7a626cdc957"
+      },
+      "data": {
+        "build_admission_sha256": "e5e428f6011e5c9ee0e6ca6e47e669f0940965b89943e5ebee30fd777dd70782",
+        "manifest_canonical_sha256": "e16b5163a096876163f35194ee13c45cf80e25f44ba013382b5f9529e15f9a5b",
+        "manifest_sha256": "0012656617d6f8f9c6724b7e1563e6dead3ce24ca85a75c91554ad6f6ca0d69b",
+        "root": "/ari/users/nunal/nanochat-turk-d32-capability-calibration-v1"
+      },
+      "diagnostic_only": false,
+      "format_version": 1,
+      "kind": "nanochat_d32_capability_calibration_checkpoint_verification_v1",
+      "label": "eff040-8",
+      "optimizer_lr_identity": {
+        "declared": {
+          "embedding_lr": 0.12,
+          "init_lr_frac": 0.2,
+          "matrix_lr": 0.008,
+          "scalar_lr": 0.2,
+          "smear_lr": 0.08,
+          "unembedding_lr": 0.0032
+        },
+        "effective_smear_initial_lr": 0.016,
+        "format": "nanochat-sft-optimizer-lr-identity-v1"
+      },
+      "profile": "calibration",
+      "schedule_contract": {
+        "checkpoint_every": 8,
+        "contract": "capability-calibration-factorial-v1",
+        "num_iterations": 32,
+        "targeted_corpus_control_uses_calibration_schedule_override": false,
+        "total_batch_size": 32768
+      },
+      "selectable": true,
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "status": "pass",
+      "validation_bpb": 0.39862545118634163,
+      "world_size": 1
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/final-combined-smoltalk2-turk-sft-v1/checkpoint-summary.json": {
+      "base_checkpoint": {
+        "completion_sha256": null,
+        "metadata_sha256": "8c497e78eff5c4b4b47493c26645b17869c12d8890a243161c11fa46ee538632",
+        "model_sha256": "2123880d96b2de7d227ff31575b663ac291dcfd9fc9b9419086de032e58d0a98",
+        "model_tag": "tr_d32_bpe_32768_fineweb2_all_v1",
+        "phase": "base",
+        "step": 28000
+      },
+      "canonical_sha256": "d9876735f68ea7131355bf908f3bb729221ffc41b40a0f0f5f4addf2dd396cfe",
+      "checkpoint_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/chatsft_checkpoints/tr_d32_bpe32k_final_combined_smoltalk2_turk_v1",
+      "complete_sha256": "79ea60f95dbb3ab930eabaaff4f451c4b9fd6fb50d2752f8a0bd975db375b575",
+      "completion_inventory": {
+        "files": {
+          "meta_000139.json": {
+            "bytes": 12116,
+            "sha256": "8cc2db907435e235a25ead1ae0df5492b9720cd5a57d327e47281d00481e0372"
+          },
+          "model_000139.pt": {
+            "bytes": 8992693942,
+            "sha256": "78e8cdc8dcef95ea2a276de81f1dd0203fb8b87f44ca62a0717eb13ace85776c"
+          },
+          "optim_000139_rank0.pt": {
+            "bytes": 11545903445,
+            "sha256": "3ecf09bd70900f2015c28baa99d51c914b1aecec8265e3d55619ac8ebd3bd4dd"
+          }
+        },
+        "format": "nanochat-sft-checkpoint-completion-v1",
+        "step": 139,
+        "world_size": 1
+      },
+      "data": {
+        "manifest_sha256": "eb3070fe86bb4dffe683dd44b7aaf18c47e98d8a21a61e306fe1e515b15df840",
+        "train": {
+          "bytes": 64699769,
+          "rows": 55873,
+          "sha256": "0a752ca50bd1cfddde030cdd27eca551097a5febef8a152e1c7b10b9d18e6ab8"
+        },
+        "validation": {
+          "bytes": 2575766,
+          "rows": 1557,
+          "sha256": "2cae224e5cbfa297c8b6e8ebd3226bd99ed426e876a936053bdc1f670b8cfb6d"
+        }
+      },
+      "format_version": 1,
+      "kind": "nanochat_d32_final_combined_checkpoint_receipt_v1",
+      "meta_sha256": "8cc2db907435e235a25ead1ae0df5492b9720cd5a57d327e47281d00481e0372",
+      "model_sha256": "78e8cdc8dcef95ea2a276de81f1dd0203fb8b87f44ca62a0717eb13ace85776c",
+      "model_tag": "tr_d32_bpe32k_final_combined_smoltalk2_turk_v1",
+      "status": "complete",
+      "step": 139,
+      "world_size": 1
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/final-polish-v1/checkpoint-summary.json": {
+      "canonical_sha256": "2465848b72e0ab9fbd91e19f3eea38ad2517cdb8d4d1e0dbb85aa7098b9c0c0e",
+      "checkpoint_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/chatsft_checkpoints/tr_d32_bpe32k_final_instruct_polish_v1",
+      "complete_sha256": "13c89f3f30b205ed4cc8a5f92288b3d0a4eadf7cf09f982f64eb02c52c757ff6",
+      "completion_inventory": {
+        "files": {
+          "meta_000064.json": {
+            "bytes": 9714,
+            "sha256": "fb75f81b69e762bbccb67b066c77613b7ad232108481572529c9b73d59e1b28b"
+          },
+          "model_000064.pt": {
+            "bytes": 8992693942,
+            "sha256": "45df5c658af08bf00e2afa49042507ff9247cd0e2abcc444ca49221a1b0e313a"
+          },
+          "optim_000064_rank0.pt": {
+            "bytes": 11545903445,
+            "sha256": "12bb092de37e43189983a8683c3a3dd693ddead38d731b2f0dd8dcf16ef3c249"
+          }
+        },
+        "format": "nanochat-sft-checkpoint-completion-v1",
+        "step": 64,
+        "world_size": 1
+      },
+      "data": {
+        "manifest_sha256": "d10e2c097f341da705b0d8bb47ec5497a4e1d8030e2e658c56f68a498b5d9a2f",
+        "train": {
+          "bytes": 17537555,
+          "rows": 21414,
+          "sha256": "2b63c0b7daa8c3689863c6dcd60e8e81ffc1a7dbb7dcf8b44ee2f97ae5193cd3"
+        },
+        "validation": {
+          "bytes": 2575766,
+          "rows": 1557,
+          "sha256": "2cae224e5cbfa297c8b6e8ebd3226bd99ed426e876a936053bdc1f670b8cfb6d"
+        }
+      },
+      "format_version": 1,
+      "kind": "nanochat_d32_final_polish_checkpoint_receipt_v1",
+      "meta_sha256": "fb75f81b69e762bbccb67b066c77613b7ad232108481572529c9b73d59e1b28b",
+      "model_sha256": "45df5c658af08bf00e2afa49042507ff9247cd0e2abcc444ca49221a1b0e313a",
+      "model_tag": "tr_d32_bpe32k_final_instruct_polish_v1",
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "status": "complete",
+      "step": 64,
+      "world_size": 1
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/final-polish-v1/selection-summary.json": {
+      "automatic_release": false,
+      "candidate": {
+        "probe": {
+          "categories": {
+            "exact_format": 0,
+            "grounded_uncertainty": 0,
+            "multi_turn": 1,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 1,
+          "diagnostics": {
+            "assistant_end_termination_count": 37,
+            "empty_completion_count": 0,
+            "prompt_echo_count": 3,
+            "repetition_count": 4
+          },
+          "leak_free": true,
+          "passed": 5,
+          "total": 41
+        },
+        "production": {
+          "diagnostics": {
+            "assistant_end_termination_count": 474,
+            "empty_completion_count": 0,
+            "prompt_echo_count": 163,
+            "repetition_count": 34
+          },
+          "leak_free": true,
+          "passed": 36,
+          "total": 512
+        }
+      },
+      "canonical_sha256": "eb32ae589eca646c4dce15dc96c6c27a452607125b6baec60ddab1f52944f24a",
+      "format_version": 1,
+      "gates": {
+        "probe_at_least_one_critical_category_improves": false,
+        "probe_every_critical_category_not_worse": false,
+        "probe_overall_not_worse": false,
+        "production_assistant_end_termination_not_lower": false,
+        "production_echo_not_worse": true,
+        "production_empty_completions_not_worse": true,
+        "production_overall_not_worse": false,
+        "production_repetition_not_worse": false,
+        "zero_leakage_on_both_suites": true
+      },
+      "kind": "nanochat_d32_final_polish_selection_v1",
+      "recommended_candidate": false,
+      "reports": {
+        "candidate_probe": {
+          "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/final-polish-v1/candidate-probe/report.json",
+          "sha256": "9a8d1c67a9854fd23698a0064b3dbb69b9d64e69b34977fb60627b3ebc6a9292"
+        },
+        "candidate_production": {
+          "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/final-polish-v1/candidate-production/report.json",
+          "sha256": "d16cb8e95a51f2055d74215d8c7a1579c5933bc1d442e50fea3ba8130cc94b21"
+        },
+        "source_probe": {
+          "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/final-polish-v1/source-probe/report.json",
+          "sha256": "dca8dd793a2bce4154184c1d63543052724abf68bd12fa6152c05c0b20538210"
+        },
+        "source_production": {
+          "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/final-polish-v1/source-production/report.json",
+          "sha256": "e9961ec95f3716117f4027ff92d7a2ea8498aacacee602ccf5c72ffb26fc9e18"
+        }
+      },
+      "research_only": true,
+      "source": {
+        "probe": {
+          "categories": {
+            "exact_format": 2,
+            "grounded_uncertainty": 0,
+            "multi_turn": 1,
+            "reasoning": 0,
+            "safety": 0
+          },
+          "critical_passes": 3,
+          "diagnostics": {
+            "assistant_end_termination_count": 40,
+            "empty_completion_count": 2,
+            "prompt_echo_count": 2,
+            "repetition_count": 2
+          },
+          "leak_free": true,
+          "passed": 9,
+          "total": 41
+        },
+        "production": {
+          "diagnostics": {
+            "assistant_end_termination_count": 490,
+            "empty_completion_count": 0,
+            "prompt_echo_count": 179,
+            "repetition_count": 15
+          },
+          "leak_free": true,
+          "passed": 68,
+          "total": 512
+        }
+      },
+      "status": "retain_source"
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-12-checkpoint-verification-summary.json": {
+      "automatic_release": false,
+      "canonical_sha256": "41fb3fc1e1276b7eabc9ace4a1a7487f9637ed693a8b56cf0296c220c6b29ca2",
+      "checkpoint": {
+        "complete_sha256": "a50d5f45c1e8cbd705a7a08208247ed0f199b97362584ba6499ccdf7c581e7da",
+        "meta_sha256": "5a047a23f9166befeaa25a58715da40861b31f630466d8ca1d3ec08452460b85",
+        "model_sha256": "c107a05b24bf749c686e7a05958c82792d8b44f5074201c0d81feacf173183dc",
+        "model_tag": "tr_d32_bpe32k_targeted_repair_eff005_v3",
+        "step": 12
+      },
+      "checkpoint_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/chatsft_checkpoints/tr_d32_bpe32k_targeted_repair_eff005_v3",
+      "code": {
+        "archive_sha256": "74c08e56c9a1c6d8d5b5039c700f8049b660fe12017da86deb52b9875c34751a",
+        "commit": "4b2ae1e666a3561f6d2037bfbda5eea2ef876c49",
+        "controller_sha256": "4d55fcbd6e211f1e6efa3aedabc3355464f6b97ad00d5be5cd58e0034ee12fa5",
+        "verifier_sha256": "8bbdc232158d70fdc91920fed5a301126a75652d3f72c22dfcc10e82e55c0084"
+      },
+      "data": {
+        "build_admission_sha256": "a57e86912ad571c837911c8ae55eab36bc2df3f11826ea16201d0041aeade698",
+        "manifest_canonical_sha256": "e9d3a593ee8ec8324b76c01a380a6ab007b6b7e099c6abd66db7a08ef5a60c41",
+        "manifest_sha256": "bf3a1c5ff5608d988448b147b80935af7e4b64d8a87e4161d6ec653142512964",
+        "root": "/ari/users/nunal/nanochat-turk-d32-targeted-repair-v3"
+      },
+      "format_version": 1,
+      "kind": "nanochat_d32_targeted_repair_checkpoint_verification_v1",
+      "label": "eff005-12",
+      "optimizer_lr_identity": {
+        "declared": {
+          "embedding_lr": 0.015,
+          "init_lr_frac": 0.2,
+          "matrix_lr": 0.001,
+          "scalar_lr": 0.025,
+          "smear_lr": 0.01,
+          "unembedding_lr": 0.0004
+        },
+        "effective_smear_initial_lr": 0.002,
+        "format": "nanochat-sft-optimizer-lr-identity-v1"
+      },
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "status": "pass",
+      "validation_bpb": 0.45866730794611643,
+      "world_size": 1
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-4-checkpoint-verification-summary.json": {
+      "automatic_release": false,
+      "canonical_sha256": "db3301133cf4c009d5e69d552b7866386d5ba6b264235d4d481100a09b27e9e7",
+      "checkpoint": {
+        "complete_sha256": "7bd79885b1dcea3fff64e47a3230b56120874d6d9cd8b9e49079d691aa74162e",
+        "meta_sha256": "e8074fcb81c1fff38e3344005f7d3079b7eed2e33a35dceedc6d4492609ace07",
+        "model_sha256": "58961a387e89b22244ad320616328f7df7507fa12d38cfad918527d0c38cce12",
+        "model_tag": "tr_d32_bpe32k_targeted_repair_eff005_v3",
+        "step": 4
+      },
+      "checkpoint_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/chatsft_checkpoints/tr_d32_bpe32k_targeted_repair_eff005_v3",
+      "code": {
+        "archive_sha256": "74c08e56c9a1c6d8d5b5039c700f8049b660fe12017da86deb52b9875c34751a",
+        "commit": "4b2ae1e666a3561f6d2037bfbda5eea2ef876c49",
+        "controller_sha256": "4d55fcbd6e211f1e6efa3aedabc3355464f6b97ad00d5be5cd58e0034ee12fa5",
+        "verifier_sha256": "8bbdc232158d70fdc91920fed5a301126a75652d3f72c22dfcc10e82e55c0084"
+      },
+      "data": {
+        "build_admission_sha256": "a57e86912ad571c837911c8ae55eab36bc2df3f11826ea16201d0041aeade698",
+        "manifest_canonical_sha256": "e9d3a593ee8ec8324b76c01a380a6ab007b6b7e099c6abd66db7a08ef5a60c41",
+        "manifest_sha256": "bf3a1c5ff5608d988448b147b80935af7e4b64d8a87e4161d6ec653142512964",
+        "root": "/ari/users/nunal/nanochat-turk-d32-targeted-repair-v3"
+      },
+      "format_version": 1,
+      "kind": "nanochat_d32_targeted_repair_checkpoint_verification_v1",
+      "label": "eff005-4",
+      "optimizer_lr_identity": {
+        "declared": {
+          "embedding_lr": 0.015,
+          "init_lr_frac": 0.2,
+          "matrix_lr": 0.001,
+          "scalar_lr": 0.025,
+          "smear_lr": 0.01,
+          "unembedding_lr": 0.0004
+        },
+        "effective_smear_initial_lr": 0.002,
+        "format": "nanochat-sft-optimizer-lr-identity-v1"
+      },
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "status": "pass",
+      "validation_bpb": 0.46041523298457226,
+      "world_size": 1
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-8-checkpoint-verification-summary.json": {
+      "automatic_release": false,
+      "canonical_sha256": "5ad687e89bd88887c6a952d4b66ac0bddbccdacfe21d86b6b9a7b29e356ddd00",
+      "checkpoint": {
+        "complete_sha256": "5c902d1fe07be94bcf2e736b9299718d48aa1d72c902aad5ed771a5247e52a39",
+        "meta_sha256": "958ca6cf8e427ea6d02ce5440ac49af8d62343068ea4e1f7cf1308ec587aea1e",
+        "model_sha256": "1d39ba7ce5a0433e0e5f0b11b1c7b041f9733aa271760c89f3fe2484a968278b",
+        "model_tag": "tr_d32_bpe32k_targeted_repair_eff005_v3",
+        "step": 8
+      },
+      "checkpoint_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/chatsft_checkpoints/tr_d32_bpe32k_targeted_repair_eff005_v3",
+      "code": {
+        "archive_sha256": "74c08e56c9a1c6d8d5b5039c700f8049b660fe12017da86deb52b9875c34751a",
+        "commit": "4b2ae1e666a3561f6d2037bfbda5eea2ef876c49",
+        "controller_sha256": "4d55fcbd6e211f1e6efa3aedabc3355464f6b97ad00d5be5cd58e0034ee12fa5",
+        "verifier_sha256": "8bbdc232158d70fdc91920fed5a301126a75652d3f72c22dfcc10e82e55c0084"
+      },
+      "data": {
+        "build_admission_sha256": "a57e86912ad571c837911c8ae55eab36bc2df3f11826ea16201d0041aeade698",
+        "manifest_canonical_sha256": "e9d3a593ee8ec8324b76c01a380a6ab007b6b7e099c6abd66db7a08ef5a60c41",
+        "manifest_sha256": "bf3a1c5ff5608d988448b147b80935af7e4b64d8a87e4161d6ec653142512964",
+        "root": "/ari/users/nunal/nanochat-turk-d32-targeted-repair-v3"
+      },
+      "format_version": 1,
+      "kind": "nanochat_d32_targeted_repair_checkpoint_verification_v1",
+      "label": "eff005-8",
+      "optimizer_lr_identity": {
+        "declared": {
+          "embedding_lr": 0.015,
+          "init_lr_frac": 0.2,
+          "matrix_lr": 0.001,
+          "scalar_lr": 0.025,
+          "smear_lr": 0.01,
+          "unembedding_lr": 0.0004
+        },
+        "effective_smear_initial_lr": 0.002,
+        "format": "nanochat-sft-optimizer-lr-identity-v1"
+      },
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "status": "pass",
+      "validation_bpb": 0.45907109536056456,
+      "world_size": 1
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-12-checkpoint-verification-summary.json": {
+      "automatic_release": false,
+      "canonical_sha256": "623849640af5572007ab93e3e8918e5b4e2c4ed4ab43502c5049e79b5ba62815",
+      "checkpoint": {
+        "complete_sha256": "b53260cf062cfcaa34d2924f22bcd1506240722f2ab20bc3f6df4e010c75cd08",
+        "meta_sha256": "06f593a36a28845664be79a8f05cb0d6967266e184080a501441f6719ddc2777",
+        "model_sha256": "5a88dcb68976c224f9e8427ea6d0b5dbda73a4bf29abe881e351333cf38f4e6a",
+        "model_tag": "tr_d32_bpe32k_targeted_repair_eff010_v3",
+        "step": 12
+      },
+      "checkpoint_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/chatsft_checkpoints/tr_d32_bpe32k_targeted_repair_eff010_v3",
+      "code": {
+        "archive_sha256": "74c08e56c9a1c6d8d5b5039c700f8049b660fe12017da86deb52b9875c34751a",
+        "commit": "4b2ae1e666a3561f6d2037bfbda5eea2ef876c49",
+        "controller_sha256": "4d55fcbd6e211f1e6efa3aedabc3355464f6b97ad00d5be5cd58e0034ee12fa5",
+        "verifier_sha256": "8bbdc232158d70fdc91920fed5a301126a75652d3f72c22dfcc10e82e55c0084"
+      },
+      "data": {
+        "build_admission_sha256": "a57e86912ad571c837911c8ae55eab36bc2df3f11826ea16201d0041aeade698",
+        "manifest_canonical_sha256": "e9d3a593ee8ec8324b76c01a380a6ab007b6b7e099c6abd66db7a08ef5a60c41",
+        "manifest_sha256": "bf3a1c5ff5608d988448b147b80935af7e4b64d8a87e4161d6ec653142512964",
+        "root": "/ari/users/nunal/nanochat-turk-d32-targeted-repair-v3"
+      },
+      "format_version": 1,
+      "kind": "nanochat_d32_targeted_repair_checkpoint_verification_v1",
+      "label": "eff010-12",
+      "optimizer_lr_identity": {
+        "declared": {
+          "embedding_lr": 0.03,
+          "init_lr_frac": 0.2,
+          "matrix_lr": 0.002,
+          "scalar_lr": 0.05,
+          "smear_lr": 0.02,
+          "unembedding_lr": 0.0008
+        },
+        "effective_smear_initial_lr": 0.004,
+        "format": "nanochat-sft-optimizer-lr-identity-v1"
+      },
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "status": "pass",
+      "validation_bpb": 0.45685113144974404,
+      "world_size": 1
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-4-checkpoint-verification-summary.json": {
+      "automatic_release": false,
+      "canonical_sha256": "8dc0c54071272c5f0e87e563063cf272c05b3f2a73a21ebf80347ca4174668b6",
+      "checkpoint": {
+        "complete_sha256": "61e94e3164b3d946fd64c2bd1425b4330709acd9f7c86988e1fb186aac7d4d69",
+        "meta_sha256": "64ff26bb83060c70f773e14f0c81aceb9ccc06ffb9ef6cb5b62001f22c77af96",
+        "model_sha256": "16f8f251e0f648b9c757d5bd5d6e5a8e45ad2bcec68abe71f9ed212d17950324",
+        "model_tag": "tr_d32_bpe32k_targeted_repair_eff010_v3",
+        "step": 4
+      },
+      "checkpoint_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/chatsft_checkpoints/tr_d32_bpe32k_targeted_repair_eff010_v3",
+      "code": {
+        "archive_sha256": "74c08e56c9a1c6d8d5b5039c700f8049b660fe12017da86deb52b9875c34751a",
+        "commit": "4b2ae1e666a3561f6d2037bfbda5eea2ef876c49",
+        "controller_sha256": "4d55fcbd6e211f1e6efa3aedabc3355464f6b97ad00d5be5cd58e0034ee12fa5",
+        "verifier_sha256": "8bbdc232158d70fdc91920fed5a301126a75652d3f72c22dfcc10e82e55c0084"
+      },
+      "data": {
+        "build_admission_sha256": "a57e86912ad571c837911c8ae55eab36bc2df3f11826ea16201d0041aeade698",
+        "manifest_canonical_sha256": "e9d3a593ee8ec8324b76c01a380a6ab007b6b7e099c6abd66db7a08ef5a60c41",
+        "manifest_sha256": "bf3a1c5ff5608d988448b147b80935af7e4b64d8a87e4161d6ec653142512964",
+        "root": "/ari/users/nunal/nanochat-turk-d32-targeted-repair-v3"
+      },
+      "format_version": 1,
+      "kind": "nanochat_d32_targeted_repair_checkpoint_verification_v1",
+      "label": "eff010-4",
+      "optimizer_lr_identity": {
+        "declared": {
+          "embedding_lr": 0.03,
+          "init_lr_frac": 0.2,
+          "matrix_lr": 0.002,
+          "scalar_lr": 0.05,
+          "smear_lr": 0.02,
+          "unembedding_lr": 0.0008
+        },
+        "effective_smear_initial_lr": 0.004,
+        "format": "nanochat-sft-optimizer-lr-identity-v1"
+      },
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "status": "pass",
+      "validation_bpb": 0.4588650406838486,
+      "world_size": 1
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-8-checkpoint-verification-summary.json": {
+      "automatic_release": false,
+      "canonical_sha256": "d7b6bf58a57ae0f5e7f78af744b4c66685887a7e3a09dabf15691778aca1de32",
+      "checkpoint": {
+        "complete_sha256": "a8d0478021138a3e7bae6a8ec303fb753ef411ca2177b01cd22088c71759af47",
+        "meta_sha256": "9dc7c4cc689523867432087280efd42e17e99fb314f1df2a69f8112e98c25f4c",
+        "model_sha256": "742186f79ad14dd69870627fbd1c43000325588c54c6e696697feec6c6dfa988",
+        "model_tag": "tr_d32_bpe32k_targeted_repair_eff010_v3",
+        "step": 8
+      },
+      "checkpoint_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/chatsft_checkpoints/tr_d32_bpe32k_targeted_repair_eff010_v3",
+      "code": {
+        "archive_sha256": "74c08e56c9a1c6d8d5b5039c700f8049b660fe12017da86deb52b9875c34751a",
+        "commit": "4b2ae1e666a3561f6d2037bfbda5eea2ef876c49",
+        "controller_sha256": "4d55fcbd6e211f1e6efa3aedabc3355464f6b97ad00d5be5cd58e0034ee12fa5",
+        "verifier_sha256": "8bbdc232158d70fdc91920fed5a301126a75652d3f72c22dfcc10e82e55c0084"
+      },
+      "data": {
+        "build_admission_sha256": "a57e86912ad571c837911c8ae55eab36bc2df3f11826ea16201d0041aeade698",
+        "manifest_canonical_sha256": "e9d3a593ee8ec8324b76c01a380a6ab007b6b7e099c6abd66db7a08ef5a60c41",
+        "manifest_sha256": "bf3a1c5ff5608d988448b147b80935af7e4b64d8a87e4161d6ec653142512964",
+        "root": "/ari/users/nunal/nanochat-turk-d32-targeted-repair-v3"
+      },
+      "format_version": 1,
+      "kind": "nanochat_d32_targeted_repair_checkpoint_verification_v1",
+      "label": "eff010-8",
+      "optimizer_lr_identity": {
+        "declared": {
+          "embedding_lr": 0.03,
+          "init_lr_frac": 0.2,
+          "matrix_lr": 0.002,
+          "scalar_lr": 0.05,
+          "smear_lr": 0.02,
+          "unembedding_lr": 0.0008
+        },
+        "effective_smear_initial_lr": 0.004,
+        "format": "nanochat-sft-optimizer-lr-identity-v1"
+      },
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "status": "pass",
+      "validation_bpb": 0.45716121036375884,
+      "world_size": 1
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-12-checkpoint-verification-summary.json": {
+      "automatic_release": false,
+      "canonical_sha256": "dcb8764af6ebc18b9ee7821aeb906a074850bc5f74b119bfc1b0db9cc260b930",
+      "checkpoint": {
+        "complete_sha256": "eda85e548b959dd885d264a82aaa5198c1478a16519f1efd1ddbee8e351c6e52",
+        "meta_sha256": "40b86e2c762aa53395e869fe885b9ba7de0e5bab347ef44265d024ae3aabe206",
+        "model_sha256": "163832ef1d09c04c458a873dd4ef55c5001c04d7cfca20dd73f3e67c8f41d8da",
+        "model_tag": "tr_d32_bpe32k_targeted_repair_eff020_v3",
+        "step": 12
+      },
+      "checkpoint_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/chatsft_checkpoints/tr_d32_bpe32k_targeted_repair_eff020_v3",
+      "code": {
+        "archive_sha256": "74c08e56c9a1c6d8d5b5039c700f8049b660fe12017da86deb52b9875c34751a",
+        "commit": "4b2ae1e666a3561f6d2037bfbda5eea2ef876c49",
+        "controller_sha256": "4d55fcbd6e211f1e6efa3aedabc3355464f6b97ad00d5be5cd58e0034ee12fa5",
+        "verifier_sha256": "8bbdc232158d70fdc91920fed5a301126a75652d3f72c22dfcc10e82e55c0084"
+      },
+      "data": {
+        "build_admission_sha256": "a57e86912ad571c837911c8ae55eab36bc2df3f11826ea16201d0041aeade698",
+        "manifest_canonical_sha256": "e9d3a593ee8ec8324b76c01a380a6ab007b6b7e099c6abd66db7a08ef5a60c41",
+        "manifest_sha256": "bf3a1c5ff5608d988448b147b80935af7e4b64d8a87e4161d6ec653142512964",
+        "root": "/ari/users/nunal/nanochat-turk-d32-targeted-repair-v3"
+      },
+      "format_version": 1,
+      "kind": "nanochat_d32_targeted_repair_checkpoint_verification_v1",
+      "label": "eff020-12",
+      "optimizer_lr_identity": {
+        "declared": {
+          "embedding_lr": 0.06,
+          "init_lr_frac": 0.2,
+          "matrix_lr": 0.004,
+          "scalar_lr": 0.1,
+          "smear_lr": 0.04,
+          "unembedding_lr": 0.0016
+        },
+        "effective_smear_initial_lr": 0.008,
+        "format": "nanochat-sft-optimizer-lr-identity-v1"
+      },
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "status": "pass",
+      "validation_bpb": 0.45631763159050864,
+      "world_size": 1
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-4-checkpoint-verification-summary.json": {
+      "automatic_release": false,
+      "canonical_sha256": "46ee13c2506145040c25681d5ab5599e37e02845f2be8e8ab9e7342be2ab3a9e",
+      "checkpoint": {
+        "complete_sha256": "3c5f52947c608abe0549b637254c2ec155f6a0b40fda044ea448e8285e96fd63",
+        "meta_sha256": "f1bbafdbf6bbcec00c21f60a0ab589091f6007027cc8ad6013b8e2d3c3598210",
+        "model_sha256": "1923c1a452cff4e155a27ece8581e8a073422cd081cb34a96eb29a5ec466c50d",
+        "model_tag": "tr_d32_bpe32k_targeted_repair_eff020_v3",
+        "step": 4
+      },
+      "checkpoint_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/chatsft_checkpoints/tr_d32_bpe32k_targeted_repair_eff020_v3",
+      "code": {
+        "archive_sha256": "74c08e56c9a1c6d8d5b5039c700f8049b660fe12017da86deb52b9875c34751a",
+        "commit": "4b2ae1e666a3561f6d2037bfbda5eea2ef876c49",
+        "controller_sha256": "4d55fcbd6e211f1e6efa3aedabc3355464f6b97ad00d5be5cd58e0034ee12fa5",
+        "verifier_sha256": "8bbdc232158d70fdc91920fed5a301126a75652d3f72c22dfcc10e82e55c0084"
+      },
+      "data": {
+        "build_admission_sha256": "a57e86912ad571c837911c8ae55eab36bc2df3f11826ea16201d0041aeade698",
+        "manifest_canonical_sha256": "e9d3a593ee8ec8324b76c01a380a6ab007b6b7e099c6abd66db7a08ef5a60c41",
+        "manifest_sha256": "bf3a1c5ff5608d988448b147b80935af7e4b64d8a87e4161d6ec653142512964",
+        "root": "/ari/users/nunal/nanochat-turk-d32-targeted-repair-v3"
+      },
+      "format_version": 1,
+      "kind": "nanochat_d32_targeted_repair_checkpoint_verification_v1",
+      "label": "eff020-4",
+      "optimizer_lr_identity": {
+        "declared": {
+          "embedding_lr": 0.06,
+          "init_lr_frac": 0.2,
+          "matrix_lr": 0.004,
+          "scalar_lr": 0.1,
+          "smear_lr": 0.04,
+          "unembedding_lr": 0.0016
+        },
+        "effective_smear_initial_lr": 0.008,
+        "format": "nanochat-sft-optimizer-lr-identity-v1"
+      },
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "status": "pass",
+      "validation_bpb": 0.4571155552818333,
+      "world_size": 1
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-8-checkpoint-verification-summary.json": {
+      "automatic_release": false,
+      "canonical_sha256": "065dd8623c938b569c3abc7a52950bb3444faf0e07045d16d45af51090ecece6",
+      "checkpoint": {
+        "complete_sha256": "199c8d26329717712a687f86cb1922201c39511e61cac7223fd963ea67263ee6",
+        "meta_sha256": "eb8cfc71c83f36aba83bc2a0781bb668b3a0025de20980178d13ade1bb14a7f6",
+        "model_sha256": "06925fd1f45363130a8ebe32f6e2c6bd7fb388ccd25b3cdaab1a1ca481ef2fe4",
+        "model_tag": "tr_d32_bpe32k_targeted_repair_eff020_v3",
+        "step": 8
+      },
+      "checkpoint_dir": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/chatsft_checkpoints/tr_d32_bpe32k_targeted_repair_eff020_v3",
+      "code": {
+        "archive_sha256": "74c08e56c9a1c6d8d5b5039c700f8049b660fe12017da86deb52b9875c34751a",
+        "commit": "4b2ae1e666a3561f6d2037bfbda5eea2ef876c49",
+        "controller_sha256": "4d55fcbd6e211f1e6efa3aedabc3355464f6b97ad00d5be5cd58e0034ee12fa5",
+        "verifier_sha256": "8bbdc232158d70fdc91920fed5a301126a75652d3f72c22dfcc10e82e55c0084"
+      },
+      "data": {
+        "build_admission_sha256": "a57e86912ad571c837911c8ae55eab36bc2df3f11826ea16201d0041aeade698",
+        "manifest_canonical_sha256": "e9d3a593ee8ec8324b76c01a380a6ab007b6b7e099c6abd66db7a08ef5a60c41",
+        "manifest_sha256": "bf3a1c5ff5608d988448b147b80935af7e4b64d8a87e4161d6ec653142512964",
+        "root": "/ari/users/nunal/nanochat-turk-d32-targeted-repair-v3"
+      },
+      "format_version": 1,
+      "kind": "nanochat_d32_targeted_repair_checkpoint_verification_v1",
+      "label": "eff020-8",
+      "optimizer_lr_identity": {
+        "declared": {
+          "embedding_lr": 0.06,
+          "init_lr_frac": 0.2,
+          "matrix_lr": 0.004,
+          "scalar_lr": 0.1,
+          "smear_lr": 0.04,
+          "unembedding_lr": 0.0016
+        },
+        "effective_smear_initial_lr": 0.008,
+        "format": "nanochat-sft-optimizer-lr-identity-v1"
+      },
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "status": "pass",
+      "validation_bpb": 0.4563072002711573,
+      "world_size": 1
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/probe-selection.json": {
+      "automatic_publication": false,
+      "automatic_release": false,
+      "bindings": {
+        "build": {
+          "admission": {
+            "bytes": 2620,
+            "canonical_sha256": "4978495bfc8570b6f132a106cd72c1657d0eebbc3f868eef7fe71c4918322858",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-build-v3/build-admission.json",
+            "sha256": "a57e86912ad571c837911c8ae55eab36bc2df3f11826ea16201d0041aeade698"
+          },
+          "ledger": {
+            "bytes": 5047,
+            "canonical_sha256": "db6753561bc747a95b33c91d271a7950145b29561687bac102ed7f99efa04be7",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-build-v3/pipeline_jobs.json",
+            "sha256": "bdc8f419555eaae0474fc9da5d7adb3367a14d5aea1e5ba2aabb92104a905bf5"
+          },
+          "receipt": {
+            "bytes": 2473,
+            "canonical_sha256": "c0f0f18e4d790b080c1444c60c9c5e30cc38c5f97461789d79db225655efcb02",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-build-v3/build-receipt.json",
+            "sha256": "0a20c723f808f44d51901c33c58212516ccd59053d743c5251bb8978e213fd6b"
+          }
+        },
+        "code": {
+          "archive_sha256": "74c08e56c9a1c6d8d5b5039c700f8049b660fe12017da86deb52b9875c34751a",
+          "checkpoint_verifier_relative_path": "scripts/verify_d32_targeted_repair_checkpoint.py",
+          "checkpoint_verifier_sha256": "8bbdc232158d70fdc91920fed5a301126a75652d3f72c22dfcc10e82e55c0084",
+          "commit": "4b2ae1e666a3561f6d2037bfbda5eea2ef876c49",
+          "controller_relative_path": "runs/uhem_d32_targeted_repair_screen_x4.sbatch",
+          "controller_sha256": "4d55fcbd6e211f1e6efa3aedabc3355464f6b97ad00d5be5cd58e0034ee12fa5",
+          "selector_relative_path": "scripts/select_d32_targeted_repair.py",
+          "selector_sha256": "d7bace4e235f8e452a75acd65b0d0ae46ea80388abe2369e67ccc7599514b67f"
+        },
+        "config": {
+          "bytes": 6433,
+          "path": "/ari/users/nunal/nanochat-turk-d32-targeted-repair-code-493347ab47ea/configs/sft/d32_targeted_repair_v1.json",
+          "sha256": "abde531f298f2533fd17334674e7f8b7473e6a68209a29c9062bf9d9a9fe647c"
+        },
+        "corpus": {
+          "manifest_canonical_sha256": "e9d3a593ee8ec8324b76c01a380a6ab007b6b7e099c6abd66db7a08ef5a60c41",
+          "manifest_file_sha256": "bf3a1c5ff5608d988448b147b80935af7e4b64d8a87e4161d6ec653142512964",
+          "receipt_canonical_sha256": "fb912df2b172ec8bcd6eb6b106f4c6774185da22700aaa73bf9c4599206e88b2",
+          "receipt_file_sha256": "f2efb514801c53aba378069a1fb288936773809596ffa8891f6b5d40d49100cb",
+          "root": "/ari/users/nunal/nanochat-turk-d32-targeted-repair-v3"
+        },
+        "screen": {
+          "allocated_gpus": 4,
+          "job_id": "516870",
+          "partition": "a100x4q",
+          "world_size_per_worker": 1
+        },
+        "source_checkpoint": {
+          "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+          "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+          "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+          "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+          "phase": "sft",
+          "step": 84
+        }
+      },
+      "candidates": {
+        "eff005-12": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 2,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 0,
+            "ordinary_helpfulness": 3,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "checkpoint_verification": {
+            "bytes": 2015,
+            "canonical_sha256": "41fb3fc1e1276b7eabc9ace4a1a7487f9637ed693a8b56cf0296c220c6b29ca2",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-12-checkpoint-verification.json",
+            "sha256": "668642bb8382c85a840fb75a4afbdb33ec9073831593260750f8ce8e1902e4e5"
+          },
+          "forbidden_control_free": true,
+          "gates": {
+            "exact_format_at_least_2": true,
+            "forbidden_control_free": true,
+            "grounded_uncertainty_at_least_1": false,
+            "multi_turn_at_least_1": false,
+            "overall_at_least_source_9": false,
+            "reasoning_at_least_1": false,
+            "report_pass": true,
+            "safety_at_least_1": false,
+            "zero_leakage": true
+          },
+          "generation_identity": {
+            "bytes": 6120,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-12-probe/generation-identity.json",
+            "sha256": "4fdb3f628e9427937aef274045e64a57ccb954bbfb1096e9277cda43706728f1"
+          },
+          "leak_free": true,
+          "passed": 8,
+          "predictions": {
+            "bytes": 32838,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-12-probe/predictions.jsonl",
+            "sha256": "e8785bc38b96414b6caf5d81084f73560f5632abbd32eb1351f2b00f1bd26f54"
+          },
+          "probe_qualified": false,
+          "report": {
+            "bytes": 76365,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-12-probe/report.json",
+            "sha256": "dc50e5263c24d3efd899912b6103b034632d376fea873d714aa3a65e65c044fd"
+          },
+          "report_pass": true,
+          "selection_metadata": {
+            "arm": "eff005",
+            "input_order": 2,
+            "lr_order": 0,
+            "step": 12
+          },
+          "total": 41
+        },
+        "eff005-4": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 2,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 0,
+            "ordinary_helpfulness": 3,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "checkpoint_verification": {
+            "bytes": 2013,
+            "canonical_sha256": "db3301133cf4c009d5e69d552b7866386d5ba6b264235d4d481100a09b27e9e7",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-4-checkpoint-verification.json",
+            "sha256": "ac0e1e0b579c797c890695e145c7812ee8f4bc99b81c0635b31498efb6abace9"
+          },
+          "forbidden_control_free": true,
+          "gates": {
+            "exact_format_at_least_2": true,
+            "forbidden_control_free": true,
+            "grounded_uncertainty_at_least_1": false,
+            "multi_turn_at_least_1": false,
+            "overall_at_least_source_9": false,
+            "reasoning_at_least_1": false,
+            "report_pass": true,
+            "safety_at_least_1": false,
+            "zero_leakage": true
+          },
+          "generation_identity": {
+            "bytes": 6131,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-4-probe/generation-identity.json",
+            "sha256": "1d894782a462f1e874772246e65532aa65b9bb1c91bba5575bce82db58481bf8"
+          },
+          "leak_free": true,
+          "passed": 8,
+          "predictions": {
+            "bytes": 33367,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-4-probe/predictions.jsonl",
+            "sha256": "537d1cf967f35584493aa34338abb9f57e4fc1cba4b7100d8ede2232e53186b7"
+          },
+          "probe_qualified": false,
+          "report": {
+            "bytes": 76885,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-4-probe/report.json",
+            "sha256": "eeeef3551f11576f709c206f3b3d6b91d5cc613e4c65f2164832387b2dbd3d9b"
+          },
+          "report_pass": true,
+          "selection_metadata": {
+            "arm": "eff005",
+            "input_order": 0,
+            "lr_order": 0,
+            "step": 4
+          },
+          "total": 41
+        },
+        "eff005-8": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 2,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 0,
+            "ordinary_helpfulness": 3,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "checkpoint_verification": {
+            "bytes": 2013,
+            "canonical_sha256": "5ad687e89bd88887c6a952d4b66ac0bddbccdacfe21d86b6b9a7b29e356ddd00",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-8-checkpoint-verification.json",
+            "sha256": "b3b0d17f00bcd5e71fad8165675f692bbce40681a2797543542227b5a5897126"
+          },
+          "forbidden_control_free": true,
+          "gates": {
+            "exact_format_at_least_2": true,
+            "forbidden_control_free": true,
+            "grounded_uncertainty_at_least_1": false,
+            "multi_turn_at_least_1": false,
+            "overall_at_least_source_9": false,
+            "reasoning_at_least_1": false,
+            "report_pass": true,
+            "safety_at_least_1": false,
+            "zero_leakage": true
+          },
+          "generation_identity": {
+            "bytes": 6115,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-8-probe/generation-identity.json",
+            "sha256": "0424de876aa0a3710604cdbc20a550a587fd08d5455679d86e921d571dbcbe71"
+          },
+          "leak_free": true,
+          "passed": 8,
+          "predictions": {
+            "bytes": 33217,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-8-probe/predictions.jsonl",
+            "sha256": "c44e6dd9644a2ae2c11e0f68d1bac3f23132d7d7f8892ab2353540b527ed26e7"
+          },
+          "probe_qualified": false,
+          "report": {
+            "bytes": 76710,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff005-8-probe/report.json",
+            "sha256": "1660434b1e3b920fbeef138e2a2be95200305afaa0bb4c9df4f0a9ab227548e7"
+          },
+          "report_pass": true,
+          "selection_metadata": {
+            "arm": "eff005",
+            "input_order": 1,
+            "lr_order": 0,
+            "step": 8
+          },
+          "total": 41
+        },
+        "eff010-12": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 2,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 0,
+            "ordinary_helpfulness": 3,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "checkpoint_verification": {
+            "bytes": 2013,
+            "canonical_sha256": "623849640af5572007ab93e3e8918e5b4e2c4ed4ab43502c5049e79b5ba62815",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-12-checkpoint-verification.json",
+            "sha256": "ab1de20265c87a53dec5ab34f1be49d741eab33c21aa25e17b77a0db0702ce44"
+          },
+          "forbidden_control_free": true,
+          "gates": {
+            "exact_format_at_least_2": true,
+            "forbidden_control_free": true,
+            "grounded_uncertainty_at_least_1": false,
+            "multi_turn_at_least_1": false,
+            "overall_at_least_source_9": false,
+            "reasoning_at_least_1": false,
+            "report_pass": true,
+            "safety_at_least_1": false,
+            "zero_leakage": true
+          },
+          "generation_identity": {
+            "bytes": 6128,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-12-probe/generation-identity.json",
+            "sha256": "9a573324c87eb55040fa3a9b9666eb28bc4222cc12c1dbaea462a451feaf68be"
+          },
+          "leak_free": true,
+          "passed": 8,
+          "predictions": {
+            "bytes": 33527,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-12-probe/predictions.jsonl",
+            "sha256": "1ee02f0d5d7bb6ec78a9417e8bd08379af7ef538ab6ba1dd3c9ab5457a10796f"
+          },
+          "probe_qualified": false,
+          "report": {
+            "bytes": 77056,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-12-probe/report.json",
+            "sha256": "ac1d625ef677e60844c51a3342752b1c757436795f429d3f5739c2c899fa7ee4"
+          },
+          "report_pass": true,
+          "selection_metadata": {
+            "arm": "eff010",
+            "input_order": 5,
+            "lr_order": 1,
+            "step": 12
+          },
+          "total": 41
+        },
+        "eff010-4": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 2,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 0,
+            "ordinary_helpfulness": 3,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "checkpoint_verification": {
+            "bytes": 2010,
+            "canonical_sha256": "8dc0c54071272c5f0e87e563063cf272c05b3f2a73a21ebf80347ca4174668b6",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-4-checkpoint-verification.json",
+            "sha256": "05474222e2ec0ac522fa2b624ee0d8902b7fb3e64a6e5656c601173fad276dc7"
+          },
+          "forbidden_control_free": true,
+          "gates": {
+            "exact_format_at_least_2": true,
+            "forbidden_control_free": true,
+            "grounded_uncertainty_at_least_1": false,
+            "multi_turn_at_least_1": false,
+            "overall_at_least_source_9": false,
+            "reasoning_at_least_1": false,
+            "report_pass": true,
+            "safety_at_least_1": false,
+            "zero_leakage": true
+          },
+          "generation_identity": {
+            "bytes": 6127,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-4-probe/generation-identity.json",
+            "sha256": "b130ffaa2fd62c299ab478f4112570d7ff1c20f75105a5873aee5bb3e1e90b39"
+          },
+          "leak_free": true,
+          "passed": 8,
+          "predictions": {
+            "bytes": 32950,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-4-probe/predictions.jsonl",
+            "sha256": "03f8fb1272d54a598b217ebed50f47d31f95363f5c90431d4c4ac94bde766552"
+          },
+          "probe_qualified": false,
+          "report": {
+            "bytes": 76462,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-4-probe/report.json",
+            "sha256": "fd22c30a770fec6b21935e1425fa35fc2d48e9597d0325540ed81c8191819fa3"
+          },
+          "report_pass": true,
+          "selection_metadata": {
+            "arm": "eff010",
+            "input_order": 3,
+            "lr_order": 1,
+            "step": 4
+          },
+          "total": 41
+        },
+        "eff010-8": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 2,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 0,
+            "ordinary_helpfulness": 3,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "checkpoint_verification": {
+            "bytes": 2011,
+            "canonical_sha256": "d7b6bf58a57ae0f5e7f78af744b4c66685887a7e3a09dabf15691778aca1de32",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-8-checkpoint-verification.json",
+            "sha256": "b79ac804fbe16aff990149d776452a068c0d4bed6d04db616209f7dfd79728d3"
+          },
+          "forbidden_control_free": true,
+          "gates": {
+            "exact_format_at_least_2": true,
+            "forbidden_control_free": true,
+            "grounded_uncertainty_at_least_1": false,
+            "multi_turn_at_least_1": false,
+            "overall_at_least_source_9": false,
+            "reasoning_at_least_1": false,
+            "report_pass": true,
+            "safety_at_least_1": false,
+            "zero_leakage": true
+          },
+          "generation_identity": {
+            "bytes": 6114,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-8-probe/generation-identity.json",
+            "sha256": "c5973e2a752a687cdfb0cc3a973285b20594df8424a1002f00160875bfd2ff7d"
+          },
+          "leak_free": true,
+          "passed": 8,
+          "predictions": {
+            "bytes": 33032,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-8-probe/predictions.jsonl",
+            "sha256": "7f40a76ccfc4dfa48b01e4afb3d0877b4c80959c44495ab437d53d40622b4878"
+          },
+          "probe_qualified": false,
+          "report": {
+            "bytes": 76540,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff010-8-probe/report.json",
+            "sha256": "bb889832822177f0ea44deff00890502d53b3848a97327bb2c0a4bfec25b2eca"
+          },
+          "report_pass": true,
+          "selection_metadata": {
+            "arm": "eff010",
+            "input_order": 4,
+            "lr_order": 1,
+            "step": 8
+          },
+          "total": 41
+        },
+        "eff020-12": {
+          "categories": {
+            "chat_surface": 2,
+            "exact_format": 2,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 1,
+            "ordinary_helpfulness": 3,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "checkpoint_verification": {
+            "bytes": 2012,
+            "canonical_sha256": "dcb8764af6ebc18b9ee7821aeb906a074850bc5f74b119bfc1b0db9cc260b930",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-12-checkpoint-verification.json",
+            "sha256": "21de2bac78e47f910752e40dd1a50c6d45fb6fe8fc3933ae262c4b55847ce567"
+          },
+          "forbidden_control_free": true,
+          "gates": {
+            "exact_format_at_least_2": true,
+            "forbidden_control_free": true,
+            "grounded_uncertainty_at_least_1": false,
+            "multi_turn_at_least_1": true,
+            "overall_at_least_source_9": true,
+            "reasoning_at_least_1": false,
+            "report_pass": true,
+            "safety_at_least_1": false,
+            "zero_leakage": true
+          },
+          "generation_identity": {
+            "bytes": 6131,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-12-probe/generation-identity.json",
+            "sha256": "950af39be830c9a24bf8d5cb5c511ba4fe52ba3480a789adbf022a5be8b37b9d"
+          },
+          "leak_free": true,
+          "passed": 10,
+          "predictions": {
+            "bytes": 33449,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-12-probe/predictions.jsonl",
+            "sha256": "d562464333567c4b6afb0acadeacdb94ab09736445a7a25be962c18d220a1135"
+          },
+          "probe_qualified": false,
+          "report": {
+            "bytes": 77179,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-12-probe/report.json",
+            "sha256": "3f73c1f7129b072579855c8eb6ff70c886ec35ab1315e12875065a4926f96d9f"
+          },
+          "report_pass": true,
+          "selection_metadata": {
+            "arm": "eff020",
+            "input_order": 8,
+            "lr_order": 2,
+            "step": 12
+          },
+          "total": 41
+        },
+        "eff020-4": {
+          "categories": {
+            "chat_surface": 1,
+            "exact_format": 2,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 0,
+            "ordinary_helpfulness": 3,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "checkpoint_verification": {
+            "bytes": 2009,
+            "canonical_sha256": "46ee13c2506145040c25681d5ab5599e37e02845f2be8e8ab9e7342be2ab3a9e",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-4-checkpoint-verification.json",
+            "sha256": "e996023fd558eb667841e8b1086ca932a48ddc3e9cf8dafc704fabaed70e3ede"
+          },
+          "forbidden_control_free": true,
+          "gates": {
+            "exact_format_at_least_2": true,
+            "forbidden_control_free": true,
+            "grounded_uncertainty_at_least_1": false,
+            "multi_turn_at_least_1": false,
+            "overall_at_least_source_9": false,
+            "reasoning_at_least_1": false,
+            "report_pass": true,
+            "safety_at_least_1": false,
+            "zero_leakage": true
+          },
+          "generation_identity": {
+            "bytes": 6129,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-4-probe/generation-identity.json",
+            "sha256": "68066d20623bde86b87e7716782fc5be1ecf990e5619ebfb3d7ee4605b76908d"
+          },
+          "leak_free": true,
+          "passed": 8,
+          "predictions": {
+            "bytes": 33665,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-4-probe/predictions.jsonl",
+            "sha256": "bdb892560ad2ff4669ae2f3edc7901f9512715656af840ee44abd1c04588db81"
+          },
+          "probe_qualified": false,
+          "report": {
+            "bytes": 77196,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-4-probe/report.json",
+            "sha256": "f92b9dd84220130c1e6db1435f423e9e57c687e8d6e88a2ce5360d8baa0133d7"
+          },
+          "report_pass": true,
+          "selection_metadata": {
+            "arm": "eff020",
+            "input_order": 6,
+            "lr_order": 2,
+            "step": 4
+          },
+          "total": 41
+        },
+        "eff020-8": {
+          "categories": {
+            "chat_surface": 2,
+            "exact_format": 2,
+            "grounded_uncertainty": 0,
+            "knowledge": 1,
+            "multi_turn": 0,
+            "ordinary_helpfulness": 3,
+            "reasoning": 0,
+            "safety": 0,
+            "turkish_language": 1
+          },
+          "checkpoint_verification": {
+            "bytes": 2009,
+            "canonical_sha256": "065dd8623c938b569c3abc7a52950bb3444faf0e07045d16d45af51090ecece6",
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-8-checkpoint-verification.json",
+            "sha256": "c2197d48c1309e05fa892aa82e29325407782b1a41412d2c940a17b172ff118e"
+          },
+          "forbidden_control_free": true,
+          "gates": {
+            "exact_format_at_least_2": true,
+            "forbidden_control_free": true,
+            "grounded_uncertainty_at_least_1": false,
+            "multi_turn_at_least_1": false,
+            "overall_at_least_source_9": true,
+            "reasoning_at_least_1": false,
+            "report_pass": true,
+            "safety_at_least_1": false,
+            "zero_leakage": true
+          },
+          "generation_identity": {
+            "bytes": 6131,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-8-probe/generation-identity.json",
+            "sha256": "4431d25df7dce35f8e2fc828f51b626e6cbec56b64e55ae0f103387da727a5db"
+          },
+          "leak_free": true,
+          "passed": 9,
+          "predictions": {
+            "bytes": 33200,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-8-probe/predictions.jsonl",
+            "sha256": "f8855f5b0382a8f0d999082f13ade1ddd2dd6c6d5f8a6d5633b5322e03df0ad8"
+          },
+          "probe_qualified": false,
+          "report": {
+            "bytes": 76792,
+            "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/eff020-8-probe/report.json",
+            "sha256": "ba64e7519bcf174c1515c2db7472a493a4001932f18125be8d89201639c12a39"
+          },
+          "report_pass": true,
+          "selection_metadata": {
+            "arm": "eff020",
+            "input_order": 7,
+            "lr_order": 2,
+            "step": 8
+          },
+          "total": 41
+        }
+      },
+      "canonical_sha256": "631aec4ddfe97a2157321f07e77a13205c71581c3a971b8ecd2861537660489d",
+      "followon_authorized": false,
+      "format_version": 1,
+      "kind": "nanochat_d32_targeted_repair_probe_selection_v1",
+      "policy": {
+        "candidate_score_minimum": 9,
+        "category_minima": {
+          "exact_format": 2,
+          "grounded_uncertainty": 1,
+          "multi_turn": 1,
+          "reasoning": 1,
+          "safety": 1
+        },
+        "forbidden_control_free_required": true,
+        "scheduled_candidate_count": 9,
+        "source_score_required": 9,
+        "tie_break": "score_capabilities_lower_lr_earlier_step_input_order_v1",
+        "zero_leakage_required": true
+      },
+      "research_only": true,
+      "selected_label": null,
+      "source": {
+        "categories": {
+          "chat_surface": 1,
+          "exact_format": 2,
+          "grounded_uncertainty": 0,
+          "knowledge": 1,
+          "multi_turn": 1,
+          "ordinary_helpfulness": 3,
+          "reasoning": 0,
+          "safety": 0,
+          "turkish_language": 1
+        },
+        "forbidden_control_free": true,
+        "generation_identity": {
+          "bytes": 6203,
+          "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/source-probe/generation-identity.json",
+          "sha256": "cc5ad1fd9087f328c38e893d548078b9d22a747db7e3facc79390e809bc2a5c4"
+        },
+        "leak_free": true,
+        "passed": 9,
+        "predictions": {
+          "bytes": 32867,
+          "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/source-probe/predictions.jsonl",
+          "sha256": "199a1790840c22610ddcc2defd18bf8931c468bf1880e0849060835d987af250"
+        },
+        "report": {
+          "bytes": 76412,
+          "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/source-probe/report.json",
+          "sha256": "482a6b5b606f14a1c915d9da599e01b3c40f640e7fd2a0a4300aba4af0712d86"
+        },
+        "report_pass": true,
+        "total": 41
+      },
+      "status": "retain_source"
+    },
+    "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/screen-decision-summary.json": {
+      "automatic_publication": false,
+      "automatic_release": false,
+      "candidate": null,
+      "canonical_sha256": "a820973c76649d62c895dd868b5eed3f2f36b97cd5bc33245521e742969eb9c2",
+      "decision": "retain_source",
+      "followon_authorized": false,
+      "format_version": 1,
+      "kind": "nanochat_d32_targeted_repair_screen_decision_v1",
+      "reason": "no_probe_qualified_candidate",
+      "selection": {
+        "canonical_sha256": "631aec4ddfe97a2157321f07e77a13205c71581c3a971b8ecd2861537660489d",
+        "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/control/targeted-repair-screen-v3-probe-recovery-v1/probe-selection.json",
+        "sha256": "1ab0367e9853ea2bdf86efcf367cdc6e4dca05e757457b9c598d38d388094788"
+      },
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "status": "completed"
+    },
+    "/ari/users/nunal/nanochat-turk-d32-targeted-repair-v3/manifest.json": {
+      "artifact_id": "d32-targeted-repair-v1",
+      "benchmark_quarantine": {
+        "inputs": [
+          {
+            "bytes": 12228,
+            "path": "/ari/users/nunal/nanochat-turk-d32-targeted-repair-code-493347ab47ea/artifacts/eval/d32_instruct_probe_v1.jsonl",
+            "sha256": "a658c6c75f0e90fd8aa9a42b185cf6177846df86c984594dc8c4d055d8ebbd0f"
+          },
+          {
+            "bytes": 268376,
+            "path": "/ari/users/nunal/nanochat-turk-d32-targeted-repair-code-493347ab47ea/artifacts/sft/d32_production_behavior_v1/heldout_benchmark.jsonl",
+            "sha256": "9014c77e147a9ab020b1da97bc2aa981de68c454f4957328ef190309bb535007"
+          }
+        ],
+        "jaccard_threshold": 0.9,
+        "leaf_strings_indexed": 2213,
+        "max_hamming": 3,
+        "passed": true,
+        "required": true,
+        "row_variants_indexed": 2212,
+        "strings_indexed": 4425
+      },
+      "canonical_sha256": "e9d3a593ee8ec8324b76c01a380a6ab007b6b7e099c6abd66db7a08ef5a60c41",
+      "execution_policy": {
+        "automatic_publication": false,
+        "automatic_release": false,
+        "promotion_requires_probe_production_and_retention_gates": true,
+        "research_only": true
+      },
+      "format_version": 1,
+      "kind": "nanochat_d32_targeted_repair_v1",
+      "max_seq_len": 2048,
+      "normalization": {
+        "assistant_end_supervised": true,
+        "assistant_only_targets": true,
+        "schema": "optional system, then alternating user/assistant",
+        "silent_truncation": false,
+        "text_rewritten": false,
+        "visible_chain_of_thought": false
+      },
+      "outputs": {
+        "selection_inventory": {
+          "bytes": 4292540,
+          "path": "selection.jsonl",
+          "rows": 7860,
+          "sha256": "793a505f7ab18ad74e0a13b2d4a3eeea48e90db03104525b60bbb938fa50224e"
+        },
+        "train": {
+          "bytes": 4305283,
+          "path": "train.jsonl",
+          "rows": 7860,
+          "sha256": "030573ff1b916a6015875a434accc8799e24a181fe1b0bcacba6bd9be8a7ca91",
+          "tokens": {
+            "assistant_content_tokens": 744407,
+            "assistant_end_targets": 10410,
+            "formatted_tokens": 1637606,
+            "maximum_formatted_tokens": 1019,
+            "supervised_assistant_tokens": 754817
+          }
+        },
+        "validation": {
+          "bytes": 2575766,
+          "path": "validation.jsonl",
+          "rows": 1557,
+          "sha256": "2cae224e5cbfa297c8b6e8ebd3226bd99ed426e876a936053bdc1f670b8cfb6d",
+          "tokens": {
+            "assistant_content_tokens": 405904,
+            "assistant_end_targets": 2523,
+            "formatted_tokens": 599460,
+            "maximum_formatted_tokens": 2044,
+            "supervised_assistant_tokens": 408427
+          }
+        }
+      },
+      "purpose": "Small, family-balanced repair curriculum for the retained SmolTalk2-Turk plus native Stage-B D32 checkpoint",
+      "release_qualified": false,
+      "requirements": {
+        "exact_payload_duplicates": 0,
+        "maximum_formatted_tokens": 3000000,
+        "maximum_formatted_tokens_per_row": 2048,
+        "maximum_supervised_assistant_tokens": 1500000,
+        "minimum_assistant_end_targets": 7800,
+        "minimum_formatted_tokens": 786432,
+        "minimum_supervised_assistant_tokens": 350000,
+        "validation_policy": "preserve_final_polish_validation_byte_identically"
+      },
+      "research_only": true,
+      "selection": {
+        "benchmark_rows_used": false,
+        "deduplication": "exact_training_payload_cross_parent",
+        "fast_stage_b_families": {
+          "ambiguity_clarification": {
+            "quota": 300,
+            "superfamily": "grounded_uncertainty"
+          },
+          "arithmetic_calculation": {
+            "quota": 400,
+            "superfamily": "reasoning"
+          },
+          "exact_constraints_formats": {
+            "quota": 300,
+            "superfamily": "exact_format"
+          },
+          "multi_turn_correction": {
+            "quota": 250,
+            "superfamily": "multi_turn"
+          },
+          "multi_turn_followup": {
+            "quota": 250,
+            "superfamily": "multi_turn"
+          },
+          "multi_turn_memory": {
+            "quota": 250,
+            "superfamily": "multi_turn"
+          },
+          "ordinary_helpfulness_grounded_prose": {
+            "quota": 200,
+            "superfamily": "ordinary_helpfulness"
+          },
+          "safe_refusal": {
+            "quota": 400,
+            "superfamily": "safety"
+          },
+          "synthetic_grounded_extraction": {
+            "quota": 400,
+            "superfamily": "grounded_uncertainty"
+          },
+          "synthetic_grounded_qa": {
+            "quota": 400,
+            "superfamily": "grounded_uncertainty"
+          },
+          "table_json_conversion": {
+            "quota": 300,
+            "superfamily": "exact_format"
+          },
+          "time_calculation": {
+            "quota": 200,
+            "superfamily": "reasoning"
+          },
+          "unit_conversion": {
+            "quota": 200,
+            "superfamily": "reasoning"
+          }
+        },
+        "final_polish_lanes": {
+          "exact_format": {
+            "quota": 500,
+            "superfamily": "exact_format"
+          },
+          "exact_no_system": {
+            "quota": 750,
+            "superfamily": "exact_format"
+          },
+          "multi_turn_no_system": {
+            "quota": 500,
+            "superfamily": "multi_turn"
+          },
+          "multi_turn_short": {
+            "quota": 400,
+            "superfamily": "multi_turn"
+          },
+          "safety_cue_stripped": {
+            "quota": 1000,
+            "superfamily": "safety"
+          },
+          "safety_no_system": {
+            "quota": 609,
+            "superfamily": "safety"
+          },
+          "uncertainty": {
+            "quota": 1,
+            "superfamily": "grounded_uncertainty"
+          },
+          "unknown_context_mechanical": {
+            "quota": 250,
+            "superfamily": "grounded_uncertainty"
+          }
+        },
+        "interleave": "deterministic_superfamily_round_robin_v1",
+        "manual_annotation": false,
+        "priority": "transformed_final_polish_then_fast_stage_b",
+        "seed": 2026083004
+      },
+      "selection_audit": {
+        "available_counts": {
+          "fast_stage_b:ambiguity_clarification": 1448,
+          "fast_stage_b:arithmetic_calculation": 1920,
+          "fast_stage_b:exact_constraints_formats": 1920,
+          "fast_stage_b:multi_turn_correction": 3528,
+          "fast_stage_b:multi_turn_followup": 3528,
+          "fast_stage_b:multi_turn_memory": 3514,
+          "fast_stage_b:ordinary_helpfulness_grounded_prose": 1914,
+          "fast_stage_b:safe_refusal": 1486,
+          "fast_stage_b:synthetic_grounded_extraction": 1920,
+          "fast_stage_b:synthetic_grounded_qa": 1928,
+          "fast_stage_b:table_json_conversion": 4360,
+          "fast_stage_b:time_calculation": 1920,
+          "fast_stage_b:unit_conversion": 1920,
+          "final_polish:exact_format": 3000,
+          "final_polish:exact_no_system": 1000,
+          "final_polish:multi_turn_no_system": 500,
+          "final_polish:multi_turn_short": 2000,
+          "final_polish:safety_cue_stripped": 1000,
+          "final_polish:safety_no_system": 609,
+          "final_polish:uncertainty": 1,
+          "final_polish:unknown_context_mechanical": 250
+        },
+        "cross_parent_or_lane_exact_duplicates_rejected": {
+          "fast_stage_b:ambiguity_clarification": 2,
+          "fast_stage_b:arithmetic_calculation": 7,
+          "fast_stage_b:exact_constraints_formats": 2,
+          "fast_stage_b:multi_turn_correction": 7,
+          "fast_stage_b:multi_turn_followup": 16,
+          "fast_stage_b:multi_turn_memory": 20,
+          "fast_stage_b:synthetic_grounded_extraction": 5,
+          "fast_stage_b:synthetic_grounded_qa": 7,
+          "fast_stage_b:table_json_conversion": 2,
+          "fast_stage_b:time_calculation": 5,
+          "fast_stage_b:unit_conversion": 1
+        },
+        "interleave": "deterministic_superfamily_round_robin_v1",
+        "quarantine_rejections": {},
+        "selected_counts": {
+          "fast_stage_b:ambiguity_clarification": 300,
+          "fast_stage_b:arithmetic_calculation": 400,
+          "fast_stage_b:exact_constraints_formats": 300,
+          "fast_stage_b:multi_turn_correction": 250,
+          "fast_stage_b:multi_turn_followup": 250,
+          "fast_stage_b:multi_turn_memory": 250,
+          "fast_stage_b:ordinary_helpfulness_grounded_prose": 200,
+          "fast_stage_b:safe_refusal": 400,
+          "fast_stage_b:synthetic_grounded_extraction": 400,
+          "fast_stage_b:synthetic_grounded_qa": 400,
+          "fast_stage_b:table_json_conversion": 300,
+          "fast_stage_b:time_calculation": 200,
+          "fast_stage_b:unit_conversion": 200,
+          "final_polish:exact_format": 500,
+          "final_polish:exact_no_system": 750,
+          "final_polish:multi_turn_no_system": 500,
+          "final_polish:multi_turn_short": 400,
+          "final_polish:safety_cue_stripped": 1000,
+          "final_polish:safety_no_system": 609,
+          "final_polish:uncertainty": 1,
+          "final_polish:unknown_context_mechanical": 250
+        },
+        "selected_rows": 7860,
+        "selected_unique_payloads": 7860,
+        "superfamily_counts": {
+          "exact_format": 1850,
+          "grounded_uncertainty": 1351,
+          "multi_turn": 1650,
+          "ordinary_helpfulness": 200,
+          "reasoning": 800,
+          "safety": 2009
+        }
+      },
+      "source": {
+        "fast_stage_b": {
+          "manifest_canonical_sha256": "9907ac49bfec8cdf2b0961277f394563c72da7ca4c3e71836147c5a2a3abbbcd",
+          "manifest_sha256": "35ad7b81f8414683b5d887774b76a5be1b4cc6e80d3dcbc76d029f09255237cc",
+          "receipt_canonical_sha256": "ee5a0d61d53222abe3cf5cb6000361228771cb5d281753283de9e4c5678d1ca0",
+          "receipt_sha256": "aa9a7d11ce97c558c10f23a7b35474dce25a755cb585e8b0d18e4f7430b48df0",
+          "root": "/ari/users/nunal/nanochat-turk-d32-fast-stage-b-v1",
+          "train_provenance_sha256": "a072efada23ad4b6209a3127ff6ab8e2a9a2790849eeba1bb5de21767de697c7",
+          "train_sha256": "40f2b639a9017f6a7e46c07cdd34a371c3eaad2a00c47bf053acd9d9f653a793"
+        },
+        "final_polish": {
+          "manifest_canonical_sha256": "ec8beae297abeed91468db38b6ff8c1e1fe029bbc54a00f49cd098ed9229a740",
+          "manifest_sha256": "d10e2c097f341da705b0d8bb47ec5497a4e1d8030e2e658c56f68a498b5d9a2f",
+          "receipt_canonical_sha256": "61d30dd89b01476df079935aa2a2a8e0db284bac4e9d30fbc1c33fae028ca33a",
+          "receipt_sha256": "1951a823c1498c9562a8275f8020e95dd5291560775777ef8ad22f7b2cdaf217",
+          "root": "/ari/users/nunal/nanochat-turk-d32-final-polish-v1",
+          "selection_sha256": "b0b00f66da1a5285ebfb8281386f95f31ddb9d0da092393ffd65d391ef90d40b",
+          "train_sha256": "2b63c0b7daa8c3689863c6dcd60e8e81ffc1a7dbb7dcf8b44ee2f97ae5193cd3"
+        }
+      },
+      "source_checkpoint": {
+        "completion_sha256": "e65f626a55dfd8650459a59178dc57dd129d5eefa62774d64c21a1c3a4405e74",
+        "metadata_sha256": "dda50aba98f822aba5d63a6caeed2b82f0eee99779b4a8ab2a81cedb60cea86c",
+        "model_sha256": "94b73ef246eeafca50bd4a932aec006c63d1886a70ba725bca6d423028bb613d",
+        "model_tag": "tr_d32_bpe32k_smoltalk2_turk_full_v9_then_fast_stage_b_v1",
+        "phase": "sft",
+        "step": 84
+      },
+      "split": {
+        "policy": "preserve_final_polish_validation_byte_identically",
+        "train_rows": 7860,
+        "validation_rows": 1557
+      },
+      "tokenizer": {
+        "config_sha256": "b381631bad8ca489b85dbab686d63f0691b6455300f2ae43f8af43ad3b80a916",
+        "directory": "/ari/users/nunal/nanochat-turk-d20-bpe32k/tokenizers/bpe_32768",
+        "model_file": "tokenizer.pkl",
+        "production_compatible": true,
+        "token_bytes_sha256": "ba345dc7eea5f07b3200f213ccf61ea6e9990d15d81d25e2e323009f4fba502e",
+        "tokenizer_sha256": "3b7f00d8697a303bb0ac7379b497fec6b76a61bd5bb694825264eecd4cb62a20",
+        "vocab_size": 32768
+      },
+      "training_authorized": true,
+      "training_screen": {
+        "arms": {
+          "eff005": {
+            "embedding_lr": 0.015,
+            "matrix_lr": 0.001,
+            "scalar_lr": 0.025,
+            "smear_lr": 0.01,
+            "unembedding_lr": 0.0004
+          },
+          "eff010": {
+            "embedding_lr": 0.03,
+            "matrix_lr": 0.002,
+            "scalar_lr": 0.05,
+            "smear_lr": 0.02,
+            "unembedding_lr": 0.0008
+          },
+          "eff020": {
+            "embedding_lr": 0.06,
+            "matrix_lr": 0.004,
+            "scalar_lr": 0.1,
+            "smear_lr": 0.04,
+            "unembedding_lr": 0.0016
+          }
+        },
+        "assistant_end_row_initialization": "preserve",
+        "assistant_end_supervised": true,
+        "assistant_only_loss": true,
+        "attention_backend": "sdpa",
+        "checkpoint_every": 4,
+        "device_batch_size": 4,
+        "final_lr_fraction": 0.1,
+        "fresh_optimizer": true,
+        "gradient_accumulation_steps": 8,
+        "init_lr_fraction": 0.2,
+        "max_seq_len": 2048,
+        "num_iterations": 12,
+        "precision": "bfloat16",
+        "schedule_horizon_updates": 12,
+        "total_batch_size": 65536,
+        "warmdown_ratio": 0.5,
+        "warmup_ratio": 0.1
+      }
+    }
+  }
+}
