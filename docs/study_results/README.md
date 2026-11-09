@@ -13,8 +13,15 @@ d32 runs are reported separately.
 
 ## Read or present
 
+**How to read the scores:** **↑ higher is better**, **↓ lower is better** for
+the stated objective; **↔ descriptive / trade-off** has no universal better
+direction. See the [metric guide](metric_guide.md) for plain-language meanings,
+formulas, units, worked examples and comparison limits. A compression advantage
+does not automatically imply better morphology or LLM performance.
+
 | Deliverable | Contents |
 | --- | --- |
+| [Metric meanings and better directions](metric_guide.md) | Definitions for tokenizer, morphology, model, benchmark and runtime columns |
 | [Shareable PDF brief](../../output/pdf/nanochat_turk_study_results.pdf) | Main tables, controls, caveats and figures |
 | [Fresh matched tokenizer results](tokenizer_fresh_results.md) | All requested metrics on equal train and validation samples; 500k word occurrences per tokenizer |
 | [Recovered full-corpus metrics](tokenizer_full_corpus.md) | All 12 tokenizers over 93,211,827 training documents; job 496882 verified complete |
@@ -94,7 +101,7 @@ missing completed model cell.
 
 <!-- BEGIN GENERATED TOKENIZER MODEL OVERVIEW -->
 
-| Vocabulary / depth | Tokenizer | Corpus tokens/word ↓ | Morph consistency F1 ↑ | Val BPB ↓ | Legacy core-11 ↑ | Training k tokens/s |
+| Vocabulary / depth ↔ | Tokenizer | Corpus tokens/word ↓ | Morph consistency F1 ↑ | Val BPB ↓ | Legacy core-11 ↑ | Training k tokens/s ↑ |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | 32k / d20 | Raw BPE | 1.5553 | 0.3241 | 0.6232 | 0.4514 | 235.8 |
 | 32k / d20 | MorphBPE / TRmorph | 1.7698 | 0.5129 | 0.6266 | 0.4541 | 236.1 |
@@ -115,16 +122,16 @@ missing completed model cell.
 
 ## Requested metrics and interpretation
 
-| Requested quantity | Reported definition |
-| --- | --- |
-| Vocabulary size | Exact total vocabulary, including nine special tokens |
-| Subword efficiency | Both document tokens/regex word and isolated-word subword units/word |
-| Morpheme preservation rate | Reference morpheme spans exactly coinciding with one token span; isolated-word measurement |
-| Morpheme boundary consistency | Isolated-word internal-boundary micro precision, recall and F1; separate from older pairwise morphological consistency |
-| Whole-word coverage | Lossless non-UNK words represented by one token in isolation |
-| Character-only coverage | Words represented entirely by single Unicode-character tokens, with a second rate excluding trivial one-character words |
-| Byte-only coverage | Words represented entirely by single-byte tokens; distinct from Unicode characters |
-| Unknown tokens | Architecture-aware count/incidence where UNK exists; N/A for these twelve byte-complete BPE tokenizers |
+| Requested quantity | Reported definition | Better direction |
+| --- | --- | --- |
+| Vocabulary size | Exact total vocabulary, including nine special tokens | ↔ Capacity/cost trade-off; larger is not automatically better |
+| Subword efficiency | Both document tokens/regex word and isolated-word subword units/word | ↓ Lower means fewer tokens for the stated text unit |
+| Morpheme preservation rate | Reference morpheme spans exactly coinciding with one token span; isolated-word measurement | ↑ Higher means more reference morphemes remain intact |
+| Morpheme boundary consistency | Isolated-word internal-boundary micro precision, recall and F1; separate from older pairwise morphological consistency | ↑ Higher means better agreement with reference boundaries |
+| Whole-word coverage | Lossless non-UNK words represented by one token in isolation | ↑ Higher for whole-word compactness; does not establish morphology quality |
+| Character-only coverage | Words represented entirely by single Unicode-character tokens, with a second rate excluding trivial one-character words | ↔ Inclusive diagnostic; ↓ lower multi-character-only rate means less character-level fragmentation |
+| Byte-only coverage | Words represented entirely by single-byte tokens; distinct from Unicode characters | ↔ Byte-granularity diagnostic, including trivial single-byte words |
+| Unknown tokens | Architecture-aware count/incidence where UNK exists; N/A for these twelve byte-complete BPE tokenizers | ↓ Lower is better where UNK exists; N/A is not zero |
 
 **Interpretation.** “Best coverage” needs a definition: TRmorph leads one-token coverage on the matched validation sample, all twelve local tokenizers tie on zero observed roundtrip failures, and UNK does not apply to these byte-complete tokenizers. Character-only segmentation is a fragmentation diagnostic, not a separate measure of whether the tokenizer can represent a word. Boundary F1 and the older pairwise morphology-consistency F1 must be interpreted separately.
 

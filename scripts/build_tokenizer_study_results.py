@@ -21,6 +21,53 @@ LABELS = {"bpe": "Raw BPE", "morphbpe_trmorph": "MorphBPE / TRmorph",
           "morphbpe_zemberek": "MorphBPE / Zemberek", "morphbpe_tdelight": "MorphBPE / TurkishDelight"}
 
 
+def explain_metric_directions(lines: list[str], *, scope: str) -> list[str]:
+    """Label display headers after interpreting their original metric names.
+
+    Keep the interpretation helper's exact header keys and every measured cell
+    unchanged. These labels describe objectives, not an overall quality score.
+    """
+    output = interpret_tables(lines, scope=scope)
+    output[2:2] = [
+        "**Direction legend:** ↑ means higher is better for the stated objective; ↓ means lower is better; ↔ means descriptive or a tradeoff, with no universally better direction. See the [metric guide](metric_guide.md) for every definition, denominator and limitation.", "",
+        "**Objectives:** lower tokens/word and higher bytes/token mean more compact lossless encoding. Higher one-token coverage helps isolated-word compression only. Higher morphology preservation, boundary agreement and consistency, or lower morphology edit distance, mean closer agreement with the automatic reference; they do not establish better LLM performance. Lower multi-character character-only coverage means less character-level fragmentation.", "",
+        "**Diagnostics:** vocabulary size, vocabulary use, sample counts, inclusive character-only/byte-only coverage and resample SD have no universal optimum. Zero roundtrip failures is ideal for exact text recovery; fewer UNKs and alignment exclusions are better when applicable. Speed ↑ and time ↓ apply only to matched workloads and hardware; recorded timings here do not establish a controlled speed ranking. Normalizing references' apparent compression and boundary figures remain descriptive.", "",
+    ]
+    directions = {}
+    for suffix, names in (
+        ("↔", ("Vocab", "Vocabulary", "Word sample", "Unique forms", "Documents", "UTF-8 bytes", "Regex words", "Workers × threads", "Used vocab %", "F1 resample SD", "Character-only words %", "Byte-only words %", "Pieces/word (weighted)", "Split % (weighted)", "Recorded tokens/word", "Recorded one-token words %", "Recorded boundary crossed %")),
+        ("↓", ("Tokens/word", "Corpus tokens/word", "Corpus tok/word", "Isolated tokens/word", "Isolated tok/word", "Morph edit", "Morph edit distance", "Normalized edit", "Normalized morph edit", "Boundary crossed %", "Crossed boundaries %", "UNK count", "Coverage unaligned", "Morphology unaligned")),
+        ("↑", ("Bytes/token", "Morphemes intact %", "Intact morphemes %", "Isolated boundary P %", "Isolated boundary R %", "Isolated boundary F1 %", "Boundary P %", "Boundary R %", "Boundary F1 %", "Exact morph sequence %", "Exact morpheme sequence %", "Boundaries preserved %", "Preserved boundaries %", "Document boundaries preserved %", "Morph consistency F1", "Consistency P", "Consistency R", "Consistency F1")),
+        ("↑ compression", ("One-token words %", "Whole word: one token %")),
+        ("↓ fragmentation", ("Multi-character words split only into characters %", "Multi-char character-only %")),
+        ("↓ (0 ideal)", ("Roundtrip failures", "Failure %")),
+        ("↑ speed", ("Encode M tok/s", "Encode M tokens/s", "Forms/s")),
+        ("↓ time", ("Encoding s (summed)", "Evaluator wall s", "Runtime s")),
+        ("↓ fallback", ("Fallback % (weighted)", "Fallback % (types)")),
+        ("↑ rubric", ("Best count", "Best %", "Acceptable count", "Acceptable %")),
+        ("↔ / ↓", ("Scored / excluded morphology words",)),
+    ):
+        directions.update({name: suffix for name in names})
+    labels = {"Tokenizer", "Analyzer", "Sample", "Split", "Scope", "Original JSON"}
+    for index, line in enumerate(output[:-1]):
+        if not line.startswith("|") or not output[index + 1].startswith("|---"):
+            continue
+        headers = [cell.strip().rstrip(" ↑↓↔") for cell in line.strip("|").split("|")]
+        normalizing = "Recorded tokens/word" in headers
+        annotated = []
+        for header in headers:
+            if header in labels:
+                annotated.append(header)
+                continue
+            suffix = directions[header]
+            if normalizing and header in {"Isolated tokens/word", "Bytes/token"}:
+                suffix = "↔"
+            display = "Document-pass wall s" if header == "Evaluator wall s" else header
+            annotated.append(f"{display} {suffix}")
+        output[index] = "| " + " | ".join(annotated) + " |"
+    return output
+
+
 def row_from_file(path: Path, *, external: bool = False) -> dict:
     raw = path.read_bytes()
     d = json.loads(raw)
@@ -100,7 +147,7 @@ def verify_rows(rows: list[dict], *, expected_count: int, matched_docs: bool = T
 
 def systems_table(rows: list[dict]) -> list[str]:
     lines = ["", "## Archived encoding and evaluator performance", "",
-        "These are recorded timings, not a controlled tokenizer speed benchmark. `Encode M tok/s` divides token count by accumulated encoding time across workers; `Evaluator wall s` includes the rest of metric computation. The two use different time denominators. Worker/thread settings are shown so they are not mistaken for like-for-like speed measurements.", "",
+        "These are recorded timings, not a controlled tokenizer speed benchmark. `Encode M tok/s` divides token count by accumulated encoding time across workers (↑ token throughput under matched conditions). `Document-pass wall s` is elapsed time for the document pass (↓ time), including document I/O, roundtrip and boundary accounting but excluding the later isolated-word, coverage and morphology computations; parallel word-sample collection also precedes this timer. The raw field remains `metric_wall_seconds`. The two time measures have different denominators. Worker/thread settings and vocabulary usage are descriptive; different work allocations prevent like-for-like speed rankings.", "",
         "| Vocab | Tokenizer | Encode M tok/s | Encoding s (summed) | Evaluator wall s | Workers × threads | Used vocab % | Roundtrip failures |",
         "|---:|---|---:|---:|---:|---|---:|---:|"]
     for r in rows:
@@ -164,7 +211,7 @@ def normalizing_references() -> list[dict]:
 
 def segmenter_tables(archive: dict) -> list[str]:
     lines = ["", "## Earlier morphology analyzer screening", "",
-        "These measurements evaluate the upstream analyzers that supplied training boundaries. They are separate from the finished tokenizer and LLM evaluations above. Rounded screening values come from the [archived benchmark log](../tokenizer_tests/segmenter_benchmark_status.md); its large original JSON outputs are not included in this repository bundle.", "",
+        "These measurements evaluate the upstream analyzers that supplied training boundaries. They are separate from the finished tokenizer and LLM evaluations above. Rounded screening values come from the [archived benchmark log](../tokenizer_tests/segmenter_benchmark_status.md); its large original JSON outputs are not included in this repository bundle. Unique forms is the number of distinct inputs (↔ sample size); forms/s (↑ speed) and runtime (↓ time) describe processing cost only for matched scopes. Pieces/word and split rate describe how often/how much an analyzer segments (↔, no universal optimum). Lower fallback means the analyzer handles more inputs through its analysis path; it does not prove those analyses are correct. Weighted rates count occurrences, while type rates count distinct forms.", "",
         "| Analyzer | Sample | Unique forms | Runtime s | Forms/s | Pieces/word (weighted) | Split % (weighted) | Fallback % (weighted) | Fallback % (types) |",
         "|---|---|---:|---:|---:|---:|---:|---:|---:|"]
     for r in archive["screening_rows"]:
@@ -172,7 +219,7 @@ def segmenter_tables(archive: dict) -> list[str]:
         lines.append(f'| {r["backend"]} | {r["sample"]} | {r["unique_types"]:,} | {r["elapsed_seconds"]:.2f} | {r["types_per_second"]:,} | {r["pieces_per_weighted_word"]:.3f} | {100*r["split_rate_weighted"]:.1f} | {100*r["fallback_rate_weighted"]:.1f} | {fallback_types} |')
     lines += ["", "The common hash-100k screen represents 12,095,210 weighted word occurrences; the full first shard represents 1,282,426,655 and the 1k smoke sample 76,484. The full TRmorph row predates case-only surface repair and analysis-tag filtering; its fallback rate is not a current-wrapper result. Different wrappers and scopes prevent a single speed ranking.", "",
         "### Archived 500-item blind segmentation judge", "",
-        "The [judge report](../tokenizer_tests/codex_local_judge_results.md) used a disagreement-focused sample, blind candidate labels and a local scripted rubric. It is not a human-gold or corpus-representative score. Original [scores](../tokenizer_tests/judge_results/codex_local_hash_100k_judge_500.scores.json) and [item judgments](../tokenizer_tests/judge_results/codex_local_hash_100k_judge_500.judgments.jsonl) remain available.", "",
+        "The [judge report](../tokenizer_tests/codex_local_judge_results.md) used a disagreement-focused sample, blind candidate labels and a local scripted rubric. Best counts/rates measure selections as the preferred candidate; acceptable counts/rates measure candidates passing the rubric. Higher is better within that rubric only. It is not a human-gold or corpus-representative score. Original [scores](../tokenizer_tests/judge_results/codex_local_hash_100k_judge_500.scores.json) and [item judgments](../tokenizer_tests/judge_results/codex_local_hash_100k_judge_500.judgments.jsonl) remain available.", "",
         "| Analyzer | Best count | Best % | Acceptable count | Acceptable % |",
         "|---|---:|---:|---:|---:|"]
     j = archive["judge_original_metrics"]
@@ -251,7 +298,7 @@ def build_additional() -> None:
     payload = {"schema_version": 1, "evidence_status": "recovered_archived_measurements", "report_date": "2026-11-09",
                "manifest": str(manifest_path.relative_to(ROOT)), "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(), "groups": sections}
     (OUT / "tokenizer_additional.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
-    (OUT / "tokenizer_additional.md").write_text("\n".join(interpret_tables(lines, scope="additional")) + "\n")
+    (OUT / "tokenizer_additional.md").write_text("\n".join(explain_metric_directions(lines, scope="additional")) + "\n")
     columns = [k for k in all_rows[0] if k != "original_metrics"]
     with (OUT / "tokenizer_additional.csv").open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=columns, lineterminator="\n")
@@ -302,15 +349,15 @@ def build() -> None:
         f = r["tokenizer"].rsplit("_", 1)[0]
         lines.append(f'| {r["vocab_size"]:,} | {LABELS[f]} | {r["tokens_per_word"]:.4f} | {r["isolated_tokens_per_word"]:.4f} | {100*r["whole_word_single_token_rate"]:.2f} | {100*r["exact_morpheme_sequence_rate"]:.2f} | {100*r["boundary_preservation_rate"]:.2f} | {r["morphological_consistency_f1"]:.4f} | {r["isolated_word_occurrences"]:,} |')
     lines += ["", "### Definitions and coverage", "",
-        "- **Vocabulary size:** actual vocabulary including nine special tokens for every local tokenizer.",
-        "- **Subword efficiency:** total encoded document tokens divided by regex word count (`\\w+`). This includes punctuation/spacing tokens in the numerator. Isolated fertility encodes each sampled word separately and is reported alongside it.",
-        "- **Whole-word coverage:** fraction of sampled word occurrences represented by exactly one token when encoded in isolation. It is sensitive to whitespace conventions and differs from context-aware word coverage.",
-        "- **Morpheme preservation:** the archived **exact morpheme-sequence rate** counts words whose token pieces exactly match the automatic morpheme sequence. It is a strict word-level proxy. Individual-morpheme intact-token preservation was absent from these June measurements and is now separately measured in the [matched evaluation](tokenizer_fresh_results.md).",
-        "- **Boundary preservation:** `(reference boundaries - crossed boundaries) / reference boundaries`, using all 12,706,795 reference boundaries. This measures retained reference boundaries; it does not penalize extra token splits, so it is not boundary precision or F1.",
-        "- **Morphological consistency:** retain the original MorphBPE shared-token/shared-morpheme pair precision, recall and F1 (`k=100`, `C=50`, `N=10`). It must not be relabelled as boundary F1. Explicit boundary precision and F1 were not measured here.",
-        "- **Character-only coverage:** fraction of words split entirely into single Unicode-character tokens; it was not measured in the archived outputs. A UTF-8 byte fragment is not a character token.",
-        "- **UNK:** N/A for the twelve local byte-complete BPE/MorphBPE tokenizers, which have no UNK mechanism. Historical UNK counts were not recorded for the external references and remain unmeasured.",
-        "- **Roundtrip coverage:** all twelve local tokenizers had zero failures in 50,000 documents (100% exact decode/encode success). This establishes observed representability, not whole-word compression or morphology quality.",
+        "- **Vocabulary size (↔):** actual vocabulary including nine special tokens for every local tokenizer. Larger vocabularies can shorten sequences but increase embedding/output table size; vocabulary use is the fraction of IDs seen in the sample (↔ scope-dependent diagnostic).",
+        "- **Subword efficiency (↓ compression):** total encoded document tokens divided by regex word count (`\\w+`). This includes punctuation/spacing tokens in the numerator. Isolated fertility encodes each sampled word separately and is reported alongside it. **Bytes/token (↑ compression)** is original UTF-8 bytes divided by encoded document tokens.",
+        "- **Whole-word coverage (↑ isolated-word compression only):** fraction of sampled word occurrences represented by exactly one token when encoded in isolation. It is sensitive to whitespace conventions and differs from context-aware word coverage; it is not a morphology-quality score.",
+        "- **Morpheme preservation (↑ automatic-reference agreement):** the archived **exact morpheme-sequence rate** counts words whose token pieces exactly match the automatic morpheme sequence. It is a strict word-level proxy. Individual-morpheme intact-token preservation was absent from these June measurements and is now separately measured in the [matched evaluation](tokenizer_fresh_results.md).",
+        "- **Boundary preservation (↑ reference agreement):** `(reference boundaries - crossed boundaries) / reference boundaries`, using all 12,706,795 reference boundaries. The complementary crossed-boundary rate is better when lower. Neither penalizes extra token splits, so neither is boundary precision or F1.",
+        "- **Morphological consistency (↑ reference agreement):** retain the original MorphBPE shared-token/shared-morpheme pair precision, recall and F1 (`k=100`, `C=50`, `N=10`). It must not be relabelled as boundary F1. **Morph edit / normalized edit (↓ reference disagreement)** is token-piece versus reference-piece sequence edit distance, averaged over word occurrences; the normalized version first divides each distance by its reference morpheme count. Explicit boundary precision and F1 were not measured here.",
+        "- **Character-only coverage (↔ diagnostic):** fraction of words split entirely into single Unicode-character tokens, including single-character words; it was not measured in the archived outputs. A UTF-8 byte fragment is not a character token.",
+        "- **UNK (↓ when applicable):** N/A for the twelve local byte-complete BPE/MorphBPE tokenizers, which have no UNK mechanism. Historical UNK counts were not recorded for the external references and remain unmeasured.",
+        "- **Roundtrip failures (↓; zero ideal):** documents whose decoded encoding differs from the original. All twelve local tokenizers had zero failures in 50,000 documents (100% exact decode/encode success). This establishes observed representability, not whole-word compression or morphology quality.",
         "", "## Previously reported metrics", "",
         "| Vocabulary | Tokenizer | Bytes/token ↑ | Morph edit distance ↓ | Normalized edit ↓ | Consistency P ↑ | Consistency R ↑ | Boundary crossed % ↓ | Used vocab % | Encode M tokens/s |",
         "|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
@@ -350,7 +397,7 @@ def build() -> None:
         "At every vocabulary size, MorphBPE preserves more TRmorph reference boundaries and has better recorded morphology edit distance and consistency than raw BPE, while requiring more document tokens per word. TRmorph training and evaluation share an analyzer, so these are automatic-reference results. The 32k morphology and isolated-word caps differ across treatments, preventing a fully matched word-level estimate. Corpus-level fertility and boundary counts use the common 50,000 documents.", "",
         "Isolated-word fertility often improves with MorphBPE even though document tokens/word rises; the two measures capture different contexts. Job 496882 has now been verified COMPLETED and recovered separately in the [full-corpus report](tokenizer_full_corpus.md). The [completed matched evaluation](tokenizer_fresh_results.md) adds separate training/validation results and the previously absent coverage/boundary metrics for all twelve local tokenizers; no historical null is overwritten. No significance or causal advantage is claimed from these single-run diagnostics.", "",
         "Rebuild: `python -m scripts.build_tokenizer_study_results`."]
-    (OUT / "tokenizer_results.md").write_text("\n".join(interpret_tables(lines, scope="archived_sample")) + "\n")
+    (OUT / "tokenizer_results.md").write_text("\n".join(explain_metric_directions(lines, scope="archived_sample")) + "\n")
 
     full_dir = ROOT / "artifacts/tokenizer_metrics_full_2026-06-23"
     if full_dir.exists():
@@ -395,7 +442,7 @@ def build() -> None:
         lines += ["", "## Interpretation and reproduction", "",
             "The recovered generated comparison uses a diagnostic sorting order, not an official paper ranking. Compare each treatment with raw BPE of the same vocabulary size; avoid a single synthetic overall winner. All nine MorphBPE variants preserve more automatic reference boundaries and improve recorded morphology edit/consistency diagnostics while using more corpus tokens per word than same-size raw BPE. These training-corpus diagnostics do not establish a downstream model advantage.", "",
             "The report JSON retains original distributions, unique-word metrics, vocabulary shape, elapsed times and actual consistency clusters/pairs. Rebuild with `python -m scripts.build_tokenizer_study_results`; the builder verifies all recovered source hashes, sample counts and derived ratios before producing tables."]
-        (OUT / "tokenizer_full_corpus.md").write_text("\n".join(interpret_tables(lines, scope="full")) + "\n")
+        (OUT / "tokenizer_full_corpus.md").write_text("\n".join(explain_metric_directions(lines, scope="full")) + "\n")
     build_additional()
 
 

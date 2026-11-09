@@ -11,8 +11,7 @@ import json
 import math
 from pathlib import Path
 
-from scripts.build_tokenizer_study_results import FAMILIES, OUT, ROOT, label, row_from_file, verify_rows
-from scripts.tokenizer_table_interpretation import interpret_tables
+from scripts.build_tokenizer_study_results import FAMILIES, OUT, ROOT, explain_metric_directions, label, row_from_file, verify_rows
 
 ARTIFACT = ROOT / "artifacts/tokenizer_metrics_matched_2026-11-09"
 
@@ -146,12 +145,14 @@ def build() -> None:
         f'Fresh UHeM job **{job_id}** completed successfully on 9 November 2026 (exit 0:0; scheduler elapsed {accounting[0][4]}). This separate evaluation adds individual-morpheme preservation, literal boundary precision/recall/F1, character-only coverage and a reserved validation-shard sample for all twelve tokenizers. It does not create new language-model results. [Original measurements and receipts](../../artifacts/tokenizer_metrics_matched_2026-11-09/), [full JSON](tokenizer_matched.json), [flat CSV](tokenizer_matched.csv).', "",
         "Each split uses 50,000 documents, the same first 500,000 isolated word occurrences and morphology-reference occurrences across all tokenizers, and 50,000 unique words for the original consistency metric. The final receipt verifies matching word/reference hashes within each split. Tokenizer bytes match the twelve checked-in bundles. The train prefix and validation prefix come from distinct source shards; the latter is the final reserved source shard, not an independently human-annotated morphology dataset. Here reserved validation describes this tokenizer evaluation's sample split: the later d32 all-shard training run includes this source text, so it is not held out from every model in the repository.", "",
         "## Metric definitions", "",
-        "- **Corpus tokens/word:** encoded document tokens divided by regex words; punctuation/spacing tokens contribute to the numerator.",
-        "- **One-token and character-only coverage:** occurrence-weighted isolated words. Character-only requires every token to decode to one Unicode character; UTF-8 byte fragments are counted separately.",
-        "- **Intact morphemes:** fraction of reference morpheme spans that coincide exactly with one token span. Splitting a morpheme or merging multiple morphemes loses that exact match.",
-        "- **Boundary P/R/F1:** micro agreement of internal token boundaries and reference boundaries on isolated words; word edges are excluded. This differs from document-context boundary preservation and the original shared-token/shared-morpheme consistency F1.",
-        "- **Alignment exclusions:** unalignable word encodings are counted; morphology denominators use scored words. The tables report the exclusions instead of treating them as successful alignment.",
-        "- **UNK:** local byte-complete tokenizers have no UNK mechanism, so UNK is N/A, not an observed zero.", "",
+        "- **Vocabulary (↔):** number of token IDs, including nine special tokens locally. Larger vocabularies can shorten sequences but require larger model embedding/output tables.",
+        "- **Corpus tokens/word (↓ compression):** encoded document tokens divided by regex words; punctuation/spacing tokens contribute to the numerator. **Isolated tokens/word (↓ compression)** encodes each sampled word separately. **Bytes/token (↑ compression)** is original UTF-8 bytes divided by document tokens.",
+        "- **One-token coverage (↑ isolated-word compression only)** is the fraction of sampled word occurrences represented losslessly by one non-UNK token. **Character-only coverage (↔ diagnostic)** requires every token to decode to one Unicode character and includes one-character words. **Multi-character character-only coverage (↓ fragmentation)** restricts its denominator to words longer than one character. **Byte-only coverage (↔ diagnostic)** requires one UTF-8 byte per token; byte fragments and Unicode characters differ.",
+        "- **Intact morphemes (↑ reference agreement):** fraction of reference morpheme spans that coincide exactly with one token span. Splitting a morpheme or merging multiple morphemes loses that exact match. **Exact morph sequence (↑ reference agreement)** requires every piece in a word to match the reference sequence.",
+        "- **Boundary P/R/F1 (↑ reference agreement):** micro agreement of internal token boundaries and reference boundaries on isolated words; word edges are excluded. Precision is the fraction of predicted boundaries that match; recall is the fraction of reference boundaries recovered; F1 is their harmonic mean. **Document boundaries preserved (↑ reference agreement)** checks contextual reference boundaries without penalizing extra splits, so it is a different metric.",
+        "- **Morph edit / normalized edit (↓ reference disagreement):** token-piece versus reference-piece sequence edit distance, with the normalized version divided by reference morpheme count. **Consistency P/R/F1 (↑ reference agreement)** measures shared-token/shared-morpheme word-pair agreement, separately from literal boundary F1.",
+        "- **Alignment exclusions (↓ evaluation failures):** unalignable word encodings are counted; morphology denominators use scored words. Fewer exclusions improve evaluation coverage, not necessarily linguistic quality. **Roundtrip failures (↓; zero ideal)** count documents whose decode/encode output differs from the original.",
+        "- **UNK (↓ when applicable):** local byte-complete tokenizers have no UNK mechanism, so UNK is N/A, not an observed zero.", "",
         "Automatic TRmorph annotations may favor the TRmorph-trained treatment. These are single-run diagnostic measurements; consistency resample SD is not across-training-seed uncertainty or a confidence interval."]
     for split in ("train", "val"):
         rows, m = groups[split], sample["splits"][split]
@@ -167,7 +168,7 @@ def build() -> None:
         for r in rows:
             lines.append(f'| {r["vocab_size"]:,} | {label(r)} | {r["bytes_per_token"]:.4f} | {r["morphological_edit_distance"]:.4f} | {r["morphological_edit_distance_normalized"]:.4f} | {100*r["exact_morpheme_sequence_rate"]:.2f} | {r["morphological_consistency_precision"]:.4f} | {r["morphological_consistency_recall"]:.4f} | {r["morphological_consistency_f1"]:.4f} | {100*r["boundary_preservation_rate"]:.2f} |')
         lines += ["", "### Coverage exclusions and recorded runtime", "",
-            "All use one metric worker and eight tokenizer threads per process, with four tokenizer processes scheduled concurrently. Timing is a recorded runtime diagnostic rather than an isolated serial speed benchmark. Multi-character character-only coverage excludes one-character words from its denominator.", "",
+            "All use one metric worker and eight tokenizer threads per process, with four tokenizer processes scheduled concurrently. Encoding throughput is tokens divided by accumulated encoding time (↑ only for matched conditions); producing more tokens can raise this rate without processing text faster. Document-pass wall time (↓ time; raw field `metric_wall_seconds`) includes document I/O, roundtrip and boundary accounting but ends before isolated-word, coverage and morphology computation. Parallel preliminary word collection also precedes this timer. These are recorded runtime diagnostics, not a controlled serial speed benchmark. Multi-character character-only coverage excludes one-character words from its denominator.", "",
             "| Vocab | Tokenizer | Byte-only words % | Multi-char character-only % | Coverage unaligned | Morphology unaligned | Roundtrip failures | Encode M tok/s | Evaluator wall s |",
             "|---:|---|---:|---:|---:|---:|---:|---:|---:|"]
         for r in rows:
@@ -178,7 +179,7 @@ def build() -> None:
         "| Split | Tokenizer | Original JSON |", "|---|---|---|"]
     for r in all_rows:
         lines.append(f'| {r["split"]} | {r["tokenizer"]} | [{Path(r["source_file"]).name}](../../{r["source_file"]}) |')
-    (OUT / "tokenizer_matched.md").write_text("\n".join(interpret_tables(lines, scope="matched")) + "\n")
+    (OUT / "tokenizer_matched.md").write_text("\n".join(explain_metric_directions(lines, scope="matched")) + "\n")
 
 
 if __name__ == "__main__":

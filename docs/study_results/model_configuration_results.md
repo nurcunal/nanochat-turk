@@ -1,12 +1,16 @@
 # Additional LLM configurations and recovered benchmarks
 
+**Direction legend:** ↑ higher is better for the named metric; ↓ lower is better; ↔ identifies configuration, budget or diagnostic values without a universal quality direction. Scores require the same task/protocol, and speed, elapsed time and memory require matched workload/hardware. Legacy scores remain provisional. Read the [metric guide](metric_guide.md) for definitions and limits.
+
 These existing checkpoints and experiment outputs were recovered from UHeM on 9 November 2026. They extend the original [eleven-model tokenizer comparison](model_results.md) with continuation, model scaling, generation-protocol corrections and broader benchmarks. No new training or evaluation is claimed. Download [configuration CSV](model_configuration_results.csv), [complete JSON](model_configuration_results.json), [all available task metrics](model_all_task_metrics.csv), and [table-compatible protocol task scores](model_official_task_metrics.csv).
 
 ## Model configuration and training results
 
 **The d32 BPB is a training-overlap diagnostic.** Its launch manifest makes all 30 source shards eligible for optimization and reuses one source shard for validation. It must not be presented as a held-out BPB improvement over d20 or MorphBPE. The completed FineWeb-2 d32 experiment is distinct from the separate general-corpus d32/WSD production plan.
 
-| Experiment | Layers / width / heads | Parameters | Checkpoint | Batch positions | Cumulative positions | BPB ↓ | Training-loop h |
+BPB ↓ is the prediction cost in bits per text byte. Layers, width, heads, parameters, context and token/step counts ↔ describe architecture and budget, not outcome quality; larger values are not automatically better.
+
+| Experiment | Layers / width / heads ↔ | Parameters ↔ | Checkpoint ↔ | Batch positions ↔ | Cumulative positions ↔ | BPB ↓ | Training-loop h ↓ |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | d20 raw-BPE continuation | 20 / 1280 / 10 | 896,533,746 | 34,200 | 1,048,576 | 35,861,299,200 | 0.59145082 | 33.203 |
 | d32 raw-BPE FineWeb-2 | 32 / 2048 / 16 | 2,818,575,450 | 28,000 | 2,097,152 | 58,720,256,000 | 0.51903967 | 120.750 |
@@ -21,7 +25,9 @@ d32 uses 2,818,575,450 parameters, BF16, eight A100 GPUs, SDPA and 58,720,256,00
 
 **The d20 continuation saved its final step-34,200 checkpoint, but Slurm job 512018 ended FAILED (exit code 1).** Its final model measurements are available; it is not described as a cleanly completed job. The d32 job 512605 completed with exit code 0.
 
-| Experiment | Job / state | Slurm wall time | Median throughput | Unit | Median step ms | BF16 MFU % | Peak MiB |
+Throughput ↑ counts processed work per second; step time ↓ measures time per update; wall time ↓ measures the whole job; peak MiB ↓ measures maximum logged GPU-memory demand. MFU ↔ estimates the fraction of theoretical compute used and does not measure prediction quality. These efficiency directions apply only to matched workloads, units and hardware.
+
+| Experiment | Job / state | Slurm wall time ↓ | Median throughput ↑ | Unit | Median step ms ↓ | BF16 MFU % ↔ | Peak MiB ↓ |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | d20 raw-BPE continuation | 512018 / FAILED (exit code 1) | 12:11:58 | 416325.5 | token positions/s | 2518.64 | 54.05 | 17847.49 |
 | d32 raw-BPE FineWeb-2 | 512605 / COMPLETED (exit code 0) | 5-01:19:15 | 135456.5 | valid targets/s | 15482.08 | 63.37 | 51900.56 |
@@ -34,7 +40,9 @@ The medians use the final 100 printed iterations: d20 steps 34,100–34,199 and 
 
 The following preserves the original eleven classification/log-likelihood metrics. The legacy adapter did not validate the tokenized context/continuation boundary, so these values may be affected by likelihood-scoring errors. Their differences are provisional descriptive measurements, not established model-scale or tokenizer effects; a corrected common rerun is needed. The models also differ in scale, data eligibility and training budget despite sharing raw BPE.
 
-| Task | Metric | d20 / step 17,100 | d32 / step 28,000 | Δ percentage points |
+Accuracy ↑ counts correct answers; `acc_norm` ↑ first selects answers by length-normalized likelihood. Core-11 ↑ averages the eleven task scores. Positive deltas mean a higher recorded score; this does not resolve the legacy scoring caveat.
+
+| Task | Metric ↑ | d20 / step 17,100 ↑ | d32 / step 28,000 ↑ | Δ percentage points ↑ |
 | --- | --- | --- | --- | --- |
 | `exams_tr` | acc_norm | 0.3104 | 0.3410 | +3.05 |
 | `belebele_tr` | acc_norm | 0.2522 | 0.2389 | -1.33 |
@@ -55,7 +63,9 @@ The following preserves the original eleven classification/log-likelihood metric
 
 The legacy adapter misread generation kwargs, ignoring actual stop strings and task generation limits; its XQuAD values cannot support absolute QA or tokenizer-effect conclusions. The original scores are retained as historical evidence. Only the raw-BPE d20 reference and d32 have recovered corrected-generation runs in this bundle. They do not establish corrected scores for the other ten tokenizer-trained models.
 
-| Model / protocol | Max generation tokens | Examples | Exact match % | F1 / 100 |
+Exact match ↑ requires the whole normalized answer to match a reference. QA F1 ↑ balances precision and recall of overlapping answer words. Example counts and generation limits ↔ describe the evaluation setup, not quality.
+
+| Model / protocol | Max generation tokens ↔ | Examples ↔ | Exact match % ↑ | F1 / 100 ↑ |
 | --- | --- | --- | --- | --- |
 | d20 baseline · legacy | 128 | 1190 | 0.0000 | 3.0985 |
 | d20 baseline · corrected | 128 | 1190 | 4.5378 | 11.3369 |
@@ -70,9 +80,9 @@ The corrected 128-token d20/d32 comparison gives F1 11.3369 versus 15.8833. The 
 
 The saved receipt reports **37.1709/100**, the unweighted mean of seven category scores. The verification receipt covers **97,844 effective samples**, 24 top-level tasks and 38 verified leaves, with no sample limit. It records all eight source-shard hashes. This is the repository's `cetvel-eacl2026-table4-compatible-v1` protocol, not the legacy core-11 macro or an independent verification against an official public leaderboard.
 
-Classification uses raw accuracy, QA normalized exact match, summarization TabiBERT BERTScore F1, translation COMET-22, and GEC stripped exact match. Do not substitute legacy `acc_norm`, ROUGE, BLEU or QA F1 into this aggregate. The receipt documents table-compatibility assumptions, model revisions and metric settings.
+Classification uses raw accuracy ↑, QA normalized exact match ↑, summarization TabiBERT BERTScore F1 ↑, translation COMET-22 ↑, and GEC stripped exact match ↑. BERTScore compares contextual word representations; COMET estimates translation quality with a learned evaluator. The category and overall scores are higher-is-better only within this fixed protocol, not interchangeable measures across tasks. Do not substitute legacy `acc_norm`, ROUGE, BLEU or QA F1 into this aggregate. The receipt documents table-compatibility assumptions, model revisions and metric settings.
 
-| Category | Score / 100 |
+| Category | Score / 100 ↑ |
 | --- | --- |
 | QA | 8.3129 |
 | MCQA | 39.9344 |
@@ -87,7 +97,7 @@ Classification uses raw accuracy, QA normalized exact match, summarization TabiB
 
 ### All table-compatible protocol task scores
 
-| Task | Metric | Examples | Score / 100 |
+| Task | Metric ↑ | Examples ↔ | Score / 100 ↑ |
 | --- | --- | --- | --- |
 | `belebele_tr` | accuracy | 900 | 23.8889 |
 | `bilmecebench` | accuracy | 442 | 21.7195 |
@@ -127,27 +137,29 @@ The MCQA definition includes both the Turkish-PLU aggregate and its listed compo
 
 ## Other recovered d32 metrics
 
-The earlier Kumru-comparison output files also contain auxiliary metrics. These are separate measurements/aggregations from the table-compatible receipt above. Values retain their original scale. All auxiliary scores and available standard errors—including NLU subtasks—are included in the all-metric CSV and JSON.
+The earlier Kumru-comparison output files also contain auxiliary metrics. These are separate measurements/aggregations from the table-compatible receipt above. Values retain their original scale. All auxiliary scores and available standard errors—including NLU subtasks—are included in the all-metric CSV and JSON. Standard errors describe uncertainty rather than model quality.
 
-| Task | Metric | Examples | Value | Scale |
+BLEU ↑ measures matching word sequences in translation, ROUGE ↑ measures overlap with reference summaries, and WER ↓ measures word insertions, deletions and substitutions relative to reference length. QA F1 ↑ measures answer-word overlap; EM/exact/exact_match ↑ require a matching answer after the recorded normalization. The metric column marks the preferred direction for each row; compare only the same metric, task, normalization and protocol.
+
+| Task | Metric / direction | Examples ↔ | Value | Scale |
 | --- | --- | --- | --- | --- |
-| `mkqa_tr` | em | 6758 | 0.044836 | native output |
-| `mkqa_tr` | f1 | 6758 | 0.081235 | native output |
-| `tquad` | exact | 892 | 12.219731 | 0–100 |
-| `tquad` | f1 | 892 | 30.671475 | 0–100 |
-| `xquad_tr` | exact | 1190 | 8.235294 | 0–100 |
-| `xquad_tr` | f1 | 1190 | 15.171744 | 0–100 |
-| `gecturk_generation` | exact_match | 20769 | 0.010641 | native output |
-| `wmt-tr-en-prompt` | wer | 1001 | 12.494500 | native output |
-| `wmt-tr-en-prompt` | bleu | 1001 | 0.015787 | native output |
-| `mlsum_tr` | rouge1 | 12775 | 0.179007 | native output |
-| `mlsum_tr` | rouge2 | 12775 | 0.108186 | native output |
-| `mlsum_tr` | rougeL | 12775 | 0.153631 | native output |
-| `mlsum_tr` | rougeLsum | 12775 | 0.147354 | native output |
-| `tr-wikihow-summ` | rouge1 | 5984 | 0.151297 | native output |
-| `tr-wikihow-summ` | rouge2 | 5984 | 0.048790 | native output |
-| `tr-wikihow-summ` | rougeL | 5984 | 0.112428 | native output |
-| `tr-wikihow-summ` | rougeLsum | 5984 | 0.112428 | native output |
+| `mkqa_tr` | em ↑ | 6758 | 0.044836 | native output |
+| `mkqa_tr` | f1 ↑ | 6758 | 0.081235 | native output |
+| `tquad` | exact ↑ | 892 | 12.219731 | 0–100 |
+| `tquad` | f1 ↑ | 892 | 30.671475 | 0–100 |
+| `xquad_tr` | exact ↑ | 1190 | 8.235294 | 0–100 |
+| `xquad_tr` | f1 ↑ | 1190 | 15.171744 | 0–100 |
+| `gecturk_generation` | exact_match ↑ | 20769 | 0.010641 | native output |
+| `wmt-tr-en-prompt` | wer ↓ | 1001 | 12.494500 | native output |
+| `wmt-tr-en-prompt` | bleu ↑ | 1001 | 0.015787 | native output |
+| `mlsum_tr` | rouge1 ↑ | 12775 | 0.179007 | native output |
+| `mlsum_tr` | rouge2 ↑ | 12775 | 0.108186 | native output |
+| `mlsum_tr` | rougeL ↑ | 12775 | 0.153631 | native output |
+| `mlsum_tr` | rougeLsum ↑ | 12775 | 0.147354 | native output |
+| `tr-wikihow-summ` | rouge1 ↑ | 5984 | 0.151297 | native output |
+| `tr-wikihow-summ` | rouge2 ↑ | 5984 | 0.048790 | native output |
+| `tr-wikihow-summ` | rougeL ↑ | 5984 | 0.112428 | native output |
+| `tr-wikihow-summ` | rougeLsum ↑ | 5984 | 0.112428 | native output |
 
 **Interpretation.** These are alternative metrics for the same d32 model, not competing tokenizer/configuration rows. Its recorded TQuAD overlap F1 is higher than XQuAD F1, but the tasks differ; translation WER and BLEU likewise measure different aspects of output. ROUGE, QA F1, exact match and the later BERTScore/COMET receipt must retain their native scales and protocols rather than being combined into a new ranking.
 

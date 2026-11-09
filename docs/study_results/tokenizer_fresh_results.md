@@ -1,5 +1,11 @@
 # Fresh matched tokenizer measurements
 
+**Direction legend:** ↑ means higher is better for the stated objective; ↓ means lower is better; ↔ means descriptive or a tradeoff, with no universally better direction. See the [metric guide](metric_guide.md) for every definition, denominator and limitation.
+
+**Objectives:** lower tokens/word and higher bytes/token mean more compact lossless encoding. Higher one-token coverage helps isolated-word compression only. Higher morphology preservation, boundary agreement and consistency, or lower morphology edit distance, mean closer agreement with the automatic reference; they do not establish better LLM performance. Lower multi-character character-only coverage means less character-level fragmentation.
+
+**Diagnostics:** vocabulary size, vocabulary use, sample counts, inclusive character-only/byte-only coverage and resample SD have no universal optimum. Zero roundtrip failures is ideal for exact text recovery; fewer UNKs and alignment exclusions are better when applicable. Speed ↑ and time ↓ apply only to matched workloads and hardware; recorded timings here do not establish a controlled speed ranking. Normalizing references' apparent compression and boundary figures remain descriptive.
+
 New measurements on UHEM, 9 November 2026. All twelve original tokenizer bundles receive identical raw text within each split; segmentation is reference-only. [Run/sample provenance](fresh_tokenizer_metrics/manifest.json), [full precision JSON](tokenizer_fresh_results.json), [CSV](tokenizer_fresh_results.csv), and [complete evaluator outputs](fresh_tokenizer_metrics/) are retained.
 
 The validation file is withheld by the repository's configured file split; training and validation sample hashes differ. This is an automatic TRmorph-reference diagnostic, not independently annotated human morphology. No model was retrained for this evaluation. Reserved validation refers to the original tokenizer-study split; the later d32 all-shard training run includes this source text, so it is not held out from every model in the repository. The [archival matched report](tokenizer_matched.md) presents the same job 558060 measurements with additional recovery receipts; it is not an independent replication.
@@ -8,7 +14,7 @@ The validation file is withheld by the repository's configured file split; train
 
 50,000 documents; 161,056,183 UTF-8 bytes; 19,832,065 regex words. Word-level metrics use 500,000 occurrences per tokenizer. Identical word/reference hashes are required for all twelve rows.
 
-| Vocab | Tokenizer | Corpus tok/word ↓ | Isolated tok/word ↓ | One-token words % | Character-only words % | Morphemes intact % ↑ | Isolated boundary P % ↑ | Isolated boundary R % ↑ | Isolated boundary F1 % ↑ |
+| Vocab ↔ | Tokenizer | Corpus tok/word ↓ | Isolated tok/word ↓ | One-token words % ↑ compression | Character-only words % ↔ | Morphemes intact % ↑ | Isolated boundary P % ↑ | Isolated boundary R % ↑ | Isolated boundary F1 % ↑ |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 1.5728 | 2.0076 | 32.00 | 2.43 | 31.57 | 18.87 | 36.88 | 24.96 |
 | 32,768 | TRmorph | 1.7785 | 1.9414 | 35.89 | 2.35 | 44.30 | 29.70 | 54.23 | 38.38 |
@@ -25,7 +31,7 @@ The validation file is withheld by the repository's configured file split; train
 
 **Interpretation:** Lowest corpus fertility: Raw BPE at 32k, 64k and 128k. Lowest isolated fertility: Zemberek at 32k; TRmorph at 64k and 128k. Highest one-token coverage, intact-morpheme preservation and boundary P/R/F1: TRmorph at 32k, 64k and 128k. TurkishDelight at 128k has both higher isolated fertility and lower one-token coverage than same-size raw BPE, despite its morphology improvements. These morphology rankings use the automatic TRmorph reference.
 
-| Vocab | Tokenizer | Multi-character words split only into characters % | Byte-only words % | Roundtrip failures | UNK count | Scored / excluded morphology words |
+| Vocab ↔ | Tokenizer | Multi-character words split only into characters % ↓ fragmentation | Byte-only words % ↔ | Roundtrip failures ↓ (0 ideal) | UNK count ↓ | Scored / excluded morphology words ↔ / ↓ |
 |---:|---|---:|---:|---:|---|---|
 | 32,768 | Raw BPE | 0.29 | 2.27 | 0 | N/A (byte-complete) | 500,000 / 0 |
 | 32,768 | TRmorph | 0.22 | 2.20 | 0 | N/A (byte-complete) | 500,000 / 0 |
@@ -46,7 +52,7 @@ The validation file is withheld by the repository's configured file split; train
 
 50,000 documents; 186,328,421 UTF-8 bytes; 23,042,031 regex words. Word-level metrics use 500,000 occurrences per tokenizer. Identical word/reference hashes are required for all twelve rows.
 
-| Vocab | Tokenizer | Corpus tok/word ↓ | Isolated tok/word ↓ | One-token words % | Character-only words % | Morphemes intact % ↑ | Isolated boundary P % ↑ | Isolated boundary R % ↑ | Isolated boundary F1 % ↑ |
+| Vocab ↔ | Tokenizer | Corpus tok/word ↓ | Isolated tok/word ↓ | One-token words % ↑ compression | Character-only words % ↔ | Morphemes intact % ↑ | Isolated boundary P % ↑ | Isolated boundary R % ↑ | Isolated boundary F1 % ↑ |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 1.6157 | 2.0472 | 31.05 | 2.31 | 30.76 | 19.08 | 37.17 | 25.22 |
 | 32,768 | TRmorph | 1.8166 | 1.9890 | 34.09 | 2.23 | 42.90 | 29.36 | 54.02 | 38.05 |
@@ -63,7 +69,7 @@ The validation file is withheld by the repository's configured file split; train
 
 **Interpretation:** Lowest corpus fertility: Raw BPE at 32k, 64k and 128k. Lowest isolated fertility: Zemberek at 32k, 64k and 128k. The lead at 64k and 128k is at most 0.001 token/word at the displayed precision. Highest one-token coverage, intact-morpheme preservation and boundary P/R/F1: TRmorph at 32k, 64k and 128k. TurkishDelight at 128k has both higher isolated fertility and lower one-token coverage than same-size raw BPE, despite its morphology improvements. These morphology rankings use the automatic TRmorph reference.
 
-| Vocab | Tokenizer | Multi-character words split only into characters % | Byte-only words % | Roundtrip failures | UNK count | Scored / excluded morphology words |
+| Vocab ↔ | Tokenizer | Multi-character words split only into characters % ↓ fragmentation | Byte-only words % ↔ | Roundtrip failures ↓ (0 ideal) | UNK count ↓ | Scored / excluded morphology words ↔ / ↓ |
 |---:|---|---:|---:|---:|---|---|
 | 32,768 | Raw BPE | 0.39 | 2.21 | 0 | N/A (byte-complete) | 500,000 / 0 |
 | 32,768 | TRmorph | 0.31 | 2.14 | 0 | N/A (byte-complete) | 500,000 / 0 |
@@ -82,14 +88,15 @@ The validation file is withheld by the repository's configured file split; train
 
 ## Definitions
 
-- **Vocabulary size** includes the nine special tokens in each original bundle.
-- **Corpus fertility** is total document tokens / regex word count; punctuation and spacing tokens are included. **Isolated fertility** is sampled subword count / sampled word occurrences. A lower value means fewer units, not necessarily better morphology.
-- **Morpheme preservation** counts reference morpheme spans that coincide exactly with one token span, divided by scored reference morphemes. It is distinct from the earlier whole-word exact-morpheme-sequence rate.
-- **Boundary consistency** reports micro precision, recall and F1 from isolated-word internal token boundaries versus internal reference morpheme boundaries. Extra splits lower precision; merged morphemes lower recall. Byte boundaries inside a Unicode character are extra token boundaries. These isolated-word rates differ from contextual document-boundary preservation. The earlier pairwise morphology-consistency metric is retained separately in the raw outputs.
-- **One-token coverage** counts losslessly represented, non-UNK words encoded as one token in isolation. **Character-only coverage** counts words represented entirely by one-Unicode-character tokens, including one-character words. The additional multi-character-only rate removes the trivial one-character case.
-- **Byte-only coverage** instead requires each token to represent one UTF-8 byte. Unicode character and byte rates are not interchangeable.
-- **UNK** is architecture-specific: all twelve local tokenizers contain the full 256-byte alphabet and no UNK mechanism, so counts are N/A. For an UNK-enabled tokenizer, the evaluator measures counts and incidence instead of treating a one-UNK word as whole-word coverage.
-- Unalignable words are excluded from morphology denominators and reported explicitly. Undefined denominators produce null/N/A. Rates are occurrence-weighted, not unique-type weighted.
+- **Vocabulary size (↔)** includes the nine special tokens in each original bundle. Larger vocabularies can shorten sequences while increasing model embedding/output size, so size alone is not a quality score.
+- **Corpus fertility (↓ compression)** is total document tokens / regex word count; punctuation and spacing tokens are included. **Isolated fertility (↓ compression)** is sampled subword count / sampled word occurrences. A lower value means fewer units, not necessarily better morphology.
+- **Morpheme preservation (↑ reference agreement)** counts reference morpheme spans that coincide exactly with one token span, divided by scored reference morphemes. It is distinct from the earlier whole-word exact-morpheme-sequence rate; both compare with automatic annotations.
+- **Boundary consistency (↑ reference agreement)** reports micro precision, recall and F1 from isolated-word internal token boundaries versus internal reference morpheme boundaries. Precision measures how many predicted boundaries are correct; recall measures how many reference boundaries are found; F1 is their harmonic mean. Extra splits lower precision; merged morphemes lower recall. Byte boundaries inside a Unicode character are extra token boundaries. These isolated-word rates differ from contextual document-boundary preservation. The earlier pairwise morphology-consistency metric is retained separately in the raw outputs.
+- **One-token coverage (↑ isolated-word compression only)** counts losslessly represented, non-UNK words encoded as one token in isolation. **Character-only coverage (↔ diagnostic)** counts words represented entirely by one-Unicode-character tokens, including one-character words. The additional **multi-character-only rate (↓ fragmentation)** excludes one-character words from both numerator and denominator; a lower rate means fewer longer words split entirely into characters, not proven linguistic quality.
+- **Byte-only coverage (↔ diagnostic)** instead requires each token to represent one UTF-8 byte. Unicode character and byte rates are not interchangeable; short ASCII words can contribute without indicating a tokenizer failure.
+- **Roundtrip failures (↓; zero ideal)** count documents for which decoding the encoding does not reproduce the original text exactly. This checks text recovery, separately from whole-word coverage.
+- **UNK (↓ when applicable)** is architecture-specific: all twelve local tokenizers contain the full 256-byte alphabet and no UNK mechanism, so counts are N/A. For an UNK-enabled tokenizer, the evaluator measures counts and incidence instead of treating a one-UNK word as whole-word coverage.
+- **Scored words (↔ sample size) / excluded words (↓ alignment failures):** unalignable words are excluded from morphology denominators and reported explicitly. Fewer exclusions improve evaluation coverage but do not by themselves improve morphology quality. Undefined denominators produce null/N/A. Rates are occurrence-weighted, not unique-type weighted.
 
 Source sample preparation records ordered raw/annotated document hashes. The same morphology analyzer supplies reference labels and TRmorph tokenizer training supervision; interpretation must retain that bias limitation. Earlier train-corpus diagnostics and the full-corpus archive remain separate in [the index](README.md).
 

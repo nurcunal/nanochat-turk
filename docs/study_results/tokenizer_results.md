@@ -1,12 +1,18 @@
 # Archived tokenizer and morphology screening results
 
+**Direction legend:** ↑ means higher is better for the stated objective; ↓ means lower is better; ↔ means descriptive or a tradeoff, with no universally better direction. See the [metric guide](metric_guide.md) for every definition, denominator and limitation.
+
+**Objectives:** lower tokens/word and higher bytes/token mean more compact lossless encoding. Higher one-token coverage helps isolated-word compression only. Higher morphology preservation, boundary agreement and consistency, or lower morphology edit distance, mean closer agreement with the automatic reference; they do not establish better LLM performance. Lower multi-character character-only coverage means less character-level fragmentation.
+
+**Diagnostics:** vocabulary size, vocabulary use, sample counts, inclusive character-only/byte-only coverage and resample SD have no universal optimum. Zero roundtrip failures is ideal for exact text recovery; fewer UNKs and alignment exclusions are better when applicable. Speed ↑ and time ↓ apply only to matched workloads and hardware; recorded timings here do not establish a controlled speed ranking. Normalizing references' apparent compression and boundary figures remain descriptive.
+
 Archived measurements, consolidated 9 November 2026. This report retains the earlier twelve-tokenizer sample, two lossless external references, three historical normalizing references, a separate raw-text diagnostic and upstream analyzer screening. Full precision, original metrics and SHA-256 source hashes are in [JSON](tokenizer_results.json); flat tokenizer values are in [CSV](tokenizer_results.csv). For the subsequently recovered complete training-corpus pass, use the [full-corpus report](tokenizer_full_corpus.md).
 
 ## Historical 50,000-document intrinsic comparison
 
 **Scope:** 50,000 FineWeb-2 Turkish **training** documents, 186,328,421 bytes and 23,042,031 regex-defined words. These are corpus diagnostics, not held-out generalization results. Values below are percentages where marked `%`.
 
-| Vocabulary | Tokenizer | Tokens/word ↓ | Isolated tokens/word ↓ | Whole word: one token % | Exact morpheme sequence % ↑ | Preserved boundaries % ↑ | Morph consistency F1 ↑ | Word sample |
+| Vocabulary ↔ | Tokenizer | Tokens/word ↓ | Isolated tokens/word ↓ | Whole word: one token % ↑ compression | Exact morpheme sequence % ↑ | Preserved boundaries % ↑ | Morph consistency F1 ↑ | Word sample ↔ |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 1.6157 | 2.0312 | 31.89 | 33.42 | 16.05 | 0.3241 | 200,000 |
 | 32,768 | MorphBPE / TRmorph | 1.8166 | 1.9821 | 34.95 | 42.58 | 54.31 | 0.5129 | 200,000 |
@@ -25,19 +31,19 @@ Archived measurements, consolidated 9 November 2026. This report retains the ear
 
 ### Definitions and coverage
 
-- **Vocabulary size:** actual vocabulary including nine special tokens for every local tokenizer.
-- **Subword efficiency:** total encoded document tokens divided by regex word count (`\w+`). This includes punctuation/spacing tokens in the numerator. Isolated fertility encodes each sampled word separately and is reported alongside it.
-- **Whole-word coverage:** fraction of sampled word occurrences represented by exactly one token when encoded in isolation. It is sensitive to whitespace conventions and differs from context-aware word coverage.
-- **Morpheme preservation:** the archived **exact morpheme-sequence rate** counts words whose token pieces exactly match the automatic morpheme sequence. It is a strict word-level proxy. Individual-morpheme intact-token preservation was absent from these June measurements and is now separately measured in the [matched evaluation](tokenizer_fresh_results.md).
-- **Boundary preservation:** `(reference boundaries - crossed boundaries) / reference boundaries`, using all 12,706,795 reference boundaries. This measures retained reference boundaries; it does not penalize extra token splits, so it is not boundary precision or F1.
-- **Morphological consistency:** retain the original MorphBPE shared-token/shared-morpheme pair precision, recall and F1 (`k=100`, `C=50`, `N=10`). It must not be relabelled as boundary F1. Explicit boundary precision and F1 were not measured here.
-- **Character-only coverage:** fraction of words split entirely into single Unicode-character tokens; it was not measured in the archived outputs. A UTF-8 byte fragment is not a character token.
-- **UNK:** N/A for the twelve local byte-complete BPE/MorphBPE tokenizers, which have no UNK mechanism. Historical UNK counts were not recorded for the external references and remain unmeasured.
-- **Roundtrip coverage:** all twelve local tokenizers had zero failures in 50,000 documents (100% exact decode/encode success). This establishes observed representability, not whole-word compression or morphology quality.
+- **Vocabulary size (↔):** actual vocabulary including nine special tokens for every local tokenizer. Larger vocabularies can shorten sequences but increase embedding/output table size; vocabulary use is the fraction of IDs seen in the sample (↔ scope-dependent diagnostic).
+- **Subword efficiency (↓ compression):** total encoded document tokens divided by regex word count (`\w+`). This includes punctuation/spacing tokens in the numerator. Isolated fertility encodes each sampled word separately and is reported alongside it. **Bytes/token (↑ compression)** is original UTF-8 bytes divided by encoded document tokens.
+- **Whole-word coverage (↑ isolated-word compression only):** fraction of sampled word occurrences represented by exactly one token when encoded in isolation. It is sensitive to whitespace conventions and differs from context-aware word coverage; it is not a morphology-quality score.
+- **Morpheme preservation (↑ automatic-reference agreement):** the archived **exact morpheme-sequence rate** counts words whose token pieces exactly match the automatic morpheme sequence. It is a strict word-level proxy. Individual-morpheme intact-token preservation was absent from these June measurements and is now separately measured in the [matched evaluation](tokenizer_fresh_results.md).
+- **Boundary preservation (↑ reference agreement):** `(reference boundaries - crossed boundaries) / reference boundaries`, using all 12,706,795 reference boundaries. The complementary crossed-boundary rate is better when lower. Neither penalizes extra token splits, so neither is boundary precision or F1.
+- **Morphological consistency (↑ reference agreement):** retain the original MorphBPE shared-token/shared-morpheme pair precision, recall and F1 (`k=100`, `C=50`, `N=10`). It must not be relabelled as boundary F1. **Morph edit / normalized edit (↓ reference disagreement)** is token-piece versus reference-piece sequence edit distance, averaged over word occurrences; the normalized version first divides each distance by its reference morpheme count. Explicit boundary precision and F1 were not measured here.
+- **Character-only coverage (↔ diagnostic):** fraction of words split entirely into single Unicode-character tokens, including single-character words; it was not measured in the archived outputs. A UTF-8 byte fragment is not a character token.
+- **UNK (↓ when applicable):** N/A for the twelve local byte-complete BPE/MorphBPE tokenizers, which have no UNK mechanism. Historical UNK counts were not recorded for the external references and remain unmeasured.
+- **Roundtrip failures (↓; zero ideal):** documents whose decoded encoding differs from the original. All twelve local tokenizers had zero failures in 50,000 documents (100% exact decode/encode success). This establishes observed representability, not whole-word compression or morphology quality.
 
 ## Previously reported metrics
 
-| Vocabulary | Tokenizer | Bytes/token ↑ | Morph edit distance ↓ | Normalized edit ↓ | Consistency P ↑ | Consistency R ↑ | Boundary crossed % ↓ | Used vocab % | Encode M tokens/s |
+| Vocabulary ↔ | Tokenizer | Bytes/token ↑ | Morph edit distance ↓ | Normalized edit ↓ | Consistency P ↑ | Consistency R ↑ | Boundary crossed % ↓ | Used vocab % ↔ | Encode M tokens/s ↑ speed |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 5.0051 | 1.6836 | 1.2083 | 0.9630 | 0.1949 | 83.95 | 99.70 | 4.923 |
 | 32,768 | MorphBPE / TRmorph | 4.4514 | 1.4126 | 1.0166 | 0.9865 | 0.3466 | 45.69 | 99.62 | 5.112 |
@@ -60,14 +66,14 @@ The JSON also preserves all original distributions, unique-word measurements, re
 
 These are tokenizer-only diagnostics; their pretrained models are **not** part of the controlled LLM ablation. Kumru (`vngrs-ai/Kumru-2B`) and Cosmos (`ytu-ce-cosmos/turkish-gpt2`) use the same 50,000 documents, 200,000 isolated/alignment word occurrences and 50,000 consistency word types. The archived external-reference job is 494176. Their vocabularies and runtime settings differ from the local tokenizers.
 
-| Tokenizer | Vocabulary | Tokens/word | Isolated tokens/word | Whole word: one token % | Exact morph sequence % | Boundaries preserved % | Morph consistency F1 |
+| Tokenizer | Vocabulary ↔ | Tokens/word ↓ | Isolated tokens/word ↓ | Whole word: one token % ↑ compression | Exact morph sequence % ↑ | Boundaries preserved % ↑ | Morph consistency F1 ↑ |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | kumru_2b | 50,176 | 1.6677 | 1.6648 | 50.86 | 45.15 | 22.55 | 0.3436 |
 | cosmos_turkish_gpt2 | 50,257 | 1.5570 | 1.8678 | 38.47 | 39.65 | 13.06 | 0.3001 |
 
 **Interpretation:** Cosmos uses fewer corpus tokens per word; Kumru has lower isolated fertility and higher one-token coverage, exact-morpheme agreement, boundary preservation and pairwise consistency F1. The preferred reference depends on the metric; their different vocabularies prevent treating this as a controlled tokenizer-family ablation.
 
-| Tokenizer | Bytes/token | Morph edit ↓ | Normalized edit ↓ | Consistency P | Consistency R | Crossed boundaries % |
+| Tokenizer | Bytes/token ↑ | Morph edit ↓ | Normalized edit ↓ | Consistency P ↑ | Consistency R ↑ | Crossed boundaries % ↓ |
 |---|---:|---:|---:|---:|---:|---:|
 | kumru_2b | 4.8488 | 1.3500 | 0.9195 | 0.9893 | 0.2079 | 77.45 |
 | cosmos_turkish_gpt2 | 5.1938 | 1.4839 | 1.0309 | 0.9768 | 0.1773 | 86.94 |
@@ -76,9 +82,9 @@ These are tokenizer-only diagnostics; their pretrained models are **not** part o
 
 ## Archived encoding and evaluator performance
 
-These are recorded timings, not a controlled tokenizer speed benchmark. `Encode M tok/s` divides token count by accumulated encoding time across workers; `Evaluator wall s` includes the rest of metric computation. The two use different time denominators. Worker/thread settings are shown so they are not mistaken for like-for-like speed measurements.
+These are recorded timings, not a controlled tokenizer speed benchmark. `Encode M tok/s` divides token count by accumulated encoding time across workers (↑ token throughput under matched conditions). `Document-pass wall s` is elapsed time for the document pass (↓ time), including document I/O, roundtrip and boundary accounting but excluding the later isolated-word, coverage and morphology computations; parallel word-sample collection also precedes this timer. The raw field remains `metric_wall_seconds`. The two time measures have different denominators. Worker/thread settings and vocabulary usage are descriptive; different work allocations prevent like-for-like speed rankings.
 
-| Vocab | Tokenizer | Encode M tok/s | Encoding s (summed) | Evaluator wall s | Workers × threads | Used vocab % | Roundtrip failures |
+| Vocab ↔ | Tokenizer | Encode M tok/s ↑ speed | Encoding s (summed) ↓ time | Document-pass wall s ↓ time | Workers × threads ↔ | Used vocab % ↔ | Roundtrip failures ↓ (0 ideal) |
 |---:|---|---:|---:|---:|---|---:|---:|
 | 32,768 | Raw BPE | 4.923 | 7.56 | 107.78 | 1 × 8 | 99.70 | 0 |
 | 32,768 | MorphBPE / TRmorph | 5.112 | 8.19 | 112.06 | 1 × 8 | 99.62 | 0 |
@@ -103,7 +109,7 @@ BERTurk, TURNA and VBART were published in [commit 2ff5305](https://github.com/n
 
 **These are not lossless-tokenizer comparators.** Their observed roundtrip failures reflect normalization/decoding behavior; UNK counts were not recorded. A word producing one token need not preserve that word. Thus the recorded token counts below do not establish equivalent compression, coverage or morphology quality. No model-weight evaluation was performed for these references.
 
-| Tokenizer | Vocab | Recorded tokens/word | Isolated tokens/word | Recorded one-token words % | Bytes/token | Roundtrip failures | Failure % |
+| Tokenizer | Vocab ↔ | Recorded tokens/word ↔ | Isolated tokens/word ↔ | Recorded one-token words % ↔ | Bytes/token ↔ | Roundtrip failures ↓ (0 ideal) | Failure % ↓ (0 ideal) |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | berturk_cased | 32,000 | 1.5888 | 1.4201 | 70.03 | 5.0897 | 49,646 | 99.292 |
 | turna | 32,100 | 1.5603 | 1.3966 | 71.81 | 5.1827 | 47,607 | 95.214 |
@@ -111,7 +117,7 @@ BERTurk, TURNA and VBART were published in [commit 2ff5305](https://github.com/n
 
 **Interpretation:** TURNA and VBART have similar recorded token counts and one-token rates, but lose exact roundtrip on 95.214% of documents; BERTurk fails on 99.292%. These values cannot establish a lossless compression or whole-word-coverage winner.
 
-| Tokenizer | Recorded boundary crossed % | Encode M tok/s | Used vocab % |
+| Tokenizer | Recorded boundary crossed % ↔ | Encode M tok/s ↑ speed | Used vocab % ↔ |
 |---|---:|---:|---:|
 | berturk_cased | 80.45 | 0.863 | 95.54 |
 | turna | 80.15 | 0.541 | 99.55 |
@@ -125,7 +131,7 @@ Boundary-crossing fields are preserved as historical diagnostics, not used in th
 
 The earlier Zemberek 32k diagnostic uses **10,000 raw training documents**, 48,975,401 bytes and 6,077,942 words. It has no morphology reference; zero boundary counts in its original file mean **not applicable**, not perfect boundary preservation. Its 200,000-word isolated sample is distinct from the corpus denominator. Runtime worker/thread settings were not recorded.
 
-| Tokenizer | Tokens/word | Isolated tokens/word | One-token words % | Bytes/token | Encode M tok/s | Roundtrip failures |
+| Tokenizer | Tokens/word ↓ | Isolated tokens/word ↓ | One-token words % ↑ compression | Bytes/token ↑ | Encode M tok/s ↑ speed | Roundtrip failures ↓ (0 ideal) |
 |---|---:|---:|---:|---:|---:|---:|
 | MorphBPE / Zemberek 32k | 1.8268 | 1.9748 | 34.79 | 4.4109 | 9.687 | 0 |
 
@@ -133,9 +139,9 @@ The earlier Zemberek 32k diagnostic uses **10,000 raw training documents**, 48,9
 
 ## Earlier morphology analyzer screening
 
-These measurements evaluate the upstream analyzers that supplied training boundaries. They are separate from the finished tokenizer and LLM evaluations above. Rounded screening values come from the [archived benchmark log](../tokenizer_tests/segmenter_benchmark_status.md); its large original JSON outputs are not included in this repository bundle.
+These measurements evaluate the upstream analyzers that supplied training boundaries. They are separate from the finished tokenizer and LLM evaluations above. Rounded screening values come from the [archived benchmark log](../tokenizer_tests/segmenter_benchmark_status.md); its large original JSON outputs are not included in this repository bundle. Unique forms is the number of distinct inputs (↔ sample size); forms/s (↑ speed) and runtime (↓ time) describe processing cost only for matched scopes. Pieces/word and split rate describe how often/how much an analyzer segments (↔, no universal optimum). Lower fallback means the analyzer handles more inputs through its analysis path; it does not prove those analyses are correct. Weighted rates count occurrences, while type rates count distinct forms.
 
-| Analyzer | Sample | Unique forms | Runtime s | Forms/s | Pieces/word (weighted) | Split % (weighted) | Fallback % (weighted) | Fallback % (types) |
+| Analyzer | Sample | Unique forms ↔ | Runtime s ↓ time | Forms/s ↑ speed | Pieces/word (weighted) ↔ | Split % (weighted) ↔ | Fallback % (weighted) ↓ fallback | Fallback % (types) ↓ fallback |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
 | identity | full first shard | 10,829,544 | 35.03 | 309,135 | 1.000 | 0.0 | 0.0 | not reported |
 | TRmorph | full first shard, pre-repair | 10,829,544 | 1286.69 | 8,417 | 1.474 | 29.2 | 39.0 | 87.4 |
@@ -150,9 +156,9 @@ The common hash-100k screen represents 12,095,210 weighted word occurrences; the
 
 ### Archived 500-item blind segmentation judge
 
-The [judge report](../tokenizer_tests/codex_local_judge_results.md) used a disagreement-focused sample, blind candidate labels and a local scripted rubric. It is not a human-gold or corpus-representative score. Original [scores](../tokenizer_tests/judge_results/codex_local_hash_100k_judge_500.scores.json) and [item judgments](../tokenizer_tests/judge_results/codex_local_hash_100k_judge_500.judgments.jsonl) remain available.
+The [judge report](../tokenizer_tests/codex_local_judge_results.md) used a disagreement-focused sample, blind candidate labels and a local scripted rubric. Best counts/rates measure selections as the preferred candidate; acceptable counts/rates measure candidates passing the rubric. Higher is better within that rubric only. It is not a human-gold or corpus-representative score. Original [scores](../tokenizer_tests/judge_results/codex_local_hash_100k_judge_500.scores.json) and [item judgments](../tokenizer_tests/judge_results/codex_local_hash_100k_judge_500.judgments.jsonl) remain available.
 
-| Analyzer | Best count | Best % | Acceptable count | Acceptable % |
+| Analyzer | Best count ↑ rubric | Best % ↑ rubric | Acceptable count ↑ rubric | Acceptable % ↑ rubric |
 |---|---:|---:|---:|---:|
 | TRmorph | 241 | 48.2 | 255 | 51.0 |
 | TurkishDelight | 173 | 34.6 | 219 | 43.8 |
@@ -167,7 +173,7 @@ Confidence counts: high 148, medium 287, low 65; invalid judgments: 0. Screening
 
 Every file below is copied in full into the report JSON with its SHA-256 hash; the CSV carries the same path and hash. Original result files are preserved unchanged.
 
-| Vocabulary | Tokenizer | Original JSON |
+| Vocabulary ↔ | Tokenizer | Original JSON |
 |---:|---|---|
 | 32,768 | Raw BPE | [bpe_32768_metrics.json](../../docs/tokenizer_tests/tokenizer_metrics/bpe_32768_metrics.json) |
 | 32,768 | MorphBPE / TRmorph | [morphbpe_trmorph_32768_metrics.json](../../docs/tokenizer_tests/tokenizer_metrics/morphbpe_trmorph_32768_metrics.json) |

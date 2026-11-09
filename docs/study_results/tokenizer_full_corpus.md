@@ -1,10 +1,16 @@
 # Recovered full-corpus tokenizer results
 
+**Direction legend:** ↑ means higher is better for the stated objective; ↓ means lower is better; ↔ means descriptive or a tradeoff, with no universally better direction. See the [metric guide](metric_guide.md) for every definition, denominator and limitation.
+
+**Objectives:** lower tokens/word and higher bytes/token mean more compact lossless encoding. Higher one-token coverage helps isolated-word compression only. Higher morphology preservation, boundary agreement and consistency, or lower morphology edit distance, mean closer agreement with the automatic reference; they do not establish better LLM performance. Lower multi-character character-only coverage means less character-level fragmentation.
+
+**Diagnostics:** vocabulary size, vocabulary use, sample counts, inclusive character-only/byte-only coverage and resample SD have no universal optimum. Zero roundtrip failures is ideal for exact text recovery; fewer UNKs and alignment exclusions are better when applicable. Speed ↑ and time ↓ apply only to matched workloads and hardware; recorded timings here do not establish a controlled speed ranking. Normalizing references' apparent compression and boundary figures remain descriptive.
+
 UHEM job **496882** completed on 23 June 2026 (exit 0:0; 29h 20m 05s). Results were recovered on 9 November. [Original files and scheduler evidence](../../artifacts/tokenizer_metrics_full_2026-06-23/) are preserved unchanged; [JSON](tokenizer_full_corpus.json) and [CSV](tokenizer_full_corpus.csv) contain full precision and source hashes.
 
 All twelve rows cover the same **93,211,827 training documents**, **36,699,889,764 regex words**, and **299,173,651,770 UTF-8 bytes**. Full-corpus totals apply to compression, boundary crossing and roundtrip. Word-level metrics use **500,000 occurrences** for all rows, and consistency uses **50,000 unique words**. This is not a held-out test.
 
-| Vocab | Tokenizer | Corpus tokens/word ↓ | Isolated tokens/word ↓ | One-token words % | Bytes/token ↑ | Exact morph sequence % ↑ | Boundaries preserved % ↑ | Morph edit ↓ | Morph consistency F1 ↑ |
+| Vocab ↔ | Tokenizer | Corpus tokens/word ↓ | Isolated tokens/word ↓ | One-token words % ↑ compression | Bytes/token ↑ | Exact morph sequence % ↑ | Boundaries preserved % ↑ | Morph edit ↓ | Morph consistency F1 ↑ |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 1.5553 | 2.0472 | 31.05 | 5.2415 | 32.46 | 14.66 | 1.7096 | 0.3241 |
 | 32,768 | MorphBPE / TRmorph | 1.7698 | 1.9890 | 34.09 | 4.6061 | 41.54 | 54.18 | 1.4319 | 0.5129 |
@@ -27,7 +33,7 @@ All twelve rows record zero roundtrip failures. Per-morpheme intact-token preser
 
 Morph consistency is shared-token/shared-morpheme pair precision/recall/F1. `F1 resample SD` is variability over the ten sampled pair sets, not a confidence interval or across-training-seed uncertainty. Boundary preservation is 1 minus crossed-boundary rate and does not penalize extra splits.
 
-| Vocab | Tokenizer | Normalized morph edit ↓ | Consistency P | Consistency R | F1 resample SD | Crossed boundaries % |
+| Vocab ↔ | Tokenizer | Normalized morph edit ↓ | Consistency P ↑ | Consistency R ↑ | F1 resample SD ↔ | Crossed boundaries % ↓ |
 |---:|---|---:|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 1.2328 | 0.9630 | 0.1949 | 0.0079 | 85.34 |
 | 32,768 | MorphBPE / TRmorph | 1.0362 | 0.9865 | 0.3466 | 0.0046 | 45.82 |
@@ -46,9 +52,9 @@ Morph consistency is shared-token/shared-morpheme pair precision/recall/F1. `F1 
 
 ## Archived encoding and evaluator performance
 
-These are recorded timings, not a controlled tokenizer speed benchmark. `Encode M tok/s` divides token count by accumulated encoding time across workers; `Evaluator wall s` includes the rest of metric computation. The two use different time denominators. Worker/thread settings are shown so they are not mistaken for like-for-like speed measurements.
+These are recorded timings, not a controlled tokenizer speed benchmark. `Encode M tok/s` divides token count by accumulated encoding time across workers (↑ token throughput under matched conditions). `Document-pass wall s` is elapsed time for the document pass (↓ time), including document I/O, roundtrip and boundary accounting but excluding the later isolated-word, coverage and morphology computations; parallel word-sample collection also precedes this timer. The raw field remains `metric_wall_seconds`. The two time measures have different denominators. Worker/thread settings and vocabulary usage are descriptive; different work allocations prevent like-for-like speed rankings.
 
-| Vocab | Tokenizer | Encode M tok/s | Encoding s (summed) | Evaluator wall s | Workers × threads | Used vocab % | Roundtrip failures |
+| Vocab ↔ | Tokenizer | Encode M tok/s ↑ speed | Encoding s (summed) ↓ time | Document-pass wall s ↓ time | Workers × threads ↔ | Used vocab % ↔ | Roundtrip failures ↓ (0 ideal) |
 |---:|---|---:|---:|---:|---|---:|---:|
 | 32,768 | Raw BPE | 1.217 | 46885.67 | 9061.83 | 32 × 1 | 99.84 | 0 |
 | 32,768 | MorphBPE / TRmorph | 1.230 | 52806.76 | 8930.92 | 32 × 1 | 99.84 | 0 |
@@ -69,7 +75,7 @@ These are recorded timings, not a controlled tokenizer speed benchmark. `Encode 
 
 Every file below is copied in full into the report JSON with its SHA-256 hash; the CSV carries the same path and hash. Original result files are preserved unchanged.
 
-| Vocabulary | Tokenizer | Original JSON |
+| Vocabulary ↔ | Tokenizer | Original JSON |
 |---:|---|---|
 | 32,768 | Raw BPE | [bpe_32768_metrics.json](../../artifacts/tokenizer_metrics_full_2026-06-23/bpe_32768_metrics.json) |
 | 32,768 | MorphBPE / TRmorph | [morphbpe_trmorph_32768_metrics.json](../../artifacts/tokenizer_metrics_full_2026-06-23/morphbpe_trmorph_32768_metrics.json) |

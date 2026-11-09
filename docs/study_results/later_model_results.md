@@ -1,5 +1,7 @@
 # Later model results and evaluator audit
 
+**Direction legend:** ↑ higher is better for that metric; ↓ lower is better; ↔ describes model configuration or budget without an inherent quality ranking. BPB measures prediction cost per byte; QA F1 measures answer-word overlap and exact match requires the normalized whole answer to match. Compare only matching datasets and evaluator protocols; legacy values remain provisional. Details: [metric guide](metric_guide.md).
+
 **Recovered on 2026-11-09; measured in August 2026.** These results supplement the original tokenizer-ablation table. They change model depth, training budget and/or evaluation protocol, so they are not additional controlled tokenizer cells.
 
 Sources: [compact UHeM audit](../../artifacts/uhem_model_audit_2026-11-09/), [derived JSON](later_model_results.json), and [runtime/reproduction notes](reproduction.md). Per-source paths, byte counts, timestamps and SHA-256 hashes are preserved. No model training or benchmark inference was rerun during recovery.
@@ -12,7 +14,7 @@ The recovered [generation runner](../../artifacts/uhem_model_audit_2026-11-09/ev
 
 The old eleven-model benchmark values remain visible as **legacy evaluator measurements**. The generation bug invalidates the previous absolute-XQuAD interpretation; the likelihood-boundary deviation can be tokenizer-dependent, so classification rankings also need a corrected common rerun. A single corrected raw-BPE row cannot repair the complete matrix.
 
-| Model | Protocol | XQuAD F1 /100 | Exact match /100 |
+| Model | Protocol | XQuAD F1 /100 ↑ | Exact match /100 ↑ |
 | --- | --- | ---: | ---: |
 | d20 BPE32k, step 17100 | June legacy adapter, cap 128 | 3.0985 | 0.0000 |
 | d20 BPE32k, step 17100 | generation-fixed, CLI cap 128 | 11.3369 | 4.5378 |
@@ -25,7 +27,7 @@ The two d32 F1 values use distinct recorded runner/generation settings and must 
 
 ## Additional pretraining
 
-| Model | Depth | Step | Scheduled token positions | Final/minimum BPB | Interpretation |
+| Model | Depth ↔ | Step ↔ | Scheduled token positions ↔ | Final/minimum BPB ↓ | Interpretation |
 | --- | ---: | ---: | ---: | ---: | --- |
 | `tr_d20_bpe_32768_cont40x` | 20 | 34,200 | 35,861,299,200 | 0.591451 | Continued d20 run; doubled budget |
 | `tr_d32_bpe_32768_fineweb2_all_v1` | 32 | 28,000 | 58,720,256,000 | 0.519040 | Train-overlap diagnostic; not held out |
@@ -44,7 +46,7 @@ The d32 legacy core-11 mean is **0.4180**, calculated from the same eleven selec
 
 The recovered scoring receipt reports **37.1709/100**, the unweighted mean of seven category scores, and marks the result complete. This is the archived `cetvel-eacl2026-table4-compatible-v1` protocol result for d32 step 28,000; it is not the core-11 macro and is not an independent verification against a public leaderboard.
 
-| Category | Score /100 |
+| Category | Score /100 ↑ |
 | --- | ---: |
 | QA | 8.3129 |
 | MCQA | 39.9344 |
@@ -58,9 +60,11 @@ The recovered scoring receipt reports **37.1709/100**, the unweighted mean of se
 
 The receipt pins CETVEL `6119c517e06cce23aaeac103ce3504c9380655e3`, lm-eval `6e49b1f6910931882a4b3b105794c6faf96b74e5`, and the metric provenance. Its compatibility warnings are retained: GECTurk uses stripped exact match; MCQA includes check-worthiness and relevance-judgment; summarization BERTScore uses pinned TabiBERT F1/final layer 22 with no baseline rescaling. These metrics differ from the legacy table's normalized accuracy, XQuAD F1 and ROUGE; do not compare their numerical scales directly.
 
+Every task/category score in this receipt is higher-is-better under its own definition: accuracy counts correct answers; exact match requires a matching answer; BERTScore measures similarity of contextual word representations; COMET predicts translation quality with a learned evaluator. The overall score averages category scores equally. These definitions and scales differ, so a higher score in one category does not establish stronger capability than a lower score in another.
+
 All task scores in that receipt are preserved below. The receipt's QA values use exact match, not the F1 values in the correction table.
 
-| Receipt task | Protocol score /100 |
+| Receipt task | Protocol score /100 ↑ |
 | --- | ---: |
 | `belebele_tr` | 23.8889 |
 | `bilmecebench` | 21.7195 |
@@ -97,6 +101,8 @@ All task scores in that receipt are preserved below. The receipt's QA values use
 **Interpretation.** This table describes one d32 model, so it has no cross-model winner. Among its raw-accuracy tasks, news classification (70.0) and XCOPA (69.0) have higher recorded accuracy than TurkishMMLU (18.22) and proverbs (0.0), although these tasks differ in difficulty and chance level. The high summarization BERTScores and low QA exact-match/GEC scores use different definitions; they must not be ranked together as if they measured the same thing. A same-protocol baseline is needed to turn this task profile into a configuration comparison.
 
 Intermediate `kumru20_*` directories describe evaluation task suites, not a recovered Kumru model run: their model arguments identify the nanochat d32 checkpoint. Their full extracted metrics, including QA F1, GEC exact match, translation WER/BLEU and partial summarization ROUGE, remain in the source JSON; the table-compatible receipt uses its own documented aggregations.
+
+For those auxiliary metrics, BLEU ↑ measures matching word sequences in translation, ROUGE ↑ measures reference-summary overlap, and WER ↓ counts word substitutions, insertions and deletions relative to reference length. They measure different properties and retain their native scales; they cannot be pooled with F1, BERTScore or COMET without an explicitly defined protocol.
 
 ## Excluded or incomplete evidence
 

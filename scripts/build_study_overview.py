@@ -25,7 +25,7 @@ def main():
     families = {"bpe": "Raw BPE", "trmorph": "MorphBPE / TRmorph", "zemberek": "MorphBPE / Zemberek", "tdelight": "MorphBPE / TurkishDelight"}
     tier = {32768: "32k / d20", 65536: "64k / d16", 131072: "128k / d12"}
     lines = [
-        "| Vocabulary / depth | Tokenizer | Corpus tokens/word ↓ | Morph consistency F1 ↑ | Val BPB ↓ | Legacy core-11 ↑ | Training k tokens/s |",
+        "| Vocabulary / depth ↔ | Tokenizer | Corpus tokens/word ↓ | Morph consistency F1 ↑ | Val BPB ↓ | Legacy core-11 ↑ | Training k tokens/s ↑ |",
         "| --- | --- | ---: | ---: | ---: | ---: | ---: |",
     ]
     def fmt(value, digits=4):

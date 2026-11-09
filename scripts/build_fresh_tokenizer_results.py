@@ -6,7 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from scripts.tokenizer_table_interpretation import interpret_tables
+from scripts.build_tokenizer_study_results import explain_metric_directions
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs/study_results"
@@ -98,17 +98,18 @@ def build():
         for r in sample["rows"]:
             lines.append(f'| {r["vocab_size"]:,} | {LABELS[r["family"]]} | {percent(r["multi_character_character_only_word_rate"])} | {percent(r["single_byte_only_word_rate"])} | {r["roundtrip_failures"]} | {r["unk_token_count"] if r["unk_applicable"] else "N/A (byte-complete)"} | {r["morphology_scored_word_occurrences"]:,} / {r["morphology_unalignable_word_occurrences"]:,} |')
     lines += ["", "## Definitions", "",
-        "- **Vocabulary size** includes the nine special tokens in each original bundle.",
-        "- **Corpus fertility** is total document tokens / regex word count; punctuation and spacing tokens are included. **Isolated fertility** is sampled subword count / sampled word occurrences. A lower value means fewer units, not necessarily better morphology.",
-        "- **Morpheme preservation** counts reference morpheme spans that coincide exactly with one token span, divided by scored reference morphemes. It is distinct from the earlier whole-word exact-morpheme-sequence rate.",
-        "- **Boundary consistency** reports micro precision, recall and F1 from isolated-word internal token boundaries versus internal reference morpheme boundaries. Extra splits lower precision; merged morphemes lower recall. Byte boundaries inside a Unicode character are extra token boundaries. These isolated-word rates differ from contextual document-boundary preservation. The earlier pairwise morphology-consistency metric is retained separately in the raw outputs.",
-        "- **One-token coverage** counts losslessly represented, non-UNK words encoded as one token in isolation. **Character-only coverage** counts words represented entirely by one-Unicode-character tokens, including one-character words. The additional multi-character-only rate removes the trivial one-character case.",
-        "- **Byte-only coverage** instead requires each token to represent one UTF-8 byte. Unicode character and byte rates are not interchangeable.",
-        "- **UNK** is architecture-specific: all twelve local tokenizers contain the full 256-byte alphabet and no UNK mechanism, so counts are N/A. For an UNK-enabled tokenizer, the evaluator measures counts and incidence instead of treating a one-UNK word as whole-word coverage.",
-        "- Unalignable words are excluded from morphology denominators and reported explicitly. Undefined denominators produce null/N/A. Rates are occurrence-weighted, not unique-type weighted.", "",
+        "- **Vocabulary size (↔)** includes the nine special tokens in each original bundle. Larger vocabularies can shorten sequences while increasing model embedding/output size, so size alone is not a quality score.",
+        "- **Corpus fertility (↓ compression)** is total document tokens / regex word count; punctuation and spacing tokens are included. **Isolated fertility (↓ compression)** is sampled subword count / sampled word occurrences. A lower value means fewer units, not necessarily better morphology.",
+        "- **Morpheme preservation (↑ reference agreement)** counts reference morpheme spans that coincide exactly with one token span, divided by scored reference morphemes. It is distinct from the earlier whole-word exact-morpheme-sequence rate; both compare with automatic annotations.",
+        "- **Boundary consistency (↑ reference agreement)** reports micro precision, recall and F1 from isolated-word internal token boundaries versus internal reference morpheme boundaries. Precision measures how many predicted boundaries are correct; recall measures how many reference boundaries are found; F1 is their harmonic mean. Extra splits lower precision; merged morphemes lower recall. Byte boundaries inside a Unicode character are extra token boundaries. These isolated-word rates differ from contextual document-boundary preservation. The earlier pairwise morphology-consistency metric is retained separately in the raw outputs.",
+        "- **One-token coverage (↑ isolated-word compression only)** counts losslessly represented, non-UNK words encoded as one token in isolation. **Character-only coverage (↔ diagnostic)** counts words represented entirely by one-Unicode-character tokens, including one-character words. The additional **multi-character-only rate (↓ fragmentation)** excludes one-character words from both numerator and denominator; a lower rate means fewer longer words split entirely into characters, not proven linguistic quality.",
+        "- **Byte-only coverage (↔ diagnostic)** instead requires each token to represent one UTF-8 byte. Unicode character and byte rates are not interchangeable; short ASCII words can contribute without indicating a tokenizer failure.",
+        "- **Roundtrip failures (↓; zero ideal)** count documents for which decoding the encoding does not reproduce the original text exactly. This checks text recovery, separately from whole-word coverage.",
+        "- **UNK (↓ when applicable)** is architecture-specific: all twelve local tokenizers contain the full 256-byte alphabet and no UNK mechanism, so counts are N/A. For an UNK-enabled tokenizer, the evaluator measures counts and incidence instead of treating a one-UNK word as whole-word coverage.",
+        "- **Scored words (↔ sample size) / excluded words (↓ alignment failures):** unalignable words are excluded from morphology denominators and reported explicitly. Fewer exclusions improve evaluation coverage but do not by themselves improve morphology quality. Undefined denominators produce null/N/A. Rates are occurrence-weighted, not unique-type weighted.", "",
         "Source sample preparation records ordered raw/annotated document hashes. The same morphology analyzer supplies reference labels and TRmorph tokenizer training supervision; interpretation must retain that bias limitation. Earlier train-corpus diagnostics and the full-corpus archive remain separate in [the index](README.md).", "",
         "Rebuild: `python -m scripts.build_fresh_tokenizer_results`."]
-    (OUT / "tokenizer_fresh_results.md").write_text("\n".join(interpret_tables(lines, scope="fresh"))+"\n")
+    (OUT / "tokenizer_fresh_results.md").write_text("\n".join(explain_metric_directions(lines, scope="fresh"))+"\n")
 
 
 if __name__ == "__main__":
