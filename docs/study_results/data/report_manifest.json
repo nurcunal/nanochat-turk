@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "canonical_report": "docs/study_results/README.md",
+  "sections": [
+    {
+      "anchor": "fresh-tokenizers",
+      "title": "Fresh intrinsic tokenizer assessment",
+      "collapsed": false,
+      "section_sha256": "b8671606ced6ea5740465b8e71024a4788c855e24e4f4538e90c13c8c483aa33"
+    },
+    {
+      "anchor": "original-models",
+      "title": "Original model pretraining and extrinsic benchmarks",
+      "collapsed": false,
+      "section_sha256": "b363a3853bc3e49ee41d3c503d1aca5bc3dea1ad7f62edbc550cda80eaa44eb3"
+    },
+    {
+      "anchor": "model-configurations",
+      "title": "Later d20/d32 configurations and benchmarks",
+      "collapsed": false,
+      "section_sha256": "e5a9f179a55ef1fa6f71d2244e157488ef7dd8c4d9c8a211374eedbc45f0eb40"
+    },
+    {
+      "anchor": "evaluator-audit",
+      "title": "Evaluator corrections and model provenance",
+      "collapsed": true,
+      "section_sha256": "5df4c83d7884561ae04ab3e08fc400f2656509042b1a36134098e17b9cd1fb63"
+    },
+    {
+      "anchor": "sft-configurations",
+      "title": "SFT configuration experiments",
+      "collapsed": true,
+      "section_sha256": "4b50af8930928d64a6b3b958fb0ad5962f166390ea7cb07966529df1d96903e1"
+    },
+    {
+      "anchor": "full-corpus-tokenizers",
+      "title": "Recovered full-corpus tokenizer measurements",
+      "collapsed": true,
+      "section_sha256": "88aec2a2180347865ab7a2c6b1542b8def2f3e10a79a4ebb74514bcd6be269e0"
+    },
+    {
+      "anchor": "historical-tokenizers",
+      "title": "Earlier tokenizer measurements and external references",
+      "collapsed": true,
+      "section_sha256": "06164dbe0547252cff28f54c7cd72ee5ac328b20d5e5979ccf78079c67ef0ed9"
+    },
+    {
+      "anchor": "additional-tokenizers",
+      "title": "Additional 100k/1M and diagnostic runs",
+      "collapsed": true,
+      "section_sha256": "183106dc0ddd1d962fba9976548163b8f4c4ee29833e94913cf10c1c22b85394"
+    },
+    {
+      "anchor": "metric-guide",
+      "title": "Metric definitions and better directions",
+      "collapsed": true,
+      "section_sha256": "e6d4fabe88f4b2e3ec237df14c6857a48fd59a637732e126c0d2bf8458db94eb"
+    },
+    {
+      "anchor": "reproduction",
+      "title": "Reproduction, evidence and historical source revisions",
+      "collapsed": true,
+      "section_sha256": "b45c8dfc96b72fcf16ebbebacfd0f5280f0ebe45656890d670dc5349fbde6a94"
+    }
+  ],
+  "data_exports": [
+    {
+      "path": "docs/study_results/data/later_model_results.json",
+      "sha256": "2da6873fa67e9a8c1fd5e40a4e409e368ef05bfbe1cb6574325616659a5ecf68"
+    },
+    {
+      "path": "docs/study_results/data/model_all_task_metrics.csv",
+      "sha256": "99853ca059cce7f68fac572e438fd0aebdbe54908ca9986b37a328ff39e4faa7"
+    },
+    {
+      "path": "docs/study_results/data/model_configuration_results.csv",
+      "sha256": "3da019a6c1cf417095e7b90d93dd7fa210f0988eed2c1703053094a053c4dd64"
+    },
+    {
+      "path": "docs/study_results/data/model_configuration_results.json",
+      "sha256": "288abc683874576a433d5ae88c656aac3d7d9ebfc0e66d949ead294efc14bb64"
+    },
+    {
+      "path": "docs/study_results/data/model_official_task_metrics.csv",
+      "sha256": "a144dfe29398a3885dffcebc8d8a20ad4ef65835530b0b74a4f7c664b99bfdd6"
+    },
+    {
+      "path": "docs/study_results/data/model_results.csv",
+      "sha256": "8236bad636bad3a1b00348ee5d8c21070156ff7d6fd6f0e40d15c8633cafc5fd"
+    },
+    {
+      "path": "docs/study_results/data/model_results.json",
+      "sha256": "eebb067b0b4db566123f856078cd8f0ea6d388dbae8ff18a05960c9a93afd6ce"
+    },
+    {
+      "path": "docs/study_results/data/model_task_metrics.csv",
+      "sha256": "de9121e48a4f857007b380bc7b64bdc27c21f7fef82af6fa2c6204d0de9d9c02"
+    },
+    {
+      "path": "docs/study_results/data/model_training_performance.csv",
+      "sha256": "0fc365d4cb89795b1f0d6952b4ea05def9bac6cb965ada10605beb6bb3fcc455"
+    },
+    {
+      "path": "docs/study_results/data/model_training_statistics.csv",
+      "sha256": "6528def8ef6051890dc264f9753c99e4c9570886abd8d84de63ecf4b514cc4b8"
+    },
+    {
+      "path": "docs/study_results/data/sft_configuration_screens.csv",
+      "sha256": "5e1d32456f7689946bdc031afb97844257e917fd42f82754debda45e7fe1fc2d"
+    },
+    {
+      "path": "docs/study_results/data/sft_configuration_screens.json",
+      "sha256": "1e091ce3067e6ab0a96bad71dc669ba990c169ba78fdf6596d960acd664dc773"
+    },
+    {
+      "path": "docs/study_results/data/tokenizer_additional.csv",
+      "sha256": "f49ac24dcd543e2ac5bdcfa7facb6a971d0ab4939e22e82407536fb5cccb39d1"
+    },
+    {
+      "path": "docs/study_results/data/tokenizer_additional.json",
+      "sha256": "fb452a158304e505441a987d2098c0d5038e25cda128602d7749d9ca75a27920"
+    },
+    {
+      "path": "docs/study_results/data/tokenizer_fresh_results.csv",
+      "sha256": "d430b424c9ab8e8abb8b194d86295c34d70860f57d6dc3fe6f4ca1ac4f0c8053"
+    },
+    {
+      "path": "docs/study_results/data/tokenizer_fresh_results.json",
+      "sha256": "6eb3e1578c0d7f2d29259170113390b05346815bf4cfdd3d4e800dfc0164adbf"
+    },
+    {
+      "path": "docs/study_results/data/tokenizer_full_corpus.csv",
+      "sha256": "a18e239445a7d2c96222d0ddd2f6cef4c4e6f116cf5b7a01af3a2fa7ee910c9a"
+    },
+    {
+      "path": "docs/study_results/data/tokenizer_full_corpus.json",
+      "sha256": "f0301cad1add7f903d8314b927ea6801fa543fc41fb1094fa9a425655393805f"
+    },
+    {
+      "path": "docs/study_results/data/tokenizer_results.csv",
+      "sha256": "a7f953930c7eb3d621fc316102cfc5dc3c04d39499afe88bd60659da7ff9554f"
+    },
+    {
+      "path": "docs/study_results/data/tokenizer_results.json",
+      "sha256": "7d239db76a3391801d6daea8693611047475142fef42fe30ca9e9703c3349637"
+    }
+  ],
+  "report_sha256": "c271ef702b7ed118e4fcbbdd70cf02fb27322af9089c9f0d444ec2fa6c972d78",
+  "notes": [
+    "All significant report sections are assembled on one public page.",
+    "Matched tokenizer diagnostics are merged into the fresh report/export; no new measurements.",
+    "Repeated later-model tables are shown once in model configurations; unique evaluator/provenance prose is retained."
+  ]
+}

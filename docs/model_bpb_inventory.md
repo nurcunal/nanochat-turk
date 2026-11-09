@@ -4,7 +4,7 @@
 > inventory. Ten original metadata files were recovered; the raw-BPE 32k
 > metadata is absent at its old UHeM path and retains archived provenance.
 > CETVEL links use a legacy evaluator with known generation/continuation
-> deviations; see the [evaluator audit](study_results/later_model_results.md).
+> deviations; see the [evaluator audit](study_results/README.md#evaluator-audit).
 > The separately recovered d20 continuation (step 34,200, BPB 0.591451) and d32
 > FineWeb2 model (step 28,000, BPB 0.519040) do not replace these cells. The d32
 > BPB uses train-overlap validation and is not a held-out comparison.

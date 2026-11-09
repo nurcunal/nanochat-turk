@@ -4,4 +4,4 @@ These three original JSON files were previously published in Git commit `2ff5305
 
 BERTurk, TURNA and VBART were measured on 50,000 training documents and 500,000 isolated word occurrences. Their observed document roundtrip failure rates are 99.292%, 95.214% and 95.214%. Normalization/decoding behavior and unrecorded UNK incidence make token counts and one-token-word counts non-equivalent to lossless BPE compression and coverage. Their recorded boundary-crossing values are preserved for historical inspection, not used as a comparable morphology ranking. No trained-model results or later MorphBPE edit/consistency metrics are present in these files.
 
-See the separate historical section in [archived tokenizer results](../../docs/study_results/tokenizer_results.md).
+See the separate historical section in [archived tokenizer results](../../docs/study_results/README.md#historical-tokenizers).

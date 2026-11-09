@@ -24,8 +24,9 @@ from matplotlib.ticker import MultipleLocator
 import numpy as np
 
 
-ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT / "docs/study_results"
+from scripts.study_report_paths import ROOT, DATA_DIR, REPORT_DIR
+
+DATA = DATA_DIR
 FAMILIES = ("bpe", "trmorph", "zemberek", "tdelight")
 LABELS = {"bpe": "Raw BPE", "trmorph": "TRmorph", "zemberek": "Zemberek", "tdelight": "TurkishDelight"}
 COLORS = {"bpe": "#344563", "trmorph": "#168674", "zemberek": "#487CB1", "tdelight": "#CE8233"}
@@ -294,7 +295,7 @@ def matched_validation_tokenizers(data, out):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output-dir", type=Path, default=DATA / "figures")
+    parser.add_argument("--output-dir", type=Path, default=REPORT_DIR / "figures")
     parser.add_argument("--fresh-only", action="store_true", help="Render only the optional fresh validation chart; retain existing chart manifest entries.")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)

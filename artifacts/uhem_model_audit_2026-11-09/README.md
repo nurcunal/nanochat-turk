@@ -32,6 +32,6 @@ content-addressed snapshot based on historical main. Its validation shard is
 also trained on; its BPB is a train-overlap diagnostic. Smoke samples and a
 malformed raw-d20 full-result file are not accepted as completed benchmarks.
 
-See [model results](../../docs/study_results/model_results.md),
-[later results and correction audit](../../docs/study_results/later_model_results.md),
-and [reproduction notes](../../docs/study_results/reproduction.md).
+See [model results](../../docs/study_results/README.md#original-models),
+[later results and correction audit](../../docs/study_results/README.md#evaluator-audit),
+and [reproduction notes](../../docs/study_results/README.md#reproduction).

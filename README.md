@@ -10,20 +10,14 @@ vocabulary tier. The final tokenizers accept ordinary Turkish text and do not
 need a morphological analyzer at inference.
 
 Work continues on **`main`**. Historical branches are retained.
-For presentation tables, provenance, and the full comparison, start with
-[`docs/study_results/README.md`](docs/study_results/README.md).
-The [metric guide](docs/study_results/metric_guide.md) explains every reported
-metric, its units, and whether **higher is better (↑)**, **lower is better (↓)**,
-or the value describes a **trade-off (↔)**.
 
-**New intrinsic tokenizer measurements are published:** [all 12 tokenizers on
-matched training and validation samples](docs/study_results/tokenizer_fresh_results.md),
-including vocabulary size, subword units per word, morpheme preservation,
-boundary precision/recall/F1, one-token, character-only and byte-only coverage,
-and architecture-aware UNK reporting. Download the [CSV](docs/study_results/tokenizer_fresh_results.csv)
-or [JSON](docs/study_results/tokenizer_fresh_results.json). The
-[extrinsic LLM results](docs/study_results/model_results.md) report pretraining
-loss/BPB and downstream benchmarks, with legacy evaluator limitations explicit.
+**[Complete study report — all results on one page](docs/study_results/README.md)**
+
+The report contains all 12 tokenizers' intrinsic metrics, LLM pretraining and
+benchmark results, later model configurations, historical measurements and
+downloadable data. Every metric has a definition and a **higher/lower-is-better**
+label; **best comparable scores are bold**. Use its contents to jump between
+sections. Historical and supporting reports expand on the same page.
 
 The consolidated d32 production pipeline is documented in
 [`docs/tr_d32_turkish_wsd_uhem.md`](docs/tr_d32_turkish_wsd_uhem.md);
@@ -74,7 +68,7 @@ different evaluation protocols are not treated as competing results.
 | 64k / d16 | **0.6409** | 0.6510 | **0.4590** | 0.4568 | Raw BPE has lower archived BPB; legacy macro ranking needs reevaluation. |
 | 128k / d12 | **0.6749** | 0.6820 | **0.4651** | 0.4618 | Raw BPE has lower archived BPB; legacy macro ranking needs reevaluation. |
 
-**Interpretation.** Raw BPE is the validation-BPB winner in every tier. Among MorphBPE models, Zemberek has the best BPB at 32k and TurkishDelight at 64k/128k, but all remain above their raw-BPE baseline. The recorded legacy core-11 winner is Zemberek at 32k and raw BPE at 64k/128k; those downstream rankings require the corrected common rerun before they can establish a tokenizer advantage. Intrinsically, TRmorph leads matched-validation morpheme preservation and boundary F1, while raw BPE leads document compression. See the [metric-specific findings](docs/study_results/README.md#findings-that-can-be-defended).
+**Interpretation.** Raw BPE is the validation-BPB winner in every tier. Among MorphBPE models, Zemberek has the best BPB at 32k and TurkishDelight at 64k/128k, but all remain above their raw-BPE baseline. The recorded legacy core-11 winner is Zemberek at 32k and raw BPE at 64k/128k; those downstream rankings require the corrected common rerun before they can establish a tokenizer advantage. Intrinsically, TRmorph leads matched-validation morpheme preservation and boundary F1, while raw BPE leads document compression. See the [metric-specific findings](docs/study_results/README.md#overview).
 
 **↓ Lower BPB is better**: it means fewer bits of prediction loss per evaluated
 UTF-8 byte. **↑ Higher core-11 is better under a valid common protocol**:
@@ -90,7 +84,7 @@ BPB in every completed ablation tier. Fixed token budgets do not ensure equal
 raw-text training/evaluation spans. The same d20 baseline's XQuAD F1 changes
 from 3.0985 to 11.3369 after fixing generation handling, so the original QA
 table cannot establish tokenizer benefits. See the
-[evaluator audit and later models](docs/study_results/later_model_results.md),
+[evaluator audit and later models](docs/study_results/README.md#evaluator-audit),
 including the separate d20 continuation and completed d32 FineWeb2 model.
 The latter's 0.519040 BPB is a train-overlap diagnostic, not held-out loss.
 

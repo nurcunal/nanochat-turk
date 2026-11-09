@@ -2,7 +2,7 @@
 
 Last evidence recovery: **2026-11-09**. Publication inventory below retains its 2026-07-15 audit date.
 
-**November update:** use the [study results package](docs/study_results/README.md) for the presentation. Full-corpus job `496882` is verified complete and imported. Recovered August evaluation code exposes generation and likelihood-adapter bugs in the June CETVEL harness: the original model table is retained as **legacy, provisional evidence**, and its XQuAD comparisons must not support tokenizer-effect claims. Corrected and later model results are separated in the study report. All historical branches and source recovery snapshots are preserved; current work is consolidated on `main`.
+**November update:** use the [study results package](docs/study_results/README.md#study-results) for the presentation. Full-corpus job `496882` is verified complete and imported. Recovered August evaluation code exposes generation and likelihood-adapter bugs in the June CETVEL harness: the original model table is retained as **legacy, provisional evidence**, and its XQuAD comparisons must not support tokenizer-effect claims. Corrected and later model results are separated in the study report. All historical branches and source recovery snapshots are preserved; current work is consolidated on `main`.
 
 This is the canonical status document for the Turkish MorphBPE work in
 `nanochat-turk`. It compares the repository with the peer-reviewed MorphBPE
@@ -178,7 +178,7 @@ is higher for all four languages.
 ### Tokenizer-Level Result
 
 The table summarizes the matched-vocabulary pattern from
-[recovered full-corpus results](docs/study_results/tokenizer_full_corpus.json).
+[recovered full-corpus results](docs/study_results/data/tokenizer_full_corpus.json).
 "Morph range" covers TRmorph, Zemberek, and TurkishDelightNLP; "best" chooses
 the best MorphBPE value for that metric, not one synthetic winner.
 
@@ -212,7 +212,7 @@ required.
 **Do not interpret the following old CETVEL rankings as corrected tokenizer effects.**
 The June harness mishandled generation kwargs and continuation boundaries.
 The original numbers remain for provenance; corrected d20 XQuAD and later d32
-results are in [the model report](docs/study_results/model_results.md).
+results are in [the model report](docs/study_results/README.md#original-models).
 
 | Tier | Best BPB | Final train loss: raw / best Morph | Core-11 macro: raw / best Morph | Belebele: raw / best Morph | XQuAD F1: raw / best Morph |
 | --- | --- | ---: | ---: | ---: | ---: |

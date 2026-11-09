@@ -6,7 +6,7 @@
 > XQuAD F1 changes from 3.0985 to 11.3369 with generation fixed. Corrected
 > results for the entire tokenizer matrix are unavailable, so these rankings
 > are provisional and do not establish tokenizer effects. See the
-> [evaluator audit and later results](study_results/later_model_results.md).
+> [evaluator audit and later results](study_results/README.md#evaluator-audit).
 
 This page tracks model-facing CETVEL evidence for the tokenizer ablation. It is separate from tokenizer-only diagnostics: these rows compare trained base models at the same checkpoint step, within each vocabulary/depth tier.
 

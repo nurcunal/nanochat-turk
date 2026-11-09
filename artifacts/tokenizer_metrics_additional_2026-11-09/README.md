@@ -12,4 +12,4 @@ The 100k and 1m passes use the same TRmorph-segmented training source as the ear
 
 The d32 preflight files name the original d20 raw BPE32k tokenizer path and evaluate raw text without a morphology reference. Their zero boundary totals mean not applicable. They are tokenizer diagnostics, not additional trained-model outcomes. The full raw train totals duplicate the corresponding full-corpus baseline totals.
 
-Readable tables and complete machine-readable exports: [additional tokenizer report](../../docs/study_results/tokenizer_additional.md).
+Readable tables and complete machine-readable exports: [additional tokenizer report](../../docs/study_results/README.md#additional-tokenizers).

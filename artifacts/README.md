@@ -3,7 +3,7 @@
 This folder contains compact, curated artifacts that make the project easier to
 audit from GitHub. It is not intended to mirror every generated file from UHeM.
 
-See the [study result tables](../docs/study_results/README.md) for the complete
+See the [study result tables](../docs/study_results/README.md#study-results) for the complete
 measurement inventory and downloadable CSV/JSON reports.
 
 ## Current Artifacts
@@ -92,4 +92,4 @@ cetvel_core12_tokenizer_ablation_2026-06-22/
 
 - [Complete twelve-tokenizer corpus pass](tokenizer_metrics_full_2026-06-23/): verified Slurm completion, original metrics and hashes.
 - [Model and evaluator audit](uhem_model_audit_2026-11-09/): original raw scores, later d20/d32 results and evaluator-correction evidence.
-- [Consolidated presentation report](../docs/study_results/README.md): fresh matched tokenizer diagnostics and clearly separated model protocols.
+- [Consolidated presentation report](../docs/study_results/README.md#study-results): fresh matched tokenizer diagnostics and clearly separated model protocols.

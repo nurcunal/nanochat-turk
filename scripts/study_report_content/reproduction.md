@@ -32,38 +32,36 @@ protocol-specific evaluation records.
 
 ## Rebuild the report versus rerun an experiment
 
-The following commands rebuild tables and figures from saved measurements.
-They do not train a model, rerun CETVEL, or upgrade an archived score to a new
-measurement:
+Rebuild this complete page and its data exports from saved measurements:
 
 ```bash
-python -m scripts.build_model_study_results
-python -m scripts.build_tokenizer_study_results
-python -m scripts.build_sft_configuration_results
+python -m scripts.build_study_report
 ```
 
-All twenty-four fresh train/validation result files and their manifest are
-included. Rebuild their separate summary before plotting and assembling the
-presentation brief:
+To refresh figures as well (requires matplotlib and NumPy):
 
 ```bash
-python -m scripts.build_fresh_tokenizer_results
-python -m scripts.build_tokenizer_matched_results
-python -m scripts.build_study_overview
-MPLCONFIGDIR=/tmp/nanochat-mpl python -m scripts.plot_study_results
-python -m scripts.build_study_brief
+MPLCONFIGDIR=/tmp/nanochat-mpl python -m scripts.build_study_report --plots
 ```
 
-The fresh-results builder rejects missing or unmatched samples. The figure
-manifest identifies each chart's source and distinguishes archived evidence
-from fresh validation measurements. These commands consume saved results;
-they do not submit new UHEM jobs.
+The optional PDF brief is regenerated with `python -m scripts.build_study_brief`
+(requires reportlab 4.4.9 and matplotlib). None of these commands trains a model,
+reruns CETVEL or submits UHEM jobs. Individual builders write temporary section
+drafts under ignored `dev-ignore/study-sections/`; only the assembled README is
+the public report. CSV/JSON exports live under `data/`, and original fresh run
+evidence lives under `provenance/fresh_tokenizer_metrics/`.
 
-The matched archive and fresh report both describe job `558060`; they are two
-presentations of the same measurements. The additional 100k/1M tokenizer runs,
-historical normalizing references, expanded model-task export and SFT screen
-receipts are retained from the concurrent main results update. SFT selection
-probes are not independent capability evaluations and use only raw BPE 32k.
+The fresh-results builder rejects missing or unmatched samples and verifies
+all 24 raw outputs against their manifests. The old matched and fresh reports
+both described job `558060`; they are now merged into one fresh section/export,
+including their distinct diagnostic fields. The original executed-source and
+recovery receipts remain available as evidence, not as a second experiment.
+
+Historical 50k/100k/1M/full-corpus measurements and SFT screens are included in
+expandable sections on this page. SFT selection probes are not independent
+capability evaluations and use only raw BPE 32k. Git retains the old file paths
+and every previous report version; the cleanup changes presentation and paths,
+not the measurements.
 
 For a historical training replay, first recover the run's actual source
 revision, complete effective configuration, dependency lock, seed, dataset

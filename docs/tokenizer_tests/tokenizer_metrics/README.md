@@ -1,12 +1,12 @@
 # Tokenizer Metrics
 
 The reorganized result tables are in
-[`docs/study_results/`](../../study_results/README.md):
-[earlier sample and external diagnostics](../../study_results/tokenizer_results.md),
-[recovered full-corpus results](../../study_results/tokenizer_full_corpus.md),
-[additional 100k/1m and baseline validation diagnostics](../../study_results/tokenizer_additional.md),
-[new matched train/validation measurements](../../study_results/tokenizer_fresh_results.md),
-and [model/extrinsic results](../../study_results/model_results.md).
+[`docs/study_results/`](../../study_results/README.md#study-results):
+[earlier sample and external diagnostics](../../study_results/README.md#historical-tokenizers),
+[recovered full-corpus results](../../study_results/README.md#full-corpus-tokenizers),
+[additional 100k/1m and baseline validation diagnostics](../../study_results/README.md#additional-tokenizers),
+[new matched train/validation measurements](../../study_results/README.md#fresh-tokenizers),
+and [model/extrinsic results](../../study_results/README.md#original-models).
 The files in this directory remain the original historical measurements.
 
 This folder stores tokenizer-only metrics for produced tokenizer artifacts.
@@ -73,7 +73,7 @@ all-tokenizer job `496882` (`tok-metrics-full`) completed on 23 June 2026 with
 exit `0:0` in `1-05:20:05`. Its twelve original result files, hashes, scheduler
 accounting and final log statistics were recovered on 9 November 2026 in
 [`artifacts/tokenizer_metrics_full_2026-06-23`](../../../artifacts/tokenizer_metrics_full_2026-06-23/).
-The [full-corpus table](../../study_results/tokenizer_full_corpus.md) covers
+The [full-corpus table](../../study_results/README.md#full-corpus-tokenizers) covers
 93,211,827 training documents. Isolated-word and morphology-alignment metrics
 still use 500,000 occurrences per tokenizer, and consistency uses 50,000 unique
 words. Full-corpus totals are not a held-out evaluation or uncapped morphology

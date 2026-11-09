@@ -19,4 +19,4 @@ This run adds exact individual-morpheme/token-span preservation, internal-bounda
 - `slurm_accounting.txt` and `tok-study-matched-558060.out/.err`: terminal scheduler and job-log evidence.
 - `recovery_manifest.json`: hashes of every recovered file, including logs and frozen code.
 
-The corpus and materialized sample parquet files remain on UHeM. [Readable report and downloads](../../docs/study_results/tokenizer_matched.md). Rebuild tables from these completed outputs with `python -m scripts.build_fresh_tokenizer_results`; rebuilding does not rerun the evaluator.
+The corpus and materialized sample parquet files remain on UHeM. [Readable report and downloads](../../docs/study_results/README.md#fresh-tokenizers). Rebuild tables from these completed outputs with `python -m scripts.build_fresh_tokenizer_results`; rebuilding does not rerun the evaluator.

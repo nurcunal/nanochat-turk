@@ -39,11 +39,11 @@
     },
     {
       "path": "docs/tokenizer_ablation_plan.md",
-      "sha256": "c5209f6334e74cf62e93f7381c35ccebbc689bd75fdaef8bb2244e3f017d7845"
+      "sha256": "811b40f31b414da5219d3e0743d520d6bacffc57b8e2c3467a5541d7f164ac20"
     },
     {
       "path": "docs/model_bpb_inventory.md",
-      "sha256": "e9ddbc6d3136aee8490cc1ef961f15709a6d9a8c2892eb2aef0620ae7d13b0a1"
+      "sha256": "407acd50a6ad88a7b197d29e7f8aff5c0ebb659a09b9e16ed750202fe4175881"
     },
     {
       "path": "artifacts/model_evidence_2026-11-09/model-metadata-and-benchmarks.json",
@@ -7856,7 +7856,7 @@
     ],
     "protocol_warning": "June adapter ignored generation kwargs and did not validate exact continuation token boundaries. Fixed results do not exist for the complete eleven-model ablation; legacy model ranking remains provisional.",
     "supplementary_configuration_report": {
-      "report": "model_configuration_results.md",
+      "report": "../README.md#model-configurations",
       "json": "model_configuration_results.json",
       "experiments": [
         {
@@ -8317,7 +8317,7 @@
     }
   ],
   "configuration_experiments": {
-    "report": "model_configuration_results.md",
+    "report": "../README.md#model-configurations",
     "json": "model_configuration_results.json",
     "experiments": [
       {
@@ -8389,10 +8389,10 @@
     "official_protocol": "cetvel-eacl2026-table4-compatible-v1"
   },
   "supplementary_reports": {
-    "model_configurations": "model_configuration_results.md",
+    "model_configurations": "../README.md#model-configurations",
     "all_task_metrics": "model_all_task_metrics.csv",
     "training_performance": "model_training_performance.csv",
-    "sft_configuration_screens": "sft_configuration_screens.md",
+    "sft_configuration_screens": "../README.md#sft-configurations",
     "sft_scope": "Post-training settings on one raw-BPE d32 model; not a matched tokenizer ablation."
   }
 }

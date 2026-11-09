@@ -3,16 +3,16 @@
   "script": "scripts/plot_study_results.py",
   "sources": [
     {
-      "path": "docs/study_results/model_results.json",
-      "sha256": "0f5a63c2560c3e833b13b01fd25a7c5492df8e0330b3aa2be2c60b555fe80008"
+      "path": "docs/study_results/data/model_results.json",
+      "sha256": "eebb067b0b4db566123f856078cd8f0ea6d388dbae8ff18a05960c9a93afd6ce"
     },
     {
-      "path": "docs/study_results/tokenizer_results.json",
+      "path": "docs/study_results/data/tokenizer_results.json",
       "sha256": "7d239db76a3391801d6daea8693611047475142fef42fe30ca9e9703c3349637"
     },
     {
-      "path": "docs/study_results/tokenizer_fresh_results.json",
-      "sha256": "d50397f7cf92e79dfa8e813acf57f5b4cd6150ec178127fd99cee8a9b595c9a0"
+      "path": "docs/study_results/data/tokenizer_fresh_results.json",
+      "sha256": "6eb3e1578c0d7f2d29259170113390b05346815bf4cfdd3d4e800dfc0164adbf"
     }
   ],
   "charts": [
@@ -21,8 +21,8 @@
       "svg": "model_outcomes_by_tier.svg",
       "evidence": "archived_pretraining_and_legacy_benchmarks",
       "source": {
-        "path": "docs/study_results/model_results.json",
-        "sha256": "0f5a63c2560c3e833b13b01fd25a7c5492df8e0330b3aa2be2c60b555fe80008"
+        "path": "docs/study_results/data/model_results.json",
+        "sha256": "eebb067b0b4db566123f856078cd8f0ea6d388dbae8ff18a05960c9a93afd6ce"
       }
     },
     {
@@ -30,7 +30,7 @@
       "svg": "tokenizer_efficiency_boundary_tradeoff.svg",
       "evidence": "archived_train_corpus_diagnostic",
       "source": {
-        "path": "docs/study_results/tokenizer_results.json",
+        "path": "docs/study_results/data/tokenizer_results.json",
         "sha256": "7d239db76a3391801d6daea8693611047475142fef42fe30ca9e9703c3349637"
       }
     },
@@ -39,8 +39,8 @@
       "svg": "cetvel_task_deltas.svg",
       "evidence": "archived_legacy_benchmarks",
       "source": {
-        "path": "docs/study_results/model_results.json",
-        "sha256": "0f5a63c2560c3e833b13b01fd25a7c5492df8e0330b3aa2be2c60b555fe80008"
+        "path": "docs/study_results/data/model_results.json",
+        "sha256": "eebb067b0b4db566123f856078cd8f0ea6d388dbae8ff18a05960c9a93afd6ce"
       }
     },
     {
@@ -48,8 +48,8 @@
       "svg": "evaluator_correction_same_checkpoint.svg",
       "evidence": "archived_evaluator_correction",
       "source": {
-        "path": "docs/study_results/model_results.json",
-        "sha256": "0f5a63c2560c3e833b13b01fd25a7c5492df8e0330b3aa2be2c60b555fe80008"
+        "path": "docs/study_results/data/model_results.json",
+        "sha256": "eebb067b0b4db566123f856078cd8f0ea6d388dbae8ff18a05960c9a93afd6ce"
       }
     },
     {
@@ -57,8 +57,8 @@
       "svg": "matched_validation_tokenizers.svg",
       "evidence": "fresh_matched_validation_measurements",
       "source": {
-        "path": "docs/study_results/tokenizer_fresh_results.json",
-        "sha256": "d50397f7cf92e79dfa8e813acf57f5b4cd6150ec178127fd99cee8a9b595c9a0"
+        "path": "docs/study_results/data/tokenizer_fresh_results.json",
+        "sha256": "6eb3e1578c0d7f2d29259170113390b05346815bf4cfdd3d4e800dfc0164adbf"
       }
     }
   ],

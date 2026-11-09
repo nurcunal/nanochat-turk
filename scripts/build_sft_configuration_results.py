@@ -3,11 +3,10 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
-from pathlib import Path
+from scripts.study_report_paths import DATA_DIR, ROOT, write_section
 
-ROOT = Path(__file__).resolve().parents[1]
 ARTIFACT = ROOT / 'artifacts/uhem_sft_screens_2026-11-09'
-OUT = ROOT / 'docs/study_results'
+OUT = DATA_DIR
 
 
 def highlight_sft_tables(text):
@@ -123,7 +122,7 @@ def main():
     text += ['', f"Evidence: {link('final-polish-v1/selection-summary.json', 'selection receipt')} and {link('final-polish-v1/checkpoint-summary.json', 'checkpoint/data receipt')}.", '', '## Completed checkpoint without an imported benchmark', '', f"`{combined_ckpt['model_tag']}` checkpoint **{combined_ckpt['step']}** has a completed receipt, one-rank optimizer inventory, and training/validation manifest hashes. This establishes the saved SFT checkpoint, not a measured improvement. No benchmark value is inferred from completion. Evidence: {link('final-combined-smoltalk2-turk-sft-v1/checkpoint-summary.json', 'completion receipt')}.", '', '## Coverage and limitations', '', '- These are selected recoverable configuration screens from UHeM, not a claim that every operational pilot or intermediate checkpoint has been exhaustively audited.', '- Repeated checks of the same checkpoint and selection recovery do not count as independent training runs or seed repetitions.', '- The initial bounded-recovery selection summary and capability `eff040-16` summary were empty at recovery; both are recorded as unavailable in the manifest. Their missing values are not zero.', '- No matched multi-tokenizer SFT comparison was recovered. These d32/raw-BPE32k screens stay separate from the eleven-model tokenizer comparison and the separate CETVEL protocol results.', '- Rebuild with `python -m scripts.build_sft_configuration_results`. The builder verifies all original-file SHA-256 values, checkpoint steps, probe denominators and verification statuses before emitting the tables.', '']
     OUT.mkdir(parents=True, exist_ok=True)
     from scripts.model_table_interpretation import annotate_tables, sft_notes
-    (OUT / 'sft_configuration_screens.md').write_text(highlight_sft_tables(annotate_tables('\n'.join(text), sft_notes())))
+    write_section('sft_configuration_screens.md', highlight_sft_tables(annotate_tables('\n'.join(text), sft_notes())))
     (OUT / 'sft_configuration_screens.json').write_text(json.dumps({'retrieved_at_utc':manifest['retrieved_at_utc'], 'scope':'d32/BPE32k custom SFT configuration diagnostics', 'rows':rows, 'sources':sources, 'records':by_source}, indent=2, ensure_ascii=False)+'\n')
     fields = sorted(set().union(*(row.keys() for row in rows)))
     with (OUT / 'sft_configuration_screens.csv').open('w', newline='') as f:

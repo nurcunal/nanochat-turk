@@ -18,8 +18,9 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT / "docs/study_results"
+from scripts.study_report_paths import ROOT, DATA_DIR, EVIDENCE_DIR, REPORT_DIR
+
+DATA = DATA_DIR
 OUTPUT = ROOT / "output/pdf/nanochat_turk_study_results.pdf"
 INK = colors.HexColor("#14283D")
 MUTED = colors.HexColor("#526170")
@@ -42,7 +43,7 @@ def build():
     full = load("tokenizer_full_corpus.json")["tokenizers"]
     fresh = {}
     for split in ("train", "val"):
-        fresh[split] = [load(f"fresh_tokenizer_metrics/{split}/{family}_{size}_metrics.json")
+        fresh[split] = [json.loads((EVIDENCE_DIR / split / f"{family}_{size}_metrics.json").read_text())
                         for size in (32768, 65536, 131072) for family in FAMILIES]
     pdfmetrics.registerFont(TTFont("Study", font_manager.findfont("DejaVu Sans")))
     pdfmetrics.registerFont(TTFont("StudyBold", font_manager.findfont(font_manager.FontProperties(family="DejaVu Sans", weight="bold"))))
@@ -152,13 +153,13 @@ def build():
     grid += [[r["model"], r["protocol"], f'{r["f1"]:.4f}', f'{r["exact_match"]:.4f}'] for r in later["fixed_xquad"]]
     table(["Model", "XQuAD protocol", "F1 /100", "Exact match /100"], grid, [1.8,2.4,1,1])
     receipt = later["eacl_table_compatible_receipt"]
-    para(f'The d32 EACL table-compatible receipt reports <b>{receipt["overall_score"]:.4f}/100</b>, the mean of seven category scores. It has its own scoring conventions and cannot be compared directly with core-11. Full task/category tables and protocol pins are in later_model_results.md.', "StudySmall")
+    para(f'The d32 EACL table-compatible receipt reports <b>{receipt["overall_score"]:.4f}/100</b>, the mean of seven category scores. It has its own scoring conventions and cannot be compared directly with core-11. Full task/category tables and protocol pins are in the single report’s model-configurations section.', "StudySmall")
     para("The adapter now handles generation kwargs, stops and exact continuation boundaries, with regression tests and an output protocol version. A corrected common rerun for all eleven model cells is still needed; no tokenizer advantage is inferred from a single corrected baseline.", "StudySmall")
     story.append(PageBreak())
 
     chart_stems = ("matched_validation_tokenizers", "model_outcomes_by_tier", "evaluator_correction_same_checkpoint")
     for i, stem in enumerate(chart_stems):
-        img = Image(str(DATA / "figures" / f"{stem}.png"))
+        img = Image(str(REPORT_DIR / "figures" / f"{stem}.png"))
         scale = min(available_width/img.imageWidth, (height-42*mm)/img.imageHeight)
         img.drawWidth, img.drawHeight = img.imageWidth*scale, img.imageHeight*scale
         story.append(img)
