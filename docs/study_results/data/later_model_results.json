@@ -822,7 +822,7 @@
   ],
   "protocol_warning": "June adapter ignored generation kwargs and did not validate exact continuation token boundaries. Fixed results do not exist for the complete eleven-model ablation; legacy model ranking remains provisional.",
   "supplementary_configuration_report": {
-    "report": "model_configuration_results.md",
+    "report": "../README.md#model-configurations",
     "json": "model_configuration_results.json",
     "experiments": [
       {

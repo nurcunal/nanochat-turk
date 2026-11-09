@@ -4,7 +4,7 @@
 > recipe from commit `0ea4231e26208be92bce765e4fdde94eeedb21fe`. The shared
 > runtime on consolidated `main` differs from its exact core/environment pins;
 > existing strict preflight is expected to reject it. Do not refresh historical
-> pins to suppress that rejection. See [reproduction and branch provenance](study_results/reproduction.md)
+> pins to suppress that rejection. See [reproduction and branch provenance](study_results/README.md#reproduction)
 > for immutable recovery points and the separate historical optimizer/runtime.
 
 This workflow prepares one shared d32 trunk and three independently cooled,

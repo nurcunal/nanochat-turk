@@ -4,13 +4,12 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
-from pathlib import Path
 
-from scripts.build_tokenizer_study_results import explain_metric_directions
+from scripts.build_tokenizer_study_results import explain_metric_directions, label, row_from_file
+from scripts.study_report_paths import DATA_DIR, EVIDENCE_DIR, ROOT, write_section
 
-ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "docs/study_results"
-SOURCE = OUT / "fresh_tokenizer_metrics"
+OUT = DATA_DIR
+SOURCE = EVIDENCE_DIR
 FAMILIES = ("bpe", "morphbpe_trmorph", "morphbpe_zemberek", "morphbpe_tdelight")
 LABELS = {"bpe": "Raw BPE", "morphbpe_trmorph": "TRmorph", "morphbpe_zemberek": "Zemberek", "morphbpe_tdelight": "TurkishDelight"}
 
@@ -20,13 +19,16 @@ def percent(v):
 
 
 def build():
+    OUT.mkdir(parents=True, exist_ok=True)
     manifest = json.loads((SOURCE / "manifest.json").read_text())
     result = {"schema_version": 1, "evidence": "fresh_matched_measurements",
-              "manifest": "docs/study_results/fresh_tokenizer_metrics/manifest.json",
+              "manifest": str((SOURCE / "manifest.json").relative_to(ROOT)),
               "job_id": str(manifest["environment"]["slurm_job_id"]), "splits": {}}
     all_rows = []
+    diagnostics_by_split = {}
     for split in ("val", "train"):
         rows = []
+        diagnostics = []
         samples = set()
         for size in (32768, 65536, 131072):
             for family in FAMILIES:
@@ -45,6 +47,18 @@ def build():
                 assert d["morphology"]["consistency"]["clustering"] == "sklearn_minibatch_kmeans"
                 samples.add((d["docs"], d["bytes"], d["words"], c["sample_words"],
                              c["word_sequence_sha256"], p["reference_sequence_sha256"]))
+                diagnostic = row_from_file(path)
+                diagnostics.append(diagnostic)
+                supplemental = {key: diagnostic[key] for key in (
+                    "special_tokens", "corpus_tokens", "chars_per_token", "vocab_used_rate",
+                    "morphology_word_occurrences", "morphological_edit_distance_normalized",
+                    "exact_morpheme_sequence_rate", "morphological_consistency_precision",
+                    "morphological_consistency_recall", "morphological_consistency_f1_resample_std",
+                    "boundary_preservation_rate", "crossed_boundary_rate", "reference_boundaries",
+                    "crossed_reference_boundaries", "encode_tokens_per_second", "encode_seconds_accumulated",
+                    "metric_wall_seconds", "metric_workers", "tokenizer_threads_per_worker",
+                )}
+                supplemental["coverage_unalignable_words"] = c["unalignable_word_count"]
                 rows.append({
                     "split": split, "tokenizer": name, "family": family, "vocab_size": size,
                     "documents": d["docs"], "raw_bytes": d["bytes"], "regex_words": d["words"],
@@ -68,6 +82,7 @@ def build():
                     "bytes_per_token": d["bytes_per_token"],
                     "morphological_edit_distance": d["morphology"]["alignment"]["morphological_edit_distance"],
                     "morphological_consistency_f1": d["morphology"]["consistency"]["f1_mean"],
+                    **supplemental,
                     "source": str(path.relative_to(ROOT)), "source_sha256": hashlib.sha256(raw).hexdigest(),
                 })
         assert len(rows) == 12 and len(samples) == 1, f"Unmatched {split} results"
@@ -75,6 +90,7 @@ def build():
         result["splits"][split] = {"documents": sample[0], "raw_bytes": sample[1], "regex_words": sample[2],
                                   "sample_word_occurrences": sample[3], "word_sequence_sha256": sample[4],
                                   "reference_sequence_sha256": sample[5], "rows": rows}
+        diagnostics_by_split[split] = diagnostics
         all_rows.extend(rows)
     assert result["splits"]["train"]["word_sequence_sha256"] != result["splits"]["val"]["word_sequence_sha256"]
     (OUT / "tokenizer_fresh_results.json").write_text(json.dumps(result, indent=2) + "\n")
@@ -84,7 +100,7 @@ def build():
         writer.writerows(all_rows)
     lines = ["# Fresh matched tokenizer measurements", "",
              "New measurements on UHEM, 9 November 2026. All twelve original tokenizer bundles receive identical raw text within each split; segmentation is reference-only. [Run/sample provenance](fresh_tokenizer_metrics/manifest.json), [full precision JSON](tokenizer_fresh_results.json), [CSV](tokenizer_fresh_results.csv), and [complete evaluator outputs](fresh_tokenizer_metrics/) are retained.", "",
-             "The validation file is withheld by the repository's configured file split; training and validation sample hashes differ. This is an automatic TRmorph-reference diagnostic, not independently annotated human morphology. No model was retrained for this evaluation. Reserved validation refers to the original tokenizer-study split; the later d32 all-shard training run includes this source text, so it is not held out from every model in the repository. The [archival matched report](tokenizer_matched.md) presents the same job 558060 measurements with additional recovery receipts; it is not an independent replication."]
+             "The validation file is withheld by the repository's configured file split; training and validation sample hashes differ. This is an automatic TRmorph-reference diagnostic, not independently annotated human morphology. No model was retrained for this evaluation. Reserved validation refers to the original tokenizer-study split; the later d32 all-shard training run includes this source text, so it is not held out from every model in the repository."]
     for split in ("val", "train"):
         sample = result["splits"][split]
         lines += ["", "## " + ("Validation" if split == "val" else "Training sample"), "",
@@ -97,19 +113,37 @@ def build():
                   "|---:|---|---:|---:|---:|---|---|"]
         for r in sample["rows"]:
             lines.append(f'| {r["vocab_size"]:,} | {LABELS[r["family"]]} | {percent(r["multi_character_character_only_word_rate"])} | {percent(r["single_byte_only_word_rate"])} | {r["roundtrip_failures"]} | {r["unk_token_count"] if r["unk_applicable"] else "N/A (byte-complete)"} | {r["morphology_scored_word_occurrences"]:,} / {r["morphology_unalignable_word_occurrences"]:,} |')
+        # Preserve the additional diagnostics formerly displayed by the mirror
+        # report, using the same raw measurements and existing rate definitions.
+        diagnostics = diagnostics_by_split[split]
+        lines += ["", "### Compression and original morphology diagnostics", "",
+            "| Vocab | Tokenizer | Bytes/token ↑ | Morph edit ↓ | Normalized edit ↓ | Exact morph sequence % | Consistency P | Consistency R | Consistency F1 | Document boundaries preserved % |",
+            "|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
+        for r in diagnostics:
+            lines.append(f'| {r["vocab_size"]:,} | {label(r)} | {r["bytes_per_token"]:.4f} | {r["morphological_edit_distance"]:.4f} | {r["morphological_edit_distance_normalized"]:.4f} | {100*r["exact_morpheme_sequence_rate"]:.2f} | {r["morphological_consistency_precision"]:.4f} | {r["morphological_consistency_recall"]:.4f} | {r["morphological_consistency_f1"]:.4f} | {100*r["boundary_preservation_rate"]:.2f} |')
+        lines += ["", "### Coverage exclusions and recorded runtime", "",
+            "All use one metric worker and eight tokenizer threads per process, with four tokenizer processes scheduled concurrently. Encoding throughput is tokens divided by accumulated encoding time (↑ only for matched conditions); producing more tokens can raise this rate without processing text faster. Document-pass wall time (↓ time; raw field `metric_wall_seconds`) includes document I/O, roundtrip and boundary accounting but ends before isolated-word, coverage and morphology computation. Parallel preliminary word collection also precedes this timer. These are recorded runtime diagnostics, not a controlled serial speed benchmark. Multi-character character-only coverage excludes one-character words from its denominator.", "",
+            "| Vocab | Tokenizer | Byte-only words % | Multi-char character-only % | Coverage unaligned | Morphology unaligned | Roundtrip failures | Encode M tok/s | Evaluator wall s |",
+            "|---:|---|---:|---:|---:|---:|---:|---:|---:|"]
+        for r in diagnostics:
+            c = r["original_metrics"]["coverage"]
+            p = r["original_metrics"]["morphology"]["preservation"]
+            lines.append(f'| {r["vocab_size"]:,} | {label(r)} | {100*c["single_byte_only_word_rate"]:.2f} | {100*c["multi_character_character_only_word_rate"]:.2f} | {c["unalignable_word_count"]} | {p["unalignable_word_occurrences"]} | {r["roundtrip_failures"]} | {r["encode_tokens_per_second"]/1e6:.3f} | {r["metric_wall_seconds"]:.2f} |')
     lines += ["", "## Definitions", "",
         "- **Vocabulary size (↔)** includes the nine special tokens in each original bundle. Larger vocabularies can shorten sequences while increasing model embedding/output size, so size alone is not a quality score.",
         "- **Corpus fertility (↓ compression)** is total document tokens / regex word count; punctuation and spacing tokens are included. **Isolated fertility (↓ compression)** is sampled subword count / sampled word occurrences. A lower value means fewer units, not necessarily better morphology.",
         "- **Morpheme preservation (↑ reference agreement)** counts reference morpheme spans that coincide exactly with one token span, divided by scored reference morphemes. It is distinct from the earlier whole-word exact-morpheme-sequence rate; both compare with automatic annotations.",
+        "- **Original morphology diagnostics:** exact morpheme sequence (↑ reference agreement) requires every token piece in a word to match the reference sequence. Morph edit / normalized edit (↓ reference disagreement) measures sequence edit distance between token pieces and reference pieces, with each normalized distance divided by the reference morpheme count. Pairwise consistency P/R/F1 (↑ reference agreement) measures shared-token/shared-morpheme word-pair agreement over the common 50,000-word-type sample; its resample SD is not across-training-seed uncertainty or a confidence interval. Document boundaries preserved (↑ reference agreement) checks contextual reference boundaries without penalizing extra splits. Bytes/token (↑ compression) divides original UTF-8 bytes by document tokens.",
         "- **Boundary consistency (↑ reference agreement)** reports micro precision, recall and F1 from isolated-word internal token boundaries versus internal reference morpheme boundaries. Precision measures how many predicted boundaries are correct; recall measures how many reference boundaries are found; F1 is their harmonic mean. Extra splits lower precision; merged morphemes lower recall. Byte boundaries inside a Unicode character are extra token boundaries. These isolated-word rates differ from contextual document-boundary preservation. The earlier pairwise morphology-consistency metric is retained separately in the raw outputs.",
         "- **One-token coverage (↑ isolated-word compression only)** counts losslessly represented, non-UNK words encoded as one token in isolation. **Character-only coverage (↔ diagnostic)** counts words represented entirely by one-Unicode-character tokens, including one-character words. The additional **multi-character-only rate (↓ fragmentation)** excludes one-character words from both numerator and denominator; a lower rate means fewer longer words split entirely into characters, not proven linguistic quality.",
         "- **Byte-only coverage (↔ diagnostic)** instead requires each token to represent one UTF-8 byte. Unicode character and byte rates are not interchangeable; short ASCII words can contribute without indicating a tokenizer failure.",
         "- **Roundtrip failures (↓; zero ideal)** count documents for which decoding the encoding does not reproduce the original text exactly. This checks text recovery, separately from whole-word coverage.",
         "- **UNK (↓ when applicable)** is architecture-specific: all twelve local tokenizers contain the full 256-byte alphabet and no UNK mechanism, so counts are N/A. For an UNK-enabled tokenizer, the evaluator measures counts and incidence instead of treating a one-UNK word as whole-word coverage.",
         "- **Scored words (↔ sample size) / excluded words (↓ alignment failures):** unalignable words are excluded from morphology denominators and reported explicitly. Fewer exclusions improve evaluation coverage but do not by themselves improve morphology quality. Undefined denominators produce null/N/A. Rates are occurrence-weighted, not unique-type weighted.", "",
-        "Source sample preparation records ordered raw/annotated document hashes. The same morphology analyzer supplies reference labels and TRmorph tokenizer training supervision; interpretation must retain that bias limitation. Earlier train-corpus diagnostics and the full-corpus archive remain separate in [the index](README.md).", "",
+        "Source sample preparation records ordered raw/annotated document hashes. The same morphology analyzer supplies reference labels and TRmorph tokenizer training supervision; interpretation must retain that bias limitation. Earlier train-corpus diagnostics and the full-corpus archive are included in [the study report](README.md).", "",
+        "The evaluated runtime is an isolated source snapshot with per-file hashes, based on a prior repository revision. It is not a claim that the current `main` implementation ran this experiment. The source manifest records evaluator, tokenizer and sample-preparation code hashes; environment and sample manifests preserve package versions, selected shards and sample hashes. [Additional recovery receipts](../../artifacts/tokenizer_metrics_matched_2026-11-09/) describe the same measurements. Original per-tokenizer outputs remain unchanged.", "",
         "Rebuild: `python -m scripts.build_fresh_tokenizer_results`."]
-    (OUT / "tokenizer_fresh_results.md").write_text("\n".join(explain_metric_directions(lines, scope="fresh"))+"\n")
+    write_section("tokenizer_fresh_results.md", "\n".join(explain_metric_directions(lines, scope="fresh"))+"\n")
 
 
 if __name__ == "__main__":

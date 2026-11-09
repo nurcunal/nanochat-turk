@@ -4,8 +4,8 @@
 > results predate the d32 runtime consolidated into `main`. That merge changes
 > the optimizer implementation; rerunning these launchers from current `main`
 > is not an exact replay of the reported experiment. See
-> [reproduction and branch provenance](study_results/reproduction.md) and the
-> [measured model results](study_results/model_results.md).
+> [reproduction and branch provenance](study_results/README.md#reproduction) and the
+> [measured model results](study_results/README.md#original-models).
 
 This document preserves the preliminary study design for optimizing the
 `nanochat-turk` tokenizer. The current UHeM production run,

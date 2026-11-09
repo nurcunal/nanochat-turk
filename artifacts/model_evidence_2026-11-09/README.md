@@ -12,4 +12,4 @@ These compact JSON bundles preserve already-completed experiment outputs recover
 
 The d32 launch manifest records training/validation overlap. Its BPB is a diagnostic on training-eligible data and must not be ranked against the original held-out validation results. Generation protocols also differ: retain the legacy, corrected-128-token, corrected-256-token and EACL table-compatible scores separately. Two-example smoke outputs and malformed/inaccessible source records are retained for completeness, not promoted to capability results.
 
-Readable tables: [original model ablation](../../docs/study_results/model_results.md), [additional configurations and benchmarks](../../docs/study_results/model_configuration_results.md).
+Readable tables: [original model ablation](../../docs/study_results/README.md#original-models), [additional configurations and benchmarks](../../docs/study_results/README.md#model-configurations).

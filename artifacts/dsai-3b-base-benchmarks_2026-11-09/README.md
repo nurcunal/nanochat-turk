@@ -69,5 +69,5 @@ The following original evidence files are retained byte-for-byte:
 [manifest.json](manifest.json) records the checksums of this publication.
 The larger per-example prediction files remain referenced by their original
 hashes in the scoring receipt. See the
-[earlier model audit](../../docs/study_results/later_model_results.md) for
+[earlier model audit](../../docs/study_results/README.md#evaluator-audit) for
 additional historical protocols, evaluator corrections and training lineage.

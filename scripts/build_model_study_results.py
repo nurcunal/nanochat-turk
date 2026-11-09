@@ -10,13 +10,13 @@ import csv
 import hashlib
 import io
 import json
-from pathlib import Path
 import re
 from statistics import mean
 
+from scripts.study_report_paths import DATA_DIR, ROOT, write_section
 
-ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "docs/study_results"
+
+OUT = DATA_DIR
 FINAL = "artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/metrics_summary.json"
 EARLIER = "artifacts/cetvel_core12_model_comparison_2026-06-12/metrics_summary.json"
 BASELINE = "artifacts/cetvel_base_subset_2026-06-09_job493293/metrics_summary.json"
@@ -282,10 +282,10 @@ def build():
     from scripts.model_study_recovery import enrich
     recovered_sections = enrich(ROOT, OUT, result)
     result["supplementary_reports"] = {
-        "model_configurations": "model_configuration_results.md",
+        "model_configurations": "../README.md#model-configurations",
         "all_task_metrics": "model_all_task_metrics.csv",
         "training_performance": "model_training_performance.csv",
-        "sft_configuration_screens": "sft_configuration_screens.md",
+        "sft_configuration_screens": "../README.md#sft-configurations",
         "sft_scope": "Post-training settings on one raw-BPE d32 model; not a matched tokenizer ablation.",
     }
     later["supplementary_configuration_report"] = result["configuration_experiments"]
@@ -296,10 +296,10 @@ def build():
     training_fields = ["run_id", "tokenizer", "depth", "parameters", "training_minutes", "estimated_training_flops", "peak_memory_mib", "mfu_percent", "gpu_count", "training_job_id", "scheduler_state", "scheduler_elapsed", "source_artifact", "source_report_path", "source_report_sha256"]
     (OUT / "model_training_statistics.csv").write_text(csv_text(training_rows, training_fields))
     from scripts.model_table_interpretation import annotate_tables, model_notes, later_notes
-    (OUT / "model_results.md").write_text(highlight_model_tables(annotate_tables(markdown(result) + recovered_sections, model_notes(result))))
+    write_section("model_results.md", highlight_model_tables(annotate_tables(markdown(result) + recovered_sections, model_notes(result))))
     (OUT / "later_model_results.json").write_text(json.dumps(later, indent=2, ensure_ascii=False) + "\n")
-    (OUT / "later_model_results.md").write_text(highlight_later_tables(annotate_tables(later_markdown(later), later_notes())))
-    print(f"Verified 11 models × 12 tasks; wrote model_results.json/.md/.csv and model_task_metrics.csv to {OUT}")
+    write_section("later_model_results.md", highlight_later_tables(annotate_tables(later_markdown(later), later_notes())))
+    print(f"Verified 11 models × 12 tasks; wrote derived data to {OUT} and private report sections")
 
 
 def highlight_model_tables(text):

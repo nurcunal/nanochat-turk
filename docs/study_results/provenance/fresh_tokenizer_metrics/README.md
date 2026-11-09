@@ -55,7 +55,7 @@ is therefore an execution diagnostic, not an isolated speed benchmark.
 The isolated remote run directory is
 `/ari/users/nunal/nanochat-tokenizer-study-20261109-v1`. The original source
 repository and corpus were not modified. Reproduction helpers are
-[`prepare_tokenizer_metric_sample.py`](../../../scripts/prepare_tokenizer_metric_sample.py),
-[`tokenizer_metrics.py`](../../../scripts/tokenizer_metrics.py),
-[`finalize_tokenizer_metric_study.py`](../../../scripts/finalize_tokenizer_metric_study.py)
-and [`uhem_tokenizer_metrics_study.sbatch`](../../../runs/uhem_tokenizer_metrics_study.sbatch).
+[`prepare_tokenizer_metric_sample.py`](../../../../scripts/prepare_tokenizer_metric_sample.py),
+[`tokenizer_metrics.py`](../../../../scripts/tokenizer_metrics.py),
+[`finalize_tokenizer_metric_study.py`](../../../../scripts/finalize_tokenizer_metric_study.py)
+and [`uhem_tokenizer_metrics_study.sbatch`](../../../../runs/uhem_tokenizer_metrics_study.sbatch).

@@ -1,7 +1,7 @@
 """Refresh the per-tokenizer overview from the consolidated evidence reports.
 
 Run after build_tokenizer_study_results and build_model_study_results.
-Only the delimited table in docs/study_results/README.md is changed.
+Writes a private section consumed by build_study_report.
 """
 from __future__ import annotations
 
@@ -10,11 +10,10 @@ import json
 from pathlib import Path
 
 from scripts.study_table_highlights import highlight_columns, map_tables
+from scripts.study_report_paths import DATA_DIR, write_section
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "docs/study_results"
-START = "<!-- BEGIN GENERATED TOKENIZER MODEL OVERVIEW -->"
-END = "<!-- END GENERATED TOKENIZER MODEL OVERVIEW -->"
+OUT = DATA_DIR
 
 
 def main():
@@ -38,12 +37,6 @@ def main():
         family = "bpe" if name.startswith("bpe_") else name.split("_")[1]
         values = [tier[t["vocab_size"]], families[family], fmt(t["tokens_per_word"]), fmt(t["morphological_consistency_f1"]), fmt(m["validation_bpb"]), fmt(m["macro_core11"]), fmt(speed[name] / 1000, 1) if name in speed else "—"]
         lines.append("| " + " | ".join(values) + " |")
-    path = OUT / "README.md"
-    text = path.read_text()
-    if text.count(START) != 1 or text.count(END) != 1:
-        raise ValueError("Overview markers must occur exactly once")
-    before, remainder = text.split(START)
-    _, after = remainder.split(END)
     table = map_tables(
         "\n".join(lines),
         lambda headers, rows: highlight_columns(
@@ -51,7 +44,7 @@ def main():
             group_keys=[row[0] for row in rows],
         ),
     )
-    path.write_text(before + START + "\n\n" + table + "\n\n" + END + after)
+    write_section("overview.md", table + "\n")
     print("Built twelve-tokenizer overview from intrinsic, model and training-performance reports")
 
 
