@@ -1,0 +1,168 @@
+{
+  "schema_version": "1.0.0",
+  "model_name": "dsai-3b-base",
+  "published_date": "2026-11-09",
+  "checkpoint": {
+    "original_model_tag": "tr_d32_bpe_32768_fineweb2_all_v1",
+    "phase": "base",
+    "step": 28000,
+    "sha256": "2123880d96b2de7d227ff31575b663ac291dcfd9fc9b9419086de032e58d0a98",
+    "size_bytes": 8992693942,
+    "format": "raw nanochat PyTorch checkpoint"
+  },
+  "model": {
+    "parameter_count": 2818575450,
+    "context_tokens": 2048,
+    "tokenizer": "bpe_32768",
+    "vocab_size": 32768,
+    "configuration": {
+      "sequence_len": 2048,
+      "vocab_size": 32768,
+      "n_layer": 32,
+      "n_head": 16,
+      "n_kv_head": 16,
+      "n_embd": 2048,
+      "window_pattern": "L"
+    }
+  },
+  "benchmark": {
+    "name": "CETVEL",
+    "status": "complete",
+    "measured_at": "2026-08-28T23:34:05.793261+00:00",
+    "protocol": {
+      "category_order": [
+        "QA",
+        "MCQA",
+        "TC",
+        "NLI",
+        "SUM",
+        "MT",
+        "GEC"
+      ],
+      "cetvel_revision": "6119c517e06cce23aaeac103ce3504c9380655e3",
+      "doi": "10.18653/v1/2026.eacl-long.46",
+      "id": "cetvel-eacl2026-table4-compatible-v1",
+      "lm_eval_revision": "6e49b1f6910931882a4b3b105794c6faf96b74e5",
+      "paper": "https://aclanthology.org/2026.eacl-long.46/",
+      "published_results_space_revision": "ec0db45e3bb343294fa7c0dfce68ec02ee310c59",
+      "score_scale": "0-100 percentage points",
+      "table": "Appendix Table 4",
+      "warnings": [
+        "GECTurk uses stripped exact match for Table 4 compatibility. Section 4.2 says macro-F1, but the released task and published Kanarya value prove the table uses exact match.",
+        "The MCQA aggregate includes check_worthiness and relevance_judgment although Table 6 does not display those columns.",
+        "The paper identifies TabiBERT BERTScore but does not publish all BERTScore settings. This implementation pins F1, final layer 22, and rescale_with_baseline=false in the metric receipt."
+      ]
+    },
+    "overall_score": 37.17092886186767,
+    "overall_aggregation": "unweighted arithmetic mean of the seven category scores",
+    "category_scores": {
+      "GEC": 0.9677885309836777,
+      "MCQA": 39.9344067327172,
+      "MT": 58.622266261370385,
+      "NLI": 32.93381902860945,
+      "QA": 8.312866693849003,
+      "SUM": 81.06799322840003,
+      "TC": 38.35736155714401
+    },
+    "task_or_group_scores": {
+      "belebele_tr": 23.88888888888889,
+      "bilmecebench": 21.71945701357466,
+      "check_worthiness": 37.61425959780622,
+      "circumflex_tr": 48.57142857142857,
+      "exams_tr": 31.297709923664126,
+      "gecturk_generation": 0.9677885309836777,
+      "ironytr": 50.0,
+      "mkqa_tr": 4.483575022195916,
+      "mlsum_tr": 83.40488514461629,
+      "mnli_tr": 32.87,
+      "news_cat": 70.0,
+      "offenseval_tr": 20.521541950113377,
+      "relevance_judgment": 59.506398537477146,
+      "snli_tr": 31.66,
+      "sts_tr": 12.907904278462654,
+      "tquad": 12.219730941704036,
+      "tr-wikihow-summ": 80.75325535859335,
+      "turkce_atasozleri": 0.0,
+      "turkish_plu": 51.2,
+      "turkish_plu_goal_inference": 44.44444444444444,
+      "turkish_plu_next_event_prediction": 49.00763358778626,
+      "turkish_plu_step_inference": 39.37908496732026,
+      "turkish_plu_step_ordering": 65.23016650342801,
+      "turkishmmlu": 18.22222222222222,
+      "wiki_lingua_tr": 79.75091866006568,
+      "wmt-en-tr-prompt": 62.15747596322001,
+      "wmt-tr-en-prompt": 55.08705655952076,
+      "xcopa_tr": 69.0,
+      "xlsum_tr": 80.36291375032481,
+      "xnli_tr": 34.271457085828345,
+      "xquad_tr": 8.235294117647058
+    },
+    "metric_provenance": {
+      "gec": {
+        "auxiliary": {
+          "metric": "mean per-sentence whitespace-token overlap F1",
+          "official": false,
+          "score": 69.08737141439805,
+          "used_in_aggregate": false,
+          "warning": "Diagnostic only. The paper does not define its prose macro-F1; published Tables 4/5 are reproduced by exact match."
+        },
+        "primary_metric": "stripped exact match"
+      },
+      "nlu": {
+        "explicitly_excluded": "acc_norm",
+        "metric": "raw accuracy"
+      },
+      "qa": {
+        "metric": "SQuAD normalized exact match",
+        "normalizer": "lowercase + ASCII punctuation/articles removal + whitespace collapse"
+      },
+      "summarization": {
+        "metric": "BERTScore F1",
+        "model_id": "boun-tabilab/TabiBERT",
+        "num_layers": 22,
+        "requested_revision": "36d24bfae8d67f7b1f7d0827fc43076e4a1c3e9f",
+        "rescale_with_baseline": false,
+        "runtime": {
+          "component": "F1",
+          "implementation": "bert-score",
+          "model_id": "boun-tabilab/TabiBERT",
+          "num_layers": 22,
+          "package_version": "0.3.13",
+          "requested_revision": "36d24bfae8d67f7b1f7d0827fc43076e4a1c3e9f",
+          "rescale_with_baseline": false,
+          "resolved_revision": "36d24bfae8d67f7b1f7d0827fc43076e4a1c3e9f"
+        }
+      },
+      "translation": {
+        "metric": "COMET-22",
+        "model_id": "Unbabel/wmt22-comet-da",
+        "reference_based": true,
+        "requested_revision": "2760a223ac957f30acfb18c8aa649b01cf1d75f2",
+        "runtime": {
+          "implementation": "unbabel-comet",
+          "model_id": "Unbabel/wmt22-comet-da",
+          "package_version": "2.2.7",
+          "reference_based": true,
+          "requested_revision": "2760a223ac957f30acfb18c8aa649b01cf1d75f2",
+          "resolved_revision": "2760a223ac957f30acfb18c8aa649b01cf1d75f2"
+        }
+      }
+    },
+    "effective_samples": 97844,
+    "verified_leaf_count": 38,
+    "reported_task_or_group_score_count": 31,
+    "scoring_receipt": "evidence/cetvel_eacl2026_official_scoring_receipt.json",
+    "verification_receipt": "evidence/production_verification.json"
+  },
+  "training_diagnostics": {
+    "bpb": 0.5190396722173233,
+    "interpretation": "train-overlap diagnostic; validation reuses a training shard",
+    "held_out": false
+  },
+  "limitations": [
+    "Archived EACL table-compatible protocol result; not independently verified against a public leaderboard.",
+    "Retain the exact metric definitions and compatibility warnings in the scoring receipt.",
+    "This publication names an existing checkpoint and imports saved results; no training or benchmark inference was rerun.",
+    "Checkpoint weights are not included in this GitHub artifact."
+  ]
+}

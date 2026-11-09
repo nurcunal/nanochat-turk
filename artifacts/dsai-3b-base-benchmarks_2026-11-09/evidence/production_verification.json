@@ -1,0 +1,117 @@
+{
+  "kind": "cetvel_eacl2026_result_verification",
+  "limit": null,
+  "mode": "production",
+  "protocol_id": "cetvel-eacl2026-published-table-compat-v1",
+  "protocol_sha256": "e0116cf603ea568746ee6da6d6aea1191a0217178c8b447c311a3a6a2f452e56",
+  "schema_version": "1.0.0",
+  "sources": [
+    {
+      "byte_count": 107288749,
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_00/cetvel_full_results.json",
+      "sha256": "2e9fba3bbe196aa45f1b83e5f91dd8a9bf35e2f0b4c76f35cf20293319a28c69"
+    },
+    {
+      "byte_count": 33798682,
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_01/cetvel_full_results.json",
+      "sha256": "727e7d38be437d2b8e303d04943edce337fde9014bf7d6bc3efa3e8bbc0b5a78"
+    },
+    {
+      "byte_count": 40071645,
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_02/cetvel_full_results.json",
+      "sha256": "9cd66756ead6b0f9f4f0c81777b4ade346512ab3ee3c9715402ea0e81e5bac63"
+    },
+    {
+      "byte_count": 43398272,
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_03/cetvel_full_results.json",
+      "sha256": "6940cfe5c3c1963d2ffeaabca41936d13067c4a9c0a6b0a5a637336f6e14fb1b"
+    },
+    {
+      "byte_count": 4623474,
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_04/cetvel_full_results.json",
+      "sha256": "e02164092f62a058a4c64038c8721374052709f2ca92b7872fa8332de8daa737"
+    },
+    {
+      "byte_count": 37638514,
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_05/cetvel_full_results.json",
+      "sha256": "f8e0e1f8fdeadac6f7df0c17d508d2a7c921398ec7847c2de5d00e3901a7e31c"
+    },
+    {
+      "byte_count": 57118278,
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_06/cetvel_full_results.json",
+      "sha256": "de0d53159ae5c8347d395507a4d47b1b8329c44f92d89c36f9d665aaae643398"
+    },
+    {
+      "byte_count": 47451356,
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_07/cetvel_full_results.json",
+      "sha256": "4971617ddc09e6dfe155c4807c8795c4206875520caba762551981e74dad2897"
+    }
+  ],
+  "total_effective_samples": 97844,
+  "verified_leaves": [
+    "belebele_tr",
+    "bilmecebench",
+    "cetvel_xcopa_tr",
+    "cetvel_xnli_tr",
+    "check_worthiness",
+    "circumflex_tr",
+    "exams_tr",
+    "gecturk_generation",
+    "ironytr",
+    "mkqa_tr",
+    "mlsum_tr",
+    "mnli_tr",
+    "news_cat",
+    "offenseval_tr",
+    "relevance_judgment",
+    "snli_tr",
+    "sts_tr",
+    "tquad",
+    "tr-wikihow-summ",
+    "turkce_atasozleri",
+    "turkish_plu_goal_inference",
+    "turkish_plu_next_event_prediction",
+    "turkish_plu_step_inference",
+    "turkish_plu_step_ordering",
+    "turkishmmlu_biology",
+    "turkishmmlu_chemistry",
+    "turkishmmlu_geography",
+    "turkishmmlu_history",
+    "turkishmmlu_mathematics",
+    "turkishmmlu_philosophy",
+    "turkishmmlu_physics",
+    "turkishmmlu_religion_and_ethics",
+    "turkishmmlu_turkish_language_and_literature",
+    "wiki_lingua_tr",
+    "wmt-en-tr-prompt",
+    "wmt-tr-en-prompt",
+    "xlsum_tr",
+    "xquad_tr"
+  ],
+  "verified_top_level_tasks": [
+    "mlsum_tr",
+    "gecturk_generation",
+    "tr-wikihow-summ",
+    "xlsum_tr",
+    "wiki_lingua_tr",
+    "wmt-tr-en-prompt",
+    "wmt-en-tr-prompt",
+    "xquad_tr",
+    "tquad",
+    "mkqa_tr",
+    "nli_tr",
+    "belebele_tr",
+    "exams_tr",
+    "turkish_plu",
+    "cetvel_xcopa_tr",
+    "turkce_atasozleri",
+    "turkishmmlu",
+    "bilmecebench",
+    "circumflex_tr",
+    "trclaim19",
+    "ironytr",
+    "news_cat",
+    "offenseval_tr",
+    "sts_tr"
+  ]
+}

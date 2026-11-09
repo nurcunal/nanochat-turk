@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0.0",
+  "model_name": "dsai-3b-base",
+  "publication_date": "2026-11-09",
+  "checkpoint_sha256": "2123880d96b2de7d227ff31575b663ac291dcfd9fc9b9419086de032e58d0a98",
+  "checkpoint_step": 28000,
+  "description": "Base-only publication of archived complete CETVEL metrics with original evidence. No model weights or new evaluation run.",
+  "original_evidence_files": [
+    "evidence/cetvel_eacl2026_official_scoring_receipt.json",
+    "evidence/production_verification.json",
+    "evidence/meta_028000.json"
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "size_bytes": 3299,
+      "sha256": "205f68154f83f1e7627de280d77320ad53c1db8788cc49565b95249882d4c33f"
+    },
+    {
+      "path": "benchmarks.csv",
+      "size_bytes": 2999,
+      "sha256": "d70265d8db086132c3ea9e3e1d40667ccbbed2e82eab9b9ceedef3497aa0492e"
+    },
+    {
+      "path": "dsai-3b-base.json",
+      "size_bytes": 6437,
+      "sha256": "5e4cefced23dc6f82ccdca2edfcb3dbd1bdb65efc22727dcf8c16d0acc1868c5"
+    },
+    {
+      "path": "evidence/cetvel_eacl2026_official_scoring_receipt.json",
+      "size_bytes": 19270,
+      "sha256": "f09cdb7bc5cd9c16347e16d31a972231b8cc6e28a8c676eccc02236bc256662e"
+    },
+    {
+      "path": "evidence/meta_028000.json",
+      "size_bytes": 3038,
+      "sha256": "8c497e78eff5c4b4b47493c26645b17869c12d8890a243161c11fa46ee538632"
+    },
+    {
+      "path": "evidence/production_verification.json",
+      "size_bytes": 4084,
+      "sha256": "714e5b8e1d8f751fc1a865b7d8da2f548869168e11a30b9233163054af8bff62"
+    }
+  ]
+}

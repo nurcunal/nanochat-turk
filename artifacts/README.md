@@ -8,6 +8,10 @@ measurement inventory and downloadable CSV/JSON reports.
 
 ## Current Artifacts
 
+- [dsai-3b-base-benchmarks_2026-11-09](dsai-3b-base-benchmarks_2026-11-09/):
+  named d32 base-model benchmark publication, with complete CETVEL scores,
+  exact checkpoint identity, original scoring/verification receipts and CSV.
+
 - [tokenizer_metrics_matched_2026-11-09](tokenizer_metrics_matched_2026-11-09/):
   all 24 completed train/validation intrinsic measurements from job 558060,
   matching-sample receipts, tokenizer hashes and the frozen evaluator source.

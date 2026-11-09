@@ -1,0 +1,593 @@
+{
+  "canonical_sha256": "7592ef0201ccfde64d0d55c1b051a2add38788b5e013f403c5a49d556a79bf1b",
+  "category_details": {
+    "GEC": {
+      "aggregation": "unweighted arithmetic mean",
+      "complete": true,
+      "included_tasks": [
+        "gecturk_generation"
+      ],
+      "missing_tasks": [],
+      "required_tasks": [
+        "gecturk_generation"
+      ],
+      "score": 0.9677885309836777
+    },
+    "MCQA": {
+      "aggregation": "unweighted arithmetic mean",
+      "complete": true,
+      "included_tasks": [
+        "xcopa_tr",
+        "turkish_plu",
+        "turkish_plu_goal_inference",
+        "turkish_plu_next_event_prediction",
+        "turkish_plu_step_inference",
+        "turkish_plu_step_ordering",
+        "exams_tr",
+        "belebele_tr",
+        "turkce_atasozleri",
+        "turkishmmlu",
+        "bilmecebench",
+        "circumflex_tr",
+        "check_worthiness",
+        "relevance_judgment"
+      ],
+      "missing_tasks": [],
+      "required_tasks": [
+        "xcopa_tr",
+        "turkish_plu",
+        "turkish_plu_goal_inference",
+        "turkish_plu_next_event_prediction",
+        "turkish_plu_step_inference",
+        "turkish_plu_step_ordering",
+        "exams_tr",
+        "belebele_tr",
+        "turkce_atasozleri",
+        "turkishmmlu",
+        "bilmecebench",
+        "circumflex_tr",
+        "check_worthiness",
+        "relevance_judgment"
+      ],
+      "score": 39.9344067327172
+    },
+    "MT": {
+      "aggregation": "unweighted arithmetic mean",
+      "complete": true,
+      "included_tasks": [
+        "wmt-en-tr-prompt",
+        "wmt-tr-en-prompt"
+      ],
+      "missing_tasks": [],
+      "required_tasks": [
+        "wmt-en-tr-prompt",
+        "wmt-tr-en-prompt"
+      ],
+      "score": 58.622266261370385
+    },
+    "NLI": {
+      "aggregation": "unweighted arithmetic mean",
+      "complete": true,
+      "included_tasks": [
+        "mnli_tr",
+        "snli_tr",
+        "xnli_tr"
+      ],
+      "missing_tasks": [],
+      "required_tasks": [
+        "mnli_tr",
+        "snli_tr",
+        "xnli_tr"
+      ],
+      "score": 32.93381902860945
+    },
+    "QA": {
+      "aggregation": "unweighted arithmetic mean",
+      "complete": true,
+      "included_tasks": [
+        "xquad_tr",
+        "tquad",
+        "mkqa_tr"
+      ],
+      "missing_tasks": [],
+      "required_tasks": [
+        "xquad_tr",
+        "tquad",
+        "mkqa_tr"
+      ],
+      "score": 8.312866693849003
+    },
+    "SUM": {
+      "aggregation": "unweighted arithmetic mean",
+      "complete": true,
+      "included_tasks": [
+        "xlsum_tr",
+        "wiki_lingua_tr",
+        "tr-wikihow-summ",
+        "mlsum_tr"
+      ],
+      "missing_tasks": [],
+      "required_tasks": [
+        "xlsum_tr",
+        "wiki_lingua_tr",
+        "tr-wikihow-summ",
+        "mlsum_tr"
+      ],
+      "score": 81.06799322840003
+    },
+    "TC": {
+      "aggregation": "unweighted arithmetic mean",
+      "complete": true,
+      "included_tasks": [
+        "sts_tr",
+        "offenseval_tr",
+        "news_cat",
+        "ironytr"
+      ],
+      "missing_tasks": [],
+      "required_tasks": [
+        "sts_tr",
+        "offenseval_tr",
+        "news_cat",
+        "ironytr"
+      ],
+      "score": 38.35736155714401
+    }
+  },
+  "category_scores": {
+    "GEC": 0.9677885309836777,
+    "MCQA": 39.9344067327172,
+    "MT": 58.622266261370385,
+    "NLI": 32.93381902860945,
+    "QA": 8.312866693849003,
+    "SUM": 81.06799322840003,
+    "TC": 38.35736155714401
+  },
+  "complete": true,
+  "created_at": "2026-08-28T23:34:05.793261+00:00",
+  "kind": "cetvel_official_scoring_receipt",
+  "metric_provenance": {
+    "gec": {
+      "auxiliary": {
+        "metric": "mean per-sentence whitespace-token overlap F1",
+        "official": false,
+        "score": 69.08737141439805,
+        "used_in_aggregate": false,
+        "warning": "Diagnostic only. The paper does not define its prose macro-F1; published Tables 4/5 are reproduced by exact match."
+      },
+      "primary_metric": "stripped exact match"
+    },
+    "nlu": {
+      "explicitly_excluded": "acc_norm",
+      "metric": "raw accuracy"
+    },
+    "qa": {
+      "metric": "SQuAD normalized exact match",
+      "normalizer": "lowercase + ASCII punctuation/articles removal + whitespace collapse"
+    },
+    "summarization": {
+      "metric": "BERTScore F1",
+      "model_id": "boun-tabilab/TabiBERT",
+      "num_layers": 22,
+      "requested_revision": "36d24bfae8d67f7b1f7d0827fc43076e4a1c3e9f",
+      "rescale_with_baseline": false,
+      "runtime": {
+        "component": "F1",
+        "implementation": "bert-score",
+        "model_id": "boun-tabilab/TabiBERT",
+        "num_layers": 22,
+        "package_version": "0.3.13",
+        "requested_revision": "36d24bfae8d67f7b1f7d0827fc43076e4a1c3e9f",
+        "rescale_with_baseline": false,
+        "resolved_revision": "36d24bfae8d67f7b1f7d0827fc43076e4a1c3e9f"
+      }
+    },
+    "translation": {
+      "metric": "COMET-22",
+      "model_id": "Unbabel/wmt22-comet-da",
+      "reference_based": true,
+      "requested_revision": "2760a223ac957f30acfb18c8aa649b01cf1d75f2",
+      "runtime": {
+        "implementation": "unbabel-comet",
+        "model_id": "Unbabel/wmt22-comet-da",
+        "package_version": "2.2.7",
+        "reference_based": true,
+        "requested_revision": "2760a223ac957f30acfb18c8aa649b01cf1d75f2",
+        "resolved_revision": "2760a223ac957f30acfb18c8aa649b01cf1d75f2"
+      }
+    }
+  },
+  "model": {
+    "checkpoint_sha256": "2123880d96b2de7d227ff31575b663ac291dcfd9fc9b9419086de032e58d0a98",
+    "checkpoint_step": 28000,
+    "name": "d32-bpe32k-fineweb2-step28000"
+  },
+  "overall_aggregation": "unweighted arithmetic mean of the seven category scores",
+  "overall_score": 37.17092886186767,
+  "protocol": {
+    "category_order": [
+      "QA",
+      "MCQA",
+      "TC",
+      "NLI",
+      "SUM",
+      "MT",
+      "GEC"
+    ],
+    "cetvel_revision": "6119c517e06cce23aaeac103ce3504c9380655e3",
+    "doi": "10.18653/v1/2026.eacl-long.46",
+    "id": "cetvel-eacl2026-table4-compatible-v1",
+    "lm_eval_revision": "6e49b1f6910931882a4b3b105794c6faf96b74e5",
+    "paper": "https://aclanthology.org/2026.eacl-long.46/",
+    "published_results_space_revision": "ec0db45e3bb343294fa7c0dfce68ec02ee310c59",
+    "score_scale": "0-100 percentage points",
+    "table": "Appendix Table 4",
+    "warnings": [
+      "GECTurk uses stripped exact match for Table 4 compatibility. Section 4.2 says macro-F1, but the released task and published Kanarya value prove the table uses exact match.",
+      "The MCQA aggregate includes check_worthiness and relevance_judgment although Table 6 does not display those columns.",
+      "The paper identifies TabiBERT BERTScore but does not publish all BERTScore settings. This implementation pins F1, final layer 22, and rescale_with_baseline=false in the metric receipt."
+    ]
+  },
+  "sample_counts": {
+    "belebele_tr": 900,
+    "bilmecebench": 442,
+    "check_worthiness": 2188,
+    "circumflex_tr": 70,
+    "exams_tr": 393,
+    "gecturk_generation": 20769,
+    "ironytr": 600,
+    "mkqa_tr": 6758,
+    "mlsum_tr": 12775,
+    "mnli_tr": 10000,
+    "news_cat": 250,
+    "offenseval_tr": 3528,
+    "relevance_judgment": 2188,
+    "snli_tr": 10000,
+    "sts_tr": 1379,
+    "tquad": 892,
+    "tr-wikihow-summ": 5984,
+    "turkce_atasozleri": 1730,
+    "turkish_plu_goal_inference": 837,
+    "turkish_plu_next_event_prediction": 655,
+    "turkish_plu_step_inference": 612,
+    "turkish_plu_step_ordering": 1021,
+    "turkishmmlu_biology": 100,
+    "turkishmmlu_chemistry": 100,
+    "turkishmmlu_geography": 100,
+    "turkishmmlu_history": 100,
+    "turkishmmlu_mathematics": 100,
+    "turkishmmlu_philosophy": 100,
+    "turkishmmlu_physics": 100,
+    "turkishmmlu_religion_and_ethics": 100,
+    "turkishmmlu_turkish_language_and_literature": 100,
+    "wiki_lingua_tr": 874,
+    "wmt-en-tr-prompt": 1001,
+    "wmt-tr-en-prompt": 1001,
+    "xcopa_tr": 500,
+    "xlsum_tr": 3397,
+    "xnli_tr": 5010,
+    "xquad_tr": 1190
+  },
+  "schema_version": "1.0.0",
+  "source_receipts": [
+    {
+      "byte_count": 107288749,
+      "format": "json",
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_00/cetvel_full_results.json",
+      "sha256": "2e9fba3bbe196aa45f1b83e5f91dd8a9bf35e2f0b4c76f35cf20293319a28c69",
+      "task_hint": null
+    },
+    {
+      "byte_count": 33798682,
+      "format": "json",
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_01/cetvel_full_results.json",
+      "sha256": "727e7d38be437d2b8e303d04943edce337fde9014bf7d6bc3efa3e8bbc0b5a78",
+      "task_hint": null
+    },
+    {
+      "byte_count": 40071645,
+      "format": "json",
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_02/cetvel_full_results.json",
+      "sha256": "9cd66756ead6b0f9f4f0c81777b4ade346512ab3ee3c9715402ea0e81e5bac63",
+      "task_hint": null
+    },
+    {
+      "byte_count": 43398272,
+      "format": "json",
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_03/cetvel_full_results.json",
+      "sha256": "6940cfe5c3c1963d2ffeaabca41936d13067c4a9c0a6b0a5a637336f6e14fb1b",
+      "task_hint": null
+    },
+    {
+      "byte_count": 4623474,
+      "format": "json",
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_04/cetvel_full_results.json",
+      "sha256": "e02164092f62a058a4c64038c8721374052709f2ca92b7872fa8332de8daa737",
+      "task_hint": null
+    },
+    {
+      "byte_count": 37638514,
+      "format": "json",
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_05/cetvel_full_results.json",
+      "sha256": "f8e0e1f8fdeadac6f7df0c17d508d2a7c921398ec7847c2de5d00e3901a7e31c",
+      "task_hint": null
+    },
+    {
+      "byte_count": 57118278,
+      "format": "json",
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_06/cetvel_full_results.json",
+      "sha256": "de0d53159ae5c8347d395507a4d47b1b8329c44f92d89c36f9d665aaae643398",
+      "task_hint": null
+    },
+    {
+      "byte_count": 47451356,
+      "format": "json",
+      "path": "/ari/users/nunal/nanochat-turk-d32-fineweb2-bpe32k/cetvel_out/eacl2026_published_table_compat_step028000_4gpu_v1/shard_07/cetvel_full_results.json",
+      "sha256": "4971617ddc09e6dfe155c4807c8795c4206875520caba762551981e74dad2897",
+      "task_hint": null
+    }
+  ],
+  "task_details": {
+    "belebele_tr": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 900,
+      "score": 23.88888888888889,
+      "source": "recomputed from logged sample acc"
+    },
+    "bilmecebench": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 442,
+      "score": 21.71945701357466,
+      "source": "recomputed from logged sample acc"
+    },
+    "check_worthiness": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 2188,
+      "score": 37.61425959780622,
+      "source": "recomputed from logged sample acc"
+    },
+    "circumflex_tr": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 70,
+      "score": 48.57142857142857,
+      "source": "recomputed from logged sample acc"
+    },
+    "exams_tr": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 393,
+      "score": 31.297709923664126,
+      "source": "recomputed from logged sample acc"
+    },
+    "gecturk_generation": {
+      "metric": "stripped exact match",
+      "paper_compatibility": "Appendix Tables 4 and 5",
+      "sample_count": 20769,
+      "scale": "percentage points",
+      "score": 0.9677885309836777,
+      "source": "recomputed stripped exact match from logged predictions"
+    },
+    "ironytr": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 600,
+      "score": 50.0,
+      "source": "recomputed from logged sample acc"
+    },
+    "mkqa_tr": {
+      "metric": "SQuAD normalized exact match",
+      "sample_count": 6758,
+      "scale": "percentage points",
+      "score": 4.483575022195916,
+      "source": "recomputed from logged predictions"
+    },
+    "mlsum_tr": {
+      "metric": "BERTScore F1",
+      "sample_count": 12775,
+      "scale": "percentage points",
+      "score": 83.40488514461629,
+      "source": "recomputed from logged predictions"
+    },
+    "mnli_tr": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 10000,
+      "score": 32.87,
+      "source": "recomputed from logged sample acc"
+    },
+    "news_cat": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 250,
+      "score": 70.0,
+      "source": "recomputed from logged sample acc"
+    },
+    "offenseval_tr": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 3528,
+      "score": 20.521541950113377,
+      "source": "recomputed from logged sample acc"
+    },
+    "relevance_judgment": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 2188,
+      "score": 59.506398537477146,
+      "source": "recomputed from logged sample acc"
+    },
+    "snli_tr": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 10000,
+      "score": 31.66,
+      "source": "recomputed from logged sample acc"
+    },
+    "sts_tr": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 1379,
+      "score": 12.907904278462654,
+      "source": "recomputed from logged sample acc"
+    },
+    "tquad": {
+      "metric": "SQuAD normalized exact match",
+      "sample_count": 892,
+      "scale": "percentage points",
+      "score": 12.219730941704036,
+      "source": "recomputed from logged predictions"
+    },
+    "tr-wikihow-summ": {
+      "metric": "BERTScore F1",
+      "sample_count": 5984,
+      "scale": "percentage points",
+      "score": 80.75325535859335,
+      "source": "recomputed from logged predictions"
+    },
+    "turkce_atasozleri": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 1730,
+      "score": 0.0,
+      "source": "recomputed from logged sample acc"
+    },
+    "turkish_plu": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": null,
+      "score": 51.2,
+      "source": "lm-eval aggregate raw acc"
+    },
+    "turkish_plu_goal_inference": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 837,
+      "score": 44.44444444444444,
+      "source": "recomputed from logged sample acc"
+    },
+    "turkish_plu_next_event_prediction": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 655,
+      "score": 49.00763358778626,
+      "source": "recomputed from logged sample acc"
+    },
+    "turkish_plu_step_inference": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 612,
+      "score": 39.37908496732026,
+      "source": "recomputed from logged sample acc"
+    },
+    "turkish_plu_step_ordering": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 1021,
+      "score": 65.23016650342801,
+      "source": "recomputed from logged sample acc"
+    },
+    "turkishmmlu": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": null,
+      "score": 18.22222222222222,
+      "source": "lm-eval aggregate raw acc"
+    },
+    "wiki_lingua_tr": {
+      "metric": "BERTScore F1",
+      "sample_count": 874,
+      "scale": "percentage points",
+      "score": 79.75091866006568,
+      "source": "recomputed from logged predictions"
+    },
+    "wmt-en-tr-prompt": {
+      "direction": {
+        "paper_label": "WMT16TR-EN",
+        "source_language": "tr",
+        "target_language": "en"
+      },
+      "metric": "COMET-22",
+      "sample_count": 1001,
+      "scale": "percentage points",
+      "score": 62.15747596322001,
+      "source": "recomputed from logged predictions"
+    },
+    "wmt-tr-en-prompt": {
+      "direction": {
+        "paper_label": "WMT16EN-TR",
+        "source_language": "en",
+        "target_language": "tr"
+      },
+      "metric": "COMET-22",
+      "sample_count": 1001,
+      "scale": "percentage points",
+      "score": 55.08705655952076,
+      "source": "recomputed from logged predictions"
+    },
+    "xcopa_tr": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 500,
+      "score": 69.0,
+      "source": "recomputed from logged sample acc"
+    },
+    "xlsum_tr": {
+      "metric": "BERTScore F1",
+      "sample_count": 3397,
+      "scale": "percentage points",
+      "score": 80.36291375032481,
+      "source": "recomputed from logged predictions"
+    },
+    "xnli_tr": {
+      "metric": "accuracy",
+      "note": "raw acc; acc_norm is intentionally not used",
+      "sample_count": 5010,
+      "score": 34.271457085828345,
+      "source": "recomputed from logged sample acc"
+    },
+    "xquad_tr": {
+      "metric": "SQuAD normalized exact match",
+      "sample_count": 1190,
+      "scale": "percentage points",
+      "score": 8.235294117647058,
+      "source": "recomputed from logged predictions"
+    }
+  },
+  "task_scores": {
+    "belebele_tr": 23.88888888888889,
+    "bilmecebench": 21.71945701357466,
+    "check_worthiness": 37.61425959780622,
+    "circumflex_tr": 48.57142857142857,
+    "exams_tr": 31.297709923664126,
+    "gecturk_generation": 0.9677885309836777,
+    "ironytr": 50.0,
+    "mkqa_tr": 4.483575022195916,
+    "mlsum_tr": 83.40488514461629,
+    "mnli_tr": 32.87,
+    "news_cat": 70.0,
+    "offenseval_tr": 20.521541950113377,
+    "relevance_judgment": 59.506398537477146,
+    "snli_tr": 31.66,
+    "sts_tr": 12.907904278462654,
+    "tquad": 12.219730941704036,
+    "tr-wikihow-summ": 80.75325535859335,
+    "turkce_atasozleri": 0.0,
+    "turkish_plu": 51.2,
+    "turkish_plu_goal_inference": 44.44444444444444,
+    "turkish_plu_next_event_prediction": 49.00763358778626,
+    "turkish_plu_step_inference": 39.37908496732026,
+    "turkish_plu_step_ordering": 65.23016650342801,
+    "turkishmmlu": 18.22222222222222,
+    "wiki_lingua_tr": 79.75091866006568,
+    "wmt-en-tr-prompt": 62.15747596322001,
+    "wmt-tr-en-prompt": 55.08705655952076,
+    "xcopa_tr": 69.0,
+    "xlsum_tr": 80.36291375032481,
+    "xnli_tr": 34.271457085828345,
+    "xquad_tr": 8.235294117647058
+  }
+}

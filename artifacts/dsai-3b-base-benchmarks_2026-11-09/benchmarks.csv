@@ -1,0 +1,40 @@
+model,checkpoint_step,level,name,score_0_100,metric
+dsai-3b-base,28000,overall,CETVEL,37.17092886186767,unweighted arithmetic mean of the seven category scores
+dsai-3b-base,28000,category,QA,8.312866693849003,unweighted arithmetic mean
+dsai-3b-base,28000,category,MCQA,39.9344067327172,unweighted arithmetic mean
+dsai-3b-base,28000,category,TC,38.35736155714401,unweighted arithmetic mean
+dsai-3b-base,28000,category,NLI,32.93381902860945,unweighted arithmetic mean
+dsai-3b-base,28000,category,SUM,81.06799322840003,unweighted arithmetic mean
+dsai-3b-base,28000,category,MT,58.622266261370385,unweighted arithmetic mean
+dsai-3b-base,28000,category,GEC,0.9677885309836777,unweighted arithmetic mean
+dsai-3b-base,28000,task_or_group,belebele_tr,23.88888888888889,accuracy
+dsai-3b-base,28000,task_or_group,bilmecebench,21.71945701357466,accuracy
+dsai-3b-base,28000,task_or_group,check_worthiness,37.61425959780622,accuracy
+dsai-3b-base,28000,task_or_group,circumflex_tr,48.57142857142857,accuracy
+dsai-3b-base,28000,task_or_group,exams_tr,31.297709923664126,accuracy
+dsai-3b-base,28000,task_or_group,gecturk_generation,0.9677885309836777,stripped exact match
+dsai-3b-base,28000,task_or_group,ironytr,50.0,accuracy
+dsai-3b-base,28000,task_or_group,mkqa_tr,4.483575022195916,SQuAD normalized exact match
+dsai-3b-base,28000,task_or_group,mlsum_tr,83.40488514461629,BERTScore F1
+dsai-3b-base,28000,task_or_group,mnli_tr,32.87,accuracy
+dsai-3b-base,28000,task_or_group,news_cat,70.0,accuracy
+dsai-3b-base,28000,task_or_group,offenseval_tr,20.521541950113377,accuracy
+dsai-3b-base,28000,task_or_group,relevance_judgment,59.506398537477146,accuracy
+dsai-3b-base,28000,task_or_group,snli_tr,31.66,accuracy
+dsai-3b-base,28000,task_or_group,sts_tr,12.907904278462654,accuracy
+dsai-3b-base,28000,task_or_group,tquad,12.219730941704036,SQuAD normalized exact match
+dsai-3b-base,28000,task_or_group,tr-wikihow-summ,80.75325535859335,BERTScore F1
+dsai-3b-base,28000,task_or_group,turkce_atasozleri,0.0,accuracy
+dsai-3b-base,28000,task_or_group,turkish_plu,51.2,accuracy
+dsai-3b-base,28000,task_or_group,turkish_plu_goal_inference,44.44444444444444,accuracy
+dsai-3b-base,28000,task_or_group,turkish_plu_next_event_prediction,49.00763358778626,accuracy
+dsai-3b-base,28000,task_or_group,turkish_plu_step_inference,39.37908496732026,accuracy
+dsai-3b-base,28000,task_or_group,turkish_plu_step_ordering,65.23016650342801,accuracy
+dsai-3b-base,28000,task_or_group,turkishmmlu,18.22222222222222,accuracy
+dsai-3b-base,28000,task_or_group,wiki_lingua_tr,79.75091866006568,BERTScore F1
+dsai-3b-base,28000,task_or_group,wmt-en-tr-prompt,62.15747596322001,COMET-22
+dsai-3b-base,28000,task_or_group,wmt-tr-en-prompt,55.08705655952076,COMET-22
+dsai-3b-base,28000,task_or_group,xcopa_tr,69.0,accuracy
+dsai-3b-base,28000,task_or_group,xlsum_tr,80.36291375032481,BERTScore F1
+dsai-3b-base,28000,task_or_group,xnli_tr,34.271457085828345,accuracy
+dsai-3b-base,28000,task_or_group,xquad_tr,8.235294117647058,SQuAD normalized exact match

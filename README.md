@@ -20,6 +20,15 @@ Start with the canonical
 [`MorphBPE-alignment.md`](MorphBPE-alignment.md) for the paper comparison,
 completed work, publication audit, limitations, and prioritized TODO list.
 
+## dsai-3b-base
+
+The completed 2.82B-parameter d32 FineWeb-2 checkpoint is named
+**`dsai-3b-base`**. Its archived CETVEL EACL 2026 table-compatible score is
+**37.1709 / 100**. Full-precision metrics, checkpoint identity, original
+receipts and interpretation notes are published in
+[`artifacts/dsai-3b-base-benchmarks_2026-11-09`](artifacts/dsai-3b-base-benchmarks_2026-11-09/).
+This GitHub publication contains benchmark evidence, not model weights.
+
 ## Current Result
 
 Across the currently checked outputs, all nine MorphBPE variants improve
