@@ -2,6 +2,8 @@
 
 **Direction legend:** ↑ means higher is better for the stated objective; ↓ means lower is better; ↔ means descriptive or a tradeoff, with no universally better direction. See the [metric guide](metric_guide.md) for every definition, denominator and limitation.
 
+**Bold scores** mark the best comparable value for that metric within the same vocabulary and table's split/sample; all ties at displayed precision are bold. They do not identify an overall winner. Descriptive fields, uncontrolled timings, normalizing references and groups with only one measured value stay unbolded. Analyzer fallback is compared only on the common hash-100k screen; judge scores only within the shared scripted rubric.
+
 **Objectives:** lower tokens/word and higher bytes/token mean more compact lossless encoding. Higher one-token coverage helps isolated-word compression only. Higher morphology preservation, boundary agreement and consistency, or lower morphology edit distance, mean closer agreement with the automatic reference; they do not establish better LLM performance. Lower multi-character character-only coverage means less character-level fragmentation.
 
 **Diagnostics:** vocabulary size, vocabulary use, sample counts, inclusive character-only/byte-only coverage and resample SD have no universal optimum. Zero roundtrip failures is ideal for exact text recovery; fewer UNKs and alignment exclusions are better when applicable. Speed ↑ and time ↓ apply only to matched workloads and hardware; recorded timings here do not establish a controlled speed ranking. Normalizing references' apparent compression and boundary figures remain descriptive.
@@ -16,35 +18,35 @@ Job **496924**: COMPLETED, exit 0:0, elapsed 00:06:46. Every row covers 100,000 
 
 | Vocab ↔ | Tokenizer | Tokens/word ↓ | Isolated tokens/word ↓ | One-token words % ↑ compression | Bytes/token ↑ | Exact morph sequence % ↑ | Boundaries preserved % ↑ | Morph edit ↓ | Consistency F1 ↑ |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| 32,768 | Raw BPE | 1.5976 | 2.0472 | 31.05 | 5.0681 | 32.46 | 15.75 | 1.7096 | 0.3241 |
-| 32,768 | MorphBPE / TRmorph | 1.8021 | 1.9890 | 34.09 | 4.4930 | 41.54 | 54.23 | 1.4319 | 0.5129 |
-| 32,768 | MorphBPE / Zemberek | 1.7845 | 1.9810 | 34.06 | 4.5373 | 39.50 | 40.89 | 1.4986 | 0.4357 |
+| 32,768 | Raw BPE | **1.5976** | 2.0472 | 31.05 | **5.0681** | 32.46 | 15.75 | 1.7096 | 0.3241 |
+| 32,768 | MorphBPE / TRmorph | 1.8021 | 1.9890 | **34.09** | 4.4930 | **41.54** | **54.23** | **1.4319** | **0.5129** |
+| 32,768 | MorphBPE / Zemberek | 1.7845 | **1.9810** | 34.06 | 4.5373 | 39.50 | 40.89 | 1.4986 | 0.4357 |
 | 32,768 | MorphBPE / TurkishDelight | 1.7217 | 2.0357 | 32.73 | 4.7029 | 37.54 | 35.52 | 1.5544 | 0.4795 |
-| 65,536 | Raw BPE | 1.4689 | 1.8322 | 39.44 | 5.5123 | 40.04 | 10.33 | 1.4627 | 0.2863 |
-| 65,536 | MorphBPE / TRmorph | 1.6992 | 1.7625 | 43.17 | 4.7651 | 50.56 | 50.59 | 1.1697 | 0.4421 |
-| 65,536 | MorphBPE / Zemberek | 1.6899 | 1.7616 | 42.78 | 4.7915 | 47.82 | 37.47 | 1.2527 | 0.3743 |
+| 65,536 | Raw BPE | **1.4689** | 1.8322 | 39.44 | **5.5123** | 40.04 | 10.33 | 1.4627 | 0.2863 |
+| 65,536 | MorphBPE / TRmorph | 1.6992 | 1.7625 | **43.17** | 4.7651 | **50.56** | **50.59** | **1.1697** | **0.4421** |
+| 65,536 | MorphBPE / Zemberek | 1.6899 | **1.7616** | 42.78 | 4.7915 | 47.82 | 37.47 | 1.2527 | 0.3743 |
 | 65,536 | MorphBPE / TurkishDelight | 1.5953 | 1.8192 | 40.76 | 5.0755 | 45.56 | 28.13 | 1.3071 | 0.4296 |
-| 131,072 | Raw BPE | 1.3770 | 1.6372 | 49.58 | 5.8801 | 47.01 | 6.32 | 1.2623 | 0.2412 |
-| 131,072 | MorphBPE / TRmorph | 1.6191 | 1.6027 | 50.73 | 5.0010 | 56.66 | 46.37 | 1.0045 | 0.3786 |
-| 131,072 | MorphBPE / Zemberek | 1.6133 | 1.6026 | 50.17 | 5.0188 | 53.80 | 34.03 | 1.0859 | 0.3330 |
-| 131,072 | MorphBPE / TurkishDelight | 1.4985 | 1.6481 | 48.56 | 5.4035 | 51.37 | 21.75 | 1.1345 | 0.3971 |
+| 131,072 | Raw BPE | **1.3770** | 1.6372 | 49.58 | **5.8801** | 47.01 | 6.32 | 1.2623 | 0.2412 |
+| 131,072 | MorphBPE / TRmorph | 1.6191 | 1.6027 | **50.73** | 5.0010 | **56.66** | **46.37** | **1.0045** | 0.3786 |
+| 131,072 | MorphBPE / Zemberek | 1.6133 | **1.6026** | 50.17 | 5.0188 | 53.80 | 34.03 | 1.0859 | 0.3330 |
+| 131,072 | MorphBPE / TurkishDelight | 1.4985 | 1.6481 | 48.56 | 5.4035 | 51.37 | 21.75 | 1.1345 | **0.3971** |
 
 **Interpretation:** Lowest corpus fertility: Raw BPE at 32k, 64k and 128k. Lowest isolated fertility: Zemberek at 32k, 64k and 128k. The lead at 64k and 128k is at most 0.001 token/word at the displayed precision. Lowest morphology edit distance: TRmorph at 32k, 64k and 128k. Highest one-token coverage, exact-morpheme agreement and boundary preservation: TRmorph at 32k, 64k and 128k. Highest original pairwise consistency F1: TRmorph at 32k and 64k; TurkishDelight at 128k. TurkishDelight at 128k has both higher isolated fertility and lower one-token coverage than same-size raw BPE, despite its morphology improvements.
 
 | Vocab ↔ | Tokenizer | Normalized morph edit ↓ | Consistency P ↑ | Consistency R ↑ | F1 resample SD ↔ |
 |---:|---|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 1.2328 | 0.9630 | 0.1949 | 0.0079 |
-| 32,768 | MorphBPE / TRmorph | 1.0362 | 0.9865 | 0.3466 | 0.0046 |
+| 32,768 | MorphBPE / TRmorph | **1.0362** | **0.9865** | **0.3466** | 0.0046 |
 | 32,768 | MorphBPE / Zemberek | 1.0773 | 0.9831 | 0.2799 | 0.0089 |
 | 32,768 | MorphBPE / TurkishDelight | 1.1335 | 0.9825 | 0.3172 | 0.0072 |
 | 65,536 | Raw BPE | 1.0124 | 0.9804 | 0.1677 | 0.0085 |
-| 65,536 | MorphBPE / TRmorph | 0.7982 | 0.9919 | 0.2845 | 0.0043 |
+| 65,536 | MorphBPE / TRmorph | **0.7982** | **0.9919** | **0.2845** | 0.0043 |
 | 65,536 | MorphBPE / Zemberek | 0.8560 | 0.9895 | 0.2309 | 0.0089 |
 | 65,536 | MorphBPE / TurkishDelight | 0.9094 | 0.9880 | 0.2745 | 0.0060 |
 | 131,072 | Raw BPE | 0.8188 | 0.9913 | 0.1373 | 0.0079 |
-| 131,072 | MorphBPE / TRmorph | 0.6388 | 0.9955 | 0.2338 | 0.0036 |
+| 131,072 | MorphBPE / TRmorph | **0.6388** | **0.9955** | 0.2338 | 0.0036 |
 | 131,072 | MorphBPE / Zemberek | 0.6982 | 0.9933 | 0.2001 | 0.0091 |
-| 131,072 | MorphBPE / TurkishDelight | 0.7437 | 0.9933 | 0.2482 | 0.0062 |
+| 131,072 | MorphBPE / TurkishDelight | 0.7437 | 0.9933 | **0.2482** | 0.0062 |
 
 **Interpretation:** Lowest normalized morphology edit distance: TRmorph at 32k, 64k and 128k. Highest pairwise consistency precision: TRmorph at 32k, 64k and 128k. Highest pairwise consistency recall: TRmorph at 32k and 64k; TurkishDelight at 128k. Lower resample SD is not a quality win or a confidence interval; it measures variability of the sampled consistency calculation.
 
@@ -54,18 +56,18 @@ These are recorded timings, not a controlled tokenizer speed benchmark. `Encode 
 
 | Vocab ↔ | Tokenizer | Encode M tok/s ↑ speed | Encoding s (summed) ↓ time | Document-pass wall s ↓ time | Workers × threads ↔ | Used vocab % ↔ | Roundtrip failures ↓ (0 ideal) |
 |---:|---|---:|---:|---:|---|---:|---:|
-| 32,768 | Raw BPE | 1.293 | 51.79 | 11.22 | 32 × 1 | 99.74 | 0 |
-| 32,768 | MorphBPE / TRmorph | 1.351 | 55.92 | 11.31 | 32 × 1 | 99.68 | 0 |
-| 32,768 | MorphBPE / Zemberek | 1.323 | 56.54 | 11.33 | 32 × 1 | 99.60 | 0 |
-| 32,768 | MorphBPE / TurkishDelight | 1.313 | 54.97 | 11.34 | 32 × 1 | 99.39 | 0 |
-| 65,536 | Raw BPE | 1.236 | 49.82 | 11.17 | 32 × 1 | 99.79 | 0 |
-| 65,536 | MorphBPE / TRmorph | 1.287 | 55.35 | 11.40 | 32 × 1 | 99.53 | 0 |
-| 65,536 | MorphBPE / Zemberek | 1.283 | 55.21 | 11.53 | 32 × 1 | 99.36 | 0 |
-| 65,536 | MorphBPE / TurkishDelight | 1.237 | 54.06 | 11.43 | 32 × 1 | 98.83 | 0 |
-| 131,072 | Raw BPE | 1.176 | 49.10 | 11.26 | 32 × 1 | 99.61 | 0 |
-| 131,072 | MorphBPE / TRmorph | 1.216 | 55.79 | 11.47 | 32 × 1 | 98.82 | 0 |
-| 131,072 | MorphBPE / Zemberek | 1.195 | 56.59 | 11.64 | 32 × 1 | 98.54 | 0 |
-| 131,072 | MorphBPE / TurkishDelight | 1.156 | 54.34 | 11.45 | 32 × 1 | 97.45 | 0 |
+| 32,768 | Raw BPE | 1.293 | 51.79 | 11.22 | 32 × 1 | 99.74 | **0** |
+| 32,768 | MorphBPE / TRmorph | 1.351 | 55.92 | 11.31 | 32 × 1 | 99.68 | **0** |
+| 32,768 | MorphBPE / Zemberek | 1.323 | 56.54 | 11.33 | 32 × 1 | 99.60 | **0** |
+| 32,768 | MorphBPE / TurkishDelight | 1.313 | 54.97 | 11.34 | 32 × 1 | 99.39 | **0** |
+| 65,536 | Raw BPE | 1.236 | 49.82 | 11.17 | 32 × 1 | 99.79 | **0** |
+| 65,536 | MorphBPE / TRmorph | 1.287 | 55.35 | 11.40 | 32 × 1 | 99.53 | **0** |
+| 65,536 | MorphBPE / Zemberek | 1.283 | 55.21 | 11.53 | 32 × 1 | 99.36 | **0** |
+| 65,536 | MorphBPE / TurkishDelight | 1.237 | 54.06 | 11.43 | 32 × 1 | 98.83 | **0** |
+| 131,072 | Raw BPE | 1.176 | 49.10 | 11.26 | 32 × 1 | 99.61 | **0** |
+| 131,072 | MorphBPE / TRmorph | 1.216 | 55.79 | 11.47 | 32 × 1 | 98.82 | **0** |
+| 131,072 | MorphBPE / Zemberek | 1.195 | 56.59 | 11.64 | 32 × 1 | 98.54 | **0** |
+| 131,072 | MorphBPE / TurkishDelight | 1.156 | 54.34 | 11.45 | 32 × 1 | 97.45 | **0** |
 
 **Interpretation:** Among the local tokenizer rows, highest recorded encoding tokens/s: TRmorph at 32k, 64k and 128k. All rows tie at zero observed roundtrip failures. These timings use tokenizer-dependent token counts, so they do not establish a controlled raw-text-speed ranking. High vocabulary usage alone is not evidence of better morphology.
 
@@ -75,35 +77,35 @@ Job **496925**: COMPLETED, exit 0:0, elapsed 00:24:03. Every row covers 1,000,00
 
 | Vocab ↔ | Tokenizer | Tokens/word ↓ | Isolated tokens/word ↓ | One-token words % ↑ compression | Bytes/token ↑ | Exact morph sequence % ↑ | Boundaries preserved % ↑ | Morph edit ↓ | Consistency F1 ↑ |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| 32,768 | Raw BPE | 1.5519 | 2.0472 | 31.05 | 5.2641 | 32.46 | 15.04 | 1.7096 | 0.3241 |
-| 32,768 | MorphBPE / TRmorph | 1.7711 | 1.9890 | 34.09 | 4.6126 | 41.54 | 54.12 | 1.4319 | 0.5129 |
-| 32,768 | MorphBPE / Zemberek | 1.7531 | 1.9810 | 34.06 | 4.6600 | 39.50 | 40.49 | 1.4986 | 0.4357 |
+| 32,768 | Raw BPE | **1.5519** | 2.0472 | 31.05 | **5.2641** | 32.46 | 15.04 | 1.7096 | 0.3241 |
+| 32,768 | MorphBPE / TRmorph | 1.7711 | 1.9890 | **34.09** | 4.6126 | **41.54** | **54.12** | **1.4319** | **0.5129** |
+| 32,768 | MorphBPE / Zemberek | 1.7531 | **1.9810** | 34.06 | 4.6600 | 39.50 | 40.49 | 1.4986 | 0.4357 |
 | 32,768 | MorphBPE / TurkishDelight | 1.6854 | 2.0357 | 32.73 | 4.8470 | 37.54 | 34.84 | 1.5544 | 0.4795 |
-| 65,536 | Raw BPE | 1.4293 | 1.8322 | 39.44 | 5.7154 | 40.04 | 9.69 | 1.4627 | 0.2863 |
-| 65,536 | MorphBPE / TRmorph | 1.6729 | 1.7625 | 43.17 | 4.8832 | 50.56 | 50.49 | 1.1697 | 0.4421 |
-| 65,536 | MorphBPE / Zemberek | 1.6631 | 1.7616 | 42.78 | 4.9121 | 47.82 | 37.04 | 1.2527 | 0.3743 |
+| 65,536 | Raw BPE | **1.4293** | 1.8322 | 39.44 | **5.7154** | 40.04 | 9.69 | 1.4627 | 0.2863 |
+| 65,536 | MorphBPE / TRmorph | 1.6729 | 1.7625 | **43.17** | 4.8832 | **50.56** | **50.49** | **1.1697** | **0.4421** |
+| 65,536 | MorphBPE / Zemberek | 1.6631 | **1.7616** | 42.78 | 4.9121 | 47.82 | 37.04 | 1.2527 | 0.3743 |
 | 65,536 | MorphBPE / TurkishDelight | 1.5641 | 1.8192 | 40.76 | 5.2230 | 45.56 | 27.45 | 1.3071 | 0.4296 |
-| 131,072 | Raw BPE | 1.3432 | 1.6372 | 49.58 | 6.0818 | 47.01 | 5.80 | 1.2623 | 0.2412 |
-| 131,072 | MorphBPE / TRmorph | 1.5968 | 1.6027 | 50.73 | 5.1159 | 56.66 | 46.26 | 1.0045 | 0.3786 |
-| 131,072 | MorphBPE / Zemberek | 1.5909 | 1.6026 | 50.17 | 5.1351 | 53.80 | 33.67 | 1.0859 | 0.3330 |
-| 131,072 | MorphBPE / TurkishDelight | 1.4705 | 1.6481 | 48.56 | 5.5552 | 51.37 | 21.07 | 1.1345 | 0.3971 |
+| 131,072 | Raw BPE | **1.3432** | 1.6372 | 49.58 | **6.0818** | 47.01 | 5.80 | 1.2623 | 0.2412 |
+| 131,072 | MorphBPE / TRmorph | 1.5968 | 1.6027 | **50.73** | 5.1159 | **56.66** | **46.26** | **1.0045** | 0.3786 |
+| 131,072 | MorphBPE / Zemberek | 1.5909 | **1.6026** | 50.17 | 5.1351 | 53.80 | 33.67 | 1.0859 | 0.3330 |
+| 131,072 | MorphBPE / TurkishDelight | 1.4705 | 1.6481 | 48.56 | 5.5552 | 51.37 | 21.07 | 1.1345 | **0.3971** |
 
 **Interpretation:** Lowest corpus fertility: Raw BPE at 32k, 64k and 128k. Lowest isolated fertility: Zemberek at 32k, 64k and 128k. The lead at 64k and 128k is at most 0.001 token/word at the displayed precision. Lowest morphology edit distance: TRmorph at 32k, 64k and 128k. Highest one-token coverage, exact-morpheme agreement and boundary preservation: TRmorph at 32k, 64k and 128k. Highest original pairwise consistency F1: TRmorph at 32k and 64k; TurkishDelight at 128k. TurkishDelight at 128k has both higher isolated fertility and lower one-token coverage than same-size raw BPE, despite its morphology improvements.
 
 | Vocab ↔ | Tokenizer | Normalized morph edit ↓ | Consistency P ↑ | Consistency R ↑ | F1 resample SD ↔ |
 |---:|---|---:|---:|---:|---:|
 | 32,768 | Raw BPE | 1.2328 | 0.9630 | 0.1949 | 0.0079 |
-| 32,768 | MorphBPE / TRmorph | 1.0362 | 0.9865 | 0.3466 | 0.0046 |
+| 32,768 | MorphBPE / TRmorph | **1.0362** | **0.9865** | **0.3466** | 0.0046 |
 | 32,768 | MorphBPE / Zemberek | 1.0773 | 0.9831 | 0.2799 | 0.0089 |
 | 32,768 | MorphBPE / TurkishDelight | 1.1335 | 0.9825 | 0.3172 | 0.0072 |
 | 65,536 | Raw BPE | 1.0124 | 0.9804 | 0.1677 | 0.0085 |
-| 65,536 | MorphBPE / TRmorph | 0.7982 | 0.9919 | 0.2845 | 0.0043 |
+| 65,536 | MorphBPE / TRmorph | **0.7982** | **0.9919** | **0.2845** | 0.0043 |
 | 65,536 | MorphBPE / Zemberek | 0.8560 | 0.9895 | 0.2309 | 0.0089 |
 | 65,536 | MorphBPE / TurkishDelight | 0.9094 | 0.9880 | 0.2745 | 0.0060 |
 | 131,072 | Raw BPE | 0.8188 | 0.9913 | 0.1373 | 0.0079 |
-| 131,072 | MorphBPE / TRmorph | 0.6388 | 0.9955 | 0.2338 | 0.0036 |
+| 131,072 | MorphBPE / TRmorph | **0.6388** | **0.9955** | 0.2338 | 0.0036 |
 | 131,072 | MorphBPE / Zemberek | 0.6982 | 0.9933 | 0.2001 | 0.0091 |
-| 131,072 | MorphBPE / TurkishDelight | 0.7437 | 0.9933 | 0.2482 | 0.0062 |
+| 131,072 | MorphBPE / TurkishDelight | 0.7437 | 0.9933 | **0.2482** | 0.0062 |
 
 **Interpretation:** Lowest normalized morphology edit distance: TRmorph at 32k, 64k and 128k. Highest pairwise consistency precision: TRmorph at 32k, 64k and 128k. Highest pairwise consistency recall: TRmorph at 32k and 64k; TurkishDelight at 128k. Lower resample SD is not a quality win or a confidence interval; it measures variability of the sampled consistency calculation.
 
@@ -113,18 +115,18 @@ These are recorded timings, not a controlled tokenizer speed benchmark. `Encode 
 
 | Vocab ↔ | Tokenizer | Encode M tok/s ↑ speed | Encoding s (summed) ↓ time | Document-pass wall s ↓ time | Workers × threads ↔ | Used vocab % ↔ | Roundtrip failures ↓ (0 ideal) |
 |---:|---|---:|---:|---:|---|---:|---:|
-| 32,768 | Raw BPE | 1.358 | 462.96 | 96.37 | 32 × 1 | 99.82 | 0 |
-| 32,768 | MorphBPE / TRmorph | 1.415 | 507.05 | 98.95 | 32 × 1 | 99.82 | 0 |
-| 32,768 | MorphBPE / Zemberek | 1.420 | 500.25 | 97.79 | 32 × 1 | 99.82 | 0 |
-| 32,768 | MorphBPE / TurkishDelight | 1.377 | 495.90 | 98.22 | 32 × 1 | 99.78 | 0 |
-| 65,536 | Raw BPE | 1.319 | 438.93 | 95.19 | 32 × 1 | 99.91 | 0 |
-| 65,536 | MorphBPE / TRmorph | 1.315 | 515.43 | 98.79 | 32 × 1 | 99.90 | 0 |
-| 65,536 | MorphBPE / Zemberek | 1.354 | 497.63 | 97.64 | 32 × 1 | 99.87 | 0 |
-| 65,536 | MorphBPE / TurkishDelight | 1.304 | 486.02 | 98.63 | 32 × 1 | 99.73 | 0 |
-| 131,072 | Raw BPE | 1.251 | 434.92 | 95.23 | 32 × 1 | 99.95 | 0 |
-| 131,072 | MorphBPE / TRmorph | 1.243 | 520.24 | 99.85 | 32 × 1 | 99.92 | 0 |
-| 131,072 | MorphBPE / Zemberek | 1.265 | 509.44 | 99.11 | 32 × 1 | 99.83 | 0 |
-| 131,072 | MorphBPE / TurkishDelight | 1.259 | 473.28 | 96.70 | 32 × 1 | 99.44 | 0 |
+| 32,768 | Raw BPE | 1.358 | 462.96 | 96.37 | 32 × 1 | 99.82 | **0** |
+| 32,768 | MorphBPE / TRmorph | 1.415 | 507.05 | 98.95 | 32 × 1 | 99.82 | **0** |
+| 32,768 | MorphBPE / Zemberek | 1.420 | 500.25 | 97.79 | 32 × 1 | 99.82 | **0** |
+| 32,768 | MorphBPE / TurkishDelight | 1.377 | 495.90 | 98.22 | 32 × 1 | 99.78 | **0** |
+| 65,536 | Raw BPE | 1.319 | 438.93 | 95.19 | 32 × 1 | 99.91 | **0** |
+| 65,536 | MorphBPE / TRmorph | 1.315 | 515.43 | 98.79 | 32 × 1 | 99.90 | **0** |
+| 65,536 | MorphBPE / Zemberek | 1.354 | 497.63 | 97.64 | 32 × 1 | 99.87 | **0** |
+| 65,536 | MorphBPE / TurkishDelight | 1.304 | 486.02 | 98.63 | 32 × 1 | 99.73 | **0** |
+| 131,072 | Raw BPE | 1.251 | 434.92 | 95.23 | 32 × 1 | 99.95 | **0** |
+| 131,072 | MorphBPE / TRmorph | 1.243 | 520.24 | 99.85 | 32 × 1 | 99.92 | **0** |
+| 131,072 | MorphBPE / Zemberek | 1.265 | 509.44 | 99.11 | 32 × 1 | 99.83 | **0** |
+| 131,072 | MorphBPE / TurkishDelight | 1.259 | 473.28 | 96.70 | 32 × 1 | 99.44 | **0** |
 
 **Interpretation:** Among the local tokenizer rows, highest recorded encoding tokens/s: Zemberek at 32k, 64k and 128k. All rows tie at zero observed roundtrip failures. These timings use tokenizer-dependent token counts, so they do not establish a controlled raw-text-speed ranking. High vocabulary usage alone is not evidence of better morphology.
 

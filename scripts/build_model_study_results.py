@@ -296,10 +296,48 @@ def build():
     training_fields = ["run_id", "tokenizer", "depth", "parameters", "training_minutes", "estimated_training_flops", "peak_memory_mib", "mfu_percent", "gpu_count", "training_job_id", "scheduler_state", "scheduler_elapsed", "source_artifact", "source_report_path", "source_report_sha256"]
     (OUT / "model_training_statistics.csv").write_text(csv_text(training_rows, training_fields))
     from scripts.model_table_interpretation import annotate_tables, model_notes, later_notes
-    (OUT / "model_results.md").write_text(annotate_tables(markdown(result) + recovered_sections, model_notes(result)))
+    (OUT / "model_results.md").write_text(highlight_model_tables(annotate_tables(markdown(result) + recovered_sections, model_notes(result))))
     (OUT / "later_model_results.json").write_text(json.dumps(later, indent=2, ensure_ascii=False) + "\n")
-    (OUT / "later_model_results.md").write_text(annotate_tables(later_markdown(later), later_notes()))
+    (OUT / "later_model_results.md").write_text(highlight_later_tables(annotate_tables(later_markdown(later), later_notes())))
     print(f"Verified 11 models × 12 tasks; wrote model_results.json/.md/.csv and model_task_metrics.csv to {OUT}")
+
+
+def highlight_model_tables(text):
+    """Select only comparable score cells; preserve all underlying evidence."""
+    from scripts.study_table_highlights import highlight_columns, highlight_rows, map_tables
+
+    def transform(headers, rows):
+        if headers[:2] == ["Tier", "Tokenizer"]:
+            groups = [row[0] for row in rows]
+            if "Final/minimum val BPB ↓" in headers:
+                return highlight_columns(rows, {2: "min", 3: "min"}, groups)
+            if "Legacy core-11 ↑" in headers:
+                return highlight_columns(rows, {2: "max", 3: "max", 4: "max", 5: "max"}, groups)
+        if headers[:2] == ["Task", "Metric ↑"]:
+            return highlight_rows(rows, list(range(2, len(headers))))
+        if headers[0] == "Tokenizer" and "Recovered BPB ↓" in headers:
+            # The missing raw-32k metadata must not make a MorphBPE row appear
+            # to beat the known archived raw-BPE baseline in this subset.
+            groups = [("missing_baseline", i) if row[0].endswith("_32768") else row[0].rsplit("_", 1)[-1]
+                      for i, row in enumerate(rows)]
+            return highlight_columns(rows, {4: "min"}, groups)
+        if headers[0] == "Tokenizer" and "Checkpoint val BPB (log) ↓" in headers:
+            groups = [row[0].rsplit("_", 1)[-1] for row in rows]
+            return highlight_columns(rows, {1: "min", 2: "min", 3: "min"}, groups)
+        return rows
+
+    return map_tables(text, transform)
+
+
+def highlight_later_tables(text):
+    from scripts.study_table_highlights import highlight_columns, map_tables
+
+    def transform(headers, rows):
+        if headers[:2] == ["Model", "Protocol"]:
+            return highlight_columns(rows, {2: "max", 3: "max"}, [row[1] for row in rows])
+        return rows
+
+    return map_tables(text, transform)
 
 
 def markdown(data):
@@ -307,6 +345,8 @@ def markdown(data):
         "# Pretraining and model benchmarks",
         "",
         "**How to read the metrics:** ↑ means higher is better for the stated metric; ↓ means lower is better; ↔ marks configuration, budget or diagnostic values with no universal quality direction. Compare scores only under the same dataset and evaluation protocol, and efficiency only with matched workload and hardware. Legacy benchmark rankings remain provisional. See the [metric guide](metric_guide.md) for definitions and comparison limits.",
+        "",
+        "**Bold numeric table cells** mark the best displayed comparable score within a vocabulary tier, or across models for the same task row; ties at the displayed precision are all bold. Missing values are excluded. This marks recorded extrema, not statistical significance or established tokenizer gains. Runtime, token loss, model budgets and MFU are not highlighted. The metadata-only 32k BPB subset is also unhighlighted because its raw-BPE baseline is missing.",
         "",
         "**The original model benchmark table needs a protocol qualification.** Raw BPE has the lowest archived validation BPB in all three tiers, subject to unmatched raw-text evaluation spans. The saved core-11 table puts Zemberek ahead by 1.04 percentage points at 32k, but recovered evaluator code documents generation and continuation-boundary errors. Treat those benchmark rankings as legacy measurements pending a corrected eleven-model rerun; do not present them as established tokenizer effects.",
         "",
@@ -429,6 +469,8 @@ def later_markdown(data):
         "# Later model results and evaluator audit",
         "",
         "**Direction legend:** ↑ higher is better for that metric; ↓ lower is better; ↔ describes model configuration or budget without an inherent quality ranking. BPB measures prediction cost per byte; QA F1 measures answer-word overlap and exact match requires the normalized whole answer to match. Compare only matching datasets and evaluator protocols; legacy values remain provisional. Details: [metric guide](metric_guide.md).",
+        "",
+        "**Bold numeric table cells** mark the best score only among the two corrected XQuAD runs with the same recorded generation protocol and cap; displayed ties would all be bold. Legacy and alternative-runner scores, training-overlap BPB, and different task/category scores are not pooled into a winner. The model-size and training-exposure differences still prevent attributing the comparison to tokenization.",
         "",
         "**Recovered on 2026-11-09; measured in August 2026.** These results supplement the original tokenizer-ablation table. They change model depth, training budget and/or evaluation protocol, so they are not additional controlled tokenizer cells.",
         "",

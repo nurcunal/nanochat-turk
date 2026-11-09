@@ -2,6 +2,8 @@
 
 **How to read the metrics:** ↑ means higher is better for the stated metric; ↓ means lower is better; ↔ marks configuration, budget or diagnostic values with no universal quality direction. Compare scores only under the same dataset and evaluation protocol, and efficiency only with matched workload and hardware. Legacy benchmark rankings remain provisional. See the [metric guide](metric_guide.md) for definitions and comparison limits.
 
+**Bold numeric table cells** mark the best displayed comparable score within a vocabulary tier, or across models for the same task row; ties at the displayed precision are all bold. Missing values are excluded. This marks recorded extrema, not statistical significance or established tokenizer gains. Runtime, token loss, model budgets and MFU are not highlighted. The metadata-only 32k BPB subset is also unhighlighted because its raw-BPE baseline is missing.
+
 **The original model benchmark table needs a protocol qualification.** Raw BPE has the lowest archived validation BPB in all three tiers, subject to unmatched raw-text evaluation spans. The saved core-11 table puts Zemberek ahead by 1.04 percentage points at 32k, but recovered evaluator code documents generation and continuation-boundary errors. Treat those benchmark rankings as legacy measurements pending a corrected eleven-model rerun; do not present them as established tokenizer effects.
 
 Report assembled and audited against UHeM on 2026-11-09. All 132 archived task cells match recovered raw results at four decimals. Ten original step-17,100 metadata files remain; the raw-BPE 32k metadata at its original path is absent, so that BPB retains archived provenance. Eleven of twelve model cells have results; 32k TurkishDelight remains tokenizer-only. No new model training or benchmark evaluation was performed for this report.
@@ -34,15 +36,15 @@ BPB is bits per UTF-8 byte after excluding special tokens: a lower value means t
 
 | Tier | Tokenizer | Final/minimum val BPB ↓ | Δ BPB vs raw ↓ | Final token loss ↓* | Status |
 | --- | --- | ---: | ---: | ---: | --- |
-| 32k/d20 | Raw BPE | 0.6232 | +0.0000 | 2.4899 | Complete |
+| 32k/d20 | Raw BPE | **0.6232** | **+0.0000** | 2.4899 | Complete |
 | 32k/d20 | MorphBPE · TRmorph | 0.6266 | +0.0034 | 2.0106 | Complete |
 | 32k/d20 | MorphBPE · Zemberek | 0.6250 | +0.0018 | 2.3227 | Complete |
 | 32k/d20 | MorphBPE · TurkishDelight | — | — | — | No full model in archived inventory |
-| 64k/d16 | Raw BPE | 0.6409 | +0.0000 | 2.5812 | Complete |
+| 64k/d16 | Raw BPE | **0.6409** | **+0.0000** | 2.5812 | Complete |
 | 64k/d16 | MorphBPE · TRmorph | 0.6521 | +0.0112 | 2.2754 | Complete |
 | 64k/d16 | MorphBPE · Zemberek | 0.6514 | +0.0105 | 2.3013 | Complete |
 | 64k/d16 | MorphBPE · TurkishDelight | 0.6510 | +0.0101 | 2.4869 | Complete |
-| 128k/d12 | Raw BPE | 0.6749 | +0.0000 | 3.0976 | Complete |
+| 128k/d12 | Raw BPE | **0.6749** | **+0.0000** | 3.0976 | Complete |
 | 128k/d12 | MorphBPE · TRmorph | 0.6917 | +0.0168 | 2.5947 | Complete |
 | 128k/d12 | MorphBPE · Zemberek | 0.6940 | +0.0191 | 2.6000 | Complete |
 | 128k/d12 | MorphBPE · TurkishDelight | 0.6820 | +0.0071 | 2.6477 | Complete |
@@ -82,16 +84,16 @@ Accuracy is the fraction of questions answered correctly. Normalized accuracy (`
 | Tier | Tokenizer | Legacy core-11 ↑ | Δ pp ↑ | Legacy XQuAD F1 ↑ | Δ F1 ↑ | Elapsed ↓ | ex/s ↑ | Speed/raw ↑ | Job |
 | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
 | 32k/d20 | Raw BPE | 0.4514 | +0.00 | 3.0985 | +0.0000 | 50m20s | 13.06 | 1.000× | 493293 |
-| 32k/d20 | MorphBPE · TRmorph | 0.4541 | +0.27 | 3.4786 | +0.3801 | 52m38s | 12.49 | 0.956× | 494056 |
-| 32k/d20 | MorphBPE · Zemberek | 0.4618 | +1.04 | 3.2633 | +0.1648 | 50m30s | 13.02 | 0.997× | 494057 |
+| 32k/d20 | MorphBPE · TRmorph | 0.4541 | +0.27 | **3.4786** | **+0.3801** | 52m38s | 12.49 | 0.956× | 494056 |
+| 32k/d20 | MorphBPE · Zemberek | **0.4618** | **+1.04** | 3.2633 | +0.1648 | 50m30s | 13.02 | 0.997× | 494057 |
 | 32k/d20 | MorphBPE · TurkishDelight | — | — | — | — | — | — | — | — |
-| 64k/d16 | Raw BPE | 0.4590 | +0.00 | 2.8576 | +0.0000 | 43m27s | 15.13 | 1.000× | 496898 |
+| 64k/d16 | Raw BPE | **0.4590** | **+0.00** | 2.8576 | +0.0000 | 43m27s | 15.13 | 1.000× | 496898 |
 | 64k/d16 | MorphBPE · TRmorph | 0.4532 | -0.58 | 3.2778 | +0.4202 | 43m09s | 15.23 | 1.007× | 496899 |
 | 64k/d16 | MorphBPE · Zemberek | 0.4568 | -0.22 | 2.8956 | +0.0380 | 42m45s | 15.38 | 1.016× | 496900 |
-| 64k/d16 | MorphBPE · TurkishDelight | 0.4567 | -0.23 | 3.3280 | +0.4704 | 40m52s | 16.09 | 1.063× | 496901 |
-| 128k/d12 | Raw BPE | 0.4651 | +0.00 | 2.2674 | +0.0000 | 35m13s | 18.67 | 1.000× | 496902 |
+| 64k/d16 | MorphBPE · TurkishDelight | 0.4567 | -0.23 | **3.3280** | **+0.4704** | 40m52s | 16.09 | 1.063× | 496901 |
+| 128k/d12 | Raw BPE | **0.4651** | **+0.00** | 2.2674 | +0.0000 | 35m13s | 18.67 | 1.000× | 496902 |
 | 128k/d12 | MorphBPE · TRmorph | 0.4503 | -1.48 | 2.3517 | +0.0843 | 35m09s | 18.70 | 1.002× | 496903 |
-| 128k/d12 | MorphBPE · Zemberek | 0.4618 | -0.33 | 2.9685 | +0.7011 | 35m19s | 18.61 | 0.997× | 496904 |
+| 128k/d12 | MorphBPE · Zemberek | 0.4618 | -0.33 | **2.9685** | **+0.7011** | 35m19s | 18.61 | 0.997× | 496904 |
 | 128k/d12 | MorphBPE · TurkishDelight | 0.4481 | -1.70 | 2.2498 | -0.0176 | 33m25s | 19.67 | 1.054× | 496905 |
 
 **Interpretation.** The recorded core-11 leader is Zemberek at 32k (0.4618), then raw BPE at 64k (0.4590) and 128k (0.4651). Thus the legacy aggregate contains no consistent MorphBPE winner. The likelihood-boundary error requires a corrected rerun before treating those leads as model-quality or tokenizer effects, and the generation bug prevents interpreting the XQuAD leads as tokenizer gains. CETVEL throughput describes the entire legacy harness, with depth also changing across tiers.
@@ -104,18 +106,18 @@ Legacy adapter values; all displayed task metrics are higher-is-better (↑), wi
 
 | Task | Metric ↑ | Raw BPE | MorphBPE · TRmorph | MorphBPE · Zemberek |
 | --- | --- | ---: | ---: | ---: |
-| `exams_tr` | `acc_norm` | 0.3104 | 0.2875 | 0.2952 |
-| `belebele_tr` | `acc_norm` | 0.2522 | 0.2356 | 0.2433 |
-| `turkish_plu` | `acc_norm` | 0.5027 | 0.5146 | 0.5011 |
-| `cetvel_xcopa_tr` | `acc` | 0.6180 | 0.6080 | 0.6220 |
-| `cetvel_xnli_tr` | `acc_norm` | 0.3335 | 0.3301 | 0.3325 |
-| `mnli_tr` | `acc_norm` | 0.3210 | 0.3215 | 0.3216 |
-| `snli_tr` | `acc_norm` | 0.3234 | 0.3235 | 0.3195 |
-| `news_cat` | `acc_norm` | 0.6760 | 0.7320 | 0.7240 |
-| `offenseval_tr` | `acc_norm` | 0.7971 | 0.7764 | 0.7937 |
-| `trclaim19` | `acc_norm` | 0.4938 | 0.5283 | 0.6010 |
-| `xfact_tr` | `acc_norm` | 0.3373 | 0.3373 | 0.3254 |
-| `xquad_tr` | `f1` | 3.0985 | 3.4786 | 3.2633 |
+| `exams_tr` | `acc_norm` | **0.3104** | 0.2875 | 0.2952 |
+| `belebele_tr` | `acc_norm` | **0.2522** | 0.2356 | 0.2433 |
+| `turkish_plu` | `acc_norm` | 0.5027 | **0.5146** | 0.5011 |
+| `cetvel_xcopa_tr` | `acc` | 0.6180 | 0.6080 | **0.6220** |
+| `cetvel_xnli_tr` | `acc_norm` | **0.3335** | 0.3301 | 0.3325 |
+| `mnli_tr` | `acc_norm` | 0.3210 | 0.3215 | **0.3216** |
+| `snli_tr` | `acc_norm` | 0.3234 | **0.3235** | 0.3195 |
+| `news_cat` | `acc_norm` | 0.6760 | **0.7320** | 0.7240 |
+| `offenseval_tr` | `acc_norm` | **0.7971** | 0.7764 | 0.7937 |
+| `trclaim19` | `acc_norm` | 0.4938 | 0.5283 | **0.6010** |
+| `xfact_tr` | `acc_norm` | **0.3373** | **0.3373** | 0.3254 |
+| `xquad_tr` | `f1` | 3.0985 | **3.4786** | 3.2633 |
 
 **Interpretation.** Across the eleven classification tasks, outright first-place counts at the displayed precision are raw BPE 4, TRmorph 3, Zemberek 3; the tied first places are `xfact_tr` (raw BPE and TRmorph). These counts describe the recorded table, while the macro weights score magnitudes rather than task wins. The legacy continuation-boundary error makes every ranking provisional pending a corrected common rerun. XQuAD is excluded from these counts because its legacy generation bug prevents a tokenizer-benefit conclusion.
 
@@ -125,18 +127,18 @@ Legacy adapter values; all displayed task metrics are higher-is-better (↑), wi
 
 | Task | Metric ↑ | Raw BPE | MorphBPE · TRmorph | MorphBPE · Zemberek | MorphBPE · TurkishDelight |
 | --- | --- | ---: | ---: | ---: | ---: |
-| `exams_tr` | `acc_norm` | 0.3028 | 0.3079 | 0.2926 | 0.3028 |
-| `belebele_tr` | `acc_norm` | 0.2433 | 0.2233 | 0.2300 | 0.2356 |
-| `turkish_plu` | `acc_norm` | 0.4906 | 0.4928 | 0.4909 | 0.5046 |
-| `cetvel_xcopa_tr` | `acc` | 0.6100 | 0.6160 | 0.6140 | 0.6100 |
-| `cetvel_xnli_tr` | `acc_norm` | 0.3333 | 0.3333 | 0.3299 | 0.3335 |
-| `mnli_tr` | `acc_norm` | 0.3213 | 0.3213 | 0.3064 | 0.3211 |
-| `snli_tr` | `acc_norm` | 0.3237 | 0.3237 | 0.3209 | 0.3240 |
-| `news_cat` | `acc_norm` | 0.6920 | 0.6400 | 0.7040 | 0.7000 |
-| `offenseval_tr` | `acc_norm` | 0.7971 | 0.7968 | 0.7971 | 0.7971 |
-| `trclaim19` | `acc_norm` | 0.5976 | 0.5932 | 0.6017 | 0.5583 |
-| `xfact_tr` | `acc_norm` | 0.3373 | 0.3373 | 0.3373 | 0.3373 |
-| `xquad_tr` | `f1` | 2.8576 | 3.2778 | 2.8956 | 3.3280 |
+| `exams_tr` | `acc_norm` | 0.3028 | **0.3079** | 0.2926 | 0.3028 |
+| `belebele_tr` | `acc_norm` | **0.2433** | 0.2233 | 0.2300 | 0.2356 |
+| `turkish_plu` | `acc_norm` | 0.4906 | 0.4928 | 0.4909 | **0.5046** |
+| `cetvel_xcopa_tr` | `acc` | 0.6100 | **0.6160** | 0.6140 | 0.6100 |
+| `cetvel_xnli_tr` | `acc_norm` | 0.3333 | 0.3333 | 0.3299 | **0.3335** |
+| `mnli_tr` | `acc_norm` | **0.3213** | **0.3213** | 0.3064 | 0.3211 |
+| `snli_tr` | `acc_norm` | 0.3237 | 0.3237 | 0.3209 | **0.3240** |
+| `news_cat` | `acc_norm` | 0.6920 | 0.6400 | **0.7040** | 0.7000 |
+| `offenseval_tr` | `acc_norm` | **0.7971** | 0.7968 | **0.7971** | **0.7971** |
+| `trclaim19` | `acc_norm` | 0.5976 | 0.5932 | **0.6017** | 0.5583 |
+| `xfact_tr` | `acc_norm` | **0.3373** | **0.3373** | **0.3373** | **0.3373** |
+| `xquad_tr` | `f1` | 2.8576 | 3.2778 | 2.8956 | **3.3280** |
 
 **Interpretation.** Across the eleven classification tasks, outright first-place counts at the displayed precision are raw BPE 1, TRmorph 2, Zemberek 2, TurkishDelight 3; the tied first places are `mnli_tr` (raw BPE and TRmorph); `offenseval_tr` (raw BPE and Zemberek and TurkishDelight); `xfact_tr` (all four tokenizers). These counts describe the recorded table, while the macro weights score magnitudes rather than task wins. The legacy continuation-boundary error makes every ranking provisional pending a corrected common rerun. XQuAD is excluded from these counts because its legacy generation bug prevents a tokenizer-benefit conclusion.
 
@@ -146,18 +148,18 @@ Legacy adapter values; all displayed task metrics are higher-is-better (↑), wi
 
 | Task | Metric ↑ | Raw BPE | MorphBPE · TRmorph | MorphBPE · Zemberek | MorphBPE · TurkishDelight |
 | --- | --- | ---: | ---: | ---: | ---: |
-| `exams_tr` | `acc_norm` | 0.3104 | 0.2926 | 0.3079 | 0.2952 |
-| `belebele_tr` | `acc_norm` | 0.2389 | 0.2400 | 0.2633 | 0.2233 |
-| `turkish_plu` | `acc_norm` | 0.4653 | 0.4611 | 0.4893 | 0.4678 |
-| `cetvel_xcopa_tr` | `acc` | 0.6000 | 0.5960 | 0.6180 | 0.6020 |
-| `cetvel_xnli_tr` | `acc_norm` | 0.3325 | 0.3323 | 0.3329 | 0.3339 |
-| `mnli_tr` | `acc_norm` | 0.3214 | 0.3209 | 0.3212 | 0.3210 |
-| `snli_tr` | `acc_norm` | 0.3241 | 0.3234 | 0.3237 | 0.3243 |
-| `news_cat` | `acc_norm` | 0.7280 | 0.6520 | 0.7120 | 0.6280 |
-| `offenseval_tr` | `acc_norm` | 0.7971 | 0.7971 | 0.7971 | 0.7971 |
-| `trclaim19` | `acc_norm` | 0.6021 | 0.6010 | 0.6003 | 0.5996 |
-| `xfact_tr` | `acc_norm` | 0.3964 | 0.3373 | 0.3136 | 0.3373 |
-| `xquad_tr` | `f1` | 2.2674 | 2.3517 | 2.9685 | 2.2498 |
+| `exams_tr` | `acc_norm` | **0.3104** | 0.2926 | 0.3079 | 0.2952 |
+| `belebele_tr` | `acc_norm` | 0.2389 | 0.2400 | **0.2633** | 0.2233 |
+| `turkish_plu` | `acc_norm` | 0.4653 | 0.4611 | **0.4893** | 0.4678 |
+| `cetvel_xcopa_tr` | `acc` | 0.6000 | 0.5960 | **0.6180** | 0.6020 |
+| `cetvel_xnli_tr` | `acc_norm` | 0.3325 | 0.3323 | 0.3329 | **0.3339** |
+| `mnli_tr` | `acc_norm` | **0.3214** | 0.3209 | 0.3212 | 0.3210 |
+| `snli_tr` | `acc_norm` | 0.3241 | 0.3234 | 0.3237 | **0.3243** |
+| `news_cat` | `acc_norm` | **0.7280** | 0.6520 | 0.7120 | 0.6280 |
+| `offenseval_tr` | `acc_norm` | **0.7971** | **0.7971** | **0.7971** | **0.7971** |
+| `trclaim19` | `acc_norm` | **0.6021** | 0.6010 | 0.6003 | 0.5996 |
+| `xfact_tr` | `acc_norm` | **0.3964** | 0.3373 | 0.3136 | 0.3373 |
+| `xquad_tr` | `f1` | 2.2674 | 2.3517 | **2.9685** | 2.2498 |
 
 **Interpretation.** Across the eleven classification tasks, outright first-place counts at the displayed precision are raw BPE 5, TRmorph 0, Zemberek 3, TurkishDelight 2; the tied first places are `offenseval_tr` (all four tokenizers). These counts describe the recorded table, while the macro weights score magnitudes rather than task wins. The legacy continuation-boundary error makes every ranking provisional pending a corrected common rerun. XQuAD is excluded from these counts because its legacy generation bug prevents a tokenizer-benefit conclusion.
 
@@ -201,11 +203,11 @@ The table reports `loop_state.total_training_time`, an accumulated training-loop
 | bpe_32768 | 20 | — | — | — | — |
 | morphbpe_trmorph_32768 | 20 | 1280 | 10 | 0.62657260 | 21.096 |
 | morphbpe_zemberek_32768 | 20 | 1280 | 10 | 0.62497914 | 21.174 |
-| bpe_65536 | 16 | 1024 | 8 | 0.64087624 | 15.123 |
+| bpe_65536 | 16 | 1024 | 8 | **0.64087624** | 15.123 |
 | morphbpe_trmorph_65536 | 16 | 1024 | 8 | 0.65211758 | 15.100 |
 | morphbpe_zemberek_65536 | 16 | 1024 | 8 | 0.65140315 | 15.097 |
 | morphbpe_tdelight_65536 | 16 | 1024 | 8 | 0.65101966 | 15.058 |
-| bpe_131072 | 12 | 768 | 6 | 0.67487410 | 11.061 |
+| bpe_131072 | 12 | 768 | 6 | **0.67487410** | 11.061 |
 | morphbpe_trmorph_131072 | 12 | 768 | 6 | 0.69171386 | 10.972 |
 | morphbpe_zemberek_131072 | 12 | 768 | 6 | 0.69403741 | 10.970 |
 | morphbpe_tdelight_131072 | 12 | 768 | 6 | 0.68201767 | 10.998 |
@@ -245,14 +247,14 @@ These logged train/validation evaluations run after the final checkpoint. They a
 
 | Tokenizer | Checkpoint val BPB (log) ↓ | Base-eval train BPB ↓ | Base-eval val BPB ↓ |
 | --- | --- | --- | --- |
-| bpe_32768 | 0.623213 | 0.749119 | 0.623278 |
+| bpe_32768 | **0.623213** | **0.749119** | **0.623278** |
 | morphbpe_trmorph_32768 | 0.626573 | 0.750972 | 0.626622 |
 | morphbpe_zemberek_32768 | 0.624979 | 0.750180 | 0.625030 |
-| bpe_65536 | 0.640876 | 0.779835 | 0.640925 |
+| bpe_65536 | **0.640876** | 0.779835 | **0.640925** |
 | morphbpe_trmorph_65536 | 0.652118 | 0.778736 | 0.652161 |
 | morphbpe_zemberek_65536 | 0.651403 | 0.778257 | 0.651429 |
-| morphbpe_tdelight_65536 | 0.651020 | 0.776459 | 0.651062 |
-| bpe_131072 | 0.674874 | 0.817503 | 0.674923 |
+| morphbpe_tdelight_65536 | 0.651020 | **0.776459** | 0.651062 |
+| bpe_131072 | **0.674874** | **0.817503** | **0.674923** |
 | morphbpe_trmorph_131072 | 0.691714 | 0.820881 | 0.691756 |
 | morphbpe_zemberek_131072 | 0.694037 | 0.820229 | 0.694084 |
 | morphbpe_tdelight_131072 | 0.682018 | 0.818073 | 0.682060 |

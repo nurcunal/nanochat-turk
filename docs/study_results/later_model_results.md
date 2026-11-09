@@ -2,6 +2,8 @@
 
 **Direction legend:** ↑ higher is better for that metric; ↓ lower is better; ↔ describes model configuration or budget without an inherent quality ranking. BPB measures prediction cost per byte; QA F1 measures answer-word overlap and exact match requires the normalized whole answer to match. Compare only matching datasets and evaluator protocols; legacy values remain provisional. Details: [metric guide](metric_guide.md).
 
+**Bold numeric table cells** mark the best score only among the two corrected XQuAD runs with the same recorded generation protocol and cap; displayed ties would all be bold. Legacy and alternative-runner scores, training-overlap BPB, and different task/category scores are not pooled into a winner. The model-size and training-exposure differences still prevent attributing the comparison to tokenization.
+
 **Recovered on 2026-11-09; measured in August 2026.** These results supplement the original tokenizer-ablation table. They change model depth, training budget and/or evaluation protocol, so they are not additional controlled tokenizer cells.
 
 Sources: [compact UHeM audit](../../artifacts/uhem_model_audit_2026-11-09/), [derived JSON](later_model_results.json), and [runtime/reproduction notes](reproduction.md). Per-source paths, byte counts, timestamps and SHA-256 hashes are preserved. No model training or benchmark inference was rerun during recovery.
@@ -18,7 +20,7 @@ The old eleven-model benchmark values remain visible as **legacy evaluator measu
 | --- | --- | ---: | ---: |
 | d20 BPE32k, step 17100 | June legacy adapter, cap 128 | 3.0985 | 0.0000 |
 | d20 BPE32k, step 17100 | generation-fixed, CLI cap 128 | 11.3369 | 4.5378 |
-| d32 BPE32k, step 28000 | generation-fixed, CLI cap 128 | 15.8833 | 8.2353 |
+| d32 BPE32k, step 28000 | generation-fixed, CLI cap 128 | **15.8833** | **8.2353** |
 | d32 BPE32k, step 28000 | comparison runner, CLI cap 256 | 15.1717 | 8.2353 |
 
 **Interpretation.** Correcting the evaluator raises the unchanged d20 checkpoint from 3.0985 to 11.3369 XQuAD F1, so that increase comes from decoding/scoring behavior, not training or tokenization. With the corrected 128-token setup, d32 scores higher than d20 (15.8833 versus 11.3369), but both use raw BPE and also differ in model size and training exposure. The separate 256-token d32 result is lower (15.1717) under different recorded runner/protocol settings; this is not an isolated generation-cap experiment. None of these comparisons establishes a MorphBPE benefit.

@@ -9,6 +9,8 @@ import csv
 import json
 from pathlib import Path
 
+from scripts.study_table_highlights import highlight_columns, map_tables
+
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs/study_results"
 START = "<!-- BEGIN GENERATED TOKENIZER MODEL OVERVIEW -->"
@@ -42,7 +44,14 @@ def main():
         raise ValueError("Overview markers must occur exactly once")
     before, remainder = text.split(START)
     _, after = remainder.split(END)
-    path.write_text(before + START + "\n\n" + "\n".join(lines) + "\n\n" + END + after)
+    table = map_tables(
+        "\n".join(lines),
+        lambda headers, rows: highlight_columns(
+            rows, {2: "min", 3: "max", 4: "min", 5: "max", 6: "max"},
+            group_keys=[row[0] for row in rows],
+        ),
+    )
+    path.write_text(before + START + "\n\n" + table + "\n\n" + END + after)
     print("Built twelve-tokenizer overview from intrinsic, model and training-performance reports")
 
 

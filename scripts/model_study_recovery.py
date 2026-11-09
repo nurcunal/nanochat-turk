@@ -215,8 +215,23 @@ def later_models(root, out, bundle, source_path, all_task_rows):
     official_rows = [{'task': task, **detail} for task, detail in official['task_details'].items()]
     dump_csv(out / 'model_official_task_metrics.csv', official_rows)
     from scripts.model_table_interpretation import annotate_tables, configuration_notes
-    (out / 'model_configuration_results.md').write_text(annotate_tables(later_markdown(result, records), configuration_notes(result)))
+    (out / 'model_configuration_results.md').write_text(highlight_configuration_tables(annotate_tables(later_markdown(result, records), configuration_notes(result))))
     return {'report': 'model_configuration_results.md', 'json': 'model_configuration_results.json', 'experiments': rows, 'official_overall_score': official['overall_score'], 'official_protocol': official['protocol']['id']}
+
+
+def highlight_configuration_tables(text):
+    from scripts.study_table_highlights import highlight_columns, highlight_rows, map_tables
+
+    def transform(headers, rows):
+        if headers[:3] == ['Task', 'Metric ↑', 'd20 / step 17,100 ↑']:
+            return highlight_rows(rows, [2, 3])
+        if headers[0] == 'Model / protocol':
+            groups = [('corrected', row[1], row[2]) if '· corrected' in row[0] else ('other', i)
+                      for i, row in enumerate(rows)]
+            return highlight_columns(rows, {3: 'max', 4: 'max'}, groups)
+        return rows
+
+    return map_tables(text, transform)
 
 
 def later_markdown(data, records):
@@ -224,6 +239,7 @@ def later_markdown(data, records):
     official = data['official_cetvel_receipt']
     texts = ['# Additional LLM configurations and recovered benchmarks\n',
         '**Direction legend:** ↑ higher is better for the named metric; ↓ lower is better; ↔ identifies configuration, budget or diagnostic values without a universal quality direction. Scores require the same task/protocol, and speed, elapsed time and memory require matched workload/hardware. Legacy scores remain provisional. Read the [metric guide](metric_guide.md) for definitions and limits.\n',
+        '**Bold numeric table cells** mark the best displayed score across the models on the same legacy task row, or within the corrected XQuAD group sharing protocol, generation cap and sample count. Displayed ties are all bold; legacy rankings remain provisional. Different task/category scores, unmatched runtime workloads, budgets and training-overlap BPB receive no winner highlighting.\n',
         'These existing checkpoints and experiment outputs were recovered from UHeM on 9 November 2026. They extend the original [eleven-model tokenizer comparison](model_results.md) with continuation, model scaling, generation-protocol corrections and broader benchmarks. No new training or evaluation is claimed. Download [configuration CSV](model_configuration_results.csv), [complete JSON](model_configuration_results.json), [all available task metrics](model_all_task_metrics.csv), and [table-compatible protocol task scores](model_official_task_metrics.csv).\n',
         '## Model configuration and training results\n',
         '**The d32 BPB is a training-overlap diagnostic.** Its launch manifest makes all 30 source shards eligible for optimization and reuses one source shard for validation. It must not be presented as a held-out BPB improvement over d20 or MorphBPE. The completed FineWeb-2 d32 experiment is distinct from the separate general-corpus d32/WSD production plan.\n',
@@ -258,7 +274,7 @@ def later_markdown(data, records):
         '## Complete d32 CETVEL EACL table-compatible scoring\n',
         f"The saved receipt reports **{official['overall_score']:.4f}/100**, the unweighted mean of seven category scores. The verification receipt covers **{data['official_verification']['total_effective_samples']:,} effective samples**, 24 top-level tasks and 38 verified leaves, with no sample limit. It records all eight source-shard hashes. This is the repository's `cetvel-eacl2026-table4-compatible-v1` protocol, not the legacy core-11 macro or an independent verification against an official public leaderboard.\n",
         'Classification uses raw accuracy ↑, QA normalized exact match ↑, summarization TabiBERT BERTScore F1 ↑, translation COMET-22 ↑, and GEC stripped exact match ↑. BERTScore compares contextual word representations; COMET estimates translation quality with a learned evaluator. The category and overall scores are higher-is-better only within this fixed protocol, not interchangeable measures across tasks. Do not substitute legacy `acc_norm`, ROUGE, BLEU or QA F1 into this aggregate. The receipt documents table-compatibility assumptions, model revisions and metric settings.\n',
-        table(['Category','Score / 100 ↑'], [[k,number(official['category_scores'][k])] for k in official['protocol']['category_order']] + [['**Overall**',f"**{official['overall_score']:.4f}**"]]),
+        table(['Category','Score / 100 ↑'], [[k,number(official['category_scores'][k])] for k in official['protocol']['category_order']] + [['**Overall**',f"{official['overall_score']:.4f}"]]),
         '\n### All table-compatible protocol task scores\n',
         table(['Task','Metric ↑','Examples ↔','Score / 100 ↑'],[[f'`{t}`',d['metric'],d.get('sample_count') if d.get('sample_count') is not None else 'aggregate',number(d['score'])] for t,d in official['task_details'].items()]),
         '\nThe MCQA definition includes both the Turkish-PLU aggregate and its listed component tasks, as specified by the archived table-compatible receipt. The translation task identifiers have counterintuitive direction names; use the receipt’s explicit source/target-language fields. The seven-category macro deliberately weights categories equally.\n',

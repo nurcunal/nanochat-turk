@@ -2,6 +2,8 @@
 
 **Direction legend:** ↑ higher is better for the stated check; ↓ lower is better; ↔ describes setup or a diagnostic with no universal quality direction. Compare the same dataset, probe suite and scoring rules. The [metric guide](metric_guide.md) explains the measures and their comparison limits.
 
+**Bold numeric table cells** mark the best displayed BPB or probe result within the same curriculum table; final-polish checks are compared separately within each suite. All ties at displayed precision are bold and missing results are excluded. A bold score does not establish a qualified release, independent held-out performance or a tokenizer effect. Learning rates, steps and termination counts are not highlighted.
+
 These recovered posttraining results hold the tokenizer at **raw BPE, 32,768 tokens** and vary the training curriculum, learning rates and checkpoint. They supplement the [base-model tokenizer ablation](model_results.md); they are not additional tokenizer-family comparisons. All are descendants of the d32 FineWeb-2 model. The 41-case probe and 512-case production behavior suite are custom selection diagnostics, not CETVEL. Because these checks inform candidate selection, their pass rates are not independent held-out estimates of general capability.
 
 Read-only UHeM recovery: `2026-11-09T12:47:17.506694+00:00`. [Source manifest](../../artifacts/uhem_sft_screens_2026-11-09/manifest.json), [flat CSV](sft_configuration_screens.csv), [full derived JSON](sft_configuration_screens.json). Original receipt bytes, source paths, SHA-256 hashes, code identities and checkpoint hashes are preserved. These summaries establish recorded results; this import does not re-execute their evaluators or verify current weight-file availability.
@@ -29,15 +31,15 @@ The recovered selection reuses completed training and probe outputs after the in
 
 | Arm | Checkpoint ↔ | SFT validation BPB ↓ | Probe passes / 41 ↑ | Qualified (desired: Yes) |
 | --- | ---: | ---: | ---: | --- |
-| low | 8 | 0.454580 | 8/41 | No |
-| low | 16 | 0.450470 | 8/41 | No |
+| low | 8 | 0.454580 | **8/41** | No |
+| low | 16 | 0.450470 | **8/41** | No |
 | low | 24 | 0.449236 | 6/41 | No |
 | mid | 8 | 0.450021 | 6/41 | No |
 | mid | 16 | 0.445096 | 6/41 | No |
 | mid | 24 | 0.444001 | 6/41 | No |
 | high | 8 | 0.444666 | 5/41 | No |
 | high | 16 | 0.441746 | 6/41 | No |
-| high | 24 | 0.441730 | 6/41 | No |
+| high | 24 | **0.441730** | 6/41 | No |
 
 **Interpretation.** The high-rate arm at step 24 gives the lowest BPB (0.441730), but its probe score is only 6/41. The low-rate steps 8 and 16 lead the candidates at 8/41, still below the retained source at 9/41, and none passes the full selection gates. Here a lower validation loss does not identify the behaviorally better checkpoint.
 
@@ -56,8 +58,8 @@ The table reports the declared matrix learning rate and the receipt’s effectiv
 | eff010 | 8 | 0.0020 | 0.0040 | 0.457161 | 8/41 | No |
 | eff010 | 12 | 0.0020 | 0.0040 | 0.456851 | 8/41 | No |
 | eff020 | 4 | 0.0040 | 0.0080 | 0.457116 | 8/41 | No |
-| eff020 | 8 | 0.0040 | 0.0080 | 0.456307 | 9/41 | No |
-| eff020 | 12 | 0.0040 | 0.0080 | 0.456318 | 10/41 | No |
+| eff020 | 8 | 0.0040 | 0.0080 | **0.456307** | 9/41 | No |
+| eff020 | 12 | 0.0040 | 0.0080 | 0.456318 | **10/41** | No |
 
 **Interpretation.** The strongest-rate arm gives the lowest BPB at step 8 (0.456307) and the highest probe count at step 12 (10/41). Although 10/41 exceeds the source’s 9/41 overall count, the candidate fails the required category/selection gates, so the decision remains retain source. Extra steps and a higher rate therefore do not establish an acceptable improvement on this screen.
 
@@ -72,7 +74,7 @@ This is a separate 7,600-training/400-validation-row curriculum. These rows esta
 | eff020 | 8 | 0.0040 | 0.0080 | 0.575542 | Pass |
 | eff020 | 16 | 0.0040 | 0.0080 | 0.379709 | Pass |
 | eff020 | 24 | 0.0040 | 0.0080 | 0.189516 | Pass |
-| eff020 | 32 | 0.0040 | 0.0080 | 0.105042 | Pass |
+| eff020 | 32 | 0.0040 | 0.0080 | **0.105042** | Pass |
 | eff040 | 8 | 0.0080 | 0.0160 | 0.398625 | Pass |
 
 **Interpretation.** Within eff020, additional updates reduce validation BPB from 0.575542 at step 8 to 0.105042 at step 32. At step 8, eff040 has lower BPB than eff020. These are loss-only observations: the imported receipts do not show a passing behavior probe, and the incomplete eff040 trajectory prevents a full rate-by-horizon comparison. The lowest BPB row is not a selected best model.
@@ -83,10 +85,10 @@ The candidate is `tr_d32_bpe32k_final_instruct_polish_v1`, checkpoint **64**. Bo
 
 | Model | Suite | Passes ↑ | Pass rate ↑ | Empty ↓ | Echo ↓ | Repetition ↓ | Assistant-end termination ↔ |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Source | probe | 9/41 | 21.95% | 2 | 2 | 2 | 40 |
-| Source | production | 68/512 | 13.28% | 0 | 179 | 15 | 490 |
-| Candidate | probe | 5/41 | 12.20% | 0 | 3 | 4 | 37 |
-| Candidate | production | 36/512 | 7.03% | 0 | 163 | 34 | 474 |
+| Source | probe | **9/41** | **21.95%** | 2 | **2** | **2** | 40 |
+| Source | production | **68/512** | **13.28%** | **0** | 179 | **15** | 490 |
+| Candidate | probe | 5/41 | 12.20% | **0** | 3 | 4 | 37 |
+| Candidate | production | 36/512 | 7.03% | **0** | **163** | 34 | 474 |
 
 **Interpretation.** The retained source wins both behavior suites: 9 versus 5 passes on the probe and 68 versus 36 on the production suite. The candidate reduces prompt-echo counts in the production suite but increases repetition and loses overall passes, so its selection rejection follows the measured behavior. This is a post-training configuration result on one tokenizer, not a tokenizer-family comparison.
 

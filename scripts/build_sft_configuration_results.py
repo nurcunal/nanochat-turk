@@ -10,6 +10,23 @@ ARTIFACT = ROOT / 'artifacts/uhem_sft_screens_2026-11-09'
 OUT = ROOT / 'docs/study_results'
 
 
+def highlight_sft_tables(text):
+    from scripts.study_table_highlights import highlight_columns, map_tables
+
+    def transform(headers, rows):
+        if headers[0] == 'Arm' and 'SFT validation BPB ↓' in headers:
+            directions = {headers.index('SFT validation BPB ↓'): 'min'}
+            if 'Probe passes / 41 ↑' in headers:
+                directions[headers.index('Probe passes / 41 ↑')] = 'max'
+            return highlight_columns(rows, directions)
+        if headers[:2] == ['Model', 'Suite']:
+            return highlight_columns(rows, {2: 'max', 3: 'max', 4: 'min', 5: 'min', 6: 'min'},
+                                     [row[1] for row in rows])
+        return rows
+
+    return map_tables(text, transform)
+
+
 def main():
     manifest = json.loads((ARTIFACT / 'manifest.json').read_text())
     by_source = {}
@@ -35,6 +52,8 @@ def main():
         '# SFT configuration screens: d32 with raw BPE 32k',
         '',
         '**Direction legend:** ↑ higher is better for the stated check; ↓ lower is better; ↔ describes setup or a diagnostic with no universal quality direction. Compare the same dataset, probe suite and scoring rules. The [metric guide](metric_guide.md) explains the measures and their comparison limits.',
+        '',
+        '**Bold numeric table cells** mark the best displayed BPB or probe result within the same curriculum table; final-polish checks are compared separately within each suite. All ties at displayed precision are bold and missing results are excluded. A bold score does not establish a qualified release, independent held-out performance or a tokenizer effect. Learning rates, steps and termination counts are not highlighted.',
         '',
         'These recovered posttraining results hold the tokenizer at **raw BPE, 32,768 tokens** and vary the training curriculum, learning rates and checkpoint. They supplement the [base-model tokenizer ablation](model_results.md); they are not additional tokenizer-family comparisons. All are descendants of the d32 FineWeb-2 model. The 41-case probe and 512-case production behavior suite are custom selection diagnostics, not CETVEL. Because these checks inform candidate selection, their pass rates are not independent held-out estimates of general capability.',
         '',
@@ -104,7 +123,7 @@ def main():
     text += ['', f"Evidence: {link('final-polish-v1/selection-summary.json', 'selection receipt')} and {link('final-polish-v1/checkpoint-summary.json', 'checkpoint/data receipt')}.", '', '## Completed checkpoint without an imported benchmark', '', f"`{combined_ckpt['model_tag']}` checkpoint **{combined_ckpt['step']}** has a completed receipt, one-rank optimizer inventory, and training/validation manifest hashes. This establishes the saved SFT checkpoint, not a measured improvement. No benchmark value is inferred from completion. Evidence: {link('final-combined-smoltalk2-turk-sft-v1/checkpoint-summary.json', 'completion receipt')}.", '', '## Coverage and limitations', '', '- These are selected recoverable configuration screens from UHeM, not a claim that every operational pilot or intermediate checkpoint has been exhaustively audited.', '- Repeated checks of the same checkpoint and selection recovery do not count as independent training runs or seed repetitions.', '- The initial bounded-recovery selection summary and capability `eff040-16` summary were empty at recovery; both are recorded as unavailable in the manifest. Their missing values are not zero.', '- No matched multi-tokenizer SFT comparison was recovered. These d32/raw-BPE32k screens stay separate from the eleven-model tokenizer comparison and the separate CETVEL protocol results.', '- Rebuild with `python -m scripts.build_sft_configuration_results`. The builder verifies all original-file SHA-256 values, checkpoint steps, probe denominators and verification statuses before emitting the tables.', '']
     OUT.mkdir(parents=True, exist_ok=True)
     from scripts.model_table_interpretation import annotate_tables, sft_notes
-    (OUT / 'sft_configuration_screens.md').write_text(annotate_tables('\n'.join(text), sft_notes()))
+    (OUT / 'sft_configuration_screens.md').write_text(highlight_sft_tables(annotate_tables('\n'.join(text), sft_notes())))
     (OUT / 'sft_configuration_screens.json').write_text(json.dumps({'retrieved_at_utc':manifest['retrieved_at_utc'], 'scope':'d32/BPE32k custom SFT configuration diagnostics', 'rows':rows, 'sources':sources, 'records':by_source}, indent=2, ensure_ascii=False)+'\n')
     fields = sorted(set().union(*(row.keys() for row in rows)))
     with (OUT / 'sft_configuration_screens.csv').open('w', newline='') as f:
