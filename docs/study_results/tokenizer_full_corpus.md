@@ -19,7 +19,7 @@ All twelve rows cover the same **93,211,827 training documents**, **36,699,889,7
 | 131,072 | MorphBPE / Zemberek | 1.5916 | 1.6026 | 50.17 | 5.1219 | 53.80 | 33.63 | 1.0859 | 0.3330 |
 | 131,072 | MorphBPE / TurkishDelight | 1.4715 | 1.6481 | 48.56 | 5.5399 | 51.37 | 20.64 | 1.1345 | 0.3971 |
 
-All twelve rows record zero roundtrip failures. Per-morpheme intact-token preservation, character-only coverage and explicit boundary P/R/F1 were absent from these June outputs; they are now separately measured in the [completed matched train/validation evaluation](tokenizer_matched.md), while the historical missing fields remain null. The full-corpus word caps resolve the earlier 32k 200k/500k cap mismatch, while retaining the automatic TRmorph-reference limitation. The repeated consistency values are expected because this metric remains capped at the same 50,000 word types; they are not independent replications.
+All twelve rows record zero roundtrip failures. Per-morpheme intact-token preservation, character-only coverage and explicit boundary P/R/F1 were absent from these June outputs; they are now separately measured in the [completed matched train/validation evaluation](tokenizer_fresh_results.md), while the historical missing fields remain null. The full-corpus word caps resolve the earlier 32k 200k/500k cap mismatch, while retaining the automatic TRmorph-reference limitation. The repeated consistency values are expected because this metric remains capped at the same 50,000 word types; they are not independent replications.
 
 ## Additional morphology diagnostics
 

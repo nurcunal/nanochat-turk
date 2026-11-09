@@ -2279,7 +2279,9 @@
   "limitations": [
     "d32 validation shard overlaps training and its BPB is not comparable to held-out BPB.",
     "d20 continuation and d32 scale/budget changes are not tokenizer-controlled ablations.",
+    "Legacy classification/log-likelihood values may be affected by the unvalidated continuation token boundary; differences need a corrected common rerun.",
     "Generation max-token budgets and evaluation protocols differ; keep result sets separate.",
+    "The repository table-compatible receipt is not an independent verification against an official public leaderboard.",
     "The two smoke evaluations use two examples per task and are not capability estimates.",
     "The continuation metadata total_training_time may include inherited training time; no new-phase tok/s is inferred.",
     "No multi-tokenizer SFT or additional full 32k TurkishDelight model evidence is present in this recovery."

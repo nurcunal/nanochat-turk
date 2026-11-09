@@ -1,10 +1,14 @@
 # Pretraining and model benchmarks
 
-**The tokenizer effect is task-dependent.** Raw BPE has the lowest archived validation BPB in all three tiers. Zemberek MorphBPE improves the 32k core-11 mean by **1.04 percentage points**; raw BPE leads that mean at 64k and 128k. MorphBPE improves XQuAD in selected tiers. These are single-run base-model results, not evidence of a universal MorphBPE advantage.
+**The original model benchmark table needs a protocol qualification.** Raw BPE has the lowest archived validation BPB in all three tiers, subject to unmatched raw-text evaluation spans. The saved core-11 table puts Zemberek ahead by 1.04 percentage points at 32k, but recovered evaluator code documents generation and continuation-boundary errors. Treat those benchmark rankings as legacy measurements pending a corrected eleven-model rerun; do not present them as established tokenizer effects.
 
-Historical tables below preserve results imported 2026-06-22; a 9 November 2026 recovery adds full-precision metrics, checkpoint settings and training performance. Eleven of twelve tokenizer-model cells have results; 32k TurkishDelight has no full model in this evidence. Additional continuation and d32 results are reported separately. No new evaluation is claimed.
+Report assembled and audited against UHeM on 2026-11-09. All 132 archived task cells match recovered raw results at four decimals. Ten original step-17,100 metadata files remain; the raw-BPE 32k metadata at its original path is absent, so that BPB retains archived provenance. Eleven of twelve model cells have results; 32k TurkishDelight remains tokenizer-only. No new model training or benchmark evaluation was performed for this report.
 
-Download [model summary CSV](model_results.csv), [all 132 task scores CSV](model_task_metrics.csv), or [full JSON with source paths and hashes](model_results.json). Original evidence: [June 22 benchmark artifact](../../artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/metrics_summary.json).
+**Correction evidence:** the same d20/raw-BPE step-17,100 checkpoint scores XQuAD F1 **11.3369** with corrected generation handling, versus the archived **3.0985**. Corrected results for all MorphBPE models were not recovered. See [later model results and evaluator audit](later_model_results.md) for the separate d20 continuation, d32 training, and protocol-specific benchmarks.
+
+Download [model summary CSV](model_results.csv), [training statistics CSV](model_training_statistics.csv), [all 132 task scores CSV](model_task_metrics.csv), or [full JSON with source paths and hashes](model_results.json). Original evidence: [June 22 benchmark artifact](../../artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/metrics_summary.json).
+
+Additional recovery supplies [all available task metrics](model_all_task_metrics.csv), [training throughput and memory](model_training_performance.csv), [expanded model configurations](model_configuration_results.md), and [SFT configuration screens](sft_configuration_screens.md). Those screens vary post-training settings on one raw-BPE model and are not additional controlled tokenizer cells.
 
 ## Experiment controls
 
@@ -16,7 +20,7 @@ Compare tokenizer families **within a vocabulary tier**. The documented design h
 | 65,536 | 16 | 872.4M | 17,100 | 1,048,576 | 17,930,649,600 |
 | 131,072 | 12 | 890.2M | 17,100 | 1,048,576 | 17,930,649,600 |
 
-The launch recipe uses four A100 GPUs and 2,048-token context. The recovered section below verifies effective configuration fields for ten final metadata records. The original raw-BPE d20 final metadata path was absent. Source initialization uses seed 42; repeated training seeds are not available. See the [design](../tokenizer_ablation_plan.md) and [launch record](../tokenizer_tests/vocab64_128_uhem_launch.md).
+Recovered original reports/configurations document four A100 GPUs and 2,048-token context. Ten original checkpoint metadata files survive; the raw-BPE32k run is supported by its historical training log and archived metadata values. The ten original report headers record Python 3.12.4 and PyTorch 2.9.1+cu128, but their Git revision is unknown. Source initialization uses seed 42; complete per-run code/environment fingerprints and repeated-seed experiments remain absent. See the [design](../tokenizer_ablation_plan.md) and [launch record](../tokenizer_tests/vocab64_128_uhem_launch.md).
 
 Fixed token positions do **not** mean equal raw bytes, documents, or characters of context. The compact results lack per-run exposure counts. Validation also uses a fixed token budget, so BPB normalization alone does not guarantee the exact same raw-text evaluation spans. Cross-tier results combine vocabulary allocation and model-depth effects.
 
@@ -39,9 +43,29 @@ BPB is bits per UTF-8 byte after excluding special tokens; lower is better. Fina
 | 128k/d12 | MorphBPE · Zemberek | 0.6940 | +0.0191 | 2.6000 | Complete |
 | 128k/d12 | MorphBPE · TurkishDelight | 0.6820 | +0.0071 | 2.6477 | Complete |
 
-## Common CETVEL benchmark
+## Recovered training cost and hardware metrics
 
-Core-11 is the unweighted mean of eleven classification/log-likelihood task scores on a 0–1 scale. XQuAD F1 uses a 0–100 scale and is excluded from that mean. Core-11 deltas below are **percentage points**; XQuAD deltas are F1 points. Timing divides 39,441 expanded effective examples by the logged core-12 elapsed time. It is an end-to-end harness throughput proxy, not isolated tokenizer speed.
+Training-loop time is separate from Slurm job elapsed time and CETVEL benchmark time. All eleven original jobs were recovered as `COMPLETED`, exit `0:0`; original training used four A100 GPUs. FLOPs and MFU are implementation estimates. Cross-tier speed also changes model depth and cannot isolate tokenizer efficiency.
+
+| Tier | Tokenizer | Parameters | Train minutes | Slurm elapsed | Estimated FLOPs | Peak MiB | MFU % |
+| --- | --- | ---: | ---: | --- | ---: | ---: | ---: |
+| 32k/d20 | Raw BPE | 896,533,746 | 1267.66 | 21:31:38 | 5.809722e+19 | 18499.62 | — |
+| 32k/d20 | MorphBPE · TRmorph | 896,533,746 | 1265.77 | 21:30:53 | 5.809722e+19 | 18499.74 | 61.29 |
+| 32k/d20 | MorphBPE · Zemberek | 896,533,746 | 1270.43 | 21:35:34 | 5.809722e+19 | 18499.62 | 61.11 |
+| 64k/d16 | Raw BPE | 872,416,058 | 907.39 | 15:30:31 | 3.609925e+19 | 14645.31 | 53.14 |
+| 64k/d16 | MorphBPE · TRmorph | 872,416,058 | 905.97 | 15:28:04 | 3.609925e+19 | 14645.31 | 53.20 |
+| 64k/d16 | MorphBPE · Zemberek | 872,416,058 | 905.82 | 15:27:54 | 3.609925e+19 | 14645.31 | 53.22 |
+| 64k/d16 | MorphBPE · TurkishDelight | 872,416,058 | 903.50 | 15:25:56 | 3.609925e+19 | 14645.31 | 53.41 |
+| 128k/d12 | Raw BPE | 890,241,506 | 663.68 | 11:26:01 | 2.402855e+19 | 13066.91 | 48.35 |
+| 128k/d12 | MorphBPE · TRmorph | 890,241,506 | 658.31 | 11:19:34 | 2.402855e+19 | 13065.79 | 48.81 |
+| 128k/d12 | MorphBPE · Zemberek | 890,241,506 | 658.23 | 11:19:37 | 2.402855e+19 | 13068.04 | 48.85 |
+| 128k/d12 | MorphBPE · TurkishDelight | 890,241,506 | 659.88 | 11:21:12 | 2.402855e+19 | 13066.91 | 48.69 |
+
+The raw-BPE32k report directory was overwritten by its later continuation. Its original 1,267.66-minute training time and memory/FLOP values come from job 492421's surviving log, not that overwritten report. The recovered excerpt does not include its final aggregate MFU, so that cell remains unavailable. Source text and job accounting are retained in the [November audit artifact](../../artifacts/uhem_model_audit_2026-11-09/).
+
+## Archived common CETVEL benchmark — legacy evaluator
+
+These original values are retained, not silently replaced with results from a different evaluator. The legacy adapter ignored generation kwargs and used a separately tokenized context length without validating the continuation boundary. Both can affect comparisons across tokenizers; the complete matrix needs a corrected rerun. Core-11 is the unweighted mean of eleven classification/log-likelihood task scores on a 0–1 scale. XQuAD F1 uses a 0–100 scale and is excluded from that mean. Core-11 deltas below are **percentage points**; XQuAD deltas are F1 points. Timing divides 39,441 expanded effective examples by the logged core-12 elapsed time.
 
 | Tier | Tokenizer | Core-11 ↑ | Δ pp | XQuAD F1 ↑ | Δ F1 | Elapsed | ex/s ↑ | Speed/raw | Job |
 | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
@@ -58,11 +82,11 @@ Core-11 is the unweighted mean of eleven classification/log-likelihood task scor
 | 128k/d12 | MorphBPE · Zemberek | 0.4618 | -0.33 | 2.9685 | +0.7011 | 35m19s | 18.61 | 0.997× | 496904 |
 | 128k/d12 | MorphBPE · TurkishDelight | 0.4481 | -1.70 | 2.2498 | -0.0176 | 33m25s | 19.67 | 1.054× | 496905 |
 
-Legacy-generation XQuAD scores are low (about 2.25–3.48/100). A later corrected-generation raw-BPE d20 reference reaches 11.3369, reported separately below; the old scores should be interpreted with their legacy generation implementation. No confidence intervals or paired significance tests are available. The 128k TurkishDelight result file was complete at import time while Slurm was still finishing uploads; that archived job-state qualification is retained in JSON.
+The low legacy XQuAD scores are affected by the generation bug and should not be used to judge absolute QA ability or tokenizer gains. Recovered raw task standard errors do not provide paired confidence intervals for model differences. The 128k TurkishDelight result file was complete at import time while Slurm was still finishing uploads; that archived job-state qualification is retained in JSON.
 
-## Per-task results: 32k
+## Per-task legacy results: 32k
 
-Classification metrics below use 0–1; the final XQuAD row uses 0–100. Higher is better. `acc_norm` is the benchmark's length-normalized choice score; it is not F1.
+Legacy adapter values. Classification metrics use 0–1; the final XQuAD row uses 0–100. `acc_norm` is the benchmark's length-normalized choice score; it is not F1. Interpretation requires the evaluator caveat above.
 
 | Task | Metric | Raw BPE | MorphBPE · TRmorph | MorphBPE · Zemberek |
 | --- | --- | ---: | ---: | ---: |
@@ -79,9 +103,9 @@ Classification metrics below use 0–1; the final XQuAD row uses 0–100. Higher
 | `xfact_tr` | `acc_norm` | 0.3373 | 0.3373 | 0.3254 |
 | `xquad_tr` | `f1` | 3.0985 | 3.4786 | 3.2633 |
 
-## Per-task results: 64k
+## Per-task legacy results: 64k
 
-Classification metrics below use 0–1; the final XQuAD row uses 0–100. Higher is better. `acc_norm` is the benchmark's length-normalized choice score; it is not F1.
+Legacy adapter values. Classification metrics use 0–1; the final XQuAD row uses 0–100. `acc_norm` is the benchmark's length-normalized choice score; it is not F1. Interpretation requires the evaluator caveat above.
 
 | Task | Metric | Raw BPE | MorphBPE · TRmorph | MorphBPE · Zemberek | MorphBPE · TurkishDelight |
 | --- | --- | ---: | ---: | ---: | ---: |
@@ -98,9 +122,9 @@ Classification metrics below use 0–1; the final XQuAD row uses 0–100. Higher
 | `xfact_tr` | `acc_norm` | 0.3373 | 0.3373 | 0.3373 | 0.3373 |
 | `xquad_tr` | `f1` | 2.8576 | 3.2778 | 2.8956 | 3.3280 |
 
-## Per-task results: 128k
+## Per-task legacy results: 128k
 
-Classification metrics below use 0–1; the final XQuAD row uses 0–100. Higher is better. `acc_norm` is the benchmark's length-normalized choice score; it is not F1.
+Legacy adapter values. Classification metrics use 0–1; the final XQuAD row uses 0–100. `acc_norm` is the benchmark's length-normalized choice score; it is not F1. Interpretation requires the evaluator caveat above.
 
 | Task | Metric | Raw BPE | MorphBPE · TRmorph | MorphBPE · Zemberek | MorphBPE · TurkishDelight |
 | --- | --- | ---: | ---: | ---: | ---: |
@@ -134,15 +158,15 @@ The earlier [raw-BPE-only archive](../../artifacts/cetvel_base_subset_2026-06-09
 
 The [June 7 pipeline smoke test](../../artifacts/uhem_smoke_2026-06-07_job492393/metrics.json) is also retained: depth 2, 12,976,182 parameters, 259,522,560 training token positions, final/minimum validation BPB 1.239557, separate base-eval validation BPB 1.239951. It validates the training pipeline and is excluded from the controlled model comparison.
 
-The later [SFT configuration screens](sft_configuration_screens.md) compare post-training settings on the d32 raw-BPE model; they are separate from this matched tokenizer ablation. The completed FineWeb-2 d32 experiment and d20 continuation are reported in [additional model configurations](model_configuration_results.md), separately from this controlled tokenizer comparison and from the general-corpus d32/WSD production plan.
+The repository has Atlas SFT preparation/launcher documentation, but no matched multi-tokenizer SFT result table in this evidence bundle. The d32 production work is a separate experiment and is excluded from the d20/d16/d12 ablation.
 
 ## Reproduce and interpret
 
 Run `python -m scripts.build_model_study_results` from the repository root. The builder checks all 132 task cells, historical carry-forward consistency, final/minimum BPB equality, throughput arithmetic, and macro compatibility with four-decimal source rounding. It records SHA-256 hashes and preserves UHeM source paths in JSON.
 
-Reported macros are preserved rather than recomputed as new measurements. In particular, the 64k TurkishDelight reported macro is 0.4567; the mean of its already-rounded task cells is 0.4567545. The difference is compatible with independent rounding of the source macro and task scores. The recovered full-precision task values reproduce 0.4567 when their mean is rounded, resolving the apparent discrepancy; they remain separate from the untouched historical task cells.
+Reported macros are preserved rather than recomputed as new measurements. In particular, the 64k TurkishDelight reported macro is 0.4567; the mean of its already-rounded task cells is 0.4567545. The difference is compatible with independent rounding of the source macro and task scores. The recovered full-precision mean confirms the archived macro when rounded to four decimals.
 
-For a presentation: emphasize the within-tier trade-off, report BPB alongside the common benchmark, show the missing 32k TurkishDelight model explicitly, and treat small differences as descriptive. Strong causal claims require matching raw-text exposure and evaluation spans, replicated seeds, and paired statistical analysis.
+For a presentation: report the tokenizer diagnostics and archived BPB, label the CETVEL matrix as legacy, show the evaluator correction and missing 32k TurkishDelight model, and separate later model-scale/budget experiments. Tokenizer-effect claims require a corrected common evaluator, matched raw-text exposure/evaluation spans, replicated seeds, and paired statistical analysis.
 
 ## Recovered checkpoint configuration and training performance
 

@@ -1,6 +1,6 @@
 # Additional LLM configurations and recovered benchmarks
 
-These existing checkpoints and experiment outputs were recovered from UHeM on 9 November 2026. They extend the original [eleven-model tokenizer comparison](model_results.md) with continuation, model scaling, generation-protocol corrections and broader benchmarks. No new training or evaluation is claimed. Download [configuration CSV](model_configuration_results.csv), [complete JSON](model_configuration_results.json), [all available task metrics](model_all_task_metrics.csv), and [official-protocol task scores](model_official_task_metrics.csv).
+These existing checkpoints and experiment outputs were recovered from UHeM on 9 November 2026. They extend the original [eleven-model tokenizer comparison](model_results.md) with continuation, model scaling, generation-protocol corrections and broader benchmarks. No new training or evaluation is claimed. Download [configuration CSV](model_configuration_results.csv), [complete JSON](model_configuration_results.json), [all available task metrics](model_all_task_metrics.csv), and [table-compatible protocol task scores](model_official_task_metrics.csv).
 
 ## Model configuration and training results
 
@@ -28,7 +28,7 @@ The medians use the final 100 printed iterations: d20 steps 34,100–34,199 and 
 
 ## Legacy core-11: d20 and d32
 
-The following uses the original eleven classification/log-likelihood metrics. It is a descriptive scale/data/budget comparison using the same raw-BPE tokenizer, not a tokenizer ablation.
+The following preserves the original eleven classification/log-likelihood metrics. The legacy adapter did not validate the tokenized context/continuation boundary, so these values may be affected by likelihood-scoring errors. Their differences are provisional descriptive measurements, not established model-scale or tokenizer effects; a corrected common rerun is needed. The models also differ in scale, data eligibility and training budget despite sharing raw BPE.
 
 | Task | Metric | d20 / step 17,100 | d32 / step 28,000 | Δ percentage points |
 | --- | --- | --- | --- | --- |
@@ -47,7 +47,7 @@ The following uses the original eleven classification/log-likelihood metrics. It
 
 ## Generation protocol: corrected XQuAD
 
-The legacy tokenizer table retains its original generation scores. The recovered corrected-generation evaluations have different values; only the raw-BPE d20 reference and d32 were rerun in this bundle. They do not establish corrected scores for the other ten tokenizer-trained models.
+The legacy adapter misread generation kwargs, ignoring actual stop strings and task generation limits; its XQuAD values cannot support absolute QA or tokenizer-effect conclusions. The original scores are retained as historical evidence. Only the raw-BPE d20 reference and d32 have recovered corrected-generation runs in this bundle. They do not establish corrected scores for the other ten tokenizer-trained models.
 
 | Model / protocol | Max generation tokens | Examples | Exact match % | F1 / 100 |
 | --- | --- | --- | --- | --- |
@@ -56,11 +56,11 @@ The legacy tokenizer table retains its original generation scores. The recovered
 | d32 · corrected | 128 | 1190 | 8.2353 | 15.8833 |
 | d32 · Kumru comparison protocol | 256 | 1190 | 8.2353 | 15.1717 |
 
-The corrected 128-token d20/d32 comparison gives F1 11.3369 versus 15.8833. The later 256-token d32 QA run gives 15.1717; both are retained with their own source paths and settings. Generation limits and the recorded protocol must accompany any score.
+The corrected 128-token d20/d32 comparison gives F1 11.3369 versus 15.8833. The later 256-token d32 QA run gives 15.1717; both are retained with their own source paths and settings. Generation limits and the recorded protocol must accompany any score. The same-checkpoint d20 change is an evaluator correction, not a training gain; the d20/d32 contrast also changes model scale and training exposure. See [the evaluator audit](later_model_results.md) for the recovered bug mechanisms.
 
 ## Complete d32 CETVEL EACL table-compatible scoring
 
-The saved receipt reports **37.1709/100**, the unweighted mean of seven category scores. The verification receipt covers **97,844 effective samples**, 24 top-level tasks and 38 verified leaves, with no sample limit. It records all eight source-shard hashes. This is the repository's `cetvel-eacl2026-table4-compatible-v1` protocol, not the legacy core-11 macro.
+The saved receipt reports **37.1709/100**, the unweighted mean of seven category scores. The verification receipt covers **97,844 effective samples**, 24 top-level tasks and 38 verified leaves, with no sample limit. It records all eight source-shard hashes. This is the repository's `cetvel-eacl2026-table4-compatible-v1` protocol, not the legacy core-11 macro or an independent verification against an official public leaderboard.
 
 Classification uses raw accuracy, QA normalized exact match, summarization TabiBERT BERTScore F1, translation COMET-22, and GEC stripped exact match. Do not substitute legacy `acc_norm`, ROUGE, BLEU or QA F1 into this aggregate. The receipt documents table-compatibility assumptions, model revisions and metric settings.
 
@@ -75,7 +75,7 @@ Classification uses raw accuracy, QA normalized exact match, summarization TabiB
 | GEC | 0.9678 |
 | **Overall** | **37.1709** |
 
-### All official-protocol task scores
+### All table-compatible protocol task scores
 
 | Task | Metric | Examples | Score / 100 |
 | --- | --- | --- | --- |
@@ -115,7 +115,7 @@ The MCQA definition includes both the Turkish-PLU aggregate and its listed compo
 
 ## Other recovered d32 metrics
 
-The earlier Kumru-comparison output files also contain auxiliary metrics. These are separate measurements/aggregations from the official receipt above. Values retain their original scale. All auxiliary scores and available standard errors—including NLU subtasks—are included in the all-metric CSV and JSON.
+The earlier Kumru-comparison output files also contain auxiliary metrics. These are separate measurements/aggregations from the table-compatible receipt above. Values retain their original scale. All auxiliary scores and available standard errors—including NLU subtasks—are included in the all-metric CSV and JSON.
 
 | Task | Metric | Examples | Value | Scale |
 | --- | --- | --- | --- | --- |
@@ -137,7 +137,7 @@ The earlier Kumru-comparison output files also contain auxiliary metrics. These 
 | `tr-wikihow-summ` | rougeL | 5984 | 0.112428 | native output |
 | `tr-wikihow-summ` | rougeLsum | 5984 | 0.112428 | native output |
 
-The `kumru20_sum_fixed` file is a partial suite result containing complete outputs for the two listed summarization tasks; it is not a completed full-suite evaluation. The later official receipt includes four summarization tasks under BERTScore.
+The `kumru20_sum_fixed` file is a partial suite result containing complete outputs for the two listed summarization tasks; it is not a completed full-suite evaluation. The later table-compatible receipt includes four summarization tasks under BERTScore.
 
 ## Evidence coverage and unavailable results
 
@@ -146,7 +146,7 @@ The `kumru20_sum_fixed` file is a partial suite result containing complete outpu
 | 11 original tokenizer-trained models | Archived scores retained; 132 primary cells checked against recovered full-precision outputs. |
 | 32k TurkishDelight full d20 model | No completed result in the archived/recovered inventory. |
 | d20 continuation step 34,200 | Checkpoint metadata present; no continuation benchmark found in this bundle. |
-| d32 step 28,000 | Checkpoint, launch manifest, full official receipt, corrected QA and legacy/auxiliary evaluations present. |
+| d32 step 28,000 | Checkpoint, launch manifest, full table-compatible receipt, corrected QA and legacy/auxiliary evaluations present. |
 | d32 smoke_job515374 / kumru20_comparison_smoke_job515380 | Two examples per task; retained in JSON/CSV with is_smoke=true; excluded from capability tables. |
 | Raw d20 cetvel_out/full/cetvel_full_results.json | Recovery reports malformed JSON; not used. The valid archived partial/core comparison is retained. |
 | Original raw d20 meta_017100.json | Absent at recovery; archived checkpoint statistics retained. |
@@ -154,4 +154,4 @@ The `kumru20_sum_fixed` file is a partial suite result containing complete outpu
 | General-corpus d32 WSD | Separate production-plan documents; not the completed FineWeb-2 d32 model reported here. |
 | June 7 d2 pipeline smoke | Separate archived infrastructure result; see model report. |
 
-Rebuild all tables with `python -m scripts.build_model_study_results`. The builder verifies recovered primary task values, full-precision macros, checkpoint identity and official category/overall arithmetic. Source artifacts retain retrieval timestamps, UHeM paths, original source-file hashes, settings and reported errors.
+Rebuild all tables with `python -m scripts.build_model_study_results`. The builder verifies recovered primary task values, full-precision macros, checkpoint identity and receipt category/overall arithmetic. Source artifacts retain retrieval timestamps, UHeM paths, original source-file hashes, settings and reported errors.

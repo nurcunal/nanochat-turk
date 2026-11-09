@@ -4,6 +4,7 @@ Tests for morphology segmentation helpers.
 Run: python -m pytest tests/test_morphology_segmenters.py -v
 """
 
+import shlex
 import sys
 
 import pytest
@@ -185,6 +186,8 @@ def test_trmorph_flookup_segmenter_caps_pathological_outputs(tmp_path):
 def test_create_segmenter_known_backends(monkeypatch):
     assert isinstance(create_segmenter("identity"), IdentitySegmenter)
 
-    monkeypatch.setenv("TRMORPH_SEGMENT_CMD", f"{sys.executable} -c \"import sys; print(sys.stdin.read(), end='')\"")
+    monkeypatch.setenv("TRMORPH_SEGMENT_CMD", shlex.join([
+        sys.executable, "-c", "import sys; print(sys.stdin.read(), end='')",
+    ]))
     seg = create_segmenter("trmorph")
     assert seg.segment_word("evlerden").pieces == ("evlerden",)

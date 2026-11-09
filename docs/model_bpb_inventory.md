@@ -1,16 +1,21 @@
 # LLM Model BPB Inventory
 
-> Historical June tokenizer-ablation snapshot, retained for provenance. See the
-> [consolidated model results](study_results/model_results.md) for recovered full-precision
-> metrics, training performance, later d20/d32 configurations and separately labeled QA protocols.
+> **Provenance update — 2026-11-09.** This is the original step-17,100 ablation
+> inventory. Ten original metadata files were recovered; the raw-BPE 32k
+> metadata is absent at its old UHeM path and retains archived provenance.
+> CETVEL links use a legacy evaluator with known generation/continuation
+> deviations; see the [evaluator audit](study_results/later_model_results.md).
+> The separately recovered d20 continuation (step 34,200, BPB 0.591451) and d32
+> FineWeb2 model (step 28,000, BPB 0.519040) do not replace these cells. The d32
+> BPB uses train-overlap validation and is not a held-out comparison.
 
-This page records the current Turkish nanochat base-model checkpoints and their
+This page records the archived Turkish nanochat base-model checkpoints and their
 byte-normalized validation losses. BPB values come from each completed run's
 `meta_017100.json` checkpoint metadata on UHeM. For the completed rows below,
-the final validation BPB equals `loop_state.min_val_bpb`, meaning validation BPB
-was still improving at the final saved checkpoint.
+the final validation BPB equals `loop_state.min_val_bpb`, so the final saved
+checkpoint matches the recorded best validation value.
 
-## Current Checkpoints
+## Archived Ablation Checkpoints
 
 Display names in this table use compact report aliases: `chinchilla20` is
 omitted from model tags, and vocabulary sizes are written as `32k`, `64k`, and
@@ -35,8 +40,8 @@ omitted from model tags, and vocabulary sizes are written as `32k`, `64k`, and
 
 Validation BPB is the comparable loss metric across tokenizers because it is
 normalized by bytes rather than tokenizer-specific prediction units. The raw
-BPE 32k d20 model currently has the best final validation BPB
-in this original 17,100-step tokenizer-ablation matrix. The larger-vocabulary d16/d12 rows now have CETVEL core-12 comparisons, so
+BPE 32k d20 model currently has the best checked-in final validation BPB
+overall. The larger-vocabulary d16/d12 rows now have CETVEL core-12 comparisons, so
 the table can be read as a fixed-parameter-budget BPB plus benchmark inventory.
 Downstream quality claims still need post-SFT or broader generation-oriented
 evaluation.

@@ -1,0 +1,15 @@
+{
+  "started_utc": "2026-11-09T12:44:09Z",
+  "python": "3.12.4",
+  "host": "a241.uhem.itu.edu.tr",
+  "slurm_job_id": "558060",
+  "slurm_account": "tl0002",
+  "packages": {
+    "torch": "2.9.1+cu128",
+    "tiktoken": "0.11.0",
+    "tokenizers": "0.22.2",
+    "pyarrow": "21.0.0",
+    "scikit-learn": "1.9.0",
+    "rustbpe": "0.1.0"
+  }
+}

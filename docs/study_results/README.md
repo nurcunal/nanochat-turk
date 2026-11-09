@@ -1,44 +1,92 @@
-# Tokenizer and language-model study results
+# nanochat-turk study results
 
-Consolidated **9 November 2026** from checked-in GitHub artifacts, recovered UHeM outputs, checkpoint metadata, and evaluation logs. Historical measurements are reported first, followed by recovered results and the newly completed matched intrinsic evaluation. Recovery dates are not new experiment dates for the historical runs. Source paths, source hashes, original scores, and missing-result states accompany the machine-readable exports.
+**Presentation and evidence package, 9 November 2026.** `main` is the development
+and results entry point. All historical branch commits and original measurements
+are retained. The d32 production code is consolidated without rewriting its
+sealed experiment contracts.
 
-## 1. Previously reported results
+The study compares **12 original tokenizers**: raw BPE and MorphBPE with TRmorph,
+Zemberek or TurkishDelightNLP boundaries, at **32,768 / 65,536 / 131,072** vocabulary
+sizes. There are **11 completed base-model cells** in the original controlled
+matrix; the 32k TurkishDelight model remains missing. Later continued-d20 and
+d32 runs are reported separately.
 
-The historical evidence is retained before adding the recovered measurements. The June 9, June 12, and June 22 model tables partly describe the same runs; they are not independent repetitions.
+## Read or present
 
-| Evidence already available | Coverage | Tables and original evidence |
-| --- | --- | --- |
-| Intrinsic tokenizer comparison | 12 local tokenizers: raw BPE, TRmorph, Zemberek, TurkishDelight × 32k/64k/128k; 50,000 train documents | [All intrinsic metrics and definitions](tokenizer_results.md); [original comparison](../tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md) |
-| External tokenizer references | Kumru and Cosmos tokenizer diagnostics on the same 50k-document corpus | [External-reference tables](tokenizer_results.md#external-tokenizer-references) |
-| Historical normalizing tokenizer references | BERTurk, TURNA and VBART results recovered from Git history, with failed roundtrips clearly labeled | [Historical reference diagnostics](tokenizer_results.md) |
-| Additional tokenizer/segmenter diagnostics | Raw-text Zemberek diagnostic, analyzer throughput/coverage, and 500-item blind local judge | [Archived diagnostics](tokenizer_results.md); [segmenter log](../tokenizer_tests/segmenter_benchmark_status.md); [judge table](../tokenizer_tests/codex_local_judge_results.md) |
-| Controlled tokenizer-to-model ablation | 11 completed models, 3 vocabulary/depth tiers, 17,100 steps each; 132 common task scores | [BPB, CETVEL, per-task scores, deltas and performance](model_results.md); [June 22 artifact](../../artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/) |
-| Earlier model evidence | Raw-BPE-only tasks/submetrics, three-model June 12 comparison, d2 pipeline smoke | [Historical model results](model_results.md); [June 9](../../artifacts/cetvel_base_subset_2026-06-09_job493293/), [June 12](../../artifacts/cetvel_core12_model_comparison_2026-06-12/), [June 7 smoke](../../artifacts/uhem_smoke_2026-06-07_job492393/) |
+| Deliverable | Contents |
+| --- | --- |
+| [Shareable PDF brief](../../output/pdf/nanochat_turk_study_results.pdf) | Main tables, controls, caveats and figures |
+| [Fresh matched tokenizer results](tokenizer_fresh_results.md) | All requested metrics on equal train and validation samples; 500k word occurrences per tokenizer |
+| [Recovered full-corpus metrics](tokenizer_full_corpus.md) | All 12 tokenizers over 93,211,827 training documents; job 496882 verified complete |
+| [Earlier tokenizer metrics](tokenizer_results.md) | Original 50k-document results, external Kumru/Cosmos tokenizer references, previous metrics and definitions |
+| [Additional tokenizer measurements](tokenizer_additional.md) | Completed 100k/1M-document runs and raw-BPE train/validation diagnostics |
+| [Pretraining and original model benchmarks](model_results.md) | Eleven-model BPB, token loss, training statistics and all 132 legacy CETVEL task scores |
+| [Later models and evaluation corrections](later_model_results.md) | Continued d20, completed d32, corrected XQuAD and EACL table-compatible receipt |
+| [Extended model configuration appendix](model_configuration_results.md) | Full-precision later-model configurations, training performance and broader task/category scores |
+| [SFT configuration screens](sft_configuration_screens.md) | Learning-rate, curriculum and checkpoint selection diagnostics for d32/raw-BPE32k |
+| [Reproduction and provenance](reproduction.md) | Exact recovery revisions, optimizer changes and unchanged strict d32 contracts |
+| [PNG and editable SVG figures](figures/) | Presentation figures with source hashes and explicit evaluation scope |
 
-## 2. Recovered and newly completed results added to GitHub
+Machine-readable exports: [fresh tokenizer CSV](tokenizer_fresh_results.csv),
+[fresh JSON](tokenizer_fresh_results.json), [full-corpus CSV](tokenizer_full_corpus.csv),
+[model summary CSV](model_results.csv), [all model task scores](model_task_metrics.csv),
+and [training statistics CSV](model_training_statistics.csv). Original detailed
+JSONs preserve counts, distributions and source hashes.
 
-| Recovered evidence | What the new tables add | Report |
-| --- | --- | --- |
-| Completed full-corpus tokenizer job `496882` | All 12 tokenizers over 93,211,827 train documents / 299.17 GB; common 500k word caps; compression, morphology, boundary preservation, reversibility, and recorded runtime | [Full-corpus intrinsic results](tokenizer_full_corpus.md) |
-| Completed 100k- and 1M-document intrinsic runs; raw-BPE train/validation diagnostics | 26 additional measurement rows with sample sizes, reference availability and runtime | [Additional intrinsic results](tokenizer_additional.md) |
-| Original checkpoint metadata and CETVEL results | Full-precision scores, model shapes, stored training time, task metrics and available standard errors, with legacy rounded values retained | [Model results and performance](model_results.md) |
-| Longer d20 raw-BPE training | Step 34,200 checkpoint, longer token budget, recorded BPB and training time | [Additional LLM configurations](model_configuration_results.md) |
-| Larger d32 raw-BPE model | Step 28,000 checkpoint, model size/configuration, training performance, broader CETVEL task/category scores | [Additional LLM configurations and benchmarks](model_configuration_results.md) |
-| d32/raw-BPE32k SFT configuration screens | 27 diagnostic rows across learning rates, checkpoints and curricula; retained/rejected candidates and missing scores explicit | [SFT configuration screens](sft_configuration_screens.md) |
-| Corrected generation evaluations | Separate d20/d32 XQuAD results plus other protocol-specific d32 diagnostics | [Protocol-specific results](model_configuration_results.md#generation-protocol-corrected-xquad) |
-| New matched intrinsic job `558060`, completed 9 November | 24 measurements: all 12 tokenizers × train/validation; 50k documents per split, matching 500k word caps; intact-morpheme coverage, character-only coverage and boundary P/R/F1 | [Matched train/validation intrinsic results](tokenizer_matched.md) |
+Additional exports include [all recovered task/submetric rows](model_all_task_metrics.csv),
+[training performance](model_training_performance.csv), and
+[SFT screen records](sft_configuration_screens.csv). The historical tokenizer
+appendix also retains BERTurk, TURNA and VBART normalization diagnostics,
+segmenter throughput/coverage and the blind local judge. Failed roundtrips are
+separated from the lossless tokenizer comparison. Earlier June model reports
+partly describe the same checkpoints and are not independent repetitions.
 
-The d32 checkpoint's BPB evaluation includes text used in training. It is a **train-overlap diagnostic**, not a held-out score comparable with the original model matrix. Corrected-generation QA results are also kept separate from the legacy tokenizer ablation. A continuation or architecture change is a configuration study, not a controlled tokenizer effect.
+The [archival matched report](tokenizer_matched.md) and its frozen-source folder
+mirror the same job `558060` as the fresh report; they are not another experiment.
+SFT screens use one tokenizer and selection probes, so they do not establish a
+multi-tokenizer SFT effect or independent held-out capability improvements.
 
-## 3. Main tokenizer-ablation outcomes
+## Findings that can be defended
 
-The table puts every tokenizer beside its trained-model result. Intrinsic columns use the recovered full training corpus (capped morphology analysis); BPB and core-11 use the original 17,100-step model ablation. Training speed is the median of the final 100 printed steps on the recorded four-A100 setup. These columns measure different tasks and do not form a composite score.
+MorphBPE improves the recorded automatic morphology diagnostics relative to
+same-vocabulary raw BPE. This comes with higher **document** token fertility;
+isolated-word fertility can move in the opposite direction because whitespace
+and context change segmentation. TRmorph is also the reference analyzer, so
+these results do not establish agreement with independent human annotation.
 
-Compare tokenizer families within a vocabulary/depth tier. Across tiers, both vocabulary and depth change. `—` means no completed model result. Core-11 excludes XQuAD; the legacy and corrected QA protocols have their own tables.
+Raw BPE has the lowest **archived validation BPB** within every vocabulary tier.
+The design holds model shape and training token positions fixed within a tier,
+but it does not prove identical raw-text exposure or identical validation text
+spans. Across tiers, depth changes from d20 to d16 to d12 to keep parameters
+near 0.9B; cross-tier results do not isolate vocabulary size alone.
+
+**The original downstream rankings are provisional.** Recovered evaluation
+code documents generation-kwargs and continuation-boundary errors in the
+legacy CETVEL adapter. The same d20 checkpoint's XQuAD F1 changes from **3.0985**
+to **11.3369** under corrected generation handling. This is an evaluator
+correction, not a training or tokenizer gain. The original eleven-model table
+is preserved, but a complete rerun under one corrected protocol is still needed
+before making downstream tokenizer-effect claims. The adapter fixes and
+regression tests are included in the consolidated source.
+
+The later d32 run reached 28,000 steps and 58.72B scheduled token positions.
+Its **0.519040 BPB is a train-overlap diagnostic** because its validation shard
+was also used for training. It must not be presented as a held-out improvement
+over the original ablation. Its distinct benchmark protocols and scores are
+fully listed in the later-model appendix.
+
+## Original model matrix beside tokenizer diagnostics
+
+Intrinsic columns use the recovered full training corpus with capped morphology
+analysis. Model scores use step 17,100; speed is the median of the final 100
+printed steps on the recorded four-A100 setup. Compare within each vocabulary
+tier. The legacy core-11 scores require a corrected common rerun. These columns
+measure different quantities and are not a composite ranking. `—` means a
+missing completed model cell.
 
 <!-- BEGIN GENERATED TOKENIZER MODEL OVERVIEW -->
 
-| Vocabulary / depth | Tokenizer | Corpus tokens/word ↓ | Morph consistency F1 ↑ | Val BPB ↓ | Core-11 ↑ | Training k tokens/s |
+| Vocabulary / depth | Tokenizer | Corpus tokens/word ↓ | Morph consistency F1 ↑ | Val BPB ↓ | Legacy core-11 ↑ | Training k tokens/s |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | 32k / d20 | Raw BPE | 1.5553 | 0.3241 | 0.6232 | 0.4514 | 235.8 |
 | 32k / d20 | MorphBPE / TRmorph | 1.7698 | 0.5129 | 0.6266 | 0.4541 | 236.1 |
@@ -55,49 +103,59 @@ Compare tokenizer families within a vocabulary/depth tier. Across tiers, both vo
 
 <!-- END GENERATED TOKENIZER MODEL OVERVIEW -->
 
-MorphBPE improves the recorded automatic-reference morphology metrics while using more document tokens per word. Raw BPE leads validation BPB in all three controlled tiers; downstream differences depend on the tokenizer and task. These single-run results do not establish statistical significance. The full tables show every tokenizer, including the missing 32k TurkishDelight model cell.
+## Requested metrics and interpretation
 
-![Within-tier model outcomes](figures/model_outcomes_by_tier.png)
+| Requested quantity | Reported definition |
+| --- | --- |
+| Vocabulary size | Exact total vocabulary, including nine special tokens |
+| Subword efficiency | Both document tokens/regex word and isolated-word subword units/word |
+| Morpheme preservation rate | Reference morpheme spans exactly coinciding with one token span; isolated-word measurement |
+| Morpheme boundary consistency | Isolated-word internal-boundary micro precision, recall and F1; separate from older pairwise morphological consistency |
+| Whole-word coverage | Lossless non-UNK words represented by one token in isolation |
+| Character-only coverage | Words represented entirely by single Unicode-character tokens, with a second rate excluding trivial one-character words |
+| Byte-only coverage | Words represented entirely by single-byte tokens; distinct from Unicode characters |
+| Unknown tokens | Architecture-aware count/incidence where UNK exists; N/A for these twelve byte-complete BPE tokenizers |
 
-[Per-task changes figure](figures/cetvel_task_deltas.png) · [Historical 50k-document compression/boundary figure](figures/tokenizer_efficiency_boundary_tradeoff.png). Figures describe the June controlled ablation and historical 50k sample; the separately recovered full-corpus and later-model results are in their tables.
+Previously reported edit distance, normalized edit distance, exact morpheme
+sequence match, pairwise consistency P/R/F1, contextual boundary crossing,
+compression, roundtrip, vocabulary usage/shape, throughput and distributions
+remain available. Contextual boundary preservation and isolated-word boundary
+recall are not interchangeable. Full-corpus document statistics still use
+capped samples for word-level morphology.
 
-## 4. Downloads and rebuilding
+## Sunum için kısa sonuç
 
-| Dataset | Markdown | CSV | JSON with provenance |
-| --- | --- | --- | --- |
-| New matched train/validation intrinsic measurements | [Tables](tokenizer_matched.md) | [CSV](tokenizer_matched.csv) | [JSON](tokenizer_matched.json) |
-| Historical intrinsic measurements | [Tables](tokenizer_results.md) | [CSV](tokenizer_results.csv) | [JSON](tokenizer_results.json) |
-| Full-corpus intrinsic measurements | [Tables](tokenizer_full_corpus.md) | [CSV](tokenizer_full_corpus.csv) | [JSON](tokenizer_full_corpus.json) |
-| Additional 100k/1M and raw-BPE train/validation diagnostics | [Tables](tokenizer_additional.md) | [CSV](tokenizer_additional.csv) | [JSON](tokenizer_additional.json) |
-| Original model summaries and performance | [Tables](model_results.md) | [CSV](model_results.csv) | [JSON](model_results.json) |
-| Additional LLM configurations | [Tables](model_configuration_results.md) | [CSV](model_configuration_results.csv) | [JSON](model_configuration_results.json) |
-| All recovered task metrics, including auxiliary scores | [Protocol guide](model_configuration_results.md) | [CSV](model_all_task_metrics.csv) | [Original models](model_results.json), [additional configurations](model_configuration_results.json) |
-| d32 CETVEL table-compatible task scores | [Tables](model_configuration_results.md#all-official-protocol-task-scores) | [CSV](model_official_task_metrics.csv) | [JSON](model_configuration_results.json) |
-| Model training time, throughput, memory and MFU | [Tables](model_results.md#training-throughput-memory-and-scheduler-time) | [CSV](model_training_performance.csv) | [JSON](model_results.json) |
-| SFT learning-rate/checkpoint screens | [Tables](sft_configuration_screens.md) | [CSV](sft_configuration_screens.csv) | [JSON](sft_configuration_screens.json) |
-| Historical 132 common task scores | [Tables](model_results.md) | [CSV](model_task_metrics.csv) | [JSON](model_results.json) |
+Morfoloji duyarlı tokenizasyon, otomatik TRmorph referansına göre morfem ve sınır
+korunumunu artırıyor; buna karşılık belge düzeyinde kelime başına token sayısı
+artıyor. Ham BPE, her kelime haznesi grubunda kayıtlı doğrulama BPB değerinde
+önde. Ancak eski CETVEL değerlendirme kodunda hata bulunduğu için LLM görev
+başarımı sıralamaları düzeltilmiş ortak protokolle yeniden ölçülmeden kesin
+sonuç olarak sunulmamalı. Yeni tokenizer ölçümleri ile eski ve düzeltilmiş model
+sonuçları ayrı tablolar halinde verilmiştir.
 
-From the repository root:
+## Rebuild and source evidence
 
 ```bash
-python3 -m scripts.build_tokenizer_study_results
-python3 -m scripts.build_fresh_tokenizer_results
-python3 -m scripts.build_model_study_results
-python3 -m scripts.build_sft_configuration_results
-python3 -m scripts.build_study_overview
-MPLCONFIGDIR=/tmp/nanochat-mpl python3 -m scripts.plot_study_results
+python -m scripts.build_tokenizer_study_results
+python -m scripts.build_fresh_tokenizer_results
+python -m scripts.build_tokenizer_matched_results
+python -m scripts.build_model_study_results
+python -m scripts.build_sft_configuration_results
+python -m scripts.build_study_overview
+MPLCONFIGDIR=/tmp/nanochat-mpl python -m scripts.plot_study_results
+python -m scripts.build_study_brief  # requires reportlab 4.4.9 and matplotlib
 ```
 
-The table builders use Python's standard library and saved measurements; charts additionally require matplotlib and NumPy. Rebuilding tables does not run training or evaluation. The original source artifacts remain available, and the builders preserve full precision and verify carry-forward consistency.
+Fresh measurements are produced with
+[`runs/uhem_tokenizer_metrics_study.sbatch`](../../runs/uhem_tokenizer_metrics_study.sbatch)
+in an isolated evaluation directory. Sample preparation records ordered raw
+and annotated document hashes; finalization requires all 24 outputs to match
+their respective split and rejects the consistency metric's non-sklearn fallback.
+The [fresh manifest](fresh_tokenizer_metrics/manifest.json) records the source
+snapshot, tokenizer hashes, environment, corpus samples and result hashes.
 
-## 5. Coverage and remaining gaps
-
-- The 32k/d20 TurkishDelight tokenizer exists, but a completed matched language model is absent from the verified inventory.
-- Intrinsic morphology uses an automatic TRmorph reference. The historical corpora are training data; the new matched report additionally samples the reserved validation shard. That shard was also included in the later all-shard d32 training. No independent gold morphology test result is available.
-- Historical word-level caps differ in the 50k-document evaluation; the recovered full-corpus pass uses equal 500k caps. Full-corpus does not mean every word received the capped morphology analysis.
-- Per-morpheme intact-token coverage, character-only coverage and explicit boundary precision/recall/F1 were absent from the June outputs. They are now reported separately for all 24 tokenizer/split measurements in the completed matched evaluation; historical nulls remain null.
-- Fixed token budgets do not establish equal raw-text training exposure. Timing tables state the recorded runtime definition and concurrency; they are not hardware-controlled speed rankings.
-- Available benchmark standard errors are preserved where supplied. They are not repeated-training-seed uncertainty or paired significance tests.
-- SFT custom-screen results use one tokenizer (raw BPE 32k), with their own dataset and probe definitions; they do not add a multi-tokenizer SFT ablation. Pending jobs and unscored checkpoints are not assigned benchmark values.
-
-[Method, paper alignment and research limitations](../../MorphBPE-alignment.md) · [Experimental design](../tokenizer_ablation_plan.md) · [Artifact index](../../artifacts/README.md)
+Recovered evidence is preserved under
+[`artifacts/tokenizer_metrics_full_2026-06-23`](../../artifacts/tokenizer_metrics_full_2026-06-23/)
+and [`artifacts/uhem_model_audit_2026-11-09`](../../artifacts/uhem_model_audit_2026-11-09/).
+Historical GPU training and model benchmarks were recovered; this update runs
+new CPU tokenizer evaluations only.

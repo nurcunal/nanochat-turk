@@ -1,12 +1,16 @@
 # CETVEL Model Comparison
 
-> Historical June tokenizer-ablation snapshot, retained for provenance. See the
-> [consolidated model results](study_results/model_results.md) for recovered full-precision
-> metrics, training performance, later d20/d32 configurations and separately labeled QA protocols.
+> **Legacy evaluator notice — audited 2026-11-09.** The original numbers below
+> are retained. Recovered code fixes generation kwargs/stop handling and
+> context/continuation token-boundary scoring. The same raw-BPE d20 checkpoint's
+> XQuAD F1 changes from 3.0985 to 11.3369 with generation fixed. Corrected
+> results for the entire tokenizer matrix are unavailable, so these rankings
+> are provisional and do not establish tokenizer effects. See the
+> [evaluator audit and later results](study_results/later_model_results.md).
 
 This page tracks model-facing CETVEL evidence for the tokenizer ablation. It is separate from tokenizer-only diagnostics: these rows compare trained base models at the same checkpoint step, within each vocabulary/depth tier.
 
-## Current Comparable Slice
+## Archived Common Slice
 
 The completed comparable slice is CETVEL core tasks 01-12 for 32k/d20, 64k/d16, and 128k/d12 base-model rows. The 32k TurkishDelightNLP tokenizer has no full d20 checkpoint and is therefore not included as a model row.
 
@@ -28,7 +32,10 @@ The macro score averages the 11 classification/loglikelihood tasks. `xquad_tr` i
 | 128k | MorphBPE + Zemberek d12 | `morphbpe_zemberek_128k` | Zemberek | `496904` | 35m19s | 18.61 | 0.997x | 0.6940 | 0.6940 | 2.6000 | 0.4618 | -0.0033 | 2.9685 | +0.7011 | [ablation artifact](../artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/) |
 | 128k | MorphBPE + TurkishDelightNLP d12 | `morphbpe_tdelight_128k` | TurkishDelightNLP | `496905` | 33m25s | 19.67 | 1.054x | 0.6820 | 0.6820 | 2.6477 | 0.4481 | -0.0170 | 2.2498 | -0.0176 | [ablation artifact](../artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/) |
 
-## Tier Takeaways
+## Recorded Tier Rankings — Legacy Protocol
+
+These describe the archived table only; the evaluator correction prevents
+treating the XQuAD or core-11 ordering as a settled tokenizer-quality result.
 
 - `32k`: best core-11 macro is `morphbpe_zemberek_32k` (0.4618); best XQuAD F1 is `morphbpe_trmorph_32k` (3.4786); best validation BPB is `bpe_32k` (0.6232).
 - `64k`: best core-11 macro is `bpe_64k` (0.4590); best XQuAD F1 is `morphbpe_tdelight_64k` (3.3280); best validation BPB is `bpe_64k` (0.6409).
@@ -40,9 +47,8 @@ Task-level values for all rows are stored in [`../artifacts/cetvel_core12_tokeni
 
 ## Reading The Result
 
-- The result is mixed rather than a uniform MorphBPE win.
-- Raw BPE has the best validation BPB in all completed vocabulary tiers.
-- Zemberek MorphBPE is best on the 32k core-11 macro, while raw BPE is best on the 64k and 128k core-11 macro.
-- MorphBPE variants still improve selected task slices, especially XQuAD in some tiers: TRmorph at 32k, TurkishDelightNLP at 64k, and Zemberek at 128k.
+- Raw BPE has the lowest archived validation BPB in all completed vocabulary tiers; raw-text evaluation spans are not proven identical.
+- Zemberek has the largest recorded 32k legacy core-11 mean; raw BPE has the largest at 64k and 128k. Reevaluate all rows with corrected continuation scoring before interpreting those differences.
+- The legacy generation bug affects XQuAD, so the historical QA deltas cannot support tokenizer-benefit claims. The corrected d20 reference is reported separately rather than inserted into an otherwise uncorrected matrix.
 - End-to-end CETVEL throughput generally improves at larger vocabularies because the d12/d16 models are shallower than d20; compare speed mainly within the same vocabulary/depth tier.
-- These are pre-SFT base-model results. They should guide candidate selection, not final assistant-quality claims.
+- These are pre-SFT base-model measurements. They do not establish instruction-following quality or statistical significance.

@@ -1,4 +1,6 @@
-# Matched tokenizer evaluation: training and validation
+# Matched tokenizer evaluation: archival mirror
+
+This is an archival view of the same 24 measurements from job 558060 in the [canonical fresh tokenizer report](tokenizer_fresh_results.md). It preserves the recovered source snapshot and receipt checks; it is not an additional experiment or independent replication.
 
 Fresh UHeM job **558060** completed successfully on 9 November 2026 (exit 0:0; scheduler elapsed 00:14:37). This separate evaluation adds individual-morpheme preservation, literal boundary precision/recall/F1, character-only coverage and a reserved validation-shard sample for all twelve tokenizers. It does not create new language-model results. [Original measurements and receipts](../../artifacts/tokenizer_metrics_matched_2026-11-09/), [full JSON](tokenizer_matched.json), [flat CSV](tokenizer_matched.csv).
 
@@ -129,7 +131,7 @@ All use one metric worker and eight tokenizer threads per process, with four tok
 
 The evaluated runtime is an isolated source snapshot with per-file hashes, based on a prior repository revision. It is not a claim that the current `main` implementation ran this experiment. The source manifest records the evaluator, tokenizer and sample-preparation code hashes; environment and sample manifests preserve package versions, selected shards, document hashes and word/reference hashes. Original per-tokenizer outputs remain unchanged.
 
-Rebuild these tables from completed measurements with `python -m scripts.build_fresh_tokenizer_results`. The builder requires terminal successful scheduler accounting, all 24 row hashes, final receipt agreement, matching document/word/reference samples, matching tokenizer bytes, and valid rate/count arithmetic. Rebuilding is separate from rerunning the evaluator.
+Rebuild these tables from completed measurements with `python -m scripts.build_tokenizer_matched_results`. The builder requires terminal successful scheduler accounting, all 24 row hashes, final receipt agreement, matching document/word/reference samples, matching tokenizer bytes, and valid rate/count arithmetic. Rebuilding is separate from rerunning the evaluator.
 
 | Split | Tokenizer | Original JSON |
 |---|---|---|

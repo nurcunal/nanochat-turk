@@ -3,6 +3,8 @@
   "evidence_status": "completed_fresh_matched_tokenizer_evaluation",
   "report_date": "2026-11-09",
   "job_id": "558060",
+  "canonical_report": "docs/study_results/tokenizer_fresh_results.json",
+  "same_measurement_run_as_canonical": true,
   "scheduler_state": "COMPLETED",
   "completed_utc": "2026-11-09T12:57:09Z",
   "groups": {

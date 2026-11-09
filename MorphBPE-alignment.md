@@ -1,13 +1,8 @@
 # MorphBPE Alignment, Evidence, Publication Audit, and TODOs
 
-Research results reconciled: **2026-11-09**. The publication audit below remains
-a dated **2026-07-15** audit.
+Last evidence recovery: **2026-11-09**. Publication inventory below retains its 2026-07-15 audit date.
 
-See the **[complete study results](docs/study_results/README.md)** for historical
-and recovered intrinsic measurements, all model/task scores, training performance,
-and later d20/d32 configurations. The separate [matched train/validation report](docs/study_results/tokenizer_matched.md)
-adds intact-morpheme coverage and literal boundary P/R/F1 for all 12 tokenizers
-with equal 500k word caps; its reference is still automatic TRmorph.
+**November update:** use the [study results package](docs/study_results/README.md) for the presentation. Full-corpus job `496882` is verified complete and imported. Recovered August evaluation code exposes generation and likelihood-adapter bugs in the June CETVEL harness: the original model table is retained as **legacy, provisional evidence**, and its XQuAD comparisons must not support tokenizer-effect claims. Corrected and later model results are separated in the study report. All historical branches and source recovery snapshots are preserved; current work is consolidated on `main`.
 
 This is the canonical status document for the Turkish MorphBPE work in
 `nanochat-turk`. It compares the repository with the peer-reviewed MorphBPE
@@ -27,13 +22,13 @@ the cost of higher fertility.
 
 The model evidence is more mixed than the paper's headline result:
 
-- Logged final token-level training loss is lower for the completed MorphBPE
-  models, which points in the same direction as the paper's cross-entropy
-  curves.
+- Logged token-level training losses are preserved, but their prediction units
+  differ across tokenizers; they do not establish a comparable loss advantage.
 - Validation bits per byte (BPB), the repository's tokenizer-normalized model
   metric, is better for raw BPE in every completed 32k, 64k, and 128k tier.
-- MorphBPE wins selected CETVEL slices, especially at 32k and on XQuAD in
-  several tiers, but raw BPE has the best core-11 macro at 64k and 128k.
+- The legacy CETVEL table records selected MorphBPE gains and raw-BPE leads at
+  64k/128k. Generation and likelihood fixes require matched reevaluation before
+  interpreting these rankings as tokenizer effects; withdraw the old XQuAD claim.
 - On the paper's own downstream benchmark family, Turkish Belebele, MorphBPE is
   below raw BPE at 32k and 64k; the 128k Zemberek model has the largest positive
   point estimate. No paired significance analysis has been run.
@@ -174,49 +169,48 @@ is higher for all four languages.
 - Eleven completed models have common CETVEL core-12 summaries. Compact
   metrics and per-task values are in
   [`artifacts/cetvel_core12_tokenizer_ablation_2026-06-22`](artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/).
-- The checked-in intrinsic comparison covers the same first 50,000 documents
-  for all 12 tokenizers and uses raw text for encoding.
+- The earlier 50,000-document comparison is retained. The recovered full-corpus
+  pass covers 93,211,827 training documents for all 12 tokenizers, with matched
+  500,000-occurrence word/alignment caps and raw-text encoding.
 
 ## Current Evidence
-
-The following tables retain the original June 50k-document and 17,100-step
-ablation snapshots. The [expanded results](docs/study_results/README.md) add
-full-corpus tokenizer measurements, full-precision recovered model metrics,
-longer d20 training and the larger d32 model. The d32 BPB is a train-overlap
-diagnostic; corrected-generation QA uses a separate protocol. Neither is
-inserted into the original controlled tokenizer ranking.
 
 ### Tokenizer-Level Result
 
 The table summarizes the matched-vocabulary pattern from
-[`tokenizer_metrics_comparison.json`](docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.json).
+[recovered full-corpus results](docs/study_results/tokenizer_full_corpus.json).
 "Morph range" covers TRmorph, Zemberek, and TurkishDelightNLP; "best" chooses
 the best MorphBPE value for that metric, not one synthetic winner.
 
 | Vocab | Raw `phi` | Morph `phi` range | Raw `mu_e` | Best Morph `mu_e` | Raw `mu_c` | Best Morph `mu_c` |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 32k | 1.6157 | 1.7366-1.8166 | 1.6836 | 1.4126 | 0.3241 | 0.5129 |
-| 64k | 1.4856 | 1.6091-1.7121 | 1.4627 | 1.1697 | 0.2863 | 0.4421 |
-| 128k | 1.3915 | 1.5109-1.6304 | 1.2623 | 1.0045 | 0.2412 | 0.3971 |
+| 32k | 1.5553 | 1.6865-1.7698 | 1.7096 | 1.4319 | 0.3241 | 0.5129 |
+| 64k | 1.4328 | 1.5651-1.6712 | 1.4627 | 1.1697 | 0.2863 | 0.4421 |
+| 128k | 1.3473 | 1.4715-1.5952 | 1.2623 | 1.0045 | 0.2412 | 0.3971 |
 
 Across the currently checked outputs, all nine MorphBPE rows improve both
 morphology metrics over same-size raw BPE, and all nine spend more tokens per
 word. This matches the paper's directional intrinsic trade-off on the current
-automatic, in-domain reference. It is not yet a fully matched estimate: the 32k
-raw/TRmorph/Zemberek files use a 200,000-occurrence cap while the 32k
-TurkishDelight and other tiers use 500,000. The absolute values are not directly
+automatic, in-domain reference. The recovered full-corpus word/alignment rows all use a
+500,000-occurrence cap; the earlier 50k-document archive retains its original
+200k/500k cap mismatch. The absolute values are not directly
 comparable because the language, morphology references, corpora, and samples
 differ, and parts of the paper's `mu_c` procedure are underspecified.
 
 TRmorph supplies the evaluation reference for every row, but it supplies
 tokenizer-training boundaries only for the TRmorph MorphBPE rows. In addition,
-the 50,000-document sample comes from the FineWeb-2 corpus used to train the
-tokenizers rather than a held-out intrinsic test. This setup can particularly
+the historical samples and full-corpus pass use the FineWeb-2 training split.
+Fresh validation diagnostics are kept separately in the study results package. This setup can particularly
 favor the TRmorph-trained tokenizer and makes every row dependent on one
 automatic analyzer's notion of morphology; an independent Turkish gold set is
 required.
 
-### Model and Downstream Result
+### Model and Downstream Result (Legacy Evaluator)
+
+**Do not interpret the following old CETVEL rankings as corrected tokenizer effects.**
+The June harness mishandled generation kwargs and continuation boundaries.
+The original numbers remain for provenance; corrected d20 XQuAD and later d32
+results are in [the model report](docs/study_results/model_results.md).
 
 | Tier | Best BPB | Final train loss: raw / best Morph | Core-11 macro: raw / best Morph | Belebele: raw / best Morph | XQuAD F1: raw / best Morph |
 | --- | --- | ---: | ---: | ---: | ---: |
@@ -242,11 +236,11 @@ accounting, and repeated seeds.
 | Candidate claim | Assessment |
 | --- | --- |
 | Morphology can constrain BPE training without runtime segmentation. | Supported by implementation and tests. |
-| Turkish MorphBPE improves morphological alignment and consistency over same-size BPE. | Supported on the current TRmorph-referenced 50k-document sample. |
+| Turkish MorphBPE improves morphological alignment and consistency over same-size BPE. | Supported on the recovered automatic TRmorph-reference corpus diagnostics; independent human-gold evidence remains missing. |
 | Turkish MorphBPE lowers token-level training loss. | Observed at the final logged point, but granularity and curve controls remain. |
 | Turkish MorphBPE improves validation language modeling. | Not supported by BPB; raw BPE wins every completed tier. |
-| Turkish MorphBPE improves aggregate CETVEL. | Supported only for the 32k Zemberek core macro; not at 64k or 128k. |
-| Turkish MorphBPE improves Belebele. | Mixed: negative at 32k/64k, positive for 128k Zemberek, no significance test. |
+| Turkish MorphBPE improves aggregate CETVEL. | Provisional legacy ranking only; continuation-scoring errors require a corrected matched rerun. |
+| Turkish MorphBPE improves Belebele. | Legacy point estimates only; a corrected matched rerun and paired significance analysis are required. |
 | One segmenter/tokenizer is the universal winner. | Not supported. The winner changes by metric and tier. |
 
 ## Main Validity and Reproducibility Gaps
@@ -274,10 +268,9 @@ accounting, and repeated seeds.
    fallback instead of MiniBatchKMeans.
 8. **Generated artifacts can drift.** Existing publish manifests have blank
    Hub IDs and stale README hashes, and several omit Git commit/branch data.
-9. **Full-corpus metrics are recovered.** Job `496882` completed with exit
-   `0:0`; [all 12 outputs and scheduler evidence](artifacts/tokenizer_metrics_full_2026-06-23/)
-   are now imported. They cover 93,211,827 train documents with common 500k
-   word caps, but remain automatic-reference training-corpus diagnostics.
+9. **Full-corpus recovery is complete.** Job `496882` was verified `COMPLETED`
+   (exit `0:0`) and all twelve original outputs were imported on 2026-11-09.
+   Full-corpus refers to document metrics; word-level morphology remains sampled.
 10. **The 32k TurkishDelight model cell is missing.** Its tokenizer exists, but
     no completed d20 checkpoint is documented.
 11. **The base alphabet differs from the paper.** Byte-level merge training has
@@ -420,9 +413,10 @@ manifests before uploading.
 
 ### P2 - Repository and Research Maintenance
 
-- [x] Verify UHeM job `496882` and import all completed full-corpus outputs.
-- [x] Consolidate historical and recovered intrinsic/extrinsic results and
-  LLM-configuration/performance tables with source hashes and CSV/JSON exports.
+- [x] Verify UHeM job `496882` and import all completed full-corpus outputs
+  with source hashes and scheduler evidence (2026-11-09).
+- [ ] Rerun the complete 11-model comparison with the corrected likelihood and
+  generation adapter; preserve legacy scores separately until then.
 - [ ] Make metric-table generation deterministic, including compact display
   labels, and add a CI drift check for JSON/Markdown pairs.
 - [ ] Add lightweight CI for unit tests, Python compilation, JSON/TOML parsing,

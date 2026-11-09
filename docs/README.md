@@ -12,6 +12,10 @@ configuration comparisons, and training/evaluation performance tables.
 
 ## Current Research Sources
 
+Start with the [9 November study results package](study_results/README.md) for
+presentation tables, fresh tokenizer measurements and the recovered evaluator
+correction. Legacy downstream rankings require a corrected common rerun.
+
 | Document | Role |
 | --- | --- |
 | [`study_results/README.md`](study_results/README.md) | Complete result index, downloadable data and rebuilding commands. |

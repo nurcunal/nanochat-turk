@@ -701,7 +701,7 @@ L 393.373784 385.132075
      </g>
     </g>
     <g id="text_38">
-     <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #14283d" x="291.441176" y="550.328828" transform="rotate(-0 291.441176 550.328828)">Core-11 mean (%)  ·  higher is better</text>
+     <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #14283d" x="291.441176" y="550.328828" transform="rotate(-0 291.441176 550.328828)">Legacy core-11 mean (%)  ·  higher is better</text>
     </g>
    </g>
    <g id="matplotlib.axis_8">
@@ -878,7 +878,7 @@ L 681.146496 385.132075
      </g>
     </g>
     <g id="text_51">
-     <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #14283d" x="602.1" y="550.328828" transform="rotate(-0 602.1 550.328828)">Core-11 mean (%)  ·  higher is better</text>
+     <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #14283d" x="602.1" y="550.328828" transform="rotate(-0 602.1 550.328828)">Legacy core-11 mean (%)  ·  higher is better</text>
     </g>
    </g>
    <g id="matplotlib.axis_10">
@@ -1046,7 +1046,7 @@ L 975.081652 385.132075
      </g>
     </g>
     <g id="text_59">
-     <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #14283d" x="912.758824" y="550.328828" transform="rotate(-0 912.758824 550.328828)">Core-11 mean (%)  ·  higher is better</text>
+     <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #14283d" x="912.758824" y="550.328828" transform="rotate(-0 912.758824 550.328828)">Legacy core-11 mean (%)  ·  higher is better</text>
     </g>
    </g>
    <g id="matplotlib.axis_12">
@@ -1154,17 +1154,17 @@ z
    </g>
   </g>
   <g id="text_64">
-   <text style="font-weight: 700; font-size: 23px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #14283d" x="59.4" y="40.156406" transform="rotate(-0 59.4 40.156406)">Pretraining and benchmark outcomes</text>
+   <text style="font-weight: 700; font-size: 23px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #14283d" x="59.4" y="40.156406" transform="rotate(-0 59.4 40.156406)">Archived pretraining and legacy benchmarks</text>
   </g>
   <g id="text_65">
-   <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #526170" x="59.4" y="62.522203" transform="rotate(-0 59.4 62.522203)">Raw BPE leads validation BPB in every tier; downstream gains depend on tokenizer and tier.</text>
+   <text style="font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #526170" x="59.4" y="62.522203" transform="rotate(-0 59.4 62.522203)">Raw BPE has lower archived BPB; core-11 rankings need a corrected common evaluator.</text>
   </g>
   <g id="text_66">
    <text style="font-weight: 700; font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #14283d" x="59.4" y="579.96" transform="rotate(-0 59.4 579.96)">COMPARE WITHIN EACH COLUMN</text>
   </g>
   <g id="text_67">
    <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; fill: #526170" transform="translate(59.4 613.098516)">Depth changes across tiers. All completed runs: 17,100 steps / 17.93B token positions; equal tokens do not imply equal raw-text exposure.</text>
-   <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; fill: #526170" transform="translate(59.4 627.345695)">Single-run base models; no confidence intervals. XQuAD is excluded from core-11. Archived June 2026 results; assembled 9 Nov 2026.</text>
+   <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; fill: #526170" transform="translate(59.4 627.345695)">Legacy CETVEL has known continuation-boundary deviations; model rankings are provisional. Single runs; no paired uncertainty estimates.</text>
   </g>
   <g id="legend_1">
    <g id="line2d_97">

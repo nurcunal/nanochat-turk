@@ -1,0 +1,158 @@
+#!/bin/bash
+
+# Explicit, fail-closed submitter. With no argument it only prints the plan.
+
+set -eo pipefail
+
+source /etc/profile.d/modules.sh
+module use /ari/progs/modulefiles
+module purge
+module load Python/Python-3.12.4-openmpi-5.0.3-gcc-11.4.0
+set -u
+
+mode="${1:---plan}"
+case "$mode" in
+    --plan|--submit-static-launcher-probe|--submit-proxy-chain|--submit-signal-resume-gate|--submit-smoke-chain) ;;
+    *)
+        echo "usage: $0 [--plan|--submit-static-launcher-probe|--submit-proxy-chain|--submit-signal-resume-gate|--submit-smoke-chain]" >&2
+        exit 2
+        ;;
+esac
+
+CODE_DIR="${CODE_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+source "$CODE_DIR/runs/uhem_slurm_submit.sh"
+NANOCHAT_BASE_DIR="${NANOCHAT_BASE_DIR:-/ari/users/nunal/nanochat-turk-d32-general-v3}"
+RECIPE="${RECIPE:-$CODE_DIR/configs/pretrain/tr_d32_turkish_general_wsd_v4.json}"
+PREFLIGHT_RECEIPT="${PREFLIGHT_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32_v4/preflight.json}"
+ATTENTION_PROBE_RECEIPT="${ATTENTION_PROBE_RECEIPT:-$NANOCHAT_BASE_DIR/control/d32_v4/attention_probe.json}"
+WD_PROXY_APPROVAL="${WD_PROXY_APPROVAL:-$NANOCHAT_BASE_DIR/control/d32_v4/wd_proxy_approval.json}"
+STATIC_LAUNCHER_GATE="${STATIC_LAUNCHER_GATE:-$NANOCHAT_BASE_DIR/control/d32_v4/static_launcher_gate_ws4.json}"
+SIGNAL_RESUME_GATE="${SIGNAL_RESUME_GATE:-$NANOCHAT_BASE_DIR/control/d32_v4/signal_resume_gate_ws4.json}"
+PRODUCTION_GATE="${PRODUCTION_GATE:-$NANOCHAT_BASE_DIR/control/d32_v4/production_topology_gate.json}"
+SBATCH_LOG_DIR="$NANOCHAT_BASE_DIR/logs/d32_v4"
+SBATCH_LOG_ARGS=(
+    --output="$SBATCH_LOG_DIR/%x-%j.out"
+    --error="$SBATCH_LOG_DIR/%x-%j.err"
+)
+
+canonical_production_gate="$NANOCHAT_BASE_DIR/control/d32_v4/production_topology_gate.json"
+if [ "$PRODUCTION_GATE" != "$canonical_production_gate" ]; then
+    echo "PRODUCTION_GATE must equal the fixed topology-gate path: $canonical_production_gate" >&2
+    exit 2
+fi
+
+cd "$CODE_DIR"
+.venv/bin/python scripts/d32_family_workflow.py validate-recipe --recipe="$RECIPE"
+recipe_family_id="$(.venv/bin/python -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["family_id"])' "$RECIPE")"
+if [ -n "${FAMILY_ID:-}" ] && [ "$FAMILY_ID" != "$recipe_family_id" ]; then
+    echo "FAMILY_ID differs from the validated recipe family_id: $recipe_family_id" >&2
+    exit 2
+fi
+FAMILY_ID="$recipe_family_id"
+export FAMILY_ID PRODUCTION_GATE
+
+if [ "$mode" = --plan ]; then
+    echo "No job will be submitted in --plan mode."
+    echo "Required order: data-prep resource/storage sample -> corpus/tokenizer -> family preflight -> 4-rank static launcher gate -> 1xA100 attention probe -> packed d12 proxy -> packed d20 confirmation -> bounded signal/requeue/resume gate -> 8-GPU smoke -> optional 16-GPU smoke -> topology selection."
+    for artifact in "$PREFLIGHT_RECEIPT" "$STATIC_LAUNCHER_GATE" "$ATTENTION_PROBE_RECEIPT" "$WD_PROXY_APPROVAL" "$SIGNAL_RESUME_GATE" "$PRODUCTION_GATE"; do
+        if [ -f "$artifact" ]; then
+            echo "present: $artifact"
+        else
+            echo "missing: $artifact"
+        fi
+    done
+    upstream=92d63d4e8bb4df75c3b71618f31ddde2378b2bcd
+    if git merge-base --is-ancestor "$upstream" HEAD; then
+        echo "pinned-upstream ancestry: PASS"
+    else
+        echo "pinned-upstream ancestry: BLOCKED (HEAD is not descended from $upstream)"
+    fi
+    if [ -n "$(git status --porcelain)" ]; then
+        echo "clean-worktree preflight: BLOCKED"
+    else
+        echo "clean-worktree preflight: PASS"
+    fi
+    echo "Proxy chain command: $0 --submit-proxy-chain"
+    echo "Static launcher probe command: $0 --submit-static-launcher-probe"
+    echo "Signal/requeue/resume gate command (only after proxy acceptance): $0 --submit-signal-resume-gate"
+    echo "Smoke chain command (only after proxy acceptance): $0 --submit-smoke-chain"
+    echo "Production submission is deliberately unavailable until review and every gate are complete."
+    exit 0
+fi
+
+mkdir -p "$SBATCH_LOG_DIR"
+common_export="ALL,CODE_DIR=$CODE_DIR,NANOCHAT_BASE_DIR=$NANOCHAT_BASE_DIR,RECIPE=$RECIPE,PREFLIGHT_RECEIPT=$PREFLIGHT_RECEIPT,ATTENTION_PROBE_RECEIPT=$ATTENTION_PROBE_RECEIPT,WSD_PROXY_APPROVAL=$WD_PROXY_APPROVAL,STATIC_LAUNCHER_GATE=$STATIC_LAUNCHER_GATE,SIGNAL_RESUME_GATE=$SIGNAL_RESUME_GATE,FAMILY_ID=$FAMILY_ID,PRODUCTION_GATE=$PRODUCTION_GATE"
+
+if [ "$mode" = --submit-static-launcher-probe ]; then
+    test -f "$PREFLIGHT_RECEIPT"
+    probe_job="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" --export="$common_export" runs/uhem_d32_static_launcher_probe.sbatch)"
+    final_job="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" --dependency="afterok:$probe_job" --export="$common_export,PROBE_JOB_ID=$probe_job" runs/uhem_d32_static_launcher_finalize.sbatch)"
+    echo "static_launcher_probe_job=$probe_job"
+    echo "static_launcher_finalize_job=$final_job"
+    exit 0
+fi
+
+if [ "$mode" = --submit-proxy-chain ]; then
+    test -f "$PREFLIGHT_RECEIPT"
+    if [ -f "$ATTENTION_PROBE_RECEIPT" ]; then
+        probe_dependency=""
+    else
+        probe_job="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" --export="$common_export" runs/uhem_d32_attention_probe.sbatch)"
+        probe_dependency="--dependency=afterok:$probe_job"
+        echo "attention_probe_job=$probe_job"
+    fi
+    screen_job="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" ${probe_dependency:+"$probe_dependency"} --export="$common_export,PROXY_PHASE=screen" runs/uhem_d32_proxy.sbatch)"
+    confirm_job="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" --dependency="afterok:$screen_job" --export="$common_export,PROXY_PHASE=confirm" runs/uhem_d32_proxy.sbatch)"
+    echo "proxy_screen_job=$screen_job"
+    echo "proxy_confirmation_job=$confirm_job"
+    exit 0
+fi
+
+if [ "$mode" = --submit-signal-resume-gate ]; then
+    test -f "$PREFLIGHT_RECEIPT"
+    test -f "$ATTENTION_PROBE_RECEIPT"
+    test -f "$WD_PROXY_APPROVAL"
+    test -f "$STATIC_LAUNCHER_GATE"
+    test ! -e "$SIGNAL_RESUME_GATE"
+    signal_job="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" --export="$common_export" runs/uhem_d32_signal_resume_smoke.sbatch)"
+    signal_final="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" --dependency="afterok:$signal_job" --export="$common_export,SIGNAL_JOB_ID=$signal_job" runs/uhem_d32_signal_resume_finalize.sbatch)"
+    echo "signal_resume_smoke_job=$signal_job"
+    echo "signal_resume_finalize_job=$signal_final"
+    exit 0
+fi
+
+if [ "$mode" = --submit-smoke-chain ]; then
+    test -f "$PREFLIGHT_RECEIPT"
+    test -f "$ATTENTION_PROBE_RECEIPT"
+    test -f "$WD_PROXY_APPROVAL"
+    test -f "$STATIC_LAUNCHER_GATE"
+    test -f "$SIGNAL_RESUME_GATE"
+    assert_smoke_output_absent() {
+        local path="$1"
+        if [ -e "$path" ] || [ -L "$path" ]; then
+            echo "Refusing to submit smoke chain because fixed output already exists: $path" >&2
+            exit 2
+        fi
+    }
+    for path in \
+        "$NANOCHAT_BASE_DIR/base_checkpoints/${FAMILY_ID}_smoke_ws8" \
+        "$NANOCHAT_BASE_DIR/base_checkpoints/${FAMILY_ID}_smoke_ws16" \
+        "$NANOCHAT_BASE_DIR/metrics/d32_v4/smoke/ws8" \
+        "$NANOCHAT_BASE_DIR/metrics/d32_v4/smoke/ws16" \
+        "$NANOCHAT_BASE_DIR/control/d32_v4/smoke_ws8.json" \
+        "$NANOCHAT_BASE_DIR/control/d32_v4/smoke_ws16.json" \
+        "$PRODUCTION_GATE"; do
+        assert_smoke_output_absent "$path"
+    done
+    smoke8_job="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" --nodes=2 --export="$common_export" runs/uhem_d32_smoke.sbatch)"
+    smoke8_final="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" --dependency="afterok:$smoke8_job" --export="$common_export,SMOKE_JOB_ID=$smoke8_job,SMOKE_NODES=2,STATIC_LAUNCHER_GATE=$STATIC_LAUNCHER_GATE" runs/uhem_d32_smoke_finalize.sbatch)"
+    smoke16_job="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" --nodes=4 --dependency="afterok:$smoke8_final" --export="$common_export,STATIC_LAUNCHER_GATE=$STATIC_LAUNCHER_GATE" runs/uhem_d32_smoke.sbatch)"
+    smoke16_final="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" --dependency="afterok:$smoke16_job" --export="$common_export,SMOKE_JOB_ID=$smoke16_job,SMOKE_NODES=4,STATIC_LAUNCHER_GATE=$STATIC_LAUNCHER_GATE" runs/uhem_d32_smoke_finalize.sbatch)"
+    gate_job="$(d32_submit_sbatch "${SBATCH_LOG_ARGS[@]}" --dependency="afterok:$smoke16_final" --export="$common_export" runs/uhem_d32_smoke_gate.sbatch)"
+    echo "smoke_8gpu_job=$smoke8_job"
+    echo "smoke_8gpu_finalize_job=$smoke8_final"
+    echo "smoke_16gpu_job=$smoke16_job"
+    echo "smoke_16gpu_finalize_job=$smoke16_final"
+    echo "production_gate_job=$gate_job"
+    exit 0
+fi

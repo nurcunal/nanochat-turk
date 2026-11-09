@@ -83,3 +83,9 @@ cetvel_base_subset_2026-06-09_job493293/
 cetvel_core12_model_comparison_2026-06-12/
 cetvel_core12_tokenizer_ablation_2026-06-22/
 ```
+
+## Evidence recovered on 9 November 2026
+
+- [Complete twelve-tokenizer corpus pass](tokenizer_metrics_full_2026-06-23/): verified Slurm completion, original metrics and hashes.
+- [Model and evaluator audit](uhem_model_audit_2026-11-09/): original raw scores, later d20/d32 results and evaluator-correction evidence.
+- [Consolidated presentation report](../docs/study_results/README.md): fresh matched tokenizer diagnostics and clearly separated model protocols.

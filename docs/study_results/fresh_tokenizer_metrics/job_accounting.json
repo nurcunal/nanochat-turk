@@ -1,0 +1,12 @@
+{
+  "job_id": "558060",
+  "state": "COMPLETED",
+  "exit_code": "0:0",
+  "elapsed": "00:14:37",
+  "total_cpu": "59:18.736",
+  "allocated_cpus": 40,
+  "max_rss_kib": 4978632,
+  "node": "a241",
+  "source_command": "sacct -j 558060 --parsable2 --format=JobID,State,ExitCode,Elapsed,TotalCPU,AllocCPUS,MaxRSS,NodeList",
+  "remote_directory": "/ari/users/nunal/nanochat-tokenizer-study-20261109-v1"
+}

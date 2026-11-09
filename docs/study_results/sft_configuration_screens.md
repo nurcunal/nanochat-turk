@@ -1,6 +1,6 @@
 # SFT configuration screens: d32 with raw BPE 32k
 
-These recovered posttraining results hold the tokenizer at **raw BPE, 32,768 tokens** and vary the training curriculum, learning rates and checkpoint. They supplement the [base-model tokenizer ablation](model_results.md); they are not additional tokenizer-family comparisons. All are descendants of the d32 FineWeb-2 model. The 41-case probe and 512-case production behavior suite are custom selection diagnostics, not CETVEL.
+These recovered posttraining results hold the tokenizer at **raw BPE, 32,768 tokens** and vary the training curriculum, learning rates and checkpoint. They supplement the [base-model tokenizer ablation](model_results.md); they are not additional tokenizer-family comparisons. All are descendants of the d32 FineWeb-2 model. The 41-case probe and 512-case production behavior suite are custom selection diagnostics, not CETVEL. Because these checks inform candidate selection, their pass rates are not independent held-out estimates of general capability.
 
 Read-only UHeM recovery: `2026-11-09T12:47:17.506694+00:00`. [Source manifest](../../artifacts/uhem_sft_screens_2026-11-09/manifest.json), [flat CSV](sft_configuration_screens.csv), [full derived JSON](sft_configuration_screens.json). Original receipt bytes, source paths, SHA-256 hashes, code identities and checkpoint hashes are preserved. These summaries establish recorded results; this import does not re-execute their evaluators or verify current weight-file availability.
 
@@ -87,5 +87,5 @@ Evidence: [selection receipt](../../artifacts/uhem_sft_screens_2026-11-09/source
 - These are selected recoverable configuration screens from UHeM, not a claim that every operational pilot or intermediate checkpoint has been exhaustively audited.
 - Repeated checks of the same checkpoint and selection recovery do not count as independent training runs or seed repetitions.
 - The initial bounded-recovery selection summary and capability `eff040-16` summary were empty at recovery; both are recorded as unavailable in the manifest. Their missing values are not zero.
-- No matched multi-tokenizer SFT comparison was recovered. These d32/raw-BPE32k screens stay separate from the eleven-model tokenizer comparison and official CETVEL scores.
+- No matched multi-tokenizer SFT comparison was recovered. These d32/raw-BPE32k screens stay separate from the eleven-model tokenizer comparison and the separate CETVEL protocol results.
 - Rebuild with `python -m scripts.build_sft_configuration_results`. The builder verifies all original-file SHA-256 values, checkpoint steps, probe denominators and verification statuses before emitting the tables.

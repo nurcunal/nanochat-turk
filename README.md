@@ -9,7 +9,12 @@ token positions, optimizer settings, and evaluation are held fixed within each
 vocabulary tier. The final tokenizers accept ordinary Turkish text and do not
 need a morphological analyzer at inference.
 
-For the complete result tables, start with the **[study results index](docs/study_results/README.md)**: historical intrinsic results, recovered full-corpus metrics, model benchmarks, training performance, and later LLM configurations.
+Work continues on **`main`**. Historical branches are retained.
+For presentation tables, provenance, and the full comparison, start with
+[`docs/study_results/README.md`](docs/study_results/README.md).
+The consolidated d32 production pipeline is documented in
+[`docs/tr_d32_turkish_wsd_uhem.md`](docs/tr_d32_turkish_wsd_uhem.md);
+its production work is separate from the completed tokenizer ablation below.
 
 Start with the canonical
 [`MorphBPE-alignment.md`](MorphBPE-alignment.md) for the paper comparison,
@@ -19,31 +24,37 @@ completed work, publication audit, limitations, and prioritized TODO list.
 
 Across the currently checked outputs, all nine MorphBPE variants improve
 Morphological Edit Distance and Morphological Consistency over same-size raw
-BPE on the automatic TRmorph reference, while using more tokens per word. The historical
-50k-document results mix 200k- and 500k-occurrence caps at 32k; the recovered
-full-corpus pass uses a common 500k cap for all twelve tokenizers. Model results are mixed
-rather than a universal MorphBPE win:
+BPE on the automatic TRmorph reference, while using more document tokens per
+word. The
+earlier 50k-document archive mixes 200k/500k word caps at 32k. The newly
+recovered 93.21M-document corpus pass uses matched 500k word/alignment caps;
+fresh train/validation diagnostics add explicit morpheme and coverage metrics.
+The model table below preserves the historical measurements. A November UHeM audit recovered fixes
+for CETVEL generation handling and continuation-boundary scoring; its
+core-11 rankings are provisional, and the old XQuAD interpretation is
+superseded. A corrected common eleven-model rerun is still needed.
 
-| Tier | Raw BPE BPB | Best MorphBPE BPB | Raw core-11 | Best MorphBPE core-11 | Main observation |
+| Tier | Raw BPE BPB | Best MorphBPE BPB | Raw legacy core-11 | Best MorphBPE legacy core-11 | Recorded observation |
 | --- | ---: | ---: | ---: | ---: | --- |
-| 32k / d20 | **0.6232** | 0.6250 | 0.4514 | **0.4618** | Zemberek leads CETVEL macro; raw BPE leads BPB. |
-| 64k / d16 | **0.6409** | 0.6510 | **0.4590** | 0.4568 | Raw BPE leads both aggregate metrics; MorphBPE leads XQuAD. |
-| 128k / d12 | **0.6749** | 0.6820 | **0.4651** | 0.4618 | Raw BPE leads aggregate metrics; Zemberek leads XQuAD and Belebele. |
+| 32k / d20 | **0.6232** | 0.6250 | 0.4514 | **0.4618** | Raw BPE has lower archived BPB; legacy macro ranking needs reevaluation. |
+| 64k / d16 | **0.6409** | 0.6510 | **0.4590** | 0.4568 | Raw BPE has lower archived BPB; legacy macro ranking needs reevaluation. |
+| 128k / d12 | **0.6749** | 0.6820 | **0.4651** | 0.4618 | Raw BPE has lower archived BPB; legacy macro ranking needs reevaluation. |
 
 Lower BPB is better. Core-11 is the mean of the common CETVEL
 classification/log-likelihood tasks; XQuAD is reported separately because its
 F1 scale is different. See the
-[model, task and performance tables](docs/study_results/model_results.md),
-[historical intrinsic tables](docs/study_results/tokenizer_results.md),
-[recovered full-corpus intrinsic tables](docs/study_results/tokenizer_full_corpus.md), and
-[new matched train/validation intrinsic tables](docs/study_results/tokenizer_matched.md).
+[full CETVEL table](docs/cetvel_model_comparison.md) and the
+[12-tokenizer intrinsic table](docs/tokenizer_tests/tokenizer_metrics/tokenizer_metrics_comparison.md).
 
-The appropriate claim is narrow: Turkish MorphBPE reliably improves
-morphology-sensitive tokenizer diagnostics, but model benefits depend on
-segmenter, vocabulary tier, and task. Raw BPE remains the best validation-BPB
-choice in every completed controlled tier. Later d20 continuation and d32
-configuration studies are reported separately; the d32 BPB includes training
-text, and corrected QA protocols are not mixed into the legacy comparison.
+MorphBPE improves the recorded morphology-sensitive tokenizer diagnostics
+against an automatic TRmorph reference, while raw BPE has the lowest archived
+BPB in every completed ablation tier. Fixed token budgets do not ensure equal
+raw-text training/evaluation spans. The same d20 baseline's XQuAD F1 changes
+from 3.0985 to 11.3369 after fixing generation handling, so the original QA
+table cannot establish tokenizer benefits. See the
+[evaluator audit and later models](docs/study_results/later_model_results.md),
+including the separate d20 continuation and completed d32 FineWeb2 model.
+The latter's 0.519040 BPB is a train-overlap diagnostic, not held-out loss.
 
 ## What Is Complete
 
@@ -55,30 +66,32 @@ text, and corrected QA protocols are not mixed into the legacy comparison.
 - Paper-style raw-text MorphBPE training: boundaries constrain merge learning
   but never enter the language-model stream.
 - All 12 tokenizers at 32k, 64k, and 128k.
-- Eleven completed models in the controlled tokenizer ablation and a common
-  CETVEL core-12 comparison. Its only missing cell is 32k/d20 TurkishDelightNLP.
+- Eleven completed base models and a common CETVEL core-12 comparison. The only
+  missing model cell is 32k/d20 TurkishDelightNLP.
 - Fertility, Morphological Edit Distance, Morphological Consistency,
   boundary-crossing, compression, reversibility, and throughput metrics on a
   matched 50,000-document sample.
-- Recovered full-corpus intrinsic metrics for all 12 tokenizers over 93.21M
-  documents, plus longer d20 training and larger d32 model/evaluation records.
-- A completed matched train/validation evaluation for all 12 tokenizers, adding
-  intact-morpheme coverage, character-only coverage and explicit boundary P/R/F1.
+- Recovered full-corpus metrics for all twelve tokenizers: 93,211,827 training
+  documents, verified job completion and source hashes.
+- Fresh measurements for all twelve tokenizers on matched 50,000-document
+  training and validation samples: morpheme preservation, boundary F1,
+  isolated subword efficiency, whole-word and character coverage. UHeM CPU job
+  `558060` completed successfully; all 24 outputs and source hashes are included.
 - Compact tokenizers, manifests, metrics, and benchmark summaries checked into
-  GitHub, with reproducible Markdown/CSV/JSON result tables.
+  GitHub.
 
-## Artifacts and dated publication audit
+## Artifacts and Dated Publication Audit
 
 | Artifact | GitHub | Hugging Face at the 2026-07-15 audit |
 | --- | --- | --- |
-| Source and compact documentation/results | [Study results and downloads](docs/study_results/README.md) | Not applicable |
+| Source and compact documentation/results | This repository | Not applicable |
 | 12 tokenizer bundles | [`artifacts/tokenizers`](artifacts/tokenizers/) | None is published standalone; raw BPE 32k is embedded in the public model and the other 11 are absent |
 | Raw BPE 32k raw checkpoint | Summary and provenance here | [`nurcunal/nanochat-turk-d20-bpe32k`](https://huggingface.co/nurcunal/nanochat-turk-d20-bpe32k) |
 | Other 10 completed models | Compact metrics and UHeM provenance here | Not uploaded |
 | Eleven-model CETVEL comparison | [June 22 artifact](artifacts/cetvel_core12_tokenizer_ablation_2026-06-22/) | Not uploaded |
 
-The authenticated Hub publication audit was performed on 2026-07-15; the
-Hugging Face column is historical and was not re-audited for this results update. Empty Hub
+The authenticated publication audit was performed on 2026-07-15; the Hub column
+is historical and was not re-audited for this results update. Empty Hub
 IDs in tokenizer manifests are real release gaps, not evidence of private
 repositories. Details and the exact missing-model inventory are in
 [`MorphBPE-alignment.md`](MorphBPE-alignment.md#publication-audit).
@@ -141,7 +154,6 @@ MorphBPE training requires a boundary-marked parquet corpus first. See the
 
 | Path | Purpose |
 | --- | --- |
-| [`docs/study_results`](docs/study_results/README.md) | Complete intrinsic/extrinsic tables, LLM configuration studies, performance, exports and provenance. |
 | [`MorphBPE-alignment.md`](MorphBPE-alignment.md) | Canonical paper alignment, evidence, release audit, and TODOs. |
 | [`nanochat`](nanochat/) | Model, data, tokenizer, checkpoint, and evaluation code. |
 | [`nanochat/morphology`](nanochat/morphology/) | Boundary logic, MorphBPE transform, and segmenter adapters. |
